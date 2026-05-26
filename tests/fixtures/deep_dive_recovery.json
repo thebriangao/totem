@@ -1,0 +1,258 @@
+{
+  "metadata": {
+    "ai_context_metadata": {
+      "is_wce_prefetch": null,
+      "is_wce_enabled": true,
+      "destination": {
+        "screen": "AI_CHAT",
+        "parameters": {
+          "fingerprint": "CHAT_WITH_AGENTRECOVERY_DEEP_DIVE_1518596153",
+          "source": "WCE_RECOVERY_DEEP_DIVE",
+          "screen_id": "WCE_RECOVERY_DEEP_DIVE",
+          "source_type": "CHAT_WITH_AGENT",
+          "source_id": "coach-everywhere-context-agent",
+          "agent_id": "coach-everywhere-context-agent",
+          "preset_question_key": null,
+          "static_initial_message": null,
+          "education_type": null,
+          "should_open_full_size": false,
+          "args": {
+            "context": "recovery_deepdive"
+          }
+        }
+      },
+      "ai_action": {
+        "source": "WCE_RECOVERY_DEEP_DIVE",
+        "screen_id": "RECOVERY_DEEP_DIVE",
+        "source_type": "CHAT_WITH_AGENT",
+        "source_id": "coach-everywhere-context-agent",
+        "args": {
+          "context": "recovery_deepdive"
+        },
+        "should_open_full_size": false,
+        "education_type": null,
+        "fingerprint": "CHAT_WITH_AGENTRECOVERY_DEEP_DIVE_1518596153",
+        "agent_id": "coach-everywhere-context-agent",
+        "static_initial_message": null,
+        "entry_text": null,
+        "include_initial_message": null,
+        "conversation_seed_id": null,
+        "preset_question": null,
+        "onboarding_analytic_source": null,
+        "entrypoint_experience": "STANDARD"
+      },
+      "screen_identifier": "RECOVERY_DEEP_DIVE"
+    }
+  },
+  "header": {
+    "title": "SAT, MAY 23",
+    "end_icon": "EDUCATION",
+    "end_item": null,
+    "deep_dive_score_type": "RECOVERY",
+    "destination": {
+      "screen": "EDUCATION_PAGE",
+      "parameters": {
+        "feature_education_name": "RECOVERY_EDUCATION",
+        "source": null
+      }
+    }
+  },
+  "sections": [
+    {
+      "items": [
+        {
+          "type": "SCORE_GAUGE",
+          "content": {
+            "title_image_url": null,
+            "score_display_title": "RECOVERY",
+            "destination": {
+              "screen": "TRENDS",
+              "parameters": {
+                "trend_key": "RECOVERY",
+                "duration": 1,
+                "date": "2026-05-23"
+              }
+            },
+            "id": "RECOVERY_SCORE_GAUGE",
+            "score_display": "78",
+            "score_display_style": null,
+            "score_display_suffix": "%",
+            "gauge_fill_percentage": 0.78,
+            "score_target": null,
+            "lower_optimal_percentage": null,
+            "higher_optimal_percentage": null,
+            "progress_fill_style": "RECOVERY_HIGH",
+            "bar_styles": null
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "CONTRIBUTORS_TILE",
+          "content": {
+            "id": "RECOVERY_CONTRIBUTORS_TILE",
+            "metrics": [
+              {
+                "id": "CONTRIBUTORS_TILE_HRV",
+                "icon": "HRV_OUTLINE",
+                "title": "Heart Rate Variability",
+                "status": "42",
+                "status_subtitle": "40",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRAINGLE_UP",
+                "status_type": "HIGHER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "HRV",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              },
+              {
+                "id": "CONTRIBUTORS_TILE_RHR",
+                "icon": "RHR",
+                "title": "Resting Heart Rate",
+                "status": "68",
+                "status_subtitle": "70",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRIANGLE_DOWN",
+                "status_type": "LOWER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "RHR",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              },
+              {
+                "id": "CONTRIBUTORS_TILE_RESPIRATORY_RATE",
+                "icon": "RESPIRATORY_RATE",
+                "title": "RESPIRATORY RATE",
+                "status": "14.7",
+                "status_subtitle": "14.8",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRIANGLE_DOWN",
+                "status_type": "LOWER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "RESPIRATORY_RATE",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              },
+              {
+                "id": "CONTRIBUTORS_TILE_SLEEP_PERFORMANCE",
+                "icon": "SLEEP",
+                "title": "SLEEP PERFORMANCE",
+                "status": "83%",
+                "status_subtitle": "78%",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRAINGLE_UP",
+                "status_type": "HIGHER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "SLEEP_PERFORMANCE",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              }
+            ],
+            "legend": null,
+            "tile_legend": {
+              "type": "TREND_ICONS_LEGEND",
+              "content": {
+                "title": "Sat, May 23",
+                "subtitle": "vs. last 30 days",
+                "icons": [
+                  {
+                    "icon": "TINY_TRAINGLE_UP",
+                    "type": "HIGHER_POSITIVE"
+                  },
+                  {
+                    "icon": "TINY_TRIANGLE_DOWN",
+                    "type": "LOWER_NEGATIVE"
+                  }
+                ]
+              }
+            },
+            "footer": {
+              "items": [
+                {
+                  "type": "WHOOP_COACH_VOW",
+                  "content": {
+                    "header": null,
+                    "style": "NORMAL",
+                    "vow": "Your HRV is 5% higher than usual. A high HRV indicates your nervous system is ready to handle stress, your body is in balance, and you are ready to take on strain.",
+                    "icon": null,
+                    "entrypoint": {
+                      "entry_text": "Explore Your Recovery insights",
+                      "signature": "Explore Your Recovery insights"
+                    },
+                    "destination": {
+                      "screen": "AI_CHAT",
+                      "parameters": {
+                        "fingerprint": "CHAT_WITH_AGENTRECOVERY_DEEP_DIVE2026-05-23",
+                        "source": null,
+                        "screen_id": null,
+                        "source_type": "CHAT_WITH_AGENT",
+                        "source_id": "recovery-deep-dive-agent",
+                        "agent_id": "recovery-deep-dive-agent",
+                        "preset_question_key": null,
+                        "static_initial_message": null,
+                        "education_type": null,
+                        "should_open_full_size": false,
+                        "args": {}
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "ARCH_MINI_RECOVERY_IMPACTS",
+          "content": {
+            "path": "behavior-impact-service/v1/impact/summary-card/2026-05-23"
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "ARCH_MINI_TRENDS",
+          "content": {
+            "path": "home-service/v1/deep-dive/recovery/trends?date=2026-05-23"
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    }
+  ]
+}

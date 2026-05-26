@@ -1,0 +1,67 @@
+{
+  "name": "whoop-mcp",
+  "version": "1.1.0",
+  "description": "Model Context Protocol server that wraps Whoop's private iOS API surface. 47 tools, read + write, structured zod-validated outputs, auto-refresh Cognito auth.",
+  "license": "MIT",
+  "author": "Brian Gao",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/briangaoo/whoop-mcp.git"
+  },
+  "homepage": "https://github.com/briangaoo/whoop-mcp#readme",
+  "keywords": [
+    "mcp",
+    "whoop",
+    "fitness",
+    "claude",
+    "anthropic",
+    "ai",
+    "model-context-protocol",
+    "reverse-engineered"
+  ],
+  "type": "module",
+  "bin": {
+    "whoop-mcp": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "assets/",
+    "README.md",
+    "WHOOP_API_ENDPOINTS.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "LICENSE",
+    ".env.example",
+    "Dockerfile",
+    ".dockerignore"
+  ],
+  "scripts": {
+    "setup": "npm install && npm run cognito-bootstrap && npm run build",
+    "build": "tsc",
+    "dev": "tsx src/server.ts",
+    "dev:http": "MCP_TRANSPORT=http tsx src/server.ts",
+    "start": "node dist/server.js",
+    "start:http": "MCP_TRANSPORT=http node dist/server.js",
+    "cognito-bootstrap": "tsx src/scripts/cognito_bootstrap.ts",
+    "rebootstrap": "tsx src/scripts/rebootstrap.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^17.4.0",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.22.0",
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

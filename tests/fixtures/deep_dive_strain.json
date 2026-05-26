@@ -1,0 +1,339 @@
+{
+  "metadata": {
+    "ai_context_metadata": {
+      "is_wce_prefetch": null,
+      "is_wce_enabled": true,
+      "destination": {
+        "screen": "AI_CHAT",
+        "parameters": {
+          "fingerprint": "CHAT_WITH_AGENTSTRAIN_DEEP_DIVE_1518596153_18.9",
+          "source": "WCE_STRAIN_DEEP_DIVE",
+          "screen_id": "WCE_STRAIN_DEEP_DIVE",
+          "source_type": "CHAT_WITH_AGENT",
+          "source_id": "coach-everywhere-context-agent",
+          "agent_id": "coach-everywhere-context-agent",
+          "preset_question_key": null,
+          "static_initial_message": null,
+          "education_type": null,
+          "should_open_full_size": false,
+          "args": {
+            "context": "strain_deepdive"
+          }
+        }
+      },
+      "ai_action": {
+        "source": "WCE_STRAIN_DEEP_DIVE",
+        "screen_id": "STRAIN_DEEP_DIVE",
+        "source_type": "CHAT_WITH_AGENT",
+        "source_id": "coach-everywhere-context-agent",
+        "args": {
+          "context": "strain_deepdive"
+        },
+        "should_open_full_size": false,
+        "education_type": null,
+        "fingerprint": "CHAT_WITH_AGENTSTRAIN_DEEP_DIVE_1518596153_18.9",
+        "agent_id": "coach-everywhere-context-agent",
+        "static_initial_message": null,
+        "entry_text": null,
+        "include_initial_message": null,
+        "conversation_seed_id": null,
+        "preset_question": null,
+        "onboarding_analytic_source": null,
+        "entrypoint_experience": "STANDARD"
+      },
+      "screen_identifier": "STRAIN_DEEP_DIVE"
+    }
+  },
+  "header": {
+    "title": "SAT, MAY 23",
+    "end_icon": "EDUCATION",
+    "end_item": null,
+    "deep_dive_score_type": "STRAIN",
+    "destination": {
+      "screen": "EDUCATION_PAGE",
+      "parameters": {
+        "feature_education_name": "STRAIN_EDUCATION",
+        "source": null
+      }
+    }
+  },
+  "sections": [
+    {
+      "items": [
+        {
+          "type": "SCORE_GAUGE",
+          "content": {
+            "title_image_url": null,
+            "score_display_title": "STRAIN",
+            "destination": {
+              "screen": "TRENDS",
+              "parameters": {
+                "trend_key": "DAY_STRAIN",
+                "duration": 1,
+                "date": "2026-05-23"
+              }
+            },
+            "id": "STRAIN_SCORE_GAUGE",
+            "score_display": "18.9",
+            "score_display_style": null,
+            "score_display_suffix": null,
+            "gauge_fill_percentage": 0.9014401824259904,
+            "score_target": 0.629978572454762,
+            "lower_optimal_percentage": 0.5347404772166667,
+            "higher_optimal_percentage": 0.7498188280952381,
+            "progress_fill_style": "STRAIN",
+            "bar_styles": null
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "CONTRIBUTORS_TILE",
+          "content": {
+            "id": "STRAIN_CONTRIBUTORS_TILE",
+            "metrics": [
+              {
+                "id": "CONTRIBUTORS_TILE_HR_ZONES_1_3",
+                "icon": "HR_ZONES_1_3",
+                "title": "HEART RATE ZONES 1-3",
+                "status": "2:18",
+                "status_subtitle": "0:21",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRAINGLE_UP",
+                "status_type": "HIGHER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "HR_ZONES_1_3",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              },
+              {
+                "id": "CONTRIBUTORS_TILE_HR_ZONES_4_5",
+                "icon": "HR_ZONES_4_5",
+                "title": "HEART RATE ZONES 4-5",
+                "status": "0:03",
+                "status_subtitle": "0:00",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRAINGLE_UP",
+                "status_type": "HIGHER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "HR_ZONES_4_5",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              },
+              {
+                "id": "CONTRIBUTORS_TILE_STRENGTH_TRAINING_TIME",
+                "icon": "TONNAGE",
+                "title": "STRENGTH ACTIVITY TIME",
+                "status": "2:35",
+                "status_subtitle": "0:30",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRAINGLE_UP",
+                "status_type": "HIGHER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "STRENGTH_TRAINING_TIME",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              },
+              {
+                "id": "CONTRIBUTORS_TILE_STEPS",
+                "icon": "STEPS",
+                "title": "STEPS (BETA)",
+                "status": "10,616",
+                "status_subtitle": "6,240",
+                "metric_style": "DATA",
+                "status_icon": "TINY_TRAINGLE_UP",
+                "status_type": "HIGHER_POSITIVE",
+                "destination": {
+                  "screen": "TRENDS",
+                  "parameters": {
+                    "trend_key": "STEPS",
+                    "duration": 1,
+                    "date": "2026-05-23"
+                  }
+                },
+                "bar_styles": null
+              }
+            ],
+            "legend": null,
+            "tile_legend": {
+              "type": "TREND_ICONS_LEGEND",
+              "content": {
+                "title": "Sat, May 23",
+                "subtitle": "vs. last 30 days",
+                "icons": [
+                  {
+                    "icon": "TINY_TRAINGLE_UP",
+                    "type": "HIGHER_POSITIVE"
+                  },
+                  {
+                    "icon": "TINY_TRIANGLE_DOWN",
+                    "type": "LOWER_NEGATIVE"
+                  }
+                ]
+              }
+            },
+            "footer": {
+              "items": [
+                {
+                  "type": "WHOOP_COACH_VOW",
+                  "content": {
+                    "header": null,
+                    "style": "NORMAL",
+                    "vow": "Strain between 18 and 21 represents near maximal cardiovascular load. Dedicate additional time to rest and recovery.",
+                    "icon": null,
+                    "entrypoint": {
+                      "entry_text": "Explore Your Strain insights",
+                      "signature": "Explore Your Strain insights"
+                    },
+                    "destination": {
+                      "screen": "AI_CHAT",
+                      "parameters": {
+                        "fingerprint": "CHAT_WITH_AGENTSTRAIN_DEEP_DIVE2026-05-23",
+                        "source": null,
+                        "screen_id": null,
+                        "source_type": "CHAT_WITH_AGENT",
+                        "source_id": "strain-deep-dive-agent",
+                        "agent_id": "strain-deep-dive-agent",
+                        "preset_question_key": null,
+                        "static_initial_message": null,
+                        "education_type": null,
+                        "should_open_full_size": false,
+                        "args": {}
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "HEADER",
+          "content": {
+            "id": null,
+            "title": "Today's Activities",
+            "subtitle": null,
+            "subtitle_end": null,
+            "cta": null,
+            "cta_state": null,
+            "icon": null,
+            "style": "LARGE",
+            "destination": null,
+            "leading_button": null
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "ACTIVITY",
+          "content": {
+            "is_gps_enabled": true,
+            "title": "STRENGTH TRAINER",
+            "score_display": "17.7",
+            "start_time_text": "9:49 AM",
+            "end_time_text": "12:24 PM",
+            "icon_url": "https://s3-us-west-2.amazonaws.com/icons.whoop.com/mobile/activities/weightlifting.png",
+            "secondary_icon_url": null,
+            "status": "COMPLETE",
+            "type": "CARDIO",
+            "activity_v2_id": "5364dc07-c229-481f-b92f-0d7ee402fbbf",
+            "sport_id": -1,
+            "internal_name": "weightlifting_msk",
+            "during": {
+              "lower_endpoint": "2026-05-23T16:49:15.964+0000",
+              "lower_bound_type": "CLOSED",
+              "upper_endpoint": "2026-05-23T19:24:54.924+0000",
+              "upper_bound_type": "OPEN"
+            },
+            "detected_activity_metadata": null,
+            "destination": {
+              "screen": "CARDIO_DETAILS",
+              "parameters": {
+                "activity_id": "5364dc07-c229-481f-b92f-0d7ee402fbbf",
+                "entry_point": "Deep Dive",
+                "ai_action": null,
+                "type": "CARDIO"
+              }
+            }
+          }
+        },
+        {
+          "type": "ACTIVITY",
+          "content": {
+            "is_gps_enabled": true,
+            "title": "BASKETBALL",
+            "score_display": "11.6",
+            "start_time_text": "8:08 PM",
+            "end_time_text": "8:55 PM",
+            "icon_url": "https://s3-us-west-2.amazonaws.com/icons.whoop.com/mobile/activities/basketball.png",
+            "secondary_icon_url": null,
+            "status": "COMPLETE",
+            "type": "CARDIO",
+            "activity_v2_id": "73c53581-6d6a-4c09-b20e-9ec8cf2a4435",
+            "sport_id": -1,
+            "internal_name": "basketball",
+            "during": {
+              "lower_endpoint": "2026-05-24T03:08:34.559+0000",
+              "lower_bound_type": "CLOSED",
+              "upper_endpoint": "2026-05-24T03:55:49.784+0000",
+              "upper_bound_type": "OPEN"
+            },
+            "detected_activity_metadata": null,
+            "destination": {
+              "screen": "CARDIO_DETAILS",
+              "parameters": {
+                "activity_id": "73c53581-6d6a-4c09-b20e-9ec8cf2a4435",
+                "entry_point": "Deep Dive",
+                "ai_action": null,
+                "type": "CARDIO"
+              }
+            }
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    },
+    {
+      "items": [
+        {
+          "type": "ARCH_MINI_TRENDS",
+          "content": {
+            "path": "home-service/v1/deep-dive/strain/trends?date=2026-05-23"
+          }
+        }
+      ],
+      "id": null,
+      "section_type": "COMPACT"
+    }
+  ]
+}

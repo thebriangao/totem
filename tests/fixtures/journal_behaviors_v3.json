@@ -1,0 +1,4358 @@
+{
+  "categories": [
+    "ALL",
+    "Drugs & Medication",
+    "Health & Symptoms",
+    "Hormonal Health",
+    "Lifestyle",
+    "Mental Wellbeing",
+    "Nutrition",
+    "Recovery",
+    "Sleep & Circadian Health",
+    "Supplements"
+  ],
+  "title": "SELECT BEHAVIORS",
+  "current_category": "ALL",
+  "confirmation_modal": {
+    "title": "CONFIRM CHANGES TO YOUR PLAN",
+    "subtitle": "Removing these behaviors from your journal will remove them from your weekly plan.",
+    "primary_button_text": "REMOVE",
+    "secondary_button_text": "CANCEL"
+  },
+  "search_title": "Search for Behaviors",
+  "grouped_toggles": [
+    {
+      "group_priority": 0,
+      "title": "NOT SELECTED",
+      "toggles": [
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Accutane",
+          "subtitle": "Took Accutane?",
+          "id": "338",
+          "internal_name": "accutane",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Acne",
+          "subtitle": "Experienced acne?",
+          "id": "210",
+          "internal_name": "acne",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Acupuncture",
+          "subtitle": "Received acupuncture therapy?",
+          "id": "18",
+          "internal_name": "acupuncture",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Adaptogen Mushrooms",
+          "subtitle": "Took adaptogen mushrooms?",
+          "id": "384",
+          "internal_name": "adaptogen_mushrooms",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Added Sugar",
+          "subtitle": "Consumed added sugar?",
+          "id": "90",
+          "internal_name": "added-sugar",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "AD(H)D Medication",
+          "subtitle": "Took AD(H)D medication?",
+          "id": "134",
+          "internal_name": "adhd-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Afternoon Snack ",
+          "subtitle": "Ate an afternoon snack?",
+          "id": "271",
+          "internal_name": "afternoon-snack",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "AG1 - Foundational Nutritional Supplement",
+          "subtitle": "Did you drink AG1?",
+          "id": "181",
+          "internal_name": "ag1",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Air Travel",
+          "subtitle": "Traveled on a plane?",
+          "id": "7",
+          "internal_name": "air-travel",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Alcohol",
+          "subtitle": "Have any alcoholic drinks?",
+          "id": "1",
+          "internal_name": "alcohol",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Allergy Medication",
+          "subtitle": "Took allergy medication?",
+          "id": "263",
+          "internal_name": "allergy-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Alpha-lipoic acid (ALA) supplement",
+          "subtitle": "Took Alpha-lipoic acid (ALA) supplements?",
+          "id": "346",
+          "internal_name": "alpha_lipoic_acid",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Anti-Androgen",
+          "subtitle": "Took anti-androgen medication (e.g., Spironolactone)?",
+          "id": "257",
+          "internal_name": "anti-androgen",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Anti-Anxiety Medication",
+          "subtitle": "Took anti-anxiety medication?",
+          "id": "9",
+          "internal_name": "anti-anxiety-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Anti-Inflammatory Drugs (e.g. Ibuprofen)",
+          "subtitle": "Took an anti-inflammatory drug (NSAIDs)?",
+          "id": "10",
+          "internal_name": "anti-inflammatory-drugs",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Anxiety",
+          "subtitle": "Felt nervous or anxious?",
+          "id": "135",
+          "internal_name": "anxiety",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Aromatherapy",
+          "subtitle": "Used aromatherapy/essential oils for relaxation?",
+          "id": "379",
+          "internal_name": "aromatherapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Artificial Light",
+          "subtitle": "Saw artificial light upon waking up?",
+          "id": "139",
+          "internal_name": "artificial-light",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ashwaganda",
+          "subtitle": "Took ashwaganda?",
+          "id": "265",
+          "internal_name": "ashwaganda",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ate before workout",
+          "subtitle": "Ate before workout?",
+          "id": "304",
+          "internal_name": "ate-before-workout",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Back Pain",
+          "subtitle": "Experienced back pain?",
+          "id": "215",
+          "internal_name": "back-pain",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Beans",
+          "subtitle": "Consumed beans?",
+          "id": "301",
+          "internal_name": "beans",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Beta Blockers",
+          "subtitle": "Took beta blocking medication?",
+          "id": "336",
+          "internal_name": "beta_blockers",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Bloating",
+          "subtitle": "Experienced bloating?",
+          "id": "80",
+          "internal_name": "bloating",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Blood Donation",
+          "subtitle": "Donated blood?",
+          "id": "369",
+          "internal_name": "blood_donation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Blood Pressure Medication",
+          "subtitle": "Took blood pressure medication?",
+          "id": "63",
+          "internal_name": "blood-pressure-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Blue-Light Blocking Glasses",
+          "subtitle": "Wore blue-light blocking glasses before bed?",
+          "id": "27",
+          "internal_name": "blue-light-blocking-glasses",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Blue-Light Blocking Glasses (WHOOP All-Day Lenses)",
+          "subtitle": "Wore blue-light blocking glasses (WHOOP All-Day Lenses)?",
+          "id": "166",
+          "internal_name": "blue-light-blocking-glasses-whoop-all-day",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Blue-Light Blocking Glasses (WHOOP Evening Lenses)",
+          "subtitle": "Wore blue-light blocking glasses (WHOOP Evening Lenses)",
+          "id": "165",
+          "internal_name": "blue-light-blocking-glasses-whoop-evening",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Body Odor Changes",
+          "subtitle": "Noticed changes in body odor today?",
+          "id": "245",
+          "internal_name": "body-odor-changes",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Body Pillow",
+          "subtitle": "Used a body pillow?",
+          "id": "385",
+          "internal_name": "body_pillow",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Bowel Movements",
+          "subtitle": "Experienced bowel movements?",
+          "id": "333",
+          "internal_name": "bowel_movements",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Brain Fog",
+          "subtitle": "Experienced brain fog?",
+          "id": "221",
+          "internal_name": "brain-fog",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Breakfast ",
+          "subtitle": "Ate breakfast?",
+          "id": "269",
+          "internal_name": "breakfast",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Breast Growth",
+          "subtitle": "Noticed breast growth?",
+          "id": "212",
+          "internal_name": "breast-growth",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Breast Tenderness",
+          "subtitle": "Experienced breast tenderness?",
+          "id": "243",
+          "internal_name": "breast-tenderness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Breathwork",
+          "subtitle": "Practiced breathwork?",
+          "id": "62",
+          "internal_name": "breathwork",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Caffeine",
+          "subtitle": "Consumed caffeine?",
+          "id": "2",
+          "internal_name": "caffeine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Calcium",
+          "subtitle": "Consumed calcium?",
+          "id": "170",
+          "internal_name": "calcium",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Calcium Supplement",
+          "subtitle": "Took a calcium supplement?",
+          "id": "159",
+          "internal_name": "calcium-supplement",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Calories",
+          "subtitle": "Tracked your calories?",
+          "id": "145",
+          "internal_name": "calories",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Camping",
+          "subtitle": "Camped outdoors?",
+          "id": "372",
+          "internal_name": "camping",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Carbohydrates",
+          "subtitle": "Consumed carbohydrates?",
+          "id": "85",
+          "internal_name": "carbohydrates",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Caregiving",
+          "subtitle": "Cared for the health of another?",
+          "id": "60",
+          "internal_name": "caregiving",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Car or Train travel",
+          "subtitle": "Travelled in a car or train?",
+          "id": "350",
+          "internal_name": "car_or_train_travel",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cat in Bedroom",
+          "subtitle": "Had a cat in the room while sleeping?",
+          "id": "77",
+          "internal_name": "cat-in-bedroom",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "CBD",
+          "subtitle": "Used CBD oil in any form?",
+          "id": "35",
+          "internal_name": "cbd",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cervical Mucus: Pink, Brown, or Tan",
+          "subtitle": "Is your cervical mucus pink, brown, or tan?",
+          "id": "397",
+          "internal_name": "cervical_mucus_pink_brown_or_tan",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Challenge",
+          "subtitle": "Faced challenges?",
+          "id": "209",
+          "internal_name": "challenge",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Chemotherapy",
+          "subtitle": "Received chemotherapy?",
+          "id": "103",
+          "internal_name": "chemotherapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Chicken/Poultry",
+          "subtitle": "Consumed chicken/poultry?",
+          "id": "300",
+          "internal_name": "chicken-poultry",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Child in Bedroom",
+          "subtitle": "Slept with a child in your bedroom?",
+          "id": "381",
+          "internal_name": "child_in_bedroom",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Chills",
+          "subtitle": "Experienced chills?",
+          "id": "388",
+          "internal_name": "chills",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Chiropractor",
+          "subtitle": "Visited the chiropractor?",
+          "id": "72",
+          "internal_name": "chiropractor",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Clean Eating",
+          "subtitle": "Avoided processed foods?",
+          "id": "86",
+          "internal_name": "clean-eating",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Clonidine",
+          "subtitle": "Used clonidine for menopausal symptoms, e.g. hot flashes?",
+          "id": "260",
+          "internal_name": "clonidine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cold Shower",
+          "subtitle": "Took a cold shower?",
+          "id": "155",
+          "internal_name": "cold-shower",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Compression Therapy",
+          "subtitle": "Did compression therapy?",
+          "id": "127",
+          "internal_name": "compression-therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Conception",
+          "subtitle": "Trying to conceive?",
+          "id": "123",
+          "internal_name": "conception",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Concussion",
+          "subtitle": "Felt concussed?",
+          "id": "367",
+          "internal_name": "concussion",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Congestion",
+          "subtitle": "Felt congested?",
+          "id": "364",
+          "internal_name": "congestion",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Constipation",
+          "subtitle": "Experienced constipation?",
+          "id": "218",
+          "internal_name": "constipation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Contrast Therapy",
+          "subtitle": "Practiced contrast therapy (hot/cold)?",
+          "id": "357",
+          "internal_name": "contrast_therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Control",
+          "subtitle": "Felt you had control over your life?",
+          "id": "65",
+          "internal_name": "control",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cooling Pad",
+          "subtitle": "Used a cooling pad for muscle recovery?",
+          "id": "360",
+          "internal_name": "cooling_pad",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "COVID-19 Symptoms",
+          "subtitle": "Experiencing COVID-19 symptoms?",
+          "id": "56",
+          "internal_name": "covid-19-symptoms",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "COVID-19 Vaccination (Booster)",
+          "subtitle": "Received booster of COVID-19 vaccination?",
+          "id": "112",
+          "internal_name": "covid-19-vaccination-booster",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "COVID-19 Vaccination (Dose #1)",
+          "subtitle": "Received dose #1 of COVID-19 vaccination?",
+          "id": "67",
+          "internal_name": "covid-19-vaccination-dose-1",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "COVID-19 Vaccination (Dose #2)",
+          "subtitle": "Received dose #2 of COVID-19 vaccination?",
+          "id": "68",
+          "internal_name": "covid-19-vaccination-dose-2",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "CPAP Machine",
+          "subtitle": "Did you utilize a CPAP Machine?",
+          "id": "58",
+          "internal_name": "cpap-machine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Creatine",
+          "subtitle": "Took creatine?",
+          "id": "104",
+          "internal_name": "creatine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cryotherapy",
+          "subtitle": "Used cryotherapy treatment?",
+          "id": "49",
+          "internal_name": "cryotherapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cupping",
+          "subtitle": "Received cupping therapy?",
+          "id": "20",
+          "internal_name": "cupping",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Cycle Irregularity",
+          "subtitle": "Experienced cycle irregularity or missed periods?",
+          "id": "248",
+          "internal_name": "cycle-irregularity",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dairy",
+          "subtitle": "Consumed dairy?",
+          "id": "88",
+          "internal_name": "dairy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dairy-Free Diet",
+          "subtitle": "Following a dairy-free diet?",
+          "id": "114",
+          "internal_name": "dairy-free-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dark Chocolate",
+          "subtitle": "Consumed dark chocolate?",
+          "id": "387",
+          "internal_name": "dark_chocolate",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Daylight Eating",
+          "subtitle": "Ate all your meals during daylight hours?",
+          "id": "143",
+          "internal_name": "daylight-eating",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Decreased Libido",
+          "subtitle": "Experienced decreased libido?",
+          "id": "229",
+          "internal_name": "decreased-libido",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Depression",
+          "subtitle": "Felt depressed or down?",
+          "id": "137",
+          "internal_name": "depression",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Device (e.g. Phone) in Bed",
+          "subtitle": "Viewed a screen device in bed?",
+          "id": "8",
+          "internal_name": "device-in-bed",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "DHEA",
+          "subtitle": "Took DHEA supplements for adrenal support?",
+          "id": "262",
+          "internal_name": "dhea",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dialysis",
+          "subtitle": "Received dialysis treatment?",
+          "id": "366",
+          "internal_name": "dialysis",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Diarrhea",
+          "subtitle": "Experienced diarrhea?",
+          "id": "389",
+          "internal_name": "diarrhea",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dim lights",
+          "subtitle": "Dimmed your lights after sunset?",
+          "id": "142",
+          "internal_name": "dim-lights",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dinner ",
+          "subtitle": "Ate dinner?",
+          "id": "268",
+          "internal_name": "dinner",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dizzy / Lightheadedness",
+          "subtitle": "Felt dizzy or lightheaded today?",
+          "id": "247",
+          "internal_name": "dizzy-lightheadedness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dog in Bedroom",
+          "subtitle": "Had a dog in the room while sleeping?",
+          "id": "76",
+          "internal_name": "dog-in-bedroom",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Dry Skin",
+          "subtitle": "Is your skin drier than usual?",
+          "id": "390",
+          "internal_name": "dry_skin",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ear Plugs",
+          "subtitle": "Wore ear plugs to bed?",
+          "id": "61",
+          "internal_name": "ear-plugs",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Efficacy",
+          "subtitle": "Felt you had the resources/skills needed to complete your daily goals?",
+          "id": "66",
+          "internal_name": "efficacy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Electrolytes",
+          "subtitle": "Took electrolyte supplements?",
+          "id": "202",
+          "internal_name": "electrolytes",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Emotional/Mental State",
+          "subtitle": "Felt emotionally and mentally stable?",
+          "id": "92",
+          "internal_name": "emotional-mental-state",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Energy Level",
+          "subtitle": "Felt energized throughout the day?",
+          "id": "93",
+          "internal_name": "energy-level",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Epsom Salt Bath",
+          "subtitle": "Took a bath with epsom salts?",
+          "id": "377",
+          "internal_name": "epsom_salt_bath",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Estrogen",
+          "subtitle": "Took estrogen-only supplements or patches?",
+          "id": "252",
+          "internal_name": "estrogen",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Evening Snack ",
+          "subtitle": "Ate an evening snack?",
+          "id": "272",
+          "internal_name": "evening-snack",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Family and Friends",
+          "subtitle": "Connected with family and/or friends?",
+          "id": "132",
+          "internal_name": "family-and-friends",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Fatigue",
+          "subtitle": "Experienced fatigue?",
+          "id": "211",
+          "internal_name": "fatigue",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Fats",
+          "subtitle": "Consumed fats?",
+          "id": "91",
+          "internal_name": "fats",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Feeding Baby at Night",
+          "subtitle": "Woke up for a nighttime feed?",
+          "id": "186",
+          "internal_name": "feeding-baby-at-night",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Fever",
+          "subtitle": "Experiencing a fever?",
+          "id": "122",
+          "internal_name": "fever",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Fiber",
+          "subtitle": "Consumed fiber?",
+          "id": "168",
+          "internal_name": "fiber",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Fish Oil",
+          "subtitle": "Took fish oil?",
+          "id": "105",
+          "internal_name": "fish-oil",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Flow State",
+          "subtitle": "Experienced flow state?",
+          "id": "386",
+          "internal_name": "flow_state",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Foam Roller",
+          "subtitle": "Used a foam roller for muscle tension?",
+          "id": "354",
+          "internal_name": "foam_roller",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Food Cravings",
+          "subtitle": "Experienced food cravings?",
+          "id": "220",
+          "internal_name": "food-cravings",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Food Sensitivity",
+          "subtitle": "Experienced food sensitivity?",
+          "id": "368",
+          "internal_name": "food_sensistivity",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Forgetfulness",
+          "subtitle": "Experienced memory lapses or forgetfulness?",
+          "id": "236",
+          "internal_name": "forgetfulness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Fruits and Vegetables",
+          "subtitle": "Consumed fruits and/or vegetables?",
+          "id": "84",
+          "internal_name": "fruits-and-veggies",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Gabapentin",
+          "subtitle": "Used gabapentin for menopausal symptoms?",
+          "id": "259",
+          "internal_name": "gabapentin",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Gas",
+          "subtitle": "Experienced excessive gas?",
+          "id": "217",
+          "internal_name": "gas",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "GLP-1",
+          "subtitle": "Took a GLP-1?",
+          "id": "203",
+          "internal_name": "glp-1",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Gluten-Free Diet",
+          "subtitle": "Following a gluten-free diet?",
+          "id": "87",
+          "internal_name": "gluten-free-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Gratitude",
+          "subtitle": "Expressed gratitude?",
+          "id": "116",
+          "internal_name": "gratitude",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Grounding or Earthing",
+          "subtitle": "Practiced grounding or earthing?",
+          "id": "353",
+          "internal_name": "grounding_or_earthing",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Grounding Sheet",
+          "subtitle": "Slept with a grounding or earthing sheet?",
+          "id": "378",
+          "internal_name": "grounding_sheet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Hair Thinning/Loss",
+          "subtitle": "Noticed thinning hair or hair loss?",
+          "id": "241",
+          "internal_name": "hair-thinning-loss",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Halal Diet",
+          "subtitle": "Following a Halal diet?",
+          "id": "375",
+          "internal_name": "halal_diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Headache",
+          "subtitle": "Experienced a headache?",
+          "id": "177",
+          "internal_name": "headache",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Heartburn",
+          "subtitle": "Experienced heartburn?",
+          "id": "216",
+          "internal_name": "heartburn",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Heart Palpitations",
+          "subtitle": "Experienced heart palpitations today?",
+          "id": "244",
+          "internal_name": "heart-palpitations",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Heating Pad",
+          "subtitle": "Used a heating pad for muscle recovery?",
+          "id": "361",
+          "internal_name": "heating_pad",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Herbal Tea",
+          "subtitle": "Drank herbal tea?",
+          "id": "297",
+          "internal_name": "herbal-tea",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Home-cooked",
+          "subtitle": "Ate home-cooked food?",
+          "id": "276",
+          "internal_name": "home-cooked",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Hot Flash During Sleep",
+          "subtitle": "Had a hot flash while sleeping?",
+          "id": "81",
+          "internal_name": "hot-flashes",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Hot Flashes During the Day",
+          "subtitle": "Experienced hot flashes during the day?",
+          "id": "232",
+          "internal_name": "hot-flashes-during-day",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Hot Shower Before Bed",
+          "subtitle": "Took a hot shower before bed?",
+          "id": "179",
+          "internal_name": "hot-shower-before-bed",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Hot Tub",
+          "subtitle": "Spent time in a hot tub?",
+          "id": "157",
+          "internal_name": "hot-tub",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "HRT",
+          "subtitle": "Used combination hormone replacement therapy (HRT)?",
+          "id": "249",
+          "internal_name": "hrt",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Humidifier",
+          "subtitle": "Used a humidifier while sleeping?",
+          "id": "75",
+          "internal_name": "humidifier",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Hydration",
+          "subtitle": "Hydrated sufficiently?",
+          "id": "57",
+          "internal_name": "hydration",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Hyperbaric Chamber",
+          "subtitle": "Used a hyperbaric chamber?",
+          "id": "69",
+          "internal_name": "hyperbaric-chamber",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ice Bath",
+          "subtitle": "Took an ice bath?",
+          "id": "48",
+          "internal_name": "ice-bath",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Increased Libido",
+          "subtitle": "Experienced increased libido?",
+          "id": "228",
+          "internal_name": "increased-libido",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Indigestion",
+          "subtitle": "Experienced indigestion?",
+          "id": "365",
+          "internal_name": "indigestion",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Infrared PEMF Mat",
+          "subtitle": "Used an infrared PEMF Mat?",
+          "id": "358",
+          "internal_name": "infrared_pemf_mat",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Injury",
+          "subtitle": "Have an injury or wound?",
+          "id": "40",
+          "internal_name": "injury",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Intermittent Fasting",
+          "subtitle": "Followed an intermittent fasting diet?",
+          "id": "50",
+          "internal_name": "intermittent-fasting",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Inversion Table",
+          "subtitle": "Used an inversion table?",
+          "id": "355",
+          "internal_name": "inversion_table",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Iron",
+          "subtitle": "Took Iron supplements?",
+          "id": "340",
+          "internal_name": "iron",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Irritability",
+          "subtitle": "Felt Irritable?",
+          "id": "95",
+          "internal_name": "irritability",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ivabradine",
+          "subtitle": "Took Ivabradine?",
+          "id": "339",
+          "internal_name": "ivabradine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Jet Lag",
+          "subtitle": "Experienced jet lag?",
+          "id": "101",
+          "internal_name": "jet-lag",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Joint Pain or Stiffness",
+          "subtitle": "Experienced joint pain or stiffness?",
+          "id": "240",
+          "internal_name": "joint-pain-or-stiffness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Journaling",
+          "subtitle": "Journaled your thoughts?",
+          "id": "119",
+          "internal_name": "journaling",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ketamine",
+          "subtitle": "Took Ketamine?",
+          "id": "204",
+          "internal_name": "ketamine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ketogenic Diet",
+          "subtitle": "Followed a ketogenic diet?",
+          "id": "51",
+          "internal_name": "ketogenic-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Kosher Diet",
+          "subtitle": "Following a kosher diet?",
+          "id": "113",
+          "internal_name": "kosher-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Late Meal",
+          "subtitle": "Ate food close to bedtime?",
+          "id": "6",
+          "internal_name": "late-meal",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Learning",
+          "subtitle": "Learned something interesting or important?",
+          "id": "131",
+          "internal_name": "learning",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Levothyroxine",
+          "subtitle": "Took Levothyroxine medication?",
+          "id": "347",
+          "internal_name": "levothyroxine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Loneliness",
+          "subtitle": "Experienced loneliness?",
+          "id": "374",
+          "internal_name": "loneliness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Loud Sleep environment",
+          "subtitle": "Slept in a loud environment?",
+          "id": "383",
+          "internal_name": "loud_sleep_environment",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "LSD",
+          "subtitle": "Took LSD (lysergic acid diethylamide)?",
+          "id": "205",
+          "internal_name": "lsd",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "L-theanine",
+          "subtitle": "Took L-theanine supplements?",
+          "id": "343",
+          "internal_name": "l-theanine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Lunch ",
+          "subtitle": "Ate lunch?",
+          "id": "267",
+          "internal_name": "lunch",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Luteinizing Hormone (LH) Test",
+          "subtitle": "Took a Luteinizing hormone test?",
+          "id": "128",
+          "internal_name": "luteinizing-hormone-test",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Magnesium",
+          "subtitle": "Consumed magnesium?",
+          "id": "169",
+          "internal_name": "magnesium",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Magnesium Supplement",
+          "subtitle": "Took a magnesium supplement?",
+          "id": "36",
+          "internal_name": "magnesium-supplement",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Make Progress",
+          "subtitle": "Made progress on an important goal?",
+          "id": "130",
+          "internal_name": "make-progress",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Marijuana",
+          "subtitle": "Used marijuana?",
+          "id": "3",
+          "internal_name": "marijuana",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Massage Therapy",
+          "subtitle": "Received massage therapy?",
+          "id": "23",
+          "internal_name": "massage-therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Masturbation",
+          "subtitle": "Masturbated?",
+          "id": "54",
+          "internal_name": "masturbation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Meat",
+          "subtitle": "Consumed meat?",
+          "id": "14",
+          "internal_name": "meat",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Meditation",
+          "subtitle": "Meditated?",
+          "id": "24",
+          "internal_name": "meditation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Melatonin",
+          "subtitle": "Took a melatonin supplement?",
+          "id": "37",
+          "internal_name": "melatonin",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Menstrual Cramps",
+          "subtitle": "Experiencing menstrual cramps?",
+          "id": "82",
+          "internal_name": "menstrual-cramps",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Menstruation",
+          "subtitle": "Menstruating?",
+          "id": "43",
+          "internal_name": "menstruation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Migraine",
+          "subtitle": "Experienced a migraine?",
+          "id": "178",
+          "internal_name": "migraine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Momentous Sleep Pack",
+          "subtitle": "Took Momentous Sleep Pack?",
+          "id": "171",
+          "internal_name": "momentous-sleep-pack",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Monkeypox Symptoms",
+          "subtitle": "Experiencing monkeypox symptoms?",
+          "id": "144",
+          "internal_name": "monkeypox-symptoms",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Mood Swings",
+          "subtitle": "Experienced mood swings?",
+          "id": "230",
+          "internal_name": "mood-swings",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Morning Snack ",
+          "subtitle": "Ate a morning snack?",
+          "id": "270",
+          "internal_name": "morning-snack",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Morning Sunlight",
+          "subtitle": "Saw direct sunlight upon waking up?",
+          "id": "138",
+          "internal_name": "morning-sunlight",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Motivation",
+          "subtitle": "Felt motivated?",
+          "id": "94",
+          "internal_name": "motivation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Mouthguard",
+          "subtitle": "Wore a mouthguard while sleeping?",
+          "id": "180",
+          "internal_name": "mouthguard",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Mouth Tape",
+          "subtitle": "Wore mouth tape while sleeping?",
+          "id": "164",
+          "internal_name": "mouth-tape",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Multivitamin",
+          "subtitle": "Took a multivitamin?",
+          "id": "106",
+          "internal_name": "multivitamin",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Muscle/Body Aches",
+          "subtitle": "Experienced muscle or body aches?",
+          "id": "214",
+          "internal_name": "muscle/body-aches",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nasal Strip",
+          "subtitle": "Wore a nasal strip while sleeping?",
+          "id": "74",
+          "internal_name": "nasal-strip",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nausea",
+          "subtitle": "Experienced nausea?",
+          "id": "391",
+          "internal_name": "nausea",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nicotine",
+          "subtitle": "Consumed nicotine?",
+          "id": "207",
+          "internal_name": "nicotine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nightguard or Retainer",
+          "subtitle": "Slept with a nightguard or retainer?",
+          "id": "382",
+          "internal_name": "nightguard_or_retainer",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nightmare",
+          "subtitle": "Had a nightmare?",
+          "id": "264",
+          "internal_name": "nightmare",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Night Shifts",
+          "subtitle": "Worked the night shift?",
+          "id": "99",
+          "internal_name": "night-shifts",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Night Sweats",
+          "subtitle": "Noticed night sweats disrupting sleep?",
+          "id": "235",
+          "internal_name": "night-sweats",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "No Menstrual Flow",
+          "subtitle": "Experienced period but no menstrual flow?",
+          "id": "398",
+          "internal_name": "no_menstrual_flow",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nursing",
+          "subtitle": "Nursing?",
+          "id": "44",
+          "internal_name": "nursing",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nursing Infant",
+          "subtitle": "Nursing an infant?",
+          "id": "78",
+          "internal_name": "nursing-infant",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Nuts",
+          "subtitle": "Consumed nuts?",
+          "id": "303",
+          "internal_name": "nuts",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Omega 3 Supplement",
+          "subtitle": "Took omega 3 supplement?",
+          "id": "305",
+          "internal_name": "omega-3-supplement",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "On-Call Shift",
+          "subtitle": "Worked an on-call shift?",
+          "id": "98",
+          "internal_name": "on-call-shift",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Outdoor Time",
+          "subtitle": "Spend time outdoors?",
+          "id": "120",
+          "internal_name": "outdoor-time",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Overwhelm",
+          "subtitle": "Feeling overwhelmed?",
+          "id": "392",
+          "internal_name": "overwhelm",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ovulation",
+          "subtitle": "Ovulating?",
+          "id": "79",
+          "internal_name": "ovulation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Painful Intercourse",
+          "subtitle": "Had discomfort or pain during intercourse?",
+          "id": "238",
+          "internal_name": "painful-intercourse",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Paleo Diet",
+          "subtitle": "Following a paleo diet?",
+          "id": "15",
+          "internal_name": "paleo-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Parenting",
+          "subtitle": "Parenting an infant?",
+          "id": "42",
+          "internal_name": "parenting",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Parenting Sick Child",
+          "subtitle": "Parenting a sick child?",
+          "id": "172",
+          "internal_name": "parenting-sick-child",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Pelvic Pain",
+          "subtitle": "Experienced pelvic pain?",
+          "id": "231",
+          "internal_name": "pelvic-pain",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Percussive Massage",
+          "subtitle": "Used a percussive massager (e.g., Hypervolt, Theragun)?",
+          "id": "356",
+          "internal_name": "percussive_massage",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Perimenopause",
+          "subtitle": "Experiencing symptoms of perimenopause?",
+          "id": "124",
+          "internal_name": "perimenopause",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Physical Therapy",
+          "subtitle": "Received physical therapy?",
+          "id": "71",
+          "internal_name": "physical-therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Plant-based protein",
+          "subtitle": "Ate plant-based protein?",
+          "id": "274",
+          "internal_name": "plant-based-protein",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Plasma Donation",
+          "subtitle": "Donated plasma?",
+          "id": "370",
+          "internal_name": "plasma_donation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Platelet Donation",
+          "subtitle": "Donated platelets?",
+          "id": "371",
+          "internal_name": "platelet_donation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Positivity",
+          "subtitle": "Feel generally positive about the future?",
+          "id": "136",
+          "internal_name": "positivity",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Post meal walk",
+          "subtitle": "Walked after a meal?",
+          "id": "298",
+          "internal_name": "post-meal-walk",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Postmenopause",
+          "subtitle": "Experiencing symptoms of postmenopause?",
+          "id": "125",
+          "internal_name": "postmenopause",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Postnatal Vitamins",
+          "subtitle": "Took postnatal supplement(s)?",
+          "id": "187",
+          "internal_name": "postnatal-vitamins",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Pregnancy",
+          "subtitle": "Pregnant?",
+          "id": "45",
+          "internal_name": "pregnancy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Prenatal Vitamins",
+          "subtitle": "Took prenatal supplement(s)?",
+          "id": "185",
+          "internal_name": "prenatal-vitamins",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Prescription Pain Medication",
+          "subtitle": "Took prescription pain medication?",
+          "id": "11",
+          "internal_name": "prescription-pain-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Prescription Sleep Medication",
+          "subtitle": "Took prescription sleep medication?",
+          "id": "12",
+          "internal_name": "prescription-sleep-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Probiotic",
+          "subtitle": "Took a probiotic?",
+          "id": "107",
+          "internal_name": "probiotic",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Progesterone",
+          "subtitle": "Took progesterone supplements or injections?",
+          "id": "250",
+          "internal_name": "progesterone",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Progesterone Creams",
+          "subtitle": "Took over-the-counter progesterone creams?",
+          "id": "251",
+          "internal_name": "progesterone-creams",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Protein",
+          "subtitle": "Consumed protein?",
+          "id": "89",
+          "internal_name": "protein",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Psilocybin",
+          "subtitle": "Took Psilocybin (Magic Mushrooms)?",
+          "id": "206",
+          "internal_name": "psilocybin",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Pumping",
+          "subtitle": "Breast milk pumping?",
+          "id": "184",
+          "internal_name": "pumping",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Purpose",
+          "subtitle": "Felt a sense of purpose?",
+          "id": "64",
+          "internal_name": "purpose",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Radiation Therapy",
+          "subtitle": "Received radiation therapy?",
+          "id": "129",
+          "internal_name": "radiation-therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Ramadan",
+          "subtitle": "Observing Ramadan?",
+          "id": "83",
+          "internal_name": "ramadan",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Read in Bed",
+          "subtitle": "Read (non-screened device) while in bed?",
+          "id": "28",
+          "internal_name": "read-in-bed",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Recovery",
+          "subtitle": "Felt recovered?",
+          "id": "126",
+          "internal_name": "recovery",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Red Light Therapy",
+          "subtitle": "Received red light therapy?",
+          "id": "70",
+          "internal_name": "red-light-therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Reduced Motivation",
+          "subtitle": "Experienced reduced motivation?",
+          "id": "393",
+          "internal_name": "reduced_motivation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Relationship Status",
+          "subtitle": "Single?",
+          "id": "55",
+          "internal_name": "relationship-status",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Relationship Stress",
+          "subtitle": "Experienced stress in a relationship?",
+          "id": "352",
+          "internal_name": "relationship_stress",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Remote Work",
+          "subtitle": "Worked from home?",
+          "id": "118",
+          "internal_name": "remote-work",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Restaurant",
+          "subtitle": "Ate at a restaurant?",
+          "id": "275",
+          "internal_name": "restaurant",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Rest Day",
+          "subtitle": "Took a rest day?",
+          "id": "376",
+          "internal_name": "rest_day",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Rhodiola Rosea",
+          "subtitle": "Took rhodiola rosea extract?",
+          "id": "344",
+          "internal_name": "rhodiola_rosea",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sauna",
+          "subtitle": "Used a sauna?",
+          "id": "52",
+          "internal_name": "sauna",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Seasonal Allergies",
+          "subtitle": "Experienced seasonal allergies?",
+          "id": "97",
+          "internal_name": "seasonal-allergies",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sensory Deprivation",
+          "subtitle": "Used a sensory deprivation tank?",
+          "id": "25",
+          "internal_name": "sensory-deprivation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sexual Activity",
+          "subtitle": "Engaged in sexual activity?",
+          "id": "4",
+          "internal_name": "sexual-activity",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Shared Bed",
+          "subtitle": "Shared your bed?",
+          "id": "31",
+          "internal_name": "shared-bed",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Shared Bedroom With Child",
+          "subtitle": "Shared a sleeping space with a child?",
+          "id": "196",
+          "internal_name": "shared-bedroom-with-child",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sickness",
+          "subtitle": "Feeling sick or ill?",
+          "id": "41",
+          "internal_name": "sickness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Skin Changes",
+          "subtitle": "Noticed skin changes, like dryness or sensitivity?",
+          "id": "242",
+          "internal_name": "skin-changes",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sleep at High Altitude",
+          "subtitle": "Did you sleep at Altitude?",
+          "id": "59",
+          "internal_name": "sleep-at-high-altitude",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sleep Disruption",
+          "subtitle": "Experienced a sleep disruption?",
+          "id": "362",
+          "internal_name": "sleep_disruption",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Sleep in Dark Room",
+          "subtitle": "Slept in a dark room?",
+          "id": "174",
+          "internal_name": "sleep-in-dark-room",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Sleep in Own Bed",
+          "subtitle": "Slept in the same bed as usual?",
+          "id": "33",
+          "internal_name": "same-bed",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sleep Mask",
+          "subtitle": "Wore a sleep mask?",
+          "id": "32",
+          "internal_name": "sleep-mask",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sleep Quality Decline",
+          "subtitle": "Experienced reduced sleep quality due to menopausal symptoms?",
+          "id": "237",
+          "internal_name": "sleep-quality-decline",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Snacking",
+          "subtitle": "Snacked in between meals?",
+          "id": "141",
+          "internal_name": "snacking",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Snoring (Partner)",
+          "subtitle": "Did your partner snore?",
+          "id": "299",
+          "internal_name": "snoring-partner",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Social Fulfillment",
+          "subtitle": "Felt socially fulfilled?",
+          "id": "121",
+          "internal_name": "social-fulfillment",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Socially drained",
+          "subtitle": "Felt socially drained?",
+          "id": "266",
+          "internal_name": "socially-drained",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Social Media",
+          "subtitle": "Used social media?",
+          "id": "351",
+          "internal_name": "social_media",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Social Withdrawal",
+          "subtitle": "Experienced social withdrawal?",
+          "id": "394",
+          "internal_name": "social_withdrawal",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sodium",
+          "subtitle": "Consumed sodium?",
+          "id": "167",
+          "internal_name": "sodium",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Solo time",
+          "subtitle": "Had some solo time?",
+          "id": "273",
+          "internal_name": "solo-time",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Soreness",
+          "subtitle": "Experienced muscle soreness?",
+          "id": "363",
+          "internal_name": "soreness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sound bath",
+          "subtitle": "Participated in a sound bath?",
+          "id": "359",
+          "internal_name": "sound_bath",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sound Machine (e.g. white noise)",
+          "subtitle": "Listened to noise while asleep?",
+          "id": "34",
+          "internal_name": "sound-machine",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Spirituality",
+          "subtitle": "Engaged in spiritual practice?",
+          "id": "133",
+          "internal_name": "spirituality",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "SSRI Medication",
+          "subtitle": "Took SSRI medication?",
+          "id": "334",
+          "internal_name": "ssri_medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Standing Desk",
+          "subtitle": "Used standing desk?",
+          "id": "295",
+          "internal_name": "standing-desk",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Steam Room",
+          "subtitle": "Used a steam room?",
+          "id": "53",
+          "internal_name": "steam-room",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Stress",
+          "subtitle": "Experienced stress?",
+          "id": "46",
+          "internal_name": "stress",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Stretching",
+          "subtitle": "Spent time stretching?",
+          "id": "26",
+          "internal_name": "stretching",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Sunset",
+          "subtitle": "Watched the sunset?",
+          "id": "140",
+          "internal_name": "sunset",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Takeout",
+          "subtitle": "Ate takeout?",
+          "id": "277",
+          "internal_name": "takeout",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Tart Cherry Juice",
+          "subtitle": "Drank tart cherry juice?",
+          "id": "342",
+          "internal_name": "tart_cherry_juice",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Temperature Sensitivity",
+          "subtitle": "Felt unusually sensitive to temperature changes?",
+          "id": "233",
+          "internal_name": "temperature-sensitivity",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Testosterone Gel/Cream",
+          "subtitle": "Used testosterone gel or cream?",
+          "id": "258",
+          "internal_name": "testosterone-gel-cream",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Testosterone Supplements",
+          "subtitle": "Took testosterone supplements?",
+          "id": "256",
+          "internal_name": "testosterone-supplements",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Therapy Session",
+          "subtitle": "Had a therapy session?",
+          "id": "96",
+          "internal_name": "therapy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Threat",
+          "subtitle": "Faced threats?",
+          "id": "208",
+          "internal_name": "threat",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Thyroid Medication",
+          "subtitle": "Took thyroid medication to manage hormonal imbalances?",
+          "id": "261",
+          "internal_name": "thyroid-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Tingling / Numbness",
+          "subtitle": "Experienced tingling or numbness in extremities?",
+          "id": "246",
+          "internal_name": "tingling-numbness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Tinnitus",
+          "subtitle": "Experienced Tinnitus?",
+          "id": "348",
+          "internal_name": "tinnitus",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Tobacco",
+          "subtitle": "Used tobacco in any form?",
+          "id": "5",
+          "internal_name": "tobacco",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Tofu ",
+          "subtitle": "Consumed tofu?",
+          "id": "302",
+          "internal_name": "tofu",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Mental Wellbeing"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Trouble Concentrating",
+          "subtitle": "Having trouble concentrating?",
+          "id": "395",
+          "internal_name": "trouble_concentrating",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Turmeric",
+          "subtitle": "Took turmeric?",
+          "id": "108",
+          "internal_name": "turmeric",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Urinary Symptoms",
+          "subtitle": "Experienced urinary symptoms (e.g., urgency or incontinence)?",
+          "id": "239",
+          "internal_name": "urinary-symptoms",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vacation",
+          "subtitle": "Took a vacation day?",
+          "id": "152",
+          "internal_name": "vacation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Discharge - Creamy",
+          "subtitle": "Noticed vaginal discharge is creamy?",
+          "id": "223",
+          "internal_name": "vaginal-discharge---creamy",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Discharge - Egg White",
+          "subtitle": "Noticed vaginal discharge has egg white consistency?",
+          "id": "224",
+          "internal_name": "vaginal-discharge---egg-white",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Discharge - Grey",
+          "subtitle": "Noticed vaginal discharge is grey?",
+          "id": "225",
+          "internal_name": "vaginal-discharge---grey",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Discharge - Sticky",
+          "subtitle": "Noticed vaginal discharge is sticky?",
+          "id": "226",
+          "internal_name": "vaginal-discharge---sticky",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Discharge - Watery",
+          "subtitle": "Noticed vaginal discharge is watery?",
+          "id": "396",
+          "internal_name": "vaginal-discharge---watery",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Dryness",
+          "subtitle": "Experienced vaginal dryness?",
+          "id": "227",
+          "internal_name": "vaginal-dryness",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Estrogen Cream",
+          "subtitle": "Used vaginal estrogen creams?",
+          "id": "253",
+          "internal_name": "vaginal-estrogen-cream",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Estrogen Rings",
+          "subtitle": "Used vaginal estrogen rings?",
+          "id": "254",
+          "internal_name": "vaginal-estrogen-rings",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Estrogen Tablets",
+          "subtitle": "Used vaginal estrogen tablets?",
+          "id": "255",
+          "internal_name": "vaginal-estrogen-tablets",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Hormonal Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vaginal Spotting",
+          "subtitle": "Noticed vaginal spotting?",
+          "id": "222",
+          "internal_name": "vaginal-spotting",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vagus nerve stimulation",
+          "subtitle": "Used device for vagus nerve stimulation?",
+          "id": "296",
+          "internal_name": "vagus-nerve-stimulation",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Valerian",
+          "subtitle": "Took Valerian supplement for sleep?",
+          "id": "341",
+          "internal_name": "valerian",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vegan Diet",
+          "subtitle": "Following a vegan diet?",
+          "id": "115",
+          "internal_name": "vegan-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Nutrition"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vegetarian Diet",
+          "subtitle": "Following a vegetarian diet?",
+          "id": "16",
+          "internal_name": "vegetarian-diet",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Video Games",
+          "subtitle": "Played video games?",
+          "id": "349",
+          "internal_name": "video_games",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vitamin B-12",
+          "subtitle": "Took vitamin B-12?",
+          "id": "109",
+          "internal_name": "vitamin-b-12",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vitamin C",
+          "subtitle": "Took vitamin C?",
+          "id": "110",
+          "internal_name": "vitamin-c",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vitamin D",
+          "subtitle": "Took vitamin D?",
+          "id": "111",
+          "internal_name": "vitamin-d",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Health & Symptoms"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Vomiting",
+          "subtitle": "Experienced vomiting?",
+          "id": "219",
+          "internal_name": "vomiting",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Warm Bath",
+          "subtitle": "Took a warm bath?",
+          "id": "278",
+          "internal_name": "warm-bath",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Sleep & Circadian Health"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Weighted Blanket",
+          "subtitle": "Used a weighted blanket while sleeping?",
+          "id": "73",
+          "internal_name": "weighted-blanket",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Drugs & Medication"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Weight-Loss Medication",
+          "subtitle": "Took weight-loss medication?",
+          "id": "175",
+          "internal_name": "weight-loss-medication",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Work Calls",
+          "subtitle": "Spent time on work video calls?",
+          "id": "117",
+          "internal_name": "work-calls",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Work Commute",
+          "subtitle": "Commuted to work?",
+          "id": "102",
+          "internal_name": "work-commute",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Lifestyle"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Work Late",
+          "subtitle": "Worked late?",
+          "id": "100",
+          "internal_name": "work-late",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Supplements"
+          ],
+          "selected": false,
+          "weekly_plan_goal": false,
+          "title": "Zinc",
+          "subtitle": "Took a zinc supplement?",
+          "id": "158",
+          "internal_name": "zinc",
+          "style": "BEHAVIOR",
+          "destination": null
+        },
+        {
+          "categories": [
+            "ALL",
+            "Recovery"
+          ],
+          "selected": true,
+          "weekly_plan_goal": false,
+          "title": "Zone 2 Cardio",
+          "subtitle": "Did Zone 2 cardio?",
+          "id": "163",
+          "internal_name": "zone-2-cardio",
+          "style": "BEHAVIOR",
+          "destination": null
+        }
+      ]
+    }
+  ],
+  "button_title": "SAVE BEHAVIORS"
+}

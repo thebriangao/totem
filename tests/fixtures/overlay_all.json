@@ -1,0 +1,466 @@
+{
+  "OVERLAY_HOME_DEEP_DIVES_STRAIN": {
+    "feature_id": 39999,
+    "feature_name": "PILLAR_EDUCATION",
+    "feature_education_name": "OVERLAY_HOME_DEEP_DIVES_STRAIN",
+    "steps": [
+      {
+        "created_at": "2025-07-10T14:27:10.261Z",
+        "updated_at": "2025-07-10T14:27:10.261Z",
+        "header": "Day Strain",
+        "body": "Your WHOOP Day Strain reflects your recommended and actual cardiovascular load your body takes on throughout the day. Tap ‘More Information’ to learn how WHOOP calculates your daily Strain.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_ACTIVITY_DETAILS_MSK_YOGA": {
+    "feature_id": 926,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_ACTIVITY_DETAILS_MSK_YOGA",
+    "steps": [
+      {
+        "created_at": "2023-10-26T16:09:31.693Z",
+        "updated_at": "2023-10-26T16:09:31.693Z",
+        "header": "Muscular Strain Included",
+        "body": "Bodyweight strength activities like yoga, barre, and pilates now automatically track your muscular load, which is then factored into your Activity Strain. Check out the top right of your activity details to view a breakdown of how much cardiovascular and muscular strain this activity built.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_HEALTH_TAB": {
+    "feature_id": 14915,
+    "feature_name": "HEALTH_TAB",
+    "feature_education_name": "OVERLAY_HEALTH_TAB",
+    "steps": [
+      {
+        "created_at": "2025-10-09T22:16:51.800Z",
+        "updated_at": "2025-10-09T22:16:51.800Z",
+        "header": "Your Complete Health View",
+        "body": "All your health metrics and trends at a glance that support your performance, recovery, and longevity.",
+        "button_text": "VIEW NOW",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": "https://app-cdn.prod.whoop.com/healthtab/notifications/onboarding.png"
+      }
+    ]
+  },
+  "HEALTHSPAN_LABS_INTRODUCTION": {
+    "feature_id": 40177,
+    "feature_name": "HEALTHSPAN",
+    "feature_education_name": "HEALTHSPAN_LABS_INTRODUCTION",
+    "steps": [
+      {
+        "created_at": "2025-11-20T14:45:28.848Z",
+        "updated_at": "2025-11-20T14:45:28.848Z",
+        "header": "Know Your Body Even Better",
+        "body": "See how 13 of your biomarkers may be influencing how you sleep, train, and perform — from lifting weights to falling asleep — so you can make informed choices to help you extend your healthy years.",
+        "button_text": "VIEW IN HEALTHSPAN",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": "https://app-cdn.prod.whoop.com/healthspan/healthspan-onboarding-bmo.png"
+      }
+    ]
+  },
+  "OVERLAY_EXERCISE_PROGRESS": {
+    "feature_id": 40385,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_EXERCISE_PROGRESS",
+    "steps": [
+      {
+        "created_at": "2026-05-14T14:54:44.607Z",
+        "updated_at": "2026-05-14T14:54:44.607Z",
+        "header": "Visualize your training journey",
+        "body": "Track weighted and non-weighted exercises, hit new personal bests, and celebrate every milestone for a complete picture of your training.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_ACTIVITY_DETAILS_MSK_BARRE": {
+    "feature_id": 927,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_ACTIVITY_DETAILS_MSK_BARRE",
+    "steps": [
+      {
+        "created_at": "2023-10-26T16:09:37.490Z",
+        "updated_at": "2023-10-26T16:09:37.490Z",
+        "header": "Muscular Strain Included",
+        "body": "Bodyweight strength activities like yoga, barre, and pilates now automatically track your muscular load, which is then factored into your Activity Strain. Check out the top right of your activity details to view a breakdown of how much cardiovascular and muscular strain this activity built.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_STRENGTH_BUILDER_LIVE_SESSION": {
+    "feature_id": 189,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_STRENGTH_BUILDER_LIVE_SESSION",
+    "steps": [
+      {
+        "created_at": "2025-05-08T12:40:09.100Z",
+        "updated_at": "2025-05-08T12:40:09.100Z",
+        "header": "Live Session Tab",
+        "body": "This tab displays the duration, heart rate, and details of the exercise in progress.",
+        "button_text": "NEXT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-05-08T12:40:09.100Z",
+        "updated_at": "2025-05-08T12:40:09.100Z",
+        "header": "Start & Stop",
+        "body": "Tap the Start Set button before every set to capture the impact of each movement on your body.",
+        "button_text": "NEXT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_HOME_DEEP_DIVES_SLEEP": {
+    "feature_id": 39998,
+    "feature_name": "PILLAR_EDUCATION",
+    "feature_education_name": "OVERLAY_HOME_DEEP_DIVES_SLEEP",
+    "steps": [
+      {
+        "created_at": "2025-07-10T14:26:56.583Z",
+        "updated_at": "2025-07-10T14:26:56.583Z",
+        "header": "Sleep Performance",
+        "body": "Your WHOOP Sleep Performance represents a holistic evaluation regarding your sleep. Tap ‘More Information’ to learn how WHOOP calculates your nightly Sleep Performance.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_ACTIVITY_DETAILS_MSK_PILATES": {
+    "feature_id": 925,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_ACTIVITY_DETAILS_MSK_PILATES",
+    "steps": [
+      {
+        "created_at": "2023-10-26T16:09:23.840Z",
+        "updated_at": "2023-10-26T16:09:23.840Z",
+        "header": "Muscular Strain Included",
+        "body": "Bodyweight strength activities like yoga, barre, and pilates now automatically track your muscular load, which is then factored into your Activity Strain. Check out the top right of your activity details to view a breakdown of how much cardiovascular and muscular strain this activity built.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_STRENGTH_BUILDER_WORKOUT_BUILDER": {
+    "feature_id": 190,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_STRENGTH_BUILDER_WORKOUT_BUILDER",
+    "steps": [
+      {
+        "created_at": "2025-05-08T12:41:02.281Z",
+        "updated_at": "2025-05-08T12:41:02.281Z",
+        "header": "Tap to Expand & Collapse",
+        "body": "Tap on an exercise tile once to expand it, then tap on it again to collapse. ",
+        "button_text": "NEXT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_HOME_DEEP_DIVES_RECOVERY": {
+    "feature_id": 39997,
+    "feature_name": "PILLAR_EDUCATION",
+    "feature_education_name": "OVERLAY_HOME_DEEP_DIVES_RECOVERY",
+    "steps": [
+      {
+        "created_at": "2025-07-10T14:26:47.206Z",
+        "updated_at": "2025-07-10T14:26:47.206Z",
+        "header": "Recovery",
+        "body": "Your WHOOP Recovery Score reveals how well your body has recovered each day. Tap ‘More Information’ to learn how WHOOP calculates your daily Recovery.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_STRENGTH_BUILDER_HOME": {
+    "feature_id": 188,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_STRENGTH_BUILDER_HOME",
+    "steps": [
+      {
+        "created_at": "2025-05-08T12:41:44.384Z",
+        "updated_at": "2025-05-08T12:41:44.384Z",
+        "header": "Strength Trainer Home",
+        "body": "The WHOOP Workouts tab provides you with customizable pre-built templates, while the My Workouts tab allows you to build custom workouts from scratch.",
+        "button_text": "NEXT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_CREATE_CUSTOM_EXERCISE_IOS": {
+    "feature_id": 999,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_CREATE_CUSTOM_EXERCISE_IOS",
+    "steps": [
+      {
+        "created_at": "2024-01-05T19:53:51.502Z",
+        "updated_at": "2024-01-05T19:53:51.502Z",
+        "header": "Create Your Own Exercise",
+        "body": "You can now tap the plus icon in the top right to add a custom exercise. You can use this to replace your generic “Other” exercise for more accurate Strain and muscular load.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_COACH_EVERYWHERE": {
+    "feature_id": 40131,
+    "feature_name": "COACH_EVERYWHERE",
+    "feature_education_name": "OVERLAY_COACH_EVERYWHERE",
+    "steps": [
+      {
+        "created_at": "2025-10-15T13:43:46.593Z",
+        "updated_at": "2025-10-15T13:43:46.593Z",
+        "header": "Same Menu, New Home",
+        "body": "The + button now lives beside My Day. Use it to log activities, update your journal, or start Strength Trainer. Same tools, easier access.",
+        "button_text": "GOT IT",
+        "overlay_style": "TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-10-15T13:43:46.593Z",
+        "updated_at": "2025-10-15T13:43:46.593Z",
+        "header": "Smarter WHOOP, Everywhere You Are",
+        "body": "You can now ask WHOOP questions and explore your data from anywhere in the app. Tap the new icon in the bottom right for personalized insights, answers, and guidance - now powered with Memory.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_STRENGTH_BUILDER_EXERCISE_VIEW": {
+    "feature_id": 187,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_STRENGTH_BUILDER_EXERCISE_VIEW",
+    "steps": [
+      {
+        "created_at": "2023-03-29T21:26:28.317Z",
+        "updated_at": "2023-03-29T21:26:28.317Z",
+        "header": "Exercises Tab",
+        "body": "Edit your workout in real time and skip between sets or exercises with the play icon.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_STRENGTH_BUILDER_ACTIVITY_DETAILS": {
+    "feature_id": 185,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_STRENGTH_BUILDER_ACTIVITY_DETAILS",
+    "steps": [
+      {
+        "created_at": "2025-05-08T12:42:01.200Z",
+        "updated_at": "2025-05-08T12:42:01.200Z",
+        "header": "Strain Breakdown",
+        "body": "WHOOP tells you the total Strain of the workout, and the breakdown between cardiovascular and muscular load.",
+        "button_text": "NEXT",
+        "overlay_style": "MIDDLE_BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-05-08T12:42:01.200Z",
+        "updated_at": "2025-05-08T12:42:01.200Z",
+        "header": "Workout Details",
+        "body": "You can swipe through your workout to see the details of each exercise.",
+        "button_text": "DONE",
+        "overlay_style": "TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_CREATE_CUSTOM_EXERCISE_ANDROID": {
+    "feature_id": 998,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_CREATE_CUSTOM_EXERCISE_ANDROID",
+    "steps": [
+      {
+        "created_at": "2024-01-05T19:53:31.399Z",
+        "updated_at": "2024-01-05T19:53:31.399Z",
+        "header": "Create Your Own Exercise",
+        "body": "You can now tap the Add Exercise button at the bottom to add a custom exercise. You can use this to replace your generic “Other” exercise for more accurate Strain and muscular load.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_STRENGTH_BUILDER_EXERCISE_LIBRARY": {
+    "feature_id": 186,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_STRENGTH_BUILDER_EXERCISE_LIBRARY",
+    "steps": [
+      {
+        "created_at": "2025-05-08T12:41:14.293Z",
+        "updated_at": "2025-05-08T12:41:14.293Z",
+        "header": "Exercise Library",
+        "body": "Tap on the exercises you’d like to add to your workout or select the “info” icon to learn more about each movement.",
+        "button_text": "NEXT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-05-08T12:41:14.293Z",
+        "updated_at": "2025-05-08T12:41:14.293Z",
+        "header": "Supersets & Circuits",
+        "body": "If you’d like to perform 2 or more exercises in the form of a superset, select all of the exercises and tap the “Superset” button.",
+        "button_text": "NEXT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_DEVICE_SETTINGS_CHARGE_EDUCATION": {
+    "feature_id": 1305,
+    "feature_name": "DEVICE_SETTINGS",
+    "feature_education_name": "OVERLAY_DEVICE_SETTINGS_CHARGE_EDUCATION",
+    "steps": [
+      {
+        "created_at": "2025-03-12T20:34:56.951Z",
+        "updated_at": "2025-03-12T20:34:56.951Z",
+        "header": "Never run out of battery",
+        "body": "Access precise data and insights 24/7 by charging your battery on the go. \n\nTap the glowing icon above for instructions on wireless charging.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_EXERCISE_PROGRESS_EMPTY": {
+    "feature_id": 40386,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_EXERCISE_PROGRESS_EMPTY",
+    "steps": [
+      {
+        "created_at": "2026-04-17T17:37:24.132Z",
+        "updated_at": "2026-04-17T17:37:24.132Z",
+        "header": "Unlock Strength Insights",
+        "body": "Complete a workout with Strength Trainer and unlock detailed insights into your progress, including personal records, trends, and volume.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "OVERLAY_ACTIVITY_DETAILS_MSK_SOLIDCORE": {
+    "feature_id": 17579,
+    "feature_name": "WEIGHTLIFTING_MSK",
+    "feature_education_name": "OVERLAY_ACTIVITY_DETAILS_MSK_SOLIDCORE",
+    "steps": [
+      {
+        "created_at": "2025-01-22T22:42:58.874Z",
+        "updated_at": "2025-01-22T22:42:58.874Z",
+        "header": "Muscular Strain Included",
+        "body": "Bodyweight strength activities like yoga, barre, and pilates now automatically track your muscular load, which is then factored into your Activity Strain. Check out the top right of your activity details to view a breakdown of how much cardiovascular and muscular strain this activity built.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      }
+    ]
+  },
+  "COACH_ONBOARDING_V2": {
+    "feature_id": 40113,
+    "feature_name": "COACH_ONBOARDING_V2",
+    "feature_education_name": "COACH_ONBOARDING_V2",
+    "steps": [
+      {
+        "created_at": "2025-09-30T14:52:51.885Z",
+        "updated_at": "2025-09-30T14:52:51.885Z",
+        "header": "Powered by Advanced AI",
+        "body": "Ask questions about your data, receive personalized insights and get actionable tips to help you unlock performance and Healthspan.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-09-30T14:52:51.885Z",
+        "updated_at": "2025-09-30T14:52:51.885Z",
+        "header": "Start A New Conversation",
+        "body": "Tap on the message bubble with the “+” icon in between conversations to start a new thread. This will help keep your chat history organized.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-09-30T14:52:51.885Z",
+        "updated_at": "2025-09-30T14:52:51.885Z",
+        "header": "View Chat History",
+        "body": "Revisit past insights anytime. Tap the chat history icon to look back at previous recommendations, track your progress, and build better habits with WHOOP Coach.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_BOTTOM",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-09-30T14:52:51.885Z",
+        "updated_at": "2025-09-30T14:52:51.885Z",
+        "header": "Ask WHOOP Anything",
+        "body": "WHOOP Coach helps you dig into your data, explore WHOOP science, and learn about new features. Ask questions like “How can I improve my HRV?” or “How did I do on my last workout? \n\nProvide feedback on messages using the thumbs up and down icons.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-09-30T14:52:51.885Z",
+        "updated_at": "2025-09-30T14:52:51.885Z",
+        "header": "Need Support?",
+        "body": "WHOOP Coach can help with common questions about your membership, hardware, and more. Just ask, and we’ll point you in the right direction.",
+        "button_text": "GOT IT",
+        "overlay_style": "MIDDLE_TOP",
+        "secondary_button_text": null,
+        "image_url": null
+      },
+      {
+        "created_at": "2025-09-30T14:52:51.885Z",
+        "updated_at": "2025-09-30T14:52:51.885Z",
+        "header": "Get Personalized Coaching",
+        "body": "WHOOP Coach can remember your goals, challenges, and preferences from past conversations to provide more personalized guidance over time. You’re always in control—turn Memory off anytime in settings if you prefer not to carry details forward.",
+        "button_text": "GOT IT",
+        "overlay_style": "BOTTOM",
+        "secondary_button_text": "GO TO SETTINGS",
+        "image_url": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+# ─── secrets ───────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.test
+
+# ─── build output ──────────────────────────────────────────────────────────
+dist/
+*.tsbuildinfo
+
+# ─── dependencies ──────────────────────────────────────────────────────────
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+yarn.lock
+
+# ─── npm pack tarballs (for local testing of the published package) ────────
+*.tgz
+
+# ─── test + coverage artifacts ─────────────────────────────────────────────
+.vitest-cache/
+coverage/
+.nyc_output/
+
+# ─── logs ──────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── editors + OS ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+
+# ─── mitm captures + huge raw analysis dumps (lives in whoop-testing) ──────
+*.mitm
+/tmp/
+
+# ─── one-off audit / probe / smoke-test scripts ────────────────────────────
+# These get created at the repo root during debugging sessions and should
+# not be committed. Real test runners live in whoop-testing/exploration-scripts.
+audit_*.ts
+smoke_audit.ts
+dummy_*.ts
+*_probe.ts
+verify_*.ts
+fly.toml
