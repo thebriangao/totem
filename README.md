@@ -1367,6 +1367,7 @@ Optional:
 | Variable | Description |
 |---|---|
 | `WHOOP_USER_ID` | Your Whoop user ID (used by `whoop_profile`, `whoop_leaderboard`) |
+| `WHOOP_TIMEZONE` | IANA timezone (e.g., `America/Los_Angeles`). Whoop's API returns timestamps in UTC; the MCP rewrites them with an explicit offset for this zone so the AI sees clock-correct local times. Falls back to the server's system timezone if unset — which is UTC inside Docker / Fly / Railway, so **set this explicitly for deployed instances** or you'll get UTC timestamps that confuse the AI. |
 
 The MCP also respects standard env vars like `NODE_ENV` and `HTTP_PROXY` (for routing through a proxy during development).
 
