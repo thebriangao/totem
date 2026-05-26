@@ -7,12 +7,28 @@
 </p>
 
 <p align="center">
-  <a href="#"><img src="https://img.shields.io/badge/tests-127%20passing-green" alt="tests"></a>
-  <a href="#"><img src="https://img.shields.io/badge/tools-47-lightgrey" alt="tools"></a>
-  <a href="#"><img src="https://img.shields.io/badge/typescript-6.0-lightgrey" alt="typescript"></a>
-  <a href="#"><img src="https://img.shields.io/badge/node-24%2B-lightgrey" alt="node"></a>
-  <a href="#"><img src="https://img.shields.io/badge/MCP-1.29%2B-lightgrey" alt="mcp"></a>
-  <a href="#"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="license"></a>
+  <a href="#quickstart-5-minutes"><img src="https://img.shields.io/badge/Quick_Start-3b82f6?style=for-the-badge&logo=lightning&logoColor=white" alt="quick start"></a>
+  <a href="#table-of-contents"><img src="https://img.shields.io/badge/Docs-4b5563?style=for-the-badge" alt="docs"></a>
+  <a href="WHOOP_API_ENDPOINTS.md"><img src="https://img.shields.io/badge/API_Reference-374151?style=for-the-badge" alt="api reference"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-eab308?style=for-the-badge" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="#remote-hosting"><img src="https://img.shields.io/badge/Claude_Code-a855f7?style=for-the-badge" alt="Claude Code"></a>
+  <a href="#claude-desktop-config"><img src="https://img.shields.io/badge/Claude_Desktop-7c3aed?style=for-the-badge" alt="Claude Desktop"></a>
+  <img src="https://img.shields.io/badge/Cursor-06b6d4?style=for-the-badge" alt="Cursor">
+  <img src="https://img.shields.io/badge/Cline-475569?style=for-the-badge" alt="Cline">
+  <img src="https://img.shields.io/badge/Zed-0ea5e9?style=for-the-badge" alt="Zed">
+  <img src="https://img.shields.io/badge/Any_MCP_1.x_Client-262626?style=for-the-badge" alt="any MCP 1.x client">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/tests-127_passing-22c55e?style=flat-square" alt="tests">
+  <img src="https://img.shields.io/badge/tools-47-9ca3af?style=flat-square" alt="tools">
+  <img src="https://img.shields.io/badge/TypeScript-6.0-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="typescript">
+  <img src="https://img.shields.io/badge/Node-24%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="node">
+  <img src="https://img.shields.io/badge/MCP-1.29%2B-9ca3af?style=flat-square" alt="mcp">
+  <img src="https://img.shields.io/badge/deploy-Fly%20%7C%20Docker%20%7C%20Railway-9ca3af?style=flat-square" alt="deploy">
 </p>
 
 <p align="center">
