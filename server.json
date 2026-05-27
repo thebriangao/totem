@@ -1,0 +1,57 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.briangaoo/whoop-mcp",
+  "description": "MCP server giving Claude (or any MCP client) full read + write access to your Whoop fitness data via the private reverse-engineered iOS API. 47 tools: recovery, sleep, strain, HRV trends, Strength Trainer, journal, Whoop Coach, smart alarm. TypeScript + zod, auto-refresh Cognito auth.",
+  "repository": {
+    "url": "https://github.com/briangaoo/whoop-mcp",
+    "source": "github"
+  },
+  "version": "1.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@briangaoo/whoop-mcp",
+      "version": "1.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "WHOOP_IOS_BEARER_TOKEN",
+          "description": "Whoop Cognito access token. Obtain via `npm run cognito-bootstrap` from the repo, which prompts for your Whoop email + password + SMS MFA code, then writes both tokens to a local .env. Auto-refreshes every ~24h.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "WHOOP_COGNITO_REFRESH_TOKEN",
+          "description": "Whoop Cognito refresh token (~30 day lifetime). Obtained alongside the bearer token from `npm run cognito-bootstrap`. When this expires, run `npm run rebootstrap` to get a fresh pair.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "WHOOP_EMAIL",
+          "description": "Your Whoop account email. Used only by the bootstrap script — the running server reads tokens, not credentials.",
+          "isRequired": true,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "WHOOP_USER_ID",
+          "description": "Your numeric Whoop user ID. Optional — used by whoop_profile and whoop_leaderboard. Avoids one redundant bootstrap call per session if set.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "WHOOP_TIMEZONE",
+          "description": "IANA timezone (e.g., America/Los_Angeles) for response timestamps. Optional — if unset, the server auto-detects from your Whoop profile's timezone_offset field (refreshed hourly).",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
