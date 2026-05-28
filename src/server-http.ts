@@ -79,11 +79,12 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
 
   const app = express();
   app.disable("x-powered-by");
-  // Behind Fly's (or any) reverse proxy, the client IP is in X-Forwarded-For.
-  // express-rate-limit (used by the SDK's OAuth endpoints) errors if we don't
-  // declare that we trust the proxy — without this it can't identify clients
-  // and throws ValidationError on the /authorize, /token, /register routes.
-  app.set("trust proxy", true);
+  // Behind Fly's reverse proxy the client IP is in X-Forwarded-For. Trust
+  // exactly ONE hop (Fly's edge proxy) so express-rate-limit (used by the SDK's
+  // OAuth endpoints) can identify clients. `true` (trust all) is rejected by
+  // express-rate-limit as too permissive — clients could spoof X-Forwarded-For
+  // — so we use the hop count instead.
+  app.set("trust proxy", 1);
 
   // CORS — a browser-based MCP client (or the OAuth redirect dance) may hit this.
   app.use((req, res, next) => {
