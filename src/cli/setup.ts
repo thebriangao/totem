@@ -127,6 +127,7 @@ export async function runLocalSetup(root: string): Promise<number> {
     "Just show me the config — I'll paste it",
   ]);
 
+  let wired = false;
   if (client === 1) {
     console.log("");
     const manual = `claude mcp add whoop ${process.execPath} ${serverJs}`;
@@ -134,6 +135,7 @@ export async function runLocalSetup(root: string): Promise<number> {
       if (await promptYesNo("Run `claude mcp add whoop …` for you now?", true)) {
         if (await run("claude", ["mcp", "add", "whoop", process.execPath, serverJs]) === 0) {
           console.log(c.green("  ✓ added to Claude Code"));
+          wired = true;
         } else {
           console.log(c.yellow("  That didn't work — run it yourself:"));
           console.log(`  ${manual}`);
@@ -159,13 +161,28 @@ export async function runLocalSetup(root: string): Promise<number> {
       writeFileSync(cfgPath, JSON.stringify(merged, null, 2));
       console.log(c.green("  ✓ Claude Desktop config updated"));
       console.log(c.yellow("  → Quit and reopen Claude Desktop to load it."));
+      wired = true;
     }
   } else {
+    const home = process.env.HOME ?? "~";
+    const cfgPath = resolve(home, "Library/Application Support/Claude/claude_desktop_config.json");
+    console.log("");
+    console.log(c.bold("  To finish, add this to Claude Desktop:"));
+    console.log(c.gray("  1. Open (create if missing):"));
+    console.log(`     ${cfgPath}`);
+    console.log(c.gray('  2. Merge the "whoop" block into your existing "mcpServers" — don\'t overwrite the file:'));
     console.log("");
     console.log(JSON.stringify({ mcpServers: { whoop: { command: process.execPath, args: [serverJs] } } }, null, 2));
+    console.log("");
+    console.log(c.gray("  3. Quit and reopen Claude Desktop."));
+    console.log(c.gray("  Using Claude Code instead? Run: ") + c.bold(`claude mcp add whoop ${process.execPath} ${serverJs}`));
   }
 
-  console.log(c.green("\n✓ Local setup complete.") + c.gray(" Ask Claude: \"how am I doing today on whoop?\"\n"));
+  if (wired) {
+    console.log(c.green("\n✓ Local setup complete.") + c.gray(" Quit/reopen the client, then ask: \"how am I doing today on whoop?\"\n"));
+  } else {
+    console.log(c.yellow("\n→ Almost done.") + c.gray(" Finish the step above (paste the config or run the command) + restart your client, then ask: \"how am I doing today on whoop?\"\n"));
+  }
   closePrompts();
   return 0;
 }
