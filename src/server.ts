@@ -20,7 +20,7 @@ loadEnv({ path: ENV_PATH, quiet: true });
 
 function requireEnv(key: string): string {
   const v = process.env[key];
-  if (!v) throw new Error(`Missing ${key} in environment. Run \`npm run cognito-bootstrap\` to set up auto-refresh.`);
+  if (!v) throw new Error(`Missing ${key} in environment. Run \`whoop-mcp auth\` to set up auto-refresh.`);
   return v;
 }
 

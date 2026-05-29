@@ -40,20 +40,23 @@ See [README.md → Architecture](README.md#architecture) for the full pattern wa
 git clone https://github.com/briangaoo/whoop-mcp.git
 cd whoop-mcp
 npm install
+npx tsc && npm link          # one-time: builds + puts `whoop-mcp` on PATH
 cp .env.example .env
 # edit .env with your Whoop creds
-npm run cognito-bootstrap
-npm test           # 154 tests, <1s
-npm run typecheck
-npm run build
+whoop-mcp auth
+whoop-mcp test               # 154 tests, <1s
+whoop-mcp typecheck
+whoop-mcp build
 
 # stdio mode (default, for local Claude Desktop / Claude Code):
-npm run dev
+whoop-mcp dev
 
 # HTTP mode (for remote hosting via Docker/Fly/etc.):
-MCP_AUTH_TOKEN=$(openssl rand -hex 32) npm run dev:http
+MCP_AUTH_TOKEN=$(openssl rand -hex 32) whoop-mcp dev:http
 curl http://localhost:3000/health   # → {"status":"ok"}
 ```
+
+> The only `npm` steps are `npm install` and the one-time `npx tsc` (you need a build before the `whoop-mcp` CLI exists). Everything else is a `whoop-mcp` command — `package.json` has no `scripts`. `whoop-mcp test`/`dev`/`typecheck` run against the source directly, so you don't rebuild to iterate.
 
 ---
 
@@ -67,7 +70,7 @@ Walkthrough lives in [README.md → Adding a new tool](README.md#adding-a-new-to
 4. Add a tool file in `src/tools/v2/` (~30 lines: register with the MCP server, parse args, call client, project, validate, return).
 5. Wire it up in `src/tools/register.ts`.
 6. Add a projection test in `tests/projections/`.
-7. `npm run typecheck && npm test && npm run build`.
+7. `whoop-mcp typecheck && whoop-mcp test && whoop-mcp build`.
 
 ---
 
@@ -95,7 +98,7 @@ Recent precedents to read:
 
 ## Testing
 
-- **`npm test`** — 154 unit tests in <1s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
+- **`whoop-mcp test`** — 154 unit tests in <1s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
 - **Live-API tests live in a separate `whoop-testing` archive.** They require a dummy account and aren't safe to expose to first-time users. If you want to add or run them, ask Brian.
 - When fixing a projection, update its fixture in `tests/fixtures/` and the corresponding test in `tests/projections/round{1,2,3}.test.ts`.
 - When changing the HTTP transport (`src/server-http.ts`) or auth model, add coverage to `tests/whoop/http_auth.test.ts`. The pattern is: boot a real server on an ephemeral port with a stub `WhoopClient`, then assert with `fetch()`.

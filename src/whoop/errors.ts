@@ -3,7 +3,7 @@ import type { z } from "zod";
 export class WhoopAuthExpiredError extends Error {
   constructor() {
     super(
-      "Whoop bearer token expired. Run `npm run refresh-token` to capture a fresh one.",
+      "Whoop bearer token expired. Run `whoop-mcp refresh` to capture a fresh one.",
     );
     this.name = "WhoopAuthExpiredError";
   }

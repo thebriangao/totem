@@ -39,19 +39,8 @@
     "Dockerfile",
     ".dockerignore"
   ],
-  "scripts": {
-    "setup": "npm install && npm run cognito-bootstrap && npm run build",
-    "build": "tsc",
-    "dev": "tsx src/server.ts",
-    "dev:http": "MCP_TRANSPORT=http tsx src/server.ts",
-    "start": "node dist/server.js",
-    "start:http": "MCP_TRANSPORT=http node dist/server.js",
-    "cognito-bootstrap": "tsx src/scripts/cognito_bootstrap.ts",
-    "rebootstrap": "tsx src/scripts/rebootstrap.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
-  },
+  "scripts": {},
+  "_scripts_note": "All workflows are `whoop-mcp <command>` (build, dev, dev:http, start, test, typecheck, auth, refresh, cloud, local, deploy, logs, ping, …). The only npm steps are `npm install` and, for the one-time build before the CLI is linked, `npx tsc`. See README → Get Started.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.0",

@@ -63,10 +63,10 @@
 
 ```bash
 git clone https://github.com/briangaoo/whoop-mcp.git
-cd whoop-mcp && npm install && npm run build && npm link
+cd whoop-mcp && npm install && npx tsc && npm link
 ```
 
-That puts `whoop-mcp` on your PATH. Now run **one guided command** — each handles Whoop login (SMS included), setup, and connecting to Claude from end to end. Pick how you want to run it:
+That puts `whoop-mcp` on your PATH (the one-time `npx tsc` builds it; after that every workflow is a `whoop-mcp` command — there are no `npm run` scripts). Now run **one guided command** — each handles Whoop login (SMS included), setup, and connecting to Claude from end to end. Pick how you want to run it:
 
 ### ★ Recommended — `whoop-mcp cloud`
 
@@ -229,7 +229,7 @@ Whoop's iOS app uses **AWS Cognito** routed through a Whoop-owned proxy (`/auth-
 | `WhoopServerError` | 5xx | Transient — retry |
 | `WhoopProjectionError` | Projection output failed zod parse | Whoop changed shape — fix the projection |
 
-When refresh-token lifetime expires (~30 days), re-run `npm run cognito-bootstrap` (local) or `npm run rebootstrap` (deployed). Brand-new SMS code, fresh 30-day window.
+When refresh-token lifetime expires (~30 days), re-run `whoop-mcp auth` (local) or `whoop-mcp refresh` (deployed). Brand-new SMS code, fresh 30-day window.
 
 ---
 
@@ -309,7 +309,7 @@ The MCP also speaks HTTP — deploy once, use from multiple devices. Same 48 too
 
 ```bash
 # 1. Local bootstrap (Cognito needs an interactive MFA prompt)
-npm run cognito-bootstrap
+whoop-mcp auth
 
 # 2. Build + deploy via the shipped Dockerfile (Fly/Railway/Render/VPS — all work)
 docker build -t whoop-mcp .
@@ -349,11 +349,11 @@ All of the above is what `whoop-mcp cloud` automates for you — the manual step
 
 ## The `whoop-mcp` CLI
 
-Ships a CLI that wraps every npm script plus operational helpers. Works from any directory — it resolves its own install path, so `whoop-mcp deploy` from `~/Desktop` does the same thing as `cd whoop-mcp && fly deploy`.
+`whoop-mcp` is the single entry point for everything — there are no `npm run` scripts. It works from any directory (it resolves its own install path), so `whoop-mcp deploy` from `~/Desktop` does the same thing as `cd whoop-mcp && fly deploy`.
 
 ```bash
-# Install (after cloning + npm install + npm run build)
-npm link        # symlinks `whoop-mcp` into your global PATH
+# One-time, after cloning:
+npm install && npx tsc && npm link   # the only npm steps; `npx tsc` does the first build
 
 whoop-mcp       # banner + full command list
 ```
@@ -387,20 +387,20 @@ Most people only ever need the two **Get started** commands plus `refresh`. The 
 > Wrong email or password. Double-check `.env`.
 
 **"AUTH FAIL: Cognito MFA challenge missing Session token"**
-> The InitiateAuth response was malformed (unusual). Re-run `npm run cognito-bootstrap` — Cognito occasionally drops sessions.
+> The InitiateAuth response was malformed (unusual). Re-run `whoop-mcp auth` — Cognito occasionally drops sessions.
 
 **"MFA verification did not return tokens"**
 > You entered the wrong SMS code (or it timed out). Codes expire after ~3 minutes.
 
 **"WhoopAuthExpiredError" after every call**
-> Your refresh token has expired (>30 days since last bootstrap). For a **local install**, re-run `npm run cognito-bootstrap`. For a **deployed install** (Fly etc.), run `npm run rebootstrap` from your Mac — it re-bootstraps locally AND pushes the new tokens to your deployed app's secrets in one step. Either way you'll get a fresh SMS code on your phone that you type in the terminal.
+> Your refresh token has expired (>30 days since last bootstrap). For a **local install**, re-run `whoop-mcp auth`. For a **deployed install** (Fly etc.), run `whoop-mcp refresh` from your Mac — it re-bootstraps locally AND pushes the new tokens to your deployed app's secrets in one step. Either way you'll get a fresh SMS code on your phone that you type in the terminal.
 
 **"WhoopServerError: 502" / "503" / "504"**
 > Whoop's servers are having issues. Retry in 30 seconds.
 
 **Claude says it doesn't see any whoop tools**
 > Check `claude_desktop_config.json` paths are absolute. Restart Claude Desktop fully (quit, then reopen).
-> Check the MCP server runs without errors: `npm run dev` — it should start silently and wait on stdin.
+> Check the MCP server runs without errors: `whoop-mcp dev` — it should start silently and wait on stdin.
 
 **"WhoopApiError: 422 on /profile-service/v1/profile"**
 > Your `whoop_profile_update` body is too partial. Send most fields (gender from {MALE,FEMALE,NON_BINARY} only, birthday as YYYY-MM-DD or ISO datetime, country ISO-2). If `country=US`, also send `state` — Whoop returns 400 `"AdminDivision (state) must be set for US"` otherwise.
@@ -412,9 +412,9 @@ Most people only ever need the two **Get started** commands plus `refresh`. The 
 > Whoop changed a response shape. Capture the new response (e.g. via `whoop_raw`), inspect, update the projection.
 
 **Tests fail after `git pull`**
-> Pull may have updated captured fixtures. Run `npm test` again to see what changed. If projections need updating, that's the work.
+> Pull may have updated captured fixtures. Run `whoop-mcp test` again to see what changed. If projections need updating, that's the work.
 
-**`npm run build` fails with "Top-level await is currently not supported with the 'cjs' output format"**
+**`whoop-mcp build` (or `npx tsc`) fails with "Top-level await is currently not supported with the 'cjs' output format"**
 > You're using an old Node. Upgrade to Node 24+.
 
 **"Error: ENOENT: no such file or directory, open '.env'"**

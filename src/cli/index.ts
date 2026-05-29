@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// whoop-mcp CLI — wraps the npm scripts, adds Fly + introspection commands,
-// runs from anywhere on the system (after `npm link` or global install).
+// whoop-mcp CLI — the single entry point for everything (build/dev/test/auth/
+// deploy/inspect); package.json has no `scripts`. Runs from anywhere on the
+// system (after `npm link` or global install).
 //
 // Architecture:
 //   - Single-file CLI dispatcher.
@@ -467,7 +468,7 @@ function printHelp(): void {
   console.log("");
   console.log(c.gray("First-time global install (from a clone of this repo):"));
   console.log(c.gray("  cd ") + c.bold(ROOT));
-  console.log(c.gray("  npm install && npm run build && npm link"));
+  console.log(c.gray("  npm install && npx tsc && npm link"));
   console.log("");
   console.log(c.gray("Repo: ") + c.white(PKG.name) + c.gray(" · ") + ROOT);
   console.log("");

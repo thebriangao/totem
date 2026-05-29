@@ -33,7 +33,7 @@ async function main() {
 
   if (!email || !password) {
     console.error("Missing WHOOP_EMAIL or WHOOP_PASSWORD in .env");
-    console.error("Add them, then re-run: npm run cognito-bootstrap");
+    console.error("Add them, then re-run: whoop-mcp auth");
     process.exit(1);
   }
 
@@ -91,7 +91,7 @@ async function main() {
     console.error("Auto-refresh FAILED:", err instanceof Error ? err.message : err);
     console.error("");
     console.error("This means Whoop's Cognito requires MFA on every auth.");
-    console.error("You'll need to re-run `npm run cognito-bootstrap` whenever access token expires (~24h).");
+    console.error("You'll need to re-run `whoop-mcp auth` whenever access token expires (~24h).");
     process.exit(2);
   }
 

@@ -18,14 +18,14 @@
       "environmentVariables": [
         {
           "name": "WHOOP_IOS_BEARER_TOKEN",
-          "description": "Whoop Cognito access token. Obtain via `npm run cognito-bootstrap` from the repo, which prompts for your Whoop email + password + SMS MFA code, then writes both tokens to a local .env. Auto-refreshes every ~24h.",
+          "description": "Whoop Cognito access token. Obtain via `whoop-mcp auth` from the repo, which prompts for your Whoop email + password + SMS MFA code, then writes both tokens to a local .env. Auto-refreshes every ~24h.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
           "name": "WHOOP_COGNITO_REFRESH_TOKEN",
-          "description": "Whoop Cognito refresh token (~30 day lifetime). Obtained alongside the bearer token from `npm run cognito-bootstrap`. When this expires, run `npm run rebootstrap` to get a fresh pair.",
+          "description": "Whoop Cognito refresh token (~30 day lifetime). Obtained alongside the bearer token from `whoop-mcp auth`. When this expires, run `whoop-mcp refresh` to get a fresh pair.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"

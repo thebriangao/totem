@@ -2,19 +2,19 @@
 // days), then push the fresh tokens to a remote deployment via `fly secrets set`.
 //
 // Usage:
-//   FLY_APP=whoop-mcp-bg npm run rebootstrap
+//   FLY_APP=whoop-mcp-bg whoop-mcp refresh
 //   # or:
 //   npx tsx src/scripts/rebootstrap.ts --app whoop-mcp-bg
 //
 // What it does:
 //   1. Runs the interactive Cognito bootstrap (prompts for SMS code at your
-//      terminal — same flow as `npm run cognito-bootstrap`).
+//      terminal — same flow as `whoop-mcp auth`).
 //   2. Writes the new access + refresh tokens to local .env.
 //   3. Pushes WHOOP_IOS_BEARER_TOKEN and WHOOP_COGNITO_REFRESH_TOKEN to your
 //      Fly app's secrets so the deployed server picks them up automatically.
 //
 // Requires: `flyctl` on PATH and `fly auth login` already done.
-// If you're not deploying to Fly, just run `npm run cognito-bootstrap`
+// If you're not deploying to Fly, just run `whoop-mcp auth`
 // instead — this script is purely a convenience wrapper for the
 // "local bootstrap → remote sync" workflow.
 import "dotenv/config";
@@ -61,7 +61,7 @@ async function main(): Promise<void> {
   const password = process.env.WHOOP_PASSWORD ?? readEnv("WHOOP_PASSWORD");
   if (!email || !password) {
     console.error("Missing WHOOP_EMAIL or WHOOP_PASSWORD in .env.");
-    console.error("Add them, then re-run: npm run rebootstrap");
+    console.error("Add them, then re-run: whoop-mcp refresh");
     process.exit(1);
   }
 
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
     console.error("  - pass --app <name>");
     console.error("");
     console.error("If you only want a local re-bootstrap (no remote sync),");
-    console.error("use `npm run cognito-bootstrap` instead.");
+    console.error("use `whoop-mcp auth` instead.");
     process.exit(1);
   }
 
