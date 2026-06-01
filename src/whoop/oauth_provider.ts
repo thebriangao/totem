@@ -156,6 +156,7 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     params: AuthorizationParams,
     res: Response,
   ): Promise<void> {
+    setConsentSecurityHeaders(res);
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-store");
     res.end(renderConsentForm({
@@ -181,10 +182,20 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     resource: string;
     password: string;
   }): string | null {
-    if (!constantTimeEqual(input.password, this.password)) return null;
+    if (!constantTimeEqual(input.password, this.password)) {
+      console.error("[whoop-mcp] consent REJECTED: password mismatch");
+      return null;
+    }
     // Validate the client + redirect again (defense in depth).
     const client = this.decodeClient(input.clientId);
-    if (!client || !client.redirect_uris.includes(input.redirectUri)) return null;
+    if (!client) {
+      console.error("[whoop-mcp] consent REJECTED: client_id failed to decode (stale registration / signing-key mismatch) — password was correct");
+      return null;
+    }
+    if (!client.redirect_uris.includes(input.redirectUri)) {
+      console.error(`[whoop-mcp] consent REJECTED: redirect_uri not registered: ${input.redirectUri} — password was correct`);
+      return null;
+    }
 
     const code = b64url(randomBytes(32));
     this.codes.set(code, {
@@ -267,12 +278,16 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     // 2. OAuth-issued JWT.
     const payload = verifyToken(token, this.signingSecret);
     if (payload && payload.typ === "access") {
-      // Audience binding (RFC 8707): a token carrying a `resource` claim is only
-      // valid at the server it was minted for. Trailing-slash tolerant.
+      // Audience binding (RFC 8707): a token carrying a `resource` claim should
+      // only be valid at the server it was minted for. LOG-ONLY for now (no
+      // reject): rejecting on a mismatch would 401 a valid Claude token and
+      // brick the connector, and the exact `resource` value Claude sends isn't
+      // verified yet. The log tells us whether a real token would have matched;
+      // flip back to throwing once confirmed.
       if (this.resourceUrl && typeof payload.resource === "string") {
         const norm = (u: string): string => u.replace(/\/+$/, "");
         if (norm(payload.resource) !== norm(this.resourceUrl)) {
-          throw new InvalidTokenError("token resource does not match this server");
+          console.error(`[whoop-mcp] token resource mismatch (got "${payload.resource}", expected "${this.resourceUrl}") — allowing; enforcement is disabled`);
         }
       }
       const info: AuthInfo = {
@@ -288,6 +303,20 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     // generic Error would be mapped to 500).
     throw new InvalidTokenError("invalid or expired access token");
   }
+}
+
+// Anti-clickjacking header for the HTML consent page (a password form) ONLY.
+// Deliberately NO Content-Security-Policy: a `form-action` directive blocks the
+// OAuth 302 redirect back to the client (the browser refuses the cross-origin
+// navigation to claude.ai), silently bricking the password submit; and a
+// document CSP on the JSON metadata/API responses made Claude's connector flag
+// a "server configuration issue". X-Frame-Options: DENY is the clickjacking
+// control this page actually needs, and the page has no scripts/external
+// resources to lock down.
+export function setConsentSecurityHeaders(res: Response): void {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
 }
 
 // ─── consent form HTML ──────────────────────────────────────────────────────

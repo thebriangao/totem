@@ -4,6 +4,17 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [1.2.4] — 2026-06-01
+
+Bug-fix release for a remote-connector regression introduced in 1.2.3. stdio / Claude Code connections were unaffected.
+
+### Fixed
+
+- **The claude.ai web/desktop/mobile connector couldn't connect on 1.2.3.** The 1.2.3 security pass set a `Content-Security-Policy` on *every* HTTP response. On the JSON OAuth-metadata responses Claude read that as a "server configuration issue"; on the consent (password) page the `form-action 'self'` directive blocked the OAuth redirect back to Claude, so submitting the password silently did nothing. The CSP is removed from the API/metadata responses entirely, and from the consent page — which keeps `X-Frame-Options: DENY` (the clickjacking control that page actually needs).
+- **Audience binding (RFC 8707) is now log-only, not enforced.** A strict `resource`-claim check risked 401-ing a valid token and bricking the connector, so it logs a mismatch instead of rejecting. It'll return as strict once verified against a live token.
+- **Reverted `redirect: "error"` on the Whoop API client** back to the default (follow), so a redirecting endpoint can't make a data tool throw.
+- The consent endpoint now logs *which* check failed (password vs. client decode vs. redirect) instead of always saying "incorrect password" — so a future failure is diagnosable.
+
 ## [1.2.3] — 2026-05-31
 
 A security-hardening release — no API or tool changes, all behavior-compatible. Came out of a full codebase security audit.

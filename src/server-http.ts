@@ -23,7 +23,7 @@ import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import type { WhoopClient } from "./whoop/client.js";
 import { registerTools } from "./tools/register.js";
-import { WhoopOAuthProvider, renderConsentForm } from "./whoop/oauth_provider.js";
+import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
 
 export interface HttpServerOptions {
   /** Bearer token clients must present + JWT signing secret. Required, ≥16 chars. */
@@ -73,7 +73,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       if (existing) return existing;
     }
     const newId = randomUUID();
-    const newServer = new McpServer({ name: "whoop", version: "1.2.3" });
+    const newServer = new McpServer({ name: "whoop", version: "1.2.4" });
     registerTools(newServer, client);
     const newTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => newId,
@@ -97,18 +97,12 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   // — so we use the hop count instead.
   app.set("trust proxy", 1);
 
-  // Security headers on every response. The /authorize consent page is a
-  // password form — deny framing (clickjacking) and lock down what it can load.
-  app.use((_req, res, next) => {
-    res.setHeader("X-Frame-Options", "DENY");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Referrer-Policy", "no-referrer");
-    res.setHeader(
-      "Content-Security-Policy",
-      "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
-    );
-    next();
-  });
+  // NOTE: anti-clickjacking headers (X-Frame-Options / CSP) are set ONLY on the
+  // HTML consent page (see setConsentSecurityHeaders), NOT globally. Putting
+  // document-level CSP + X-Frame-Options on the JSON metadata and /mcp API
+  // responses makes Claude's connector reject the server with a "configuration
+  // issue" at add-time — those headers protect HTML documents from clickjacking,
+  // and have no meaning on a machine-consumed JSON API.
 
   // CORS — a browser-based MCP client (or the OAuth redirect dance) may hit this.
   app.use((req, res, next) => {
@@ -192,6 +186,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       // Wrong password (or bad client) — count it toward the global ceiling and
       // re-render the form with an error.
       globalFails++;
+      setConsentSecurityHeaders(res);
       res.status(401).setHeader("content-type", "text/html; charset=utf-8");
       res.end(renderConsentForm({
         clientId: body.client_id ?? "",

@@ -82,10 +82,6 @@ export class WhoopClient {
       method,
       headers,
       signal: controller.signal,
-      // Whoop's API never redirects a normal call. Refuse to follow one rather
-      // than silently chasing a 30x — defense-in-depth so a hostile/compromised
-      // redirect can't bounce the request (bearer attached) toward another host.
-      redirect: "error",
     };
     if (bodyString !== undefined) init.body = bodyString;
 
