@@ -108,7 +108,7 @@ export async function bootstrapCognito(input: BootstrapInput): Promise<CognitoTo
     return tokensFromAuth(init.AuthenticationResult);
   }
 
-  if (init.ChallengeName === "SMS_MFA" || init.ChallengeName === "SOFTWARE_TOKEN_MFA") {
+  if (init.ChallengeName === "SMS_MFA" || init.ChallengeName === "SOFTWARE_TOKEN_MFA" || init.ChallengeName === "EMAIL_OTP") {
     if (!init.Session) throw new Error("Cognito MFA challenge missing Session token");
     const code = (await input.mfaPrompt()).trim();
     const resp = await callCognito("RespondToAuthChallenge", {
@@ -117,7 +117,7 @@ export async function bootstrapCognito(input: BootstrapInput): Promise<CognitoTo
       Session: init.Session,
       ChallengeResponses: {
         USERNAME: input.email,
-        [init.ChallengeName === "SMS_MFA" ? "SMS_MFA_CODE" : "SOFTWARE_TOKEN_MFA_CODE"]: code,
+        [init.ChallengeName === "SMS_MFA" ? "SMS_MFA_CODE" : init.ChallengeName === "SOFTWARE_TOKEN_MFA" ? "SOFTWARE_TOKEN_MFA_CODE" : "EMAIL_OTP_CODE"]: code,
       },
     });
     if (!resp.AuthenticationResult) {

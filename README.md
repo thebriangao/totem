@@ -48,6 +48,7 @@
 8. [Bundled catalogs](#bundled-catalogs)
 9. [Configuration](#configuration)
 10. [Remote hosting](#remote-hosting)
+    - [Deploying to Hugging Face Spaces (free hosting)](#deploying-to-hugging-face-spaces-free-hosting)
 11. [The `whoop-mcp` CLI](#the-whoop-mcp-cli)
 12. [Privacy + security](#privacy--security)
 13. [Troubleshooting](#troubleshooting)
@@ -324,6 +325,66 @@ docker build -t whoop-mcp .
 # 3. Run with env: WHOOP_EMAIL, WHOOP_IOS_BEARER_TOKEN, WHOOP_COGNITO_REFRESH_TOKEN,
 #    MCP_TRANSPORT=http, MCP_AUTH_TOKEN=$(openssl rand -hex 32)
 ```
+
+### Deploying to Hugging Face Spaces (free hosting)
+
+[Hugging Face Spaces](https://huggingface.co/spaces) provides **free Docker hosting** — a zero-cost alternative to Fly or Railway. Connecting to **claude.ai web and Claude mobile** as a custom connector requires a **Claude Pro plan**, but the server itself runs for free on HuggingFace.
+
+> **Note:** The Dockerfile in this repo already sets `PORT=7860` and `EXPOSE 7860`, which is the port HuggingFace Spaces requires. If you adapt a different version of this server, make sure to change the port to `7860` — HuggingFace routes all external traffic through that port only.
+
+#### Step-by-step
+
+**1. Create a new Space**
+
+- Go to [huggingface.co/new-space](https://huggingface.co/new-space)
+- Select **Docker** as the Space SDK
+- Set the **visibility to Public** — HuggingFace Spaces must be public for Claude's connector to reach the `/mcp` endpoint
+
+**2. Add your secrets via the Space Settings UI**
+
+In your Space → **Settings → Variables and Secrets**, add each of the following as a **Secret** (not a variable — secrets are hidden and not exposed in logs):
+
+| Secret name | Where to find the value |
+|---|---|
+| `WHOOP_EMAIL` | Your Whoop account email |
+| `WHOOP_IOS_BEARER_TOKEN` | From `whoop-mcp auth` on your local machine (written to `.env`) |
+| `WHOOP_COGNITO_REFRESH_TOKEN` | From `whoop-mcp auth` on your local machine (written to `.env`) |
+| `WHOOP_USER_ID` | From `.env` after running `whoop-mcp auth` |
+| `MCP_AUTH_TOKEN` | The value of `MCP_AUTH_TOKEN` in your `.env.deploy` file |
+| `AUTH_PASSWORD` | A password you'll type once when adding the Claude connector |
+| `PUBLIC_URL` | Your Space's public URL — e.g. `https://raunakjodhawat-whoop-mcp-server.hf.space` |
+
+> **Tip:** `MCP_AUTH_TOKEN` and the other token values can be found in your local `.env.deploy` file after running `whoop-mcp auth`.
+
+**3. Push your code to the Space**
+
+Clone this repo and add your HuggingFace Space as a remote, then push:
+
+```bash
+git clone https://github.com/raunakjodhawat/whoop-mcp
+cd whoop-mcp
+
+# Add your HuggingFace Space as a remote
+git remote add hf https://huggingface.co/spaces/<your-hf-username>/<your-space-name>
+
+# Push the main branch
+git push hf main
+```
+
+HuggingFace will automatically build and run the Docker container. Watch the **Logs** tab in your Space to confirm it starts up and `/health` returns 200.
+
+**4. Connect to Claude**
+
+Once the Space is running, go to **claude.ai → Settings → Connectors → Add custom connector**:
+
+- **MCP Server URL:** `https://<your-hf-username>-<your-space-name>.hf.space/mcp`
+- Claude will open an OAuth flow — enter the `AUTH_PASSWORD` you set in your Space secrets
+
+> The `MCP_AUTH_TOKEN` value from your `.env.deploy` file is used internally as the bearer token and JWT signing secret. You do **not** type it into Claude's connector UI — that field uses the OAuth `AUTH_PASSWORD` flow instead.
+
+**5. Re-authenticate when tokens expire (~30 days)**
+
+Whoop's Cognito tokens expire roughly every 30 days. Re-run `whoop-mcp auth` on your local machine, then update `WHOOP_IOS_BEARER_TOKEN` and `WHOOP_COGNITO_REFRESH_TOKEN` in your Space's Secrets UI. The Space will restart automatically and pick up the new tokens.
 
 **Claude Desktop** doesn't natively speak remote MCP — bridge through stdio with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
