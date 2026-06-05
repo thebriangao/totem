@@ -330,7 +330,7 @@ docker build -t whoop-mcp .
 
 [Hugging Face Spaces](https://huggingface.co/spaces) provides **free Docker hosting** — a zero-cost alternative to Fly or Railway. Connecting to **claude.ai web and Claude mobile** as a custom connector requires a **Claude Pro plan**, but the server itself runs for free on HuggingFace.
 
-> **Note:** The Dockerfile in this repo already sets `PORT=7860` and `EXPOSE 7860`, which is the port HuggingFace Spaces requires. If you adapt a different version of this server, make sure to change the port to `7860` — HuggingFace routes all external traffic through that port only.
+> **Note:** HuggingFace Spaces routes all external traffic through port **7860** only, but this repo's Dockerfile defaults to `3000`. The server reads `PORT` from the environment, so just set `PORT=7860` as a Space variable (step 2 below) — no Dockerfile edit needed, and it'll listen on the right port.
 
 #### Step-by-step
 
@@ -342,7 +342,7 @@ docker build -t whoop-mcp .
 
 **2. Add your secrets via the Space Settings UI**
 
-In your Space → **Settings → Variables and Secrets**, add each of the following as a **Secret** (not a variable — secrets are hidden and not exposed in logs):
+In your Space → **Settings → Variables and Secrets**, add the following. The token values go in as **Secrets** (hidden, never shown in logs); `PORT` and `PUBLIC_URL` aren't sensitive, so they can be plain **Variables**:
 
 | Secret name | Where to find the value |
 |---|---|
@@ -350,18 +350,19 @@ In your Space → **Settings → Variables and Secrets**, add each of the follow
 | `WHOOP_IOS_BEARER_TOKEN` | From `whoop-mcp auth` on your local machine (written to `.env`) |
 | `WHOOP_COGNITO_REFRESH_TOKEN` | From `whoop-mcp auth` on your local machine (written to `.env`) |
 | `WHOOP_USER_ID` | From `.env` after running `whoop-mcp auth` |
-| `MCP_AUTH_TOKEN` | The value of `MCP_AUTH_TOKEN` in your `.env.deploy` file |
+| `MCP_AUTH_TOKEN` | Generate one with `openssl rand -hex 32` (or reuse the value from `.env.deploy` if you ran a deploy flow) |
 | `AUTH_PASSWORD` | A password you'll type once when adding the Claude connector |
-| `PUBLIC_URL` | Your Space's public URL — e.g. `https://raunakjodhawat-whoop-mcp-server.hf.space` |
+| `PUBLIC_URL` | Your Space's public URL — e.g. `https://<your-hf-username>-<your-space-name>.hf.space` |
+| `PORT` | `7860` — HuggingFace's required port. Without this the container listens on 3000 and is unreachable. |
 
-> **Tip:** `MCP_AUTH_TOKEN` and the other token values can be found in your local `.env.deploy` file after running `whoop-mcp auth`.
+> **Tip:** The `WHOOP_*` token values come from your local `.env` after running `whoop-mcp auth`. `MCP_AUTH_TOKEN` you generate yourself (`openssl rand -hex 32`).
 
 **3. Push your code to the Space**
 
 Clone this repo and add your HuggingFace Space as a remote, then push:
 
 ```bash
-git clone https://github.com/raunakjodhawat/whoop-mcp
+git clone https://github.com/briangaoo/whoop-mcp
 cd whoop-mcp
 
 # Add your HuggingFace Space as a remote
@@ -380,7 +381,7 @@ Once the Space is running, go to **claude.ai → Settings → Connectors → Add
 - **MCP Server URL:** `https://<your-hf-username>-<your-space-name>.hf.space/mcp`
 - Claude will open an OAuth flow — enter the `AUTH_PASSWORD` you set in your Space secrets
 
-> The `MCP_AUTH_TOKEN` value from your `.env.deploy` file is used internally as the bearer token and JWT signing secret. You do **not** type it into Claude's connector UI — that field uses the OAuth `AUTH_PASSWORD` flow instead.
+> `MCP_AUTH_TOKEN` is used internally as the bearer token + JWT signing secret. You do **not** type it into Claude's connector UI — that field uses the OAuth `AUTH_PASSWORD` flow instead.
 
 **5. Re-authenticate when tokens expire (~30 days)**
 
