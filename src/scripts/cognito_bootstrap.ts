@@ -1,13 +1,13 @@
-// `whoop-mcp auth` — the one token command. It logs you into Whoop (Cognito),
+// `totem auth` — the one token command. It logs you into Whoop (Cognito),
 // saves the tokens to .env, and — if you've deployed somewhere — pushes them to
 // that deployment so the running server picks them up. Auto-detects:
 //   • new vs re-auth    — whether you already have tokens (messaging only)
-//   • local vs deployed — reads .whoop-mcp-deploy.json and pushes per-platform
+//   • local vs deployed — reads .totem-deploy.json and pushes per-platform
 //     (Fly / Railway / Cloud Run / custom), or notes "restart your client" for a
 //     local install. Legacy: --app / $FLY_APP / fly.toml still target Fly.
 // Run it for first-time setup, or whenever the ~30-day refresh token expires.
 //
-// When invoked as a sub-step of `whoop-mcp cloud` / `local` (which handle the
+// When invoked as a sub-step of `totem cloud` / `local` (which handle the
 // deploy themselves), set WHOOP_AUTH_TOKENS_ONLY=1 to skip the push step.
 import "dotenv/config";
 import { readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
@@ -17,7 +17,7 @@ import { resolve } from "node:path";
 import { bootstrapCognito, refreshCognitoSession } from "../whoop/cognito.js";
 
 const ENV_PATH = resolve(".env");
-const RECORD_PATH = resolve(".whoop-mcp-deploy.json");
+const RECORD_PATH = resolve(".totem-deploy.json");
 
 function readEnv(key: string): string | undefined {
   if (!existsSync(ENV_PATH)) return undefined;
@@ -57,7 +57,7 @@ interface DeployTarget {
 }
 
 function getTarget(): DeployTarget {
-  // 1. The deploy record written by `whoop-mcp cloud` / `local`.
+  // 1. The deploy record written by `totem cloud` / `local`.
   if (existsSync(RECORD_PATH)) {
     try {
       const r = JSON.parse(readFileSync(RECORD_PATH, "utf8")) as DeployTarget;

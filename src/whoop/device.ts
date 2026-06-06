@@ -38,7 +38,7 @@ export function versionStaleWarning(maxAgeMonths = 6): string | null {
   if (!y || !m) return null;
   const ageMonths = (Date.now() - new Date(y, m - 1, 1).getTime()) / (30 * 86_400_000);
   if (ageMonths < maxAgeMonths) return null;
-  return `[whoop-mcp] bundled WHOOP iOS version (${IOS_APP_VERSION}, captured ${IOS_VERSION_CAPTURED_AT}) is ~${Math.round(ageMonths)} months old — update src/whoop/device.ts to keep blending with the current app install base.`;
+  return `[totem] bundled WHOOP iOS version (${IOS_APP_VERSION}, captured ${IOS_VERSION_CAPTURED_AT}) is ~${Math.round(ageMonths)} months old — update src/whoop/device.ts to keep blending with the current app install base.`;
 }
 
 // The app sends an uppercase UUID; randomUUID() is lowercase, so we upcase it.
@@ -56,7 +56,7 @@ let cachedInstallationId: string | null = null;
  * keeps one stable ID for its lifetime; persisting the env value gives us the
  * same stability across restarts, while the per-process fallback keeps tests and
  * one-off scripts working with no setup. The value is randomized per install,
- * so no two whoop-mcp users share one — there is no constant to fingerprint.
+ * so no two totem users share one — there is no constant to fingerprint.
  */
 export function getInstallationId(): string {
   if (cachedInstallationId) return cachedInstallationId;

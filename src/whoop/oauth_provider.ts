@@ -1,4 +1,4 @@
-// Minimal OAuth 2.1 + PKCE authorization server for whoop-mcp, so the deployed
+// Minimal OAuth 2.1 + PKCE authorization server for totem, so the deployed
 // server can be added as a "custom connector" on claude.ai web + the Claude
 // mobile app (those clients require OAuth — they have no bearer-token field).
 //
@@ -183,17 +183,17 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     password: string;
   }): string | null {
     if (!constantTimeEqual(input.password, this.password)) {
-      console.error("[whoop-mcp] consent REJECTED: password mismatch");
+      console.error("[totem] consent REJECTED: password mismatch");
       return null;
     }
     // Validate the client + redirect again (defense in depth).
     const client = this.decodeClient(input.clientId);
     if (!client) {
-      console.error("[whoop-mcp] consent REJECTED: client_id failed to decode (stale registration / signing-key mismatch) — password was correct");
+      console.error("[totem] consent REJECTED: client_id failed to decode (stale registration / signing-key mismatch) — password was correct");
       return null;
     }
     if (!client.redirect_uris.includes(input.redirectUri)) {
-      console.error(`[whoop-mcp] consent REJECTED: redirect_uri not registered: ${input.redirectUri} — password was correct`);
+      console.error(`[totem] consent REJECTED: redirect_uri not registered: ${input.redirectUri} — password was correct`);
       return null;
     }
 
@@ -287,7 +287,7 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       if (this.resourceUrl && typeof payload.resource === "string") {
         const norm = (u: string): string => u.replace(/\/+$/, "");
         if (norm(payload.resource) !== norm(this.resourceUrl)) {
-          console.error(`[whoop-mcp] token resource mismatch (got "${payload.resource}", expected "${this.resourceUrl}") — allowing; enforcement is disabled`);
+          console.error(`[totem] token resource mismatch (got "${payload.resource}", expected "${this.resourceUrl}") — allowing; enforcement is disabled`);
         }
       }
       const info: AuthInfo = {
@@ -339,7 +339,7 @@ export function renderConsentForm(d: {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>whoop-mcp — authorize</title>
+<title>totem — authorize</title>
 <style>
   body { font-family: ui-monospace, "SF Mono", Menlo, monospace; background: #0d1117; color: #e6e6e6;
          display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; }
@@ -357,7 +357,7 @@ export function renderConsentForm(d: {
 </head>
 <body>
   <div class="card">
-    <h1>whoop-mcp</h1>
+    <h1>totem</h1>
     <p class="sub">Enter your access password to connect this server to Claude.</p>
     ${errorBanner}
     <form method="POST" action="/oauth/consent">

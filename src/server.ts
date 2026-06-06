@@ -22,7 +22,7 @@ loadEnv({ path: ENV_PATH, quiet: true });
 
 function requireEnv(key: string): string {
   const v = process.env[key];
-  if (!v) throw new Error(`Missing ${key} in environment. Run \`whoop-mcp auth\` to set up auto-refresh.`);
+  if (!v) throw new Error(`Missing ${key} in environment. Run \`totem auth\` to set up auto-refresh.`);
   return v;
 }
 
@@ -30,7 +30,7 @@ function chooseStore(): TokenStore {
   const mode = (process.env.WHOOP_TOKEN_STORE ?? "envfile").toLowerCase();
   if (mode === "memory") {
     console.error(
-      "[whoop-mcp] WHOOP_TOKEN_STORE=memory: rotated tokens are NOT persisted. If Cognito rotates your refresh token, a restart will need a fresh `whoop-mcp auth`.",
+      "[totem] WHOOP_TOKEN_STORE=memory: rotated tokens are NOT persisted. If Cognito rotates your refresh token, a restart will need a fresh `totem auth`.",
     );
     return new MemoryTokenStore();
   }
@@ -74,12 +74,12 @@ async function main(): Promise<void> {
   }
 
   // stdio (default — local Claude Desktop / Claude Code)
-  const server = new McpServer({ name: "whoop", version: "1.3.0" });
+  const server = new McpServer({ name: "totem", version: "1.4.0" });
   registerTools(server, client);
   await server.connect(new StdioServerTransport());
 }
 
 main().catch((err) => {
-  console.error("[whoop-mcp] fatal:", err);
+  console.error("[totem] fatal:", err);
   process.exit(1);
 });

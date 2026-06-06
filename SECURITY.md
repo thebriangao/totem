@@ -19,9 +19,9 @@ This server holds AWS Cognito access + refresh tokens for your Whoop account and
 
 ## Reporting a vulnerability
 
-Email **briangaoo2@gmail.com** with subject `[whoop-mcp security]`. Please don't open a public GitHub issue for security reports.
+Email **briangaoo2@gmail.com** with subject `[totem security]`. Please don't open a public GitHub issue for security reports.
 
-For non-security bug reports, [open an issue](https://github.com/briangaoo/whoop-mcp/issues).
+For non-security bug reports, [open an issue](https://github.com/briangaoo/totem/issues).
 
 ## What counts as security
 

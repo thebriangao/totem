@@ -1,0 +1,27 @@
+name: CI
+
+# Rigorously verify every change before it lands: typecheck + full test suite +
+# build, on every push to main AND every pull request. A red check here blocks
+# the merge button, so nothing unverified reaches main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install (clean, from lockfile)
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Tests
+        run: npx vitest run
+      - name: Build
+        run: npx tsc

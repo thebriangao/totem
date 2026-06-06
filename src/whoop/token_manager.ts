@@ -68,7 +68,7 @@ export class TokenManager {
       this.refreshToken = next.refreshToken;
       // Observable so a memory-store (non-persisting) deploy can tell when a
       // restart would strand the old token. See SECURITY.md → token hygiene.
-      console.error("[whoop-mcp] Cognito rotated the refresh token — persisting the new one.");
+      console.error("[totem] Cognito rotated the refresh token — persisting the new one.");
     }
     this.expiresAt = next.expiresAt;
     this.store.save({ accessToken: this.accessToken, refreshToken: this.refreshToken });

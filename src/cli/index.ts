@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// whoop-mcp CLI — the single entry point for everything (build/dev/test/auth/
+// totem CLI — the single entry point for everything (build/dev/test/auth/
 // deploy/inspect); package.json has no `scripts`. Runs from anywhere on the
 // system (after `npm link` or global install).
 //
@@ -19,7 +19,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { request as httpsRequest } from "node:https";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
-import { runScript } from "./ui.js";
+import { runScript, capture } from "./ui.js";
 
 // ── locate package root ──────────────────────────────────────────────────
 // This file lives at one of:
@@ -78,12 +78,12 @@ function printBanner(): void {
   const w = (code: string, s: string): string => (color ? `${code}${s}${ANSI.reset}` : s);
   const lines = [
     "",
-    w(ANSI.brand, "   ██╗    ██╗██╗  ██╗ ██████╗  ██████╗ ██████╗     ███╗   ███╗ ██████╗██████╗ "),
-    w(ANSI.brand, "   ██║    ██║██║  ██║██╔═══██╗██╔═══██╗██╔══██╗    ████╗ ████║██╔════╝██╔══██╗"),
-    w(ANSI.brand, "   ██║ █╗ ██║███████║██║   ██║██║   ██║██████╔╝    ██╔████╔██║██║     ██████╔╝"),
-    w(ANSI.brand, "   ██║███╗██║██╔══██║██║   ██║██║   ██║██╔═══╝     ██║╚██╔╝██║██║     ██╔═══╝ "),
-    w(ANSI.brand, "   ╚███╔███╔╝██║  ██║╚██████╔╝╚██████╔╝██║         ██║ ╚═╝ ██║╚██████╗██║     "),
-    w(ANSI.brand, "    ╚══╝╚══╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝         ╚═╝     ╚═╝ ╚═════╝╚═╝     "),
+    w(ANSI.brand, "                ████████╗ ██████╗ ████████╗███████╗███╗   ███╗"),
+    w(ANSI.brand, "                ╚══██╔══╝██╔═══██╗╚══██╔══╝██╔════╝████╗ ████║"),
+    w(ANSI.brand, "                   ██║   ██║   ██║   ██║   █████╗  ██╔████╔██║"),
+    w(ANSI.brand, "                   ██║   ██║   ██║   ██║   ██╔══╝  ██║╚██╔╝██║"),
+    w(ANSI.brand, "                   ██║   ╚██████╔╝   ██║   ███████╗██║ ╚═╝ ██║"),
+    w(ANSI.brand, "                   ╚═╝    ╚═════╝    ╚═╝   ╚══════╝╚═╝     ╚═╝"),
     "",
     w(ANSI.brandDim, "   ▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁"),
     "",
@@ -120,12 +120,12 @@ const commands: Record<string, Cmd> = {
   start: {
     group: "Local",
     desc: "Start the MCP server (stdio by default; --http for HTTP mode)",
-    usage: "whoop-mcp start [--http]",
+    usage: "totem start [--http]",
     run: async (args) => {
       const isHttp = args.includes("--http");
       const serverJs = resolve(ROOT, "dist", "server.js");
       if (!existsSync(serverJs)) {
-        console.error(c.red("dist/server.js not found.") + " Run " + c.bold("whoop-mcp build") + " first.");
+        console.error(c.red("dist/server.js not found.") + " Run " + c.bold("totem build") + " first.");
         return 1;
       }
       const env = { ...process.env, MCP_TRANSPORT: isHttp ? "http" : "stdio" };
@@ -153,7 +153,7 @@ const commands: Record<string, Cmd> = {
   test: {
     group: "Local",
     desc: "Run the test suite (vitest)",
-    usage: "whoop-mcp test [test-filter]",
+    usage: "totem test [test-filter]",
     run: async (args) => run(npmBin("vitest"), ["run", ...args]),
   },
   typecheck: {
@@ -166,7 +166,7 @@ const commands: Record<string, Cmd> = {
   auth: {
     group: "Setup",
     desc: "Log into Whoop + save tokens. Auto-detects first-time vs re-auth and local vs deployed — pushes new tokens to your deployment (Fly/Railway/Cloud Run/custom) when there is one. Run it for setup or when the ~30-day token expires",
-    usage: "whoop-mcp auth [--app <fly-app>]",
+    usage: "totem auth [--app <fly-app>]",
     run: async (args) => runScript(ROOT, "scripts/cognito_bootstrap", args),
   },
 
@@ -174,10 +174,10 @@ const commands: Record<string, Cmd> = {
   deploy: {
     group: "Deployed",
     desc: "Re-deploy the current code to your existing deployment (Fly/Railway/Cloud Run)",
-    usage: "whoop-mcp deploy [-- <extra args>]",
+    usage: "totem deploy [-- <extra args>]",
     run: async (args) => {
       const d = detectDeploy();
-      if (!d) { console.error(c.red("No deployment found. Run `whoop-mcp cloud` to set one up.")); return 1; }
+      if (!d) { console.error(c.red("No deployment found. Run `totem cloud` to set one up.")); return 1; }
       switch (d.platform) {
         case "fly":
           return run("fly", ["deploy", ...(d.app ? ["-a", d.app] : []), ...args]);
@@ -190,7 +190,7 @@ const commands: Record<string, Cmd> = {
             ...(d.project ? ["--project", d.project] : []), "--quiet", ...args]);
         }
         case "custom":
-          console.log(c.gray("Custom host — rebuild + restart your container yourself (see `whoop-mcp cloud` → Custom)."));
+          console.log(c.gray("Custom host — rebuild + restart your container yourself (see `totem cloud` → Custom)."));
           return 0;
         default:
           console.log(c.gray(`'${d.platform}' has no remote to deploy to.`));
@@ -198,13 +198,85 @@ const commands: Record<string, Cmd> = {
       }
     },
   },
+  update: {
+    group: "Deployed",
+    desc: "Pull the latest code from GitHub, rebuild, and re-deploy your deployment — then health-check it. Updates this local install too. Use --check to preview without changing anything.",
+    usage: "totem update [--check]",
+    run: async (args) => {
+      const checkOnly = args.includes("--check");
+      const isGit = existsSync(resolve(ROOT, ".git"));
+      const d = detectDeploy();
+      console.log(c.bold("\ntotem update") + c.gray(`  — currently v${VERSION}\n`));
+
+      // ── 1. bring the local source/build up to date ──────────────────────
+      if (isGit) {
+        console.log(c.gray("Checking GitHub for newer code…"));
+        if ((await run("git", ["fetch", "--quiet", "origin"])) !== 0) {
+          console.error(c.red("  git fetch failed (offline, or no `origin` remote).")); return 1;
+        }
+        const behind = capture("git", ["rev-list", "--count", "HEAD..origin/main"], { cwd: ROOT }).stdout.trim();
+        const ahead = capture("git", ["rev-list", "--count", "origin/main..HEAD"], { cwd: ROOT }).stdout.trim();
+        if (behind === "0" || behind === "") {
+          console.log(c.green("  ✓ already up to date with GitHub."));
+        } else {
+          console.log(`  ${c.bold(behind)} new commit(s) upstream:`);
+          await run("git", ["--no-pager", "log", "--oneline", "HEAD..origin/main"]);
+          if (ahead !== "0" && ahead !== "") {
+            console.log(c.red(`\n  ⚠ You have ${ahead} local commit(s) not on GitHub — push or stash them first. Not pulling.`));
+            return 1;
+          }
+          if (checkOnly) {
+            console.log(c.gray("\n  --check: nothing applied. Run `totem update` to pull + rebuild + redeploy.")); return 0;
+          }
+          console.log(c.gray("\n  Pulling + rebuilding…"));
+          if ((await run("git", ["pull", "--ff-only", "origin", "main"])) !== 0) { console.error(c.red("  git pull failed.")); return 1; }
+          await run("npm", ["install"]);
+          if ((await run(npmBin("tsc"), [])) !== 0) { console.error(c.red("  build failed — local left at the previous build.")); return 1; }
+          console.log(c.green("  ✓ local updated + rebuilt."));
+        }
+      } else {
+        console.log(c.gray("Installed via npm (no git checkout) — updating from the registry…"));
+        if (checkOnly) {
+          const latest = capture("npm", ["view", PKG.name, "version"]).stdout.trim();
+          console.log(`  installed: v${VERSION}   ·   latest: v${latest || "?"}`);
+          console.log(c.gray(`  --check: run \`npm i -g ${PKG.name}@latest\` to update.`)); return 0;
+        }
+        if ((await run("npm", ["install", "-g", `${PKG.name}@latest`])) !== 0) { console.error(c.red("  npm update failed.")); return 1; }
+        console.log(c.green("  ✓ updated to the latest published version."));
+      }
+
+      // ── 2. re-deploy the cloud instance (if any) + health-check ──────────
+      if (d && d.platform !== "local") {
+        if (checkOnly) { console.log(c.gray(`\n  Would re-deploy your ${d.platform} deployment${d.app ? ` (${d.app})` : ""}.`)); return 0; }
+        console.log(c.bold(`\nRe-deploying ${d.platform}${d.app ? ` (${d.app})` : ""}…`));
+        if ((await commands.deploy!.run([])) !== 0) { console.error(c.red("  deploy failed — your live server is unchanged.")); return 1; }
+        if (d.url) {
+          console.log(c.gray(`\n  health check → GET ${cleanUrl(d.url)}/health`));
+          if ((await ping(`${cleanUrl(d.url)}/health`)) !== 0) {
+            console.log(c.red("\n  ⚠ /health didn't return 200 after deploy — the server may be unhealthy."));
+            console.log(c.gray(d.platform === "fly"
+              ? `  Roll back: \`fly releases -a ${d.app}\` then re-deploy the prior release.`
+              : "  Roll back to the previous version on your host."));
+            return 1;
+          }
+          console.log(c.green("  ✓ /health 200"));
+        }
+      } else if (!checkOnly) {
+        console.log(c.gray("\n  No cloud deployment recorded — local only. Restart your MCP client to load the new build."));
+      }
+
+      const now = (JSON.parse(readFileSync(PKG_PATH, "utf8")) as { version: string }).version;
+      console.log(c.green(`\n✓ Update complete — now on v${now}.\n`));
+      return 0;
+    },
+  },
   logs: {
     group: "Deployed",
     desc: "Tail logs from your deployment (Fly/Railway/Cloud Run)",
-    usage: "whoop-mcp logs [-- <extra args>]",
+    usage: "totem logs [-- <extra args>]",
     run: async (args) => {
       const d = detectDeploy();
-      if (!d) { console.error(c.red("No deployment found. Run `whoop-mcp cloud` first.")); return 1; }
+      if (!d) { console.error(c.red("No deployment found. Run `totem cloud` first.")); return 1; }
       switch (d.platform) {
         case "fly":
           return run("fly", ["logs", ...(d.app ? ["-a", d.app] : []), ...args]);
@@ -227,7 +299,7 @@ const commands: Record<string, Cmd> = {
     desc: "Show your deployment's status + ping /health",
     run: async () => {
       const d = detectDeploy();
-      if (!d) { console.error(c.red("No deployment found. Run `whoop-mcp cloud` first.")); return 1; }
+      if (!d) { console.error(c.red("No deployment found. Run `totem cloud` first.")); return 1; }
       console.log(`  ${c.gray("platform")}  ${c.bold(d.platform)}${d.app ? `  ${c.gray("·")}  ${d.app}` : ""}`);
       if (d.url) console.log(`  ${c.gray("url     ")}  ${d.url}`);
       console.log("");
@@ -259,7 +331,7 @@ const commands: Record<string, Cmd> = {
     desc: "GET /health on your deployed server",
     run: async () => {
       const d = detectDeploy();
-      if (!d?.url) { console.error(c.red("No deployment URL found. Run `whoop-mcp cloud` first (or set $FLY_APP).")); return 1; }
+      if (!d?.url) { console.error(c.red("No deployment URL found. Run `totem cloud` first (or set $FLY_APP).")); return 1; }
       return ping(`${cleanUrl(d.url)}/health`);
     },
   },
@@ -272,13 +344,13 @@ const commands: Record<string, Cmd> = {
       const d = detectDeploy();
       const envExists = existsSync(resolve(ROOT, ".env"));
       const built = existsSync(resolve(ROOT, "dist", "server.js"));
-      console.log(`${c.bold("whoop-mcp")}  ${c.gray("v" + VERSION)}`);
+      console.log(`${c.bold("totem")}  ${c.gray("v" + VERSION)}`);
       console.log("");
       const row = (label: string, value: string) =>
         console.log(`  ${c.gray(label.padEnd(15))} ${value}`);
       row("install root", ROOT);
       row("node", process.version);
-      row("built (dist/)", built ? c.green("yes") : c.red("no — run `whoop-mcp build`"));
+      row("built (dist/)", built ? c.green("yes") : c.red("no — run `totem build`"));
       row(".env", envExists ? c.green("present") : c.red("missing"));
       if (d) {
         row("deployment", c.green(d.platform) + (d.app ? c.gray(` · ${d.app}`) : ""));
@@ -289,7 +361,7 @@ const commands: Record<string, Cmd> = {
           row("mcp endpoint", `${cleanUrl(d.url)}/mcp`);
         }
       } else {
-        row("deployment", c.gray("(none — run `whoop-mcp cloud`)"));
+        row("deployment", c.gray("(none — run `totem cloud`)"));
       }
       return 0;
     },
@@ -333,13 +405,13 @@ const commands: Record<string, Cmd> = {
   config: {
     group: "Inspect",
     desc: "Print a Claude Desktop config snippet",
-    usage: "whoop-mcp config <stdio|http>",
+    usage: "totem config <stdio|http>",
     run: async (args) => {
       const mode = args[0];
       if (mode !== "stdio" && mode !== "http") {
         console.log(c.bold("Pick a mode:"));
-        console.log("  " + c.brand("whoop-mcp config stdio") + c.gray("   # local install"));
-        console.log("  " + c.brand("whoop-mcp config http") + c.gray("    # remote deployment (uses mcp-remote bridge)"));
+        console.log("  " + c.brand("totem config stdio") + c.gray("   # local install"));
+        console.log("  " + c.brand("totem config http") + c.gray("    # remote deployment (uses mcp-remote bridge)"));
         return 1;
       }
       const home = process.env.HOME ?? "~";
@@ -430,12 +502,12 @@ function detectFlyApp(): string | null {
   return null;
 }
 
-// Where the server is deployed — from the `.whoop-mcp-deploy.json` record written
-// by `whoop-mcp cloud`/`local`, falling back to legacy Fly detection
+// Where the server is deployed — from the `.totem-deploy.json` record written
+// by `totem cloud`/`local`, falling back to legacy Fly detection
 // (fly.toml / $FLY_APP) for deploys made before the record existed.
 interface DeployInfo { platform: string; app?: string; url?: string; region?: string; project?: string; }
 function detectDeploy(): DeployInfo | null {
-  const recPath = resolve(ROOT, ".whoop-mcp-deploy.json");
+  const recPath = resolve(ROOT, ".totem-deploy.json");
   if (existsSync(recPath)) {
     try {
       const r = JSON.parse(readFileSync(recPath, "utf8")) as DeployInfo;
@@ -475,7 +547,7 @@ function ping(url: string, timeoutMs = 10_000): Promise<number> {
         hostname: u.hostname,
         port: u.port || 443,
         path: u.pathname + u.search,
-        headers: { "user-agent": `whoop-mcp/${VERSION}` },
+        headers: { "user-agent": `totem/${VERSION}` },
       },
       (response) => {
         let body = "";
@@ -507,7 +579,7 @@ function ping(url: string, timeoutMs = 10_000): Promise<number> {
 }
 
 function printHelp(): void {
-  console.log(`${c.bold("Usage:")} whoop-mcp ${c.gray("<command>")} ${c.gray("[args]")}`);
+  console.log(`${c.bold("Usage:")} totem ${c.gray("<command>")} ${c.gray("[args]")}`);
   console.log("");
   const byGroup: Record<string, [string, Cmd][]> = {};
   for (const [name, cmd] of Object.entries(commands)) {
@@ -568,7 +640,7 @@ async function main(): Promise<number> {
   if (!cmd) {
     console.error(`${c.red("Unknown command:")} ${name}`);
     console.error("");
-    console.error(`Run ${c.bold("whoop-mcp help")} to see all commands.`);
+    console.error(`Run ${c.bold("totem help")} to see all commands.`);
     return 1;
   }
 

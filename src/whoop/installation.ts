@@ -22,7 +22,7 @@ import { randomUUID, createHash } from "node:crypto";
 // random one per process. Shaped like the app's uppercase UUID (8-4-4-4-12).
 function deterministicId(email: string | undefined): string | null {
   if (!email) return null;
-  const h = createHash("sha256").update(`whoop-mcp/install/${email.toLowerCase()}`).digest("hex");
+  const h = createHash("sha256").update(`totem/install/${email.toLowerCase()}`).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`.toUpperCase();
 }
 

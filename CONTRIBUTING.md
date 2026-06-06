@@ -1,4 +1,4 @@
-# Contributing to whoop-mcp
+# Contributing to totem
 
 Pull requests welcome. The codebase is small and the test suite is fast, so iteration is quick.
 
@@ -37,26 +37,26 @@ See [README.md → Architecture](README.md#architecture) for the full pattern wa
 ## Setup
 
 ```bash
-git clone https://github.com/briangaoo/whoop-mcp.git
-cd whoop-mcp
+git clone https://github.com/briangaoo/totem.git
+cd totem
 npm install
-npx tsc && npm link          # one-time: builds + puts `whoop-mcp` on PATH
+npx tsc && npm link          # one-time: builds + puts `totem` on PATH
 cp .env.example .env
 # edit .env with your Whoop creds
-whoop-mcp auth
-whoop-mcp test               # 212 tests, <2s
-whoop-mcp typecheck
-whoop-mcp build
+totem auth
+totem test               # 212 tests, <2s
+totem typecheck
+totem build
 
 # stdio mode (default, for local Claude Desktop / Claude Code):
-whoop-mcp dev
+totem dev
 
 # HTTP mode (for remote hosting via Docker/Fly/etc.):
-MCP_AUTH_TOKEN=$(openssl rand -hex 32) whoop-mcp dev:http
+MCP_AUTH_TOKEN=$(openssl rand -hex 32) totem dev:http
 curl http://localhost:3000/health   # → {"status":"ok"}
 ```
 
-> The only `npm` steps are `npm install` and the one-time `npx tsc` (you need a build before the `whoop-mcp` CLI exists). Everything else is a `whoop-mcp` command — `package.json` has no `scripts`. `whoop-mcp test`/`dev`/`typecheck` run against the source directly, so you don't rebuild to iterate.
+> The only `npm` steps are `npm install` and the one-time `npx tsc` (you need a build before the `totem` CLI exists). Everything else is a `totem` command — `package.json` has no `scripts`. `totem test`/`dev`/`typecheck` run against the source directly, so you don't rebuild to iterate.
 
 ---
 
@@ -70,7 +70,7 @@ Walkthrough lives in [README.md → Adding a new tool](README.md#adding-a-new-to
 4. Add a tool file in `src/tools/v2/` (~30 lines: register with the MCP server, parse args, call client, project, validate, return).
 5. Wire it up in `src/tools/register.ts`.
 6. Add a projection test in `tests/projections/`.
-7. `whoop-mcp typecheck && whoop-mcp test && whoop-mcp build`.
+7. `totem typecheck && totem test && totem build`.
 
 ---
 
@@ -98,7 +98,7 @@ Recent precedents to read:
 
 ## Testing
 
-- **`whoop-mcp test`** — 212 unit tests in <2s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
+- **`totem test`** — 212 unit tests in <2s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
 - **Live-API tests live in a separate `whoop-testing` archive.** They require a dummy account and aren't safe to expose to first-time users. If you want to add or run them, ask Brian.
 - When fixing a projection, update its fixture in `tests/fixtures/` and the corresponding test in `tests/projections/` (`round1`/`round2`/`round3`, plus `round3_data_fixes.test.ts` for the live-audit data-extraction regressions).
 - When changing the HTTP transport (`src/server-http.ts`) or auth model, add coverage to `tests/whoop/http_auth.test.ts`. The pattern is: boot a real server on an ephemeral port with a stub `WhoopClient`, then assert with `fetch()`.

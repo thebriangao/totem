@@ -55,8 +55,8 @@ dummy_*.ts
 verify_*.ts
 fly.toml
 
-# deploy record written by `whoop-mcp cloud` (host-specific)
-.whoop-mcp-deploy.json
+# deploy record written by `totem cloud` (host-specific)
+.totem-deploy.json
 tool_audit_results.json
 tool_audit_condensed.json
 captures/

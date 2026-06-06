@@ -15,7 +15,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 # Build with the local TypeScript compiler (devDep from `npm ci`), then drop
-# devDeps. The `whoop-mcp` CLI isn't available in the build stage, so we invoke
+# devDeps. The `totem` CLI isn't available in the build stage, so we invoke
 # tsc directly rather than going through it.
 RUN npx tsc && npm prune --omit=dev
 
@@ -33,11 +33,11 @@ COPY --chown=node:node --from=builder /app/package.json ./
 # These three env vars are required at runtime. Set them via your host's
 # secrets mechanism (`fly secrets set`, Railway env, docker run -e, etc.):
 #   WHOOP_EMAIL                   — your Whoop account email
-#   WHOOP_IOS_BEARER_TOKEN        — from `whoop-mcp auth` on your Mac
-#   WHOOP_COGNITO_REFRESH_TOKEN   — from `whoop-mcp auth` on your Mac
+#   WHOOP_IOS_BEARER_TOKEN        — from `totem auth` on your Mac
+#   WHOOP_COGNITO_REFRESH_TOKEN   — from `totem auth` on your Mac
 #   MCP_AUTH_TOKEN                — random secret your MCP client will send
 #
-# (Or just run `whoop-mcp cloud` — it builds, deploys, and sets all of this.)
+# (Or just run `totem cloud` — it builds, deploys, and sets all of this.)
 #
 # This image forces HTTP transport.
 ENV MCP_TRANSPORT=http

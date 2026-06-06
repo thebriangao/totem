@@ -51,7 +51,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   // — so the long-lived static bearer and the JWT signing secret aren't the same
   // string in two roles (leaking one shouldn't let you forge the other).
   const signingSecret = createHmac("sha256", opts.authToken)
-    .update("whoop-mcp/oauth-jwt-signing/v1")
+    .update("totem/oauth-jwt-signing/v1")
     .digest("hex");
 
   const provider = new WhoopOAuthProvider({
@@ -73,7 +73,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       if (existing) return existing;
     }
     const newId = randomUUID();
-    const newServer = new McpServer({ name: "whoop", version: "1.3.0" });
+    const newServer = new McpServer({ name: "totem", version: "1.4.0" });
     registerTools(newServer, client);
     const newTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => newId,
@@ -217,7 +217,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       const session = await getOrCreateSession(sid);
       await session.transport.handleRequest(req, res, req.body);
     } catch (err) {
-      console.error("[whoop-mcp] request error:", err);
+      console.error("[totem] request error:", err);
       if (!res.headersSent) res.status(500).json({ error: "internal server error" });
     }
   };
@@ -227,9 +227,9 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   app.delete("/mcp", bearer, (req, res) => void mcpHandler(req, res));
 
   const httpServer = app.listen(port, host, () => {
-    console.error(`[whoop-mcp] listening on ${publicUrl} (bound ${host}:${port})`);
-    console.error(`[whoop-mcp] health: GET /health`);
-    console.error(`[whoop-mcp] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
+    console.error(`[totem] listening on ${publicUrl} (bound ${host}:${port})`);
+    console.error(`[totem] health: GET /health`);
+    console.error(`[totem] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
   });
 
   const close = (): void => {

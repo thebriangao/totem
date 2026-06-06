@@ -212,7 +212,7 @@ export function runScript(
     if (binOk && existsSync(script)) return run(bin, [script, ...args], { cwd: root, ...spawnOpts });
   }
   console.error(c.red(`Can't run ${relNoExt}: need either a built dist/ or the tsx dev dependency.`));
-  console.error(c.gray("Run ") + c.bold("npm install && whoop-mcp build") + c.gray(" in a source checkout, or reinstall the published package."));
+  console.error(c.gray("Run ") + c.bold("npm install && totem build") + c.gray(" in a source checkout, or reinstall the published package."));
   return Promise.resolve(1);
 }
 
@@ -263,7 +263,7 @@ export function httpGet(url: string, timeoutMs = 12_000): Promise<{ status: numb
   return new Promise((res) => {
     const u = new URL(url);
     const req = httpsRequest(
-      { method: "GET", hostname: u.hostname, port: u.port || 443, path: u.pathname + u.search, headers: { "user-agent": "whoop-mcp-setup" } },
+      { method: "GET", hostname: u.hostname, port: u.port || 443, path: u.pathname + u.search, headers: { "user-agent": "totem-setup" } },
       (response) => {
         let body = "";
         response.setEncoding("utf8");

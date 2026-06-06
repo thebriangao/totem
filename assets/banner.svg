@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 250" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" text-rendering="geometricPrecision">
-  <title>whoop-mcp</title>
-  <desc>ASCII banner for the whoop-mcp project — 48 tools, 47 microservices, 311 endpoints, remote-ready.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 260" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" text-rendering="geometricPrecision">
+  <title>totem</title>
+  <desc>ASCII banner for the totem project — your wearables, talk to them with AI. 48 tools, 47 microservices, 311 endpoints, remote-ready.</desc>
   <style>
-    .block { font-size: 16px; font-weight: 700; fill: #1f1f1f; letter-spacing: 0; }
+    .block { font-size: 26px; font-weight: 700; fill: #1f1f1f; letter-spacing: 0; }
     .pulse { stroke: #6b6b6b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
     .stats { font-size: 14px; fill: #555; letter-spacing: 0.5px; }
     .sep   { fill: #b0b0b0; }
@@ -14,25 +14,25 @@
     }
   </style>
 
-  <!-- Block text shifted right (x=45) so its ~730px visual width sits centered in the 820 viewBox -->
-  <text class="block" x="45" y="28" xml:space="preserve">██╗    ██╗██╗  ██╗ ██████╗  ██████╗ ██████╗     ███╗   ███╗ ██████╗██████╗</text>
-  <text class="block" x="45" y="48" xml:space="preserve">██║    ██║██║  ██║██╔═══██╗██╔═══██╗██╔══██╗    ████╗ ████║██╔════╝██╔══██╗</text>
-  <text class="block" x="45" y="68" xml:space="preserve">██║ █╗ ██║███████║██║   ██║██║   ██║██████╔╝    ██╔████╔██║██║     ██████╔╝</text>
-  <text class="block" x="45" y="88" xml:space="preserve">██║███╗██║██╔══██║██║   ██║██║   ██║██╔═══╝     ██║╚██╔╝██║██║     ██╔═══╝</text>
-  <text class="block" x="45" y="108" xml:space="preserve">╚███╔███╔╝██║  ██║╚██████╔╝╚██████╔╝██║         ██║ ╚═╝ ██║╚██████╗██║</text>
-  <text class="block" x="45" y="128" xml:space="preserve"> ╚══╝╚══╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝         ╚═╝     ╚═╝ ╚═════╝╚═╝</text>
+  <!-- TOTEM wordmark (ansi_shadow), ~720px wide, centered in the 820 viewBox at x=48 -->
+  <text class="block" x="48" y="34"  xml:space="preserve">████████╗ ██████╗ ████████╗███████╗███╗   ███╗</text>
+  <text class="block" x="48" y="62"  xml:space="preserve">╚══██╔══╝██╔═══██╗╚══██╔══╝██╔════╝████╗ ████║</text>
+  <text class="block" x="48" y="90"  xml:space="preserve">   ██║   ██║   ██║   ██║   █████╗  ██╔████╔██║</text>
+  <text class="block" x="48" y="118" xml:space="preserve">   ██║   ██║   ██║   ██║   ██╔══╝  ██║╚██╔╝██║</text>
+  <text class="block" x="48" y="146" xml:space="preserve">   ██║   ╚██████╔╝   ██║   ███████╗██║ ╚═╝ ██║</text>
+  <text class="block" x="48" y="174" xml:space="preserve">   ╚═╝    ╚═════╝    ╚═╝   ╚══════╝╚═╝     ╚═╝</text>
 
-  <!-- EKG: spans the block text width (x=45 → x=775). 5 beats centered at 117/262/407/552/697. -->
+  <!-- EKG: spans the banner width (x=45 → x=775). 5 beats centered at 117/262/407/552/697. -->
   <path class="pulse" d="
-    M 45 175
-    L 87 175 L 92 172 L 97 175 L 112 175 L 114 178 L 117 150 L 120 183 L 125 170 L 132 175
-    L 232 175 L 237 172 L 242 175 L 257 175 L 259 178 L 262 150 L 265 183 L 270 170 L 277 175
-    L 377 175 L 382 172 L 387 175 L 402 175 L 404 178 L 407 150 L 410 183 L 415 170 L 422 175
-    L 522 175 L 527 172 L 532 175 L 547 175 L 549 178 L 552 150 L 555 183 L 560 170 L 567 175
-    L 667 175 L 672 172 L 677 175 L 692 175 L 694 178 L 697 150 L 700 183 L 705 170 L 712 175
-    L 775 175
+    M 45 210
+    L 87 210 L 92 207 L 97 210 L 112 210 L 114 213 L 117 185 L 120 218 L 125 205 L 132 210
+    L 232 210 L 237 207 L 242 210 L 257 210 L 259 213 L 262 185 L 265 218 L 270 205 L 277 210
+    L 377 210 L 382 207 L 387 210 L 402 210 L 404 213 L 407 185 L 410 218 L 415 205 L 422 210
+    L 522 210 L 527 207 L 532 210 L 547 210 L 549 213 L 552 185 L 555 218 L 560 205 L 567 210
+    L 667 210 L 672 207 L 677 210 L 692 210 L 694 213 L 697 185 L 700 218 L 705 205 L 712 210
+    L 775 210
   "/>
 
   <!-- Stats: horizontally centered to viewBox midpoint -->
-  <text class="stats" x="410" y="225" text-anchor="middle" xml:space="preserve">v1.2.0<tspan class="sep">  ·  </tspan>48 tools<tspan class="sep">  ·  </tspan>47 microservices<tspan class="sep">  ·  </tspan>311 endpoints</text>
+  <text class="stats" x="410" y="245" text-anchor="middle" xml:space="preserve">v1.4.0<tspan class="sep">  ·  </tspan>48 tools<tspan class="sep">  ·  </tspan>47 microservices<tspan class="sep">  ·  </tspan>311 endpoints</text>
 </svg>

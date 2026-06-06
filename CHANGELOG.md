@@ -4,11 +4,23 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-06-05
+
+### Changed
+
+- **Renamed the project to Totem.** `whoop-mcp` → `totem` across the package name (`@briangaoo/totem`), the CLI binary (`totem <command>`), the MCP registry id (`io.github.briangaoo/totem`), the server identity, the banner, and the docs. **Whoop itself is untouched** — every `whoop_*` tool, the `WHOOP_*` env vars, the private-iOS-API adapter, and `WHOOP.md` are byte-for-byte the same. Totem is becoming a device-agnostic wearables→AI bridge (the MCP + projection layer doesn't care what you wear); Whoop is the first and currently only shipping adapter, with **Fitbit, Apple Watch, and Garmin in progress**.
+  - *Migration:* the npm package is republished under `@briangaoo/totem` and the old `@briangaoo/whoop-mcp` is deprecated with a pointer. Existing installs keep working; to move over, reinstall and use `totem` instead of `whoop-mcp`. A cloud deployment's saved record was `.whoop-mcp-deploy.json` and is now `.totem-deploy.json` — rename it (or just re-run `totem cloud`) so `totem deploy`/`logs`/`update` find it.
+
+### Added
+
+- **`totem update`** — a one-liner that pulls the latest release from GitHub and redeploys in place. Compares your `HEAD` against `origin/main`, fast-forwards (or reinstalls the global package), rebuilds, redeploys to your existing host, and pings `/health` to confirm. `totem update --check` does a no-write dry run that just reports installed-vs-latest. Opt-in, never automatic.
+- **CI verify gate.** A GitHub Actions workflow (`.github/workflows/ci.yml`) runs `tsc --noEmit`, the full vitest suite, and a build on every push to `main` and every PR — so nothing reaches the default branch (or a merged contribution) without passing the same checks run locally.
+
 ## [1.3.0] — 2026-06-01
 
 ### Added
 
-- **Direct setup for the major AI clients, in both flows.** `whoop-mcp local` now wires the server into your pick of **Claude Desktop, Claude Code, Cursor, VS Code (Copilot), Gemini CLI, Codex CLI, or Windsurf** — writing the right config to the right path automatically (or printing a universal block for any other MCP client). `whoop-mcp cloud`'s connect step prints ready-to-paste instructions for **claude.ai, ChatGPT, Claude Code (remote), and Cursor/Windsurf/any HTTP MCP client** — URL + password for the OAuth clients, a bearer-token config block for the header-auth ones. Every stdio client uses the identical launch entry, so the server still self-loads its `.env` no matter which app starts it.
+- **Direct setup for the major AI clients, in both flows.** `totem local` now wires the server into your pick of **Claude Desktop, Claude Code, Cursor, VS Code (Copilot), Gemini CLI, Codex CLI, or Windsurf** — writing the right config to the right path automatically (or printing a universal block for any other MCP client). `totem cloud`'s connect step prints ready-to-paste instructions for **claude.ai, ChatGPT, Claude Code (remote), and Cursor/Windsurf/any HTTP MCP client** — URL + password for the OAuth clients, a bearer-token config block for the header-auth ones. Every stdio client uses the identical launch entry, so the server still self-loads its `.env` no matter which app starts it.
 
 ## [1.2.4] — 2026-06-01
 
@@ -34,7 +46,7 @@ A security-hardening release — no API or tool changes, all behavior-compatible
 - **Security headers** on every HTTP response (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, strict CSP) — the connector password page can no longer be framed (clickjacking).
 - **The connector-password gate is harder to brute-force**: a global attempt ceiling independent of the spoofable per-IP key, plus a 16-char + character-class floor for user-chosen passwords (the auto-generated one was always strong).
 - **Fly secrets are pushed over stdin** (`secrets import`), not argv — token/password values are no longer visible in `ps`/`/proc` during deploy or token rotation.
-- **`whoop-mcp cloud` now verifies the auth gate after deploy** — it asserts an unauthenticated `/mcp` returns 401 before declaring success.
+- **`totem cloud` now verifies the auth gate after deploy** — it asserts an unauthenticated `/mcp` returns 401 before declaring success.
 - **`.gitignore` now excludes every `.env*` variant** (incl. backups) so a stray `.env.bak` can't be committed; `.dockerignore` excludes `.env*` + the deploy record so they're never uploaded to a build context.
 - Outbound requests use `redirect: "error"`, and API error messages no longer echo response-body fragments — defense-in-depth against token/data leakage.
 
@@ -47,8 +59,8 @@ A security-hardening release — no API or tool changes, all behavior-compatible
 
 ### Changed
 
-- **The Whoop password is now hidden as you type** during `whoop-mcp auth` / `cloud` / `local`. It previously echoed in plaintext — fine in private, but exposed on a screen-share or recording. Implemented with an explicit raw-mode reader (terminal echo off, characters captured but never rendered), masked in both the guided-flow prompt and the standalone `auth` script. Everything else stays visible (email, MFA code, the auto-generated connector password).
-- **New demo.** Replaced the static screenshot with a ~2-minute screen recording of the full `whoop-mcp cloud` flow (`assets/demo.mp4`): install → Whoop login → Fly deploy → Claude connector → first query. The README loads it from GitHub, so it isn't bundled into the npm package.
+- **The Whoop password is now hidden as you type** during `totem auth` / `cloud` / `local`. It previously echoed in plaintext — fine in private, but exposed on a screen-share or recording. Implemented with an explicit raw-mode reader (terminal echo off, characters captured but never rendered), masked in both the guided-flow prompt and the standalone `auth` script. Everything else stays visible (email, MFA code, the auto-generated connector password).
+- **New demo.** Replaced the static screenshot with a ~2-minute screen recording of the full `totem cloud` flow (`assets/demo.mp4`): install → Whoop login → Fly deploy → Claude connector → first query. The README loads it from GitHub, so it isn't bundled into the npm package.
 
 ## [1.2.1] — 2026-05-31
 
@@ -98,13 +110,13 @@ These all returned `200` with an empty or wrong projection before — the kind o
 ### Added
 
 - **Two guided "one-command" setup flows** — the new recommended way to get going:
-  - **`whoop-mcp cloud`** ★ — walks you through the entire server-hosted path in one command: Whoop auth (SMS handled) → pick a host → generate `MCP_AUTH_TOKEN` + connector password → set env → deploy → verify `/health` + OAuth metadata are live → open claude.ai's connector page and print the URL + password to paste. By the end, Claude is connected across web, desktop, and mobile. Platforms: **Fly**, **Railway**, and **Cloud Run** — all fully CLI-automated and tested end-to-end (installs the host CLI if missing, logs you in, deploys, auto-detects the URL, sets `PUBLIC_URL`, verifies `/health` + OAuth) — plus **Custom** (printed Docker + env steps for any other host or your own server). OAuth is the default. (Koyeb was dropped before release — its signup now forces a paid $30/mo plan, so it no longer fits a zero-cost path; the Custom/Docker route covers it.)
-  - **`whoop-mcp local`** — guided stdio setup: auth → build → writes the Claude Desktop config (or prints the Claude Code one-liner).
-  - New CLI modules `src/cli/ui.ts` (shared prompts/colors/runners) + `src/cli/setup.ts` (the flows). `cloud` writes a `.whoop-mcp-deploy.json` record so `auth` knows where to push.
+  - **`totem cloud`** ★ — walks you through the entire server-hosted path in one command: Whoop auth (SMS handled) → pick a host → generate `MCP_AUTH_TOKEN` + connector password → set env → deploy → verify `/health` + OAuth metadata are live → open claude.ai's connector page and print the URL + password to paste. By the end, Claude is connected across web, desktop, and mobile. Platforms: **Fly**, **Railway**, and **Cloud Run** — all fully CLI-automated and tested end-to-end (installs the host CLI if missing, logs you in, deploys, auto-detects the URL, sets `PUBLIC_URL`, verifies `/health` + OAuth) — plus **Custom** (printed Docker + env steps for any other host or your own server). OAuth is the default. (Koyeb was dropped before release — its signup now forces a paid $30/mo plan, so it no longer fits a zero-cost path; the Custom/Docker route covers it.)
+  - **`totem local`** — guided stdio setup: auth → build → writes the Claude Desktop config (or prints the Claude Code one-liner).
+  - New CLI modules `src/cli/ui.ts` (shared prompts/colors/runners) + `src/cli/setup.ts` (the flows). `cloud` writes a `.totem-deploy.json` record so `auth` knows where to push.
   - **Warm by default — no cold starts.** Fly deployments now set `min_machines_running = 1` + `auto_stop_machines = "suspend"`, and Cloud Run gets `--min-instances 1`, so the connector never cold-starts — without this, the first request after an idle auto-stop fails while the VM/container boots (~10s). Railway already runs continuously; the printed Custom `docker run` uses `--restart unless-stopped`.
   - **Interactive UX hardening (both flows).** Animated spinners on every otherwise-silent step (network lookups, health polling, backoff waits — driven by an async `captureAsync` so they actually animate, since `spawnSync` blocks the loop). **Explicit confirmations** before anything sensitive — IAM grants, API enablement, billable deploys, project creation, dependency installs, account switches — each printing the exact command + consequence. **Arrow-key (↑/↓, j/k, number) selection** replacing every numbered prompt, hardened against concatenated/split key delivery and EOF (no more hangs on Ctrl-D). **Account + GCP-project pickers** are now always offered (use current, switch account, or create a project) instead of silently inheriting whatever's active. Plus: auto-generated 18-char connector password copied to the clipboard, and the deployed URL auto-detected (no paste step). Every one of the five paths (Fly/Railway/Cloud Run/Custom + local) was deployed and verified end-to-end through the real CLI.
-- **Banner on every command.** The figlet "WHOOP MCP" banner now prints at the top of *every* `whoop-mcp` invocation (was: only the no-arg help). It's written to **stderr**, so it shows in the terminal without ever polluting stdout — `start`/`dev` keep a clean MCP protocol stream and `version`/`config` stay machine-parseable + pipe-safe.
-- **One `auth` command for all token management** (replaces `bootstrap` + `rebootstrap`). `whoop-mcp auth` logs you into Whoop, saves the tokens to `.env`, and **auto-detects** two things: *new vs re-auth* (whether you already have tokens — messaging only) and *local vs deployed* (reads `.whoop-mcp-deploy.json`). For a deployment it pushes the new tokens to **wherever you actually deployed** — Fly (`fly secrets set`), Railway (`railway variables`), Cloud Run (`gcloud run services update`), printed values for a Custom host — or notes "restart your client" for a local install. Auto/silent when the account has no SMS MFA; prompts for the code when it does. The separate `refresh` command was removed; the guided `cloud`/`local` flows call `auth` internally in tokens-only mode so they don't double-push. Help is grouped with the two guided commands as the headline; everything else (logs, ping, deploy, start, etc.) stays available as advanced commands.
+- **Banner on every command.** The figlet "WHOOP MCP" banner now prints at the top of *every* `totem` invocation (was: only the no-arg help). It's written to **stderr**, so it shows in the terminal without ever polluting stdout — `start`/`dev` keep a clean MCP protocol stream and `version`/`config` stay machine-parseable + pipe-safe.
+- **One `auth` command for all token management** (replaces `bootstrap` + `rebootstrap`). `totem auth` logs you into Whoop, saves the tokens to `.env`, and **auto-detects** two things: *new vs re-auth* (whether you already have tokens — messaging only) and *local vs deployed* (reads `.totem-deploy.json`). For a deployment it pushes the new tokens to **wherever you actually deployed** — Fly (`fly secrets set`), Railway (`railway variables`), Cloud Run (`gcloud run services update`), printed values for a Custom host — or notes "restart your client" for a local install. Auto/silent when the account has no SMS MFA; prompts for the code when it does. The separate `refresh` command was removed; the guided `cloud`/`local` flows call `auth` internally in tokens-only mode so they don't double-push. Help is grouped with the two guided commands as the headline; everything else (logs, ping, deploy, start, etc.) stays available as advanced commands.
 - **Sleep hypnogram + in-sleep heart rate.** `whoop_sleep` now returns the full **hypnogram** — the per-stage timeline (REM/light/SWS/wake), ~58 segments a night — reconstructed from the deep-dive's per-stage HR-curve points, plus **`sleep_hr`** (avg/min bpm). Both were schema'd but previously returned empty/null. Transition times come from each point's clock label anchored to the sleep window at its midpoint (the graph's `position_x` carries ~40 min of axis padding), emitted in UTC for `localizeTimestamps`. Sleep HRV / respiratory rate / debt / latency stay null — not exposed by the endpoint.
 
 ### Added
@@ -142,11 +154,11 @@ These all returned `200` with an empty or wrong projection before — the kind o
   3. **System TZ** — last resort. UTC on Fly/Railway/Docker, so Tier 2 saves you here.
 
   Tier 2 means `WHOOP_TIMEZONE` is now **optional** for nearly all users — local installs use system TZ, deployed installs use the Whoop-profile fallback automatically. `toLocalIso()` handles both IANA names (`America/Los_Angeles`) and fixed offsets (`-0700`, `-07:00`) since Whoop's API returns the offset form. 25 unit tests covering DST transitions, positive/negative/half-hour offsets, date rollover, millisecond precision, the priority chain, and pass-through for date-only / non-ISO strings.
-- **Claude Desktop config for remote MCP.** Docs (README → Remote hosting) and the `whoop-mcp config http` CLI command previously emitted the `{"url": "...", "headers": {...}}` format for Claude Desktop, which Claude Desktop rejects with *"The following entries in claude_desktop_config.json are not valid MCP server configurations and were skipped"*. That format only works for **Claude Code** (which natively supports remote MCP). Claude Desktop only speaks stdio, so the docs + CLI now emit a stdio bridge config using [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) — a small Node package that proxies HTTP MCP servers as stdio. First run downloads via `npx` (~5s), subsequent runs are cached.
+- **Claude Desktop config for remote MCP.** Docs (README → Remote hosting) and the `totem config http` CLI command previously emitted the `{"url": "...", "headers": {...}}` format for Claude Desktop, which Claude Desktop rejects with *"The following entries in claude_desktop_config.json are not valid MCP server configurations and were skipped"*. That format only works for **Claude Code** (which natively supports remote MCP). Claude Desktop only speaks stdio, so the docs + CLI now emit a stdio bridge config using [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) — a small Node package that proxies HTTP MCP servers as stdio. First run downloads via `npx` (~5s), subsequent runs are cached.
 
 ### Added
 
-- **`whoop-mcp` CLI.** New first-class command (single binary, installable via `npm link` or, once published, `npm install -g whoop-mcp`) that wraps every npm script plus operational helpers. Works from any directory — the CLI resolves its own install root from `import.meta.url`, so `whoop-mcp deploy` from `~/Desktop` does the same thing as `cd whoop-mcp && fly deploy`.
+- **`totem` CLI.** New first-class command (single binary, installable via `npm link` or, once published, `npm install -g totem`) that wraps every npm script plus operational helpers. Works from any directory — the CLI resolves its own install root from `import.meta.url`, so `totem deploy` from `~/Desktop` does the same thing as `cd totem && fly deploy`.
 - Subcommands across 5 groups:
   - **Local**: `start [--http]`, `dev`, `dev:http`, `build`, `test`, `typecheck`
   - **Setup**: `auth` (login + token refresh; pushes to your deployment)
@@ -154,15 +166,15 @@ These all returned `200` with an empty or wrong projection before — the kind o
   - **Inspect**: `info`, `tools`, `config <stdio|http>`
   - **Help**: `help`, `version` (+ `--help`, `-h`, `--version`, `-v` aliases)
 - ANSI 24-bit truecolor banner with the Whoop pulse waveform (honors `NO_COLOR`, skipped on non-TTY stdout).
-- `whoop-mcp start` keeps stdout clean (no banner, no header) so it works as a drop-in for `node dist/server.js` in Claude Desktop stdio configs.
-- `whoop-mcp ping` and `whoop-mcp status` hit the deployed `/health` endpoint live — instant "is my deploy alive" check.
-- `whoop-mcp config http` and `whoop-mcp config stdio` print pre-filled Claude Desktop config snippets with absolute paths or your detected Fly URL.
+- `totem start` keeps stdout clean (no banner, no header) so it works as a drop-in for `node dist/server.js` in Claude Desktop stdio configs.
+- `totem ping` and `totem status` hit the deployed `/health` endpoint live — instant "is my deploy alive" check.
+- `totem config http` and `totem config stdio` print pre-filled Claude Desktop config snippets with absolute paths or your detected Fly URL.
 
 ### Changed
 
-- `package.json` → `bin.whoop-mcp` now points at `./dist/cli/index.js` (was `./dist/server.js`). The MCP server is still bootable via `whoop-mcp start` — this is a CLI surface change, not a server change. Anyone with a Claude Desktop config invoking `whoop-mcp` directly (none of the published quickstarts did this) should switch to `whoop-mcp start` or stay on `node dist/server.js`.
-- Token refresh is folded into `whoop-mcp auth`: re-running it logs you back in and (for a deployment) pushes the new tokens to the host in one command — solving the ~30-day refresh-token expiry for remote deployments.
-- Troubleshooting + README → Remote hosting now document the recovery flow: when Cognito tokens hit their 30-day wall, you run `whoop-mcp auth`, type the SMS code (if your account has MFA), and the new tokens get pushed to your deployment automatically (~10s restart).
+- `package.json` → `bin.totem` now points at `./dist/cli/index.js` (was `./dist/server.js`). The MCP server is still bootable via `totem start` — this is a CLI surface change, not a server change. Anyone with a Claude Desktop config invoking `totem` directly (none of the published quickstarts did this) should switch to `totem start` or stay on `node dist/server.js`.
+- Token refresh is folded into `totem auth`: re-running it logs you back in and (for a deployment) pushes the new tokens to the host in one command — solving the ~30-day refresh-token expiry for remote deployments.
+- Troubleshooting + README → Remote hosting now document the recovery flow: when Cognito tokens hit their 30-day wall, you run `totem auth`, type the SMS code (if your account has MFA), and the new tokens get pushed to your deployment automatically (~10s restart).
 
 ### Known limitation
 

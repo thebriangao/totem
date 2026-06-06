@@ -1,38 +1,38 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.briangaoo/whoop-mcp",
-  "description": "Full read + write access to your Whoop fitness data via the private iOS API. 48 tools.",
+  "name": "io.github.briangaoo/totem",
+  "description": "Totem — talk to your wearables with AI. Full read + write access to your Whoop fitness data via its private iOS API (48 tools). Fitbit, Apple Watch, and Garmin adapters in progress.",
   "repository": {
-    "url": "https://github.com/briangaoo/whoop-mcp",
+    "url": "https://github.com/briangaoo/totem",
     "source": "github"
   },
-  "version": "1.3.0",
+  "version": "1.4.0",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "@briangaoo/whoop-mcp",
-      "version": "1.3.0",
+      "identifier": "@briangaoo/totem",
+      "version": "1.4.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "WHOOP_IOS_BEARER_TOKEN",
-          "description": "Whoop Cognito access token. Obtain via `whoop-mcp auth` from the repo, which prompts for your Whoop email + password + SMS MFA code, then writes both tokens to a local .env. Auto-refreshes every ~24h.",
+          "description": "Whoop Cognito access token. Obtain via `totem auth` from the repo, which prompts for your Whoop email + password + SMS MFA code, then writes both tokens to a local .env. Auto-refreshes every ~24h.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
           "name": "WHOOP_COGNITO_REFRESH_TOKEN",
-          "description": "Whoop Cognito refresh token (~30 day lifetime). Obtained alongside the bearer token from `whoop-mcp auth`. When this expires, run `whoop-mcp auth` to get a fresh pair.",
+          "description": "Whoop Cognito refresh token (~30 day lifetime). Obtained alongside the bearer token from `totem auth`. When this expires, run `totem auth` to get a fresh pair.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"
         },
         {
           "name": "WHOOP_EMAIL",
-          "description": "Your Whoop account email. Used only by `whoop-mcp auth` — the running server reads tokens, not credentials.",
+          "description": "Your Whoop account email. Used only by `totem auth` — the running server reads tokens, not credentials.",
           "isRequired": true,
           "isSecret": false,
           "format": "string"

@@ -1,5 +1,5 @@
-// Guided setup flows: `whoop-mcp cloud` (server-hosted, OAuth, recommended) and
-// `whoop-mcp local` (stdio on this machine). These are the headline commands.
+// Guided setup flows: `totem cloud` (server-hosted, OAuth, recommended) and
+// `totem local` (stdio on this machine). These are the headline commands.
 //
 // Fly, Railway, and Cloud Run are all fully CLI-automated and tested end-to-end:
 // the flow installs the host CLI if missing, logs you in, deploys, auto-detects
@@ -66,7 +66,7 @@ interface DeployRecord {
   project?: string;          // Cloud Run GCP project (for logs/status/refresh)
 }
 function writeDeployRecord(root: string, rec: DeployRecord): void {
-  writeFileSync(resolve(root, ".whoop-mcp-deploy.json"), JSON.stringify(rec, null, 2));
+  writeFileSync(resolve(root, ".totem-deploy.json"), JSON.stringify(rec, null, 2));
 }
 
 // ── shared: ensure dependencies are installed (offer to run npm install) ─────
@@ -204,7 +204,7 @@ const gcloudPrereqs: Prereq[] = [
         }
       }
       if (!commandExists("gcloud")) {
-        console.log(c.yellow("  gcloud still isn't on PATH — open a new terminal and re-run `whoop-mcp cloud`."));
+        console.log(c.yellow("  gcloud still isn't on PATH — open a new terminal and re-run `totem cloud`."));
         return false;
       }
       return true;
@@ -261,7 +261,7 @@ async function chooseGcloudProject(): Promise<boolean> {
   const idx = await select("Which GCP project should host the deployment?", choices, { defaultIndex: Math.max(0, projects.indexOf(current)) });
   let project: string;
   if (idx === projects.length) {
-    let fresh = `whoop-mcp-${genToken().slice(0, 6)}`;
+    let fresh = `totem-${genToken().slice(0, 6)}`;
     project = (await prompt("New project ID (lowercase, 6-30 chars, globally unique)", fresh)).trim() || fresh;
     // Retry with a new ID if creation fails (taken/invalid ID), surfacing the error.
     for (;;) {
@@ -269,7 +269,7 @@ async function chooseGcloudProject(): Promise<boolean> {
       if ((await run("gcloud", ["projects", "create", project])) === 0) break;
       console.log(c.red("  ✗ project creation failed — the error is shown above (usually the ID is taken or malformed)."));
       if (!(await promptYesNo("  Try a different project ID?", true))) return false;
-      fresh = `whoop-mcp-${genToken().slice(0, 6)}`;
+      fresh = `totem-${genToken().slice(0, 6)}`;
       project = (await prompt("New project ID (lowercase, 6-30 chars, globally unique)", fresh)).trim() || fresh;
     }
   } else {
@@ -484,7 +484,7 @@ const LOCAL_CLIENTS: LocalClient[] = [
 ];
 
 export async function runLocalSetup(root: string): Promise<number> {
-  console.log(c.bold("\nwhoop-mcp · local setup") + c.gray(" — run the MCP on this machine over stdio\n"));
+  console.log(c.bold("\ntotem · local setup") + c.gray(" — run the MCP on this machine over stdio\n"));
   const TOTAL = 3;
   const serverJs = resolve(root, "dist", "server.js");
 
@@ -520,7 +520,7 @@ interface DeployCtx {
 }
 
 export async function runCloudSetup(root: string): Promise<number> {
-  console.log(c.bold("\nwhoop-mcp · cloud setup") + c.gray(" — deploy a server + connect it to Claude (web, desktop, mobile)\n"));
+  console.log(c.bold("\ntotem · cloud setup") + c.gray(" — deploy a server + connect it to Claude (web, desktop, mobile)\n"));
   const TOTAL = 6;
   if (!(await preflight([nodePrereq, depsPrereq(root)]))) return 1;
 
@@ -592,8 +592,8 @@ export async function runCloudSetup(root: string): Promise<number> {
   if (env.WHOOP_USER_ID) baseEnv.WHOOP_USER_ID = env.WHOOP_USER_ID;
 
   step(4, TOTAL, `Deploy to ${platform}`);
-  const defaultName = `whoop-mcp-${genToken().slice(0, 6)}`;
-  let appName = "whoop-mcp";
+  const defaultName = `totem-${genToken().slice(0, 6)}`;
+  let appName = "totem";
   if (platform !== "custom") {
     console.log(c.gray("  App name is optional — press Enter to use the suggested one in [brackets],"));
     console.log(c.gray("  or type your own (must be globally unique on the host)."));
@@ -608,7 +608,7 @@ export async function runCloudSetup(root: string): Promise<number> {
   else url = await deployCustom(ctx);
 
   if (!url) {
-    console.log(c.yellow("\nDeploy didn't complete automatically. Follow the steps above, then re-run `whoop-mcp cloud` or set PUBLIC_URL + redeploy manually."));
+    console.log(c.yellow("\nDeploy didn't complete automatically. Follow the steps above, then re-run `totem cloud` or set PUBLIC_URL + redeploy manually."));
     closePrompts();
     return 1;
   }
@@ -616,7 +616,7 @@ export async function runCloudSetup(root: string): Promise<number> {
   step(5, TOTAL, "Verify the server + OAuth are live");
   const ok = await verifyDeployment(url);
   if (!ok) {
-    console.log(c.yellow("  Couldn't confirm the OAuth endpoints yet (the host may still be starting). Give it a minute, then run `whoop-mcp ping`."));
+    console.log(c.yellow("  Couldn't confirm the OAuth endpoints yet (the host may still be starting). Give it a minute, then run `totem ping`."));
   }
   // Use ctx.appName, not the local appName: a Fly name conflict may have changed
   // it during deploy, and `auth` must push to the app that was actually used.
@@ -776,7 +776,7 @@ async function createFlyApp(fly: string, ctx: DeployCtx): Promise<boolean> {
     // Taken by someone else (or another error): SHOW it, then retry with a new name.
     console.log(c.red(`  ✗ couldn't create '${ctx.appName}': ${lastLine(create)}`));
     console.log(c.yellow("  Fly app names are globally unique, so that one's unavailable — pick another."));
-    const fresh = `whoop-mcp-${genToken().slice(0, 6)}`;
+    const fresh = `totem-${genToken().slice(0, 6)}`;
     ctx.appName = (await prompt("New app name (Enter = unique suggestion)", fresh)).trim() || fresh;
   }
   console.log(c.red("  Too many name attempts — aborting the Fly deploy."));
@@ -1016,7 +1016,7 @@ async function deployCloudRun(ctx: DeployCtx): Promise<string | null> {
     .filter(([, v]) => v !== "")
     .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
     .join("\n") + "\n";
-  const envFile = resolve(tmpdir(), `whoop-mcp-env-${randomUUID()}.yaml`);
+  const envFile = resolve(tmpdir(), `totem-env-${randomUUID()}.yaml`);
   writeFileSync(envFile, envYaml, { mode: 0o600 });
   try {
     return await assistedDeploy({
@@ -1091,7 +1091,7 @@ async function deployCustom(ctx: DeployCtx): Promise<string | null> {
   console.log(`  ${c.bold(c.white("Self-host it on any Docker host"))} ${c.gray("— a VPS, Render, your own box, whatever.")}`);
   console.log("");
   console.log(`  ${c.violet("1")}  ${c.white("Build the image")} ${c.gray("— the repo already has a Dockerfile:")}`);
-  console.log(`        ${c.cyan("docker build -t whoop-mcp .")}`);
+  console.log(`        ${c.cyan("docker build -t totem .")}`);
   console.log("");
   console.log(`  ${c.violet("2")}  ${c.white("Your full config")} ${c.gray("(tokens + the generated password) was written to:")}`);
   console.log(`        ${c.brand(envFile)}  ${c.gray("(chmod 600 — keep it private)")}`);
@@ -1099,7 +1099,7 @@ async function deployCustom(ctx: DeployCtx): Promise<string | null> {
   console.log(`        ${c.gray("— you need a public domain/hostname with HTTPS. That same URL is what you paste below.")}`);
   console.log("");
   console.log(`  ${c.violet("3")}  ${c.white("Run it")} ${c.gray("(serves on port 3000):")}`);
-  console.log(`        ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 --env-file ${envFile} whoop-mcp`)}`);
+  console.log(`        ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 --env-file ${envFile} totem`)}`);
   console.log(`        ${c.gray("then put it behind HTTPS at that domain (a reverse proxy, Cloudflare Tunnel, your host's TLS, …).")}`);
   console.log("");
   return promptUrl("Once it's reachable, paste that public URL (the PUBLIC_URL you set)");

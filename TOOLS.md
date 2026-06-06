@@ -1,6 +1,6 @@
 # The 48 tools
 
-> Full reference for every tool exposed by [whoop-mcp](README.md). Each entry has the input shape, source endpoint(s), and output shape. Catalog tools (`whoop_sports_catalog`, `whoop_lift_catalog`, `whoop_journal_catalog`) unlock their gated counterparts — see [README → Bundled catalogs](README.md#bundled-catalogs).
+> Full reference for every tool exposed by [totem](README.md). Each entry has the input shape, source endpoint(s), and output shape. Catalog tools (`whoop_sports_catalog`, `whoop_lift_catalog`, `whoop_journal_catalog`) unlock their gated counterparts — see [README → Bundled catalogs](README.md#bundled-catalogs).
 
 
 Below is every tool with its signature, source endpoints, and notes. Inputs are the zod schema; outputs are described as TypeScript-ish for brevity (full schemas in `src/schemas/`).

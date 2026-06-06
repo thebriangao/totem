@@ -1,19 +1,25 @@
 {
-  "name": "@briangaoo/whoop-mcp",
-  "version": "1.3.0",
-  "mcpName": "io.github.briangaoo/whoop-mcp",
-  "description": "Model Context Protocol server that wraps Whoop's private iOS API surface. 48 tools, read + write, structured zod-validated outputs, auto-refresh Cognito auth.",
+  "name": "@briangaoo/totem",
+  "version": "1.4.0",
+  "mcpName": "io.github.briangaoo/totem",
+  "description": "Totem — talk to your wearables with AI over MCP. Today: full Whoop access via its private iOS API (48 tools, read + write, zod-validated outputs, auto-refresh Cognito auth). Fitbit, Apple Watch, and Garmin adapters in progress.",
   "license": "MIT",
   "author": "Brian Gao",
   "repository": {
     "type": "git",
-    "url": "https://github.com/briangaoo/whoop-mcp.git"
+    "url": "https://github.com/briangaoo/totem.git"
   },
-  "homepage": "https://github.com/briangaoo/whoop-mcp#readme",
+  "homepage": "https://github.com/briangaoo/totem#readme",
   "keywords": [
     "mcp",
+    "totem",
+    "wearables",
     "whoop",
+    "fitbit",
+    "garmin",
+    "apple-watch",
     "fitness",
+    "health",
     "claude",
     "anthropic",
     "ai",
@@ -22,7 +28,7 @@
   ],
   "type": "module",
   "bin": {
-    "whoop-mcp": "./dist/cli/index.js"
+    "totem": "./dist/cli/index.js"
   },
   "files": [
     "dist/",
@@ -40,7 +46,7 @@
     ".dockerignore"
   ],
   "scripts": {},
-  "_scripts_note": "All workflows are `whoop-mcp <command>` (build, dev, dev:http, start, test, typecheck, auth, cloud, local, deploy, logs, ping, …). The only npm steps are `npm install` and, for the one-time build before the CLI is linked, `npx tsc`. See README → Get Started.",
+  "_scripts_note": "All workflows are `totem <command>` (build, dev, dev:http, start, test, typecheck, auth, cloud, local, deploy, logs, ping, …). The only npm steps are `npm install` and, for the one-time build before the CLI is linked, `npx tsc`. See README → Get Started.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.2",
