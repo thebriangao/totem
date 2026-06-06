@@ -435,12 +435,14 @@ Commands by group:
 |---|---|
 | **Get started** | `cloud` ★ (guided server deploy + Claude connect) · `local` (guided local setup) |
 | **Setup** | `auth` (log in + save tokens — re-run to re-auth; auto-detects local vs deployed and pushes new tokens to your deployment) |
-| **Deployed** | `deploy` · `logs` · `status` · `ping` |
+| **Deployed** | `deploy` · `update` (pull latest + redeploy) · `logs` · `status` · `ping` |
 | **Local dev** | `start [--http]` · `dev` · `dev:http` · `build` · `test` · `typecheck` |
 | **Inspect** | `info` · `tools` · `config <stdio\|http>` |
 | **Help** | `help` · `version` (+ `--help`, `-v` aliases) |
 
 Most people only ever need the two **Get started** commands plus `auth` (to re-auth when tokens expire). The rest are for power users — `totem ping` ("is my deploy alive"), `totem logs`, `totem start` (drop-in for `node dist/server.js`), etc.
+
+**Staying current — `totem update`.** Pulls the latest release from GitHub and redeploys in place: it compares your `HEAD` against `origin/main`, fast-forwards (or reinstalls the global package), rebuilds, redeploys to your existing host, and pings `/health` to confirm. `totem update --check` is a no-write dry run that just reports installed-vs-latest. It's opt-in — nothing auto-updates — so you stay in control of when new code ships to your deployment.
 
 ---
 

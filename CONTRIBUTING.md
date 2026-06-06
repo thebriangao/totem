@@ -102,6 +102,7 @@ Recent precedents to read:
 - **Live-API tests live in a separate `whoop-testing` archive.** They require a dummy account and aren't safe to expose to first-time users. If you want to add or run them, ask Brian.
 - When fixing a projection, update its fixture in `tests/fixtures/` and the corresponding test in `tests/projections/` (`round1`/`round2`/`round3`, plus `round3_data_fixes.test.ts` for the live-audit data-extraction regressions).
 - When changing the HTTP transport (`src/server-http.ts`) or auth model, add coverage to `tests/whoop/http_auth.test.ts`. The pattern is: boot a real server on an ephemeral port with a stub `WhoopClient`, then assert with `fetch()`.
+- **CI runs the same checks on every PR.** `.github/workflows/ci.yml` runs `tsc --noEmit`, the full `vitest` suite, and a build on each push to `main` and each pull request. Run `totem typecheck && totem test && totem build` locally before opening a PR and it'll pass green — nothing reaches `main` (or a merge) without it.
 
 ---
 
