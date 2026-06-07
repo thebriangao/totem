@@ -15,7 +15,7 @@
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  c, capture, captureAsync, spin, withSpinner, select, promptYesNo, ping, httpGet,
+  c, capture, captureAsync, spin, withSpinner, select, promptYesNo, ping, httpGet, commandExists,
 } from "./ui.js";
 
 // What index.ts hands us so this module stays free of the command registry.
@@ -106,10 +106,22 @@ async function fetchReleaseNotes(ctx: UpdateCtx): Promise<Map<string, { date?: s
 async function fetchVersions(ctx: UpdateCtx): Promise<VersionInfo[]> {
   const notes = await fetchReleaseNotes(ctx);
   let versions: string[] = [];
+  const commitDates = new Map<string, string>();
   if (ctx.isGit) {
     await captureAsync("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root });
     const out = capture("git", ["tag", "--sort=-v:refname"], { cwd: ctx.root }).stdout;
     versions = out.split("\n").map((s) => s.trim()).filter((t) => /^v\d+\.\d+\.\d+$/.test(t)).map((t) => t.replace(/^v/, ""));
+    // Date a version by when its CODE was committed, not the GitHub release's
+    // published_at — backfilled tags (e.g. v1.1.0, tagged days after v1.2.0) would
+    // otherwise show the wrong, out-of-order date. `*committerdate` dereferences an
+    // annotated tag to its commit; the trailing `committerdate` covers a lightweight
+    // tag. The regex just grabs the first YYYY-MM-DD after the ref, which is the
+    // commit date in both shapes.
+    const dates = capture("git", ["for-each-ref", "--format=%(refname:short) %(*committerdate:short) %(committerdate:short)", "refs/tags"], { cwd: ctx.root }).stdout;
+    for (const line of dates.split("\n")) {
+      const m = line.trim().match(/^v(\d+\.\d+\.\d+)\s+(\d{4}-\d{2}-\d{2})/);
+      if (m) commitDates.set(m[1]!, m[2]!);
+    }
   } else {
     const out = capture("npm", ["view", ctx.pkgName, "versions", "--json"]).stdout.trim();
     try {
@@ -118,7 +130,7 @@ async function fetchVersions(ctx: UpdateCtx): Promise<VersionInfo[]> {
     } catch { versions = []; }
   }
   versions = [...new Set(versions)].sort((a, b) => compareSemver(b, a));
-  return versions.map((v) => ({ version: v, tag: `v${v}`, date: notes.get(v)?.date, notes: notes.get(v)?.notes }));
+  return versions.map((v) => ({ version: v, tag: `v${v}`, date: commitDates.get(v) ?? notes.get(v)?.date, notes: notes.get(v)?.notes }));
 }
 
 // ── animated apply ──────────────────────────────────────────────────────────
@@ -164,9 +176,35 @@ async function applyVersion(ctx: UpdateCtx, target: VersionInfo, latest: Version
     if (!(await staged(`installing ${ctx.pkgName}@${target.version}`, () => captureAsync("npm", ["install", "-g", `${ctx.pkgName}@${target.version}`])))) return 1;
   }
 
-  // Redeploy the cloud instance (visible — `fly deploy` is long) + health-gate.
+  // Propagate the new code to wherever the server actually runs. What that takes
+  // depends entirely on the user's RECORDED deploy state — branch on it, never
+  // assume:
+  //   • no record        → nothing remote exists; local code is already updated.
+  //   • local (stdio)     → just restart the MCP client to pick up the new build.
+  //   • fly/railway/cloudrun → rebuild-from-source on deploy; fully automatic.
+  //   • custom / self-host → a container on a box we can't reach; we must NOT fake
+  //     a deploy or health-check (it'd pass against the OLD container) — print the
+  //     exact rebuild/restart steps instead.
   const d = ctx.detectDeploy();
-  if (d && d.platform !== "local") {
+  const AUTO_DEPLOY = new Set(["fly", "railway", "cloudrun"]);
+  if (!d || d.platform === "local") {
+    console.log(c.gray(d?.platform === "local"
+      ? "\n  Local install — restart your MCP client to load the new build."
+      : "\n  No deployment recorded — local code is updated (run `totem cloud` to deploy a server)."));
+  } else if (AUTO_DEPLOY.has(d.platform)) {
+    // The platform CLI must be present to push from here. If it's gone (a fresh
+    // machine, or you ran update from a different box than you deployed from),
+    // don't surface a cryptic `spawn fly ENOENT` + "server unchanged" — the local
+    // code IS updated; say plainly the redeploy needs the CLI.
+    const cliMissing = d.platform === "fly" ? !(commandExists("fly") || commandExists("flyctl"))
+      : d.platform === "railway" ? !commandExists("railway")
+      : !commandExists("gcloud");
+    if (cliMissing) {
+      const cli = d.platform === "fly" ? "flyctl" : d.platform === "railway" ? "railway" : "gcloud";
+      console.log(c.yellow(`\n  Local code updated — but the ${d.platform} CLI (${cli}) isn't installed here, so the deployment wasn't pushed.`));
+      console.log(c.gray(`    Install ${cli} and run \`totem deploy\`, or re-run \`totem cloud\`.`));
+      return 0;
+    }
     console.log(c.bold(`\n  Redeploying to ${d.platform}${d.app ? ` (${d.app})` : ""}…`));
     if ((await ctx.redeploy()) !== 0) { console.log(c.red("  ✗ deploy failed — your live server is unchanged.")); return 1; }
     if (d.url) {
@@ -178,10 +216,30 @@ async function applyVersion(ctx: UpdateCtx, target: VersionInfo, latest: Version
         return 1;
       }
     }
-  } else if (d?.platform === "local") {
-    console.log(c.gray("\n  Local install — restart your MCP client to load the new build."));
+    // A redeploy restarts the server. This is a code-only update — secrets persist
+    // on the host, so tokens carry over. But /health passing doesn't prove Whoop
+    // auth survived the restart (cloud uses the in-memory token store, which can
+    // strand a rotated refresh token), so point at the fix if calls start failing.
+    console.log(c.gray("  Tokens persist across the redeploy. If Whoop calls start failing afterward, run `totem auth` to refresh + re-push them."));
+  } else {
+    printSelfHostUpdate(ctx, d);
   }
   return 0;
+}
+
+// Self-hosted (Docker on a VPS / Render / a home box / …) — totem can't reach the
+// container, and the run command varies per user (compose, ports, restart policy,
+// remote host), so we never hardcode it: print the canonical rebuild/restart recipe
+// + the env file we wrote at deploy time, and let the user adapt it to their host.
+function printSelfHostUpdate(ctx: UpdateCtx, d: DeployInfo): void {
+  const hasEnv = existsSync(resolve(ctx.root, ".env.deploy"));
+  console.log(c.yellow(`\n  Self-hosted (${d.platform}) — finish the update where your container runs (totem can't reach it):`));
+  console.log(`  ${c.violet("1")}  Get this updated code onto that host  ${c.gray("(git pull your checkout there, or copy the build over)")}`);
+  console.log(`  ${c.violet("2")}  Rebuild:  ${c.cyan("docker build -t totem .")}`);
+  console.log(`  ${c.violet("3")}  Restart:  ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 --env-file ${hasEnv ? ".env.deploy" : "<your-env-file>"} totem`)}`);
+  console.log(`      ${c.gray("or: docker compose up -d --build  ·  or your host's redeploy (Render/Coolify/etc.)")}`);
+  if (d.url) console.log(`  ${c.violet("4")}  Verify:   ${c.gray(`curl ${cleanUrl(d.url)}/health`)}`);
+  console.log(c.gray("\n  Your local code + build are already on the new version — only the remote container is left."));
 }
 
 function printDone(version: string): void {

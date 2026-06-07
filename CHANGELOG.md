@@ -4,6 +4,20 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [1.4.3] — 2026-06-07
+
+Hardening pass on the `totem update` flow introduced in 1.4.2.
+
+### Changed
+
+- **The version picker dates each version by its commit date** (when that version's code was written), not the GitHub release's publish time. Backfilled tags — e.g. `v1.1.0`, tagged days after `v1.2.0` — now show their true date (2026-05-26) in chronological order. Also removed the duplicate `v1.0.0` tag/release (it pointed at the same initial commit as `v1.1.0`).
+
+### Fixed
+
+- **`totem update` handles every deployment state, branching on your recorded deploy — never a hardcoded assumption.** No deployment → updates local code only and says so (no phantom redeploy). Local/stdio → reminds you to restart the MCP client. Fly / Railway / Cloud Run → rebuild-from-source redeploy + `/health` gate. **Self-hosted (Docker / VPS / Render / home box)** → it used to print a vague line then run a `/health` check that *passed against the still-old container*, falsely reporting success; it now prints the exact rebuild + restart steps (with the `.env.deploy` it wrote) and skips the misleading health check, since totem can't reach a container running elsewhere.
+- **A missing platform CLI no longer fails cryptically.** Redeploying when `flyctl` / `railway` / `gcloud` isn't installed (a fresh machine, or updating from a different box than you deployed from) used to spawn-error with `ENOENT` + "server unchanged". It now reports that local code is updated but the deploy wasn't pushed, and how to finish it.
+- **Token carry-over after a redeploy is surfaced.** A redeploy restarts the server; secrets persist, but `/health` passing doesn't prove Whoop auth survived (the cloud memory token store can strand a rotated refresh token), so the success path points at `totem auth` if calls start failing.
+
 ## [1.4.2] — 2026-06-07
 
 ### Added
