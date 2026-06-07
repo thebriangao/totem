@@ -98,6 +98,42 @@ describe("projectJournal (captured v3 draft)", () => {
   });
 });
 
+// Regression for issue #2: submitted journal entries came back as `behaviors: []`.
+// The v3 drafts endpoint nests each logged behavior as
+// { behavior_tracker:{id,...}, tracker_input:{behavior_tracker_id, answered_yes, ...} };
+// the projection used to read behavior_tracker_id off the top level (always undefined),
+// so every behavior was dropped. This fixture is the real populated shape.
+describe("projectJournal (populated v3 draft — nested behavior shape)", () => {
+  const raw = load("journal_v3_populated.json");
+  const out = projectJournal(raw, "2026-06-07");
+
+  it("parses schema", () => {
+    expect(() => JournalOut.parse(out)).not.toThrow();
+  });
+  it("extracts all logged behaviors (not empty)", () => {
+    expect(out.behaviors.length).toBe(3);
+  });
+  it("resolves behavior ids from the nested tracker_input", () => {
+    expect(out.behaviors.map((b) => b.behavior_tracker_id).sort((a, z) => a - z)).toEqual([80, 271, 274]);
+  });
+  it("carries answered_yes through for boolean behaviors", () => {
+    const read = out.behaviors.find((b) => b.behavior_tracker_id === 271);
+    expect(read?.answered_yes).toBe(true);
+  });
+  it("carries the magnitude value + label through", () => {
+    const caffeine = out.behaviors.find((b) => b.behavior_tracker_id === 274);
+    expect(caffeine?.magnitude_value).toBe(22);
+    expect(caffeine?.magnitude_label).toBe("22");
+  });
+  it("populates a human-readable title for each behavior", () => {
+    expect(out.behaviors.every((b) => b.title.length > 0)).toBe(true);
+  });
+  it("extracts notes + cycle_id", () => {
+    expect(out.notes).toBe("felt good today");
+    expect(out.cycle_id).toBe(1553063494);
+  });
+});
+
 describe("projectLiftPrs (captured)", () => {
   const raw = load("lift_prs.json");
   const out = projectLiftPrs(raw);

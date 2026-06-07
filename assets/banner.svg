@@ -34,5 +34,5 @@
   "/>
 
   <!-- Stats: horizontally centered to viewBox midpoint -->
-  <text class="stats" x="410" y="245" text-anchor="middle" xml:space="preserve">v1.4.0<tspan class="sep">  ·  </tspan>48 tools<tspan class="sep">  ·  </tspan>47 microservices<tspan class="sep">  ·  </tspan>311 endpoints</text>
+  <text class="stats" x="410" y="245" text-anchor="middle" xml:space="preserve">v1.4.1<tspan class="sep">  ·  </tspan>48 tools<tspan class="sep">  ·  </tspan>47 microservices<tspan class="sep">  ·  </tspan>311 endpoints</text>
 </svg>

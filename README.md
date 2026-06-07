@@ -30,7 +30,7 @@
   <sub>▶ 2-min demo — the full <code>totem cloud</code> flow: install → Whoop login → Fly deploy → Claude connector → first query.</sub>
 </p>
 
-48 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, session-scoped catalog gate. TypeScript 6, Node 24, 212 tests.
+48 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, session-scoped catalog gate. TypeScript 6, Node 24, 219 tests.
 
 > **Totem is becoming a universal wearables bridge.** Whoop is the first adapter — every metric, fully wired. Fitbit, Apple Watch, and Garmin are in progress ([contributors welcome](CONTRIBUTING.md)). The MCP + projection layer is device-agnostic; an adapter just maps its source into the same shared schemas, so everything below applies to whatever you wear.
 

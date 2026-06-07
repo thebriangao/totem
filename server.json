@@ -6,12 +6,12 @@
     "url": "https://github.com/briangaoo/totem",
     "source": "github"
   },
-  "version": "1.4.0",
+  "version": "1.4.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@briangaoo/totem",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "transport": {
         "type": "stdio"
       },

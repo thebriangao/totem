@@ -27,18 +27,26 @@ export function projectJournal(raw: unknown, date: string): JournalOutT {
   const behaviors = inputs
     .map((i) => {
       if (!isObject(i)) return null;
-      const id = asNumber(i.behavior_tracker_id ?? i.behavior_id);
+      // The v3 drafts endpoint nests each logged behavior as
+      //   { behavior_tracker: { id, title, ... }, tracker_input: { behavior_tracker_id,
+      //     answered_yes, magnitude_input_value, magnitude_input_label, ... } }
+      // The flat shape (the v2 write body, and older captures) puts those fields
+      // directly on the entry. Read whichever exists — missing this nesting is why
+      // every behavior was being dropped and `behaviors` came back empty (issue #2).
+      const input = isObject(i.tracker_input) ? (i.tracker_input as Record<string, unknown>) : i;
+      const tracker = isObject(i.behavior_tracker) ? (i.behavior_tracker as Record<string, unknown>) : null;
+      const id = asNumber(input.behavior_tracker_id ?? (tracker ? tracker.id : undefined) ?? i.behavior_id);
       if (id === null) return null;
       const meta = BEHAVIORS_BY_ID.get(id);
       return {
         behavior_tracker_id: id,
-        title: meta?.title ?? "",
-        category: meta?.category ?? "",
-        internal_name: meta?.internal_name ?? "",
-        answered_yes: asBool(i.answered_yes),
-        magnitude_value: asNumber(i.magnitude_input_value),
-        magnitude_label: asString(i.magnitude_input_label),
-        recorded_at: asString(i.recorded_at),
+        title: meta?.title ?? asString(tracker?.title) ?? "",
+        category: meta?.category ?? asString(tracker?.category) ?? "",
+        internal_name: meta?.internal_name ?? asString(tracker?.internal_name) ?? "",
+        answered_yes: asBool(input.answered_yes),
+        magnitude_value: asNumber(input.magnitude_input_value),
+        magnitude_label: asString(input.magnitude_input_label),
+        recorded_at: asString(input.recorded_at),
       };
     })
     .filter((b): b is NonNullable<typeof b> => b !== null);

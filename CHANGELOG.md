@@ -4,6 +4,12 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-06-07
+
+### Fixed
+
+- **`whoop_journal` always returned `behaviors: []`** even when journal entries were logged and confirmed in the app ([#2](https://github.com/briangaoo/totem/issues/2), reported by @theanswertw). The v3 drafts endpoint nests each logged behavior as `{ behavior_tracker: {id, …}, tracker_input: {behavior_tracker_id, answered_yes, magnitude_input_*, …} }`, but the projection read `behavior_tracker_id` off the top level of each entry — always `undefined`, so every behavior was filtered out (while `cycle_id`, read from a different field, still came through). The projection now reads the nested `tracker_input`/`behavior_tracker` shape and falls back to the flat shape. Root-caused with a live write→read→restore probe against a real account; added a populated-draft fixture + regression tests so the empty-only fixture can't hide it again. Test suite 212 → 219.
+
 ## [1.4.0] — 2026-06-05
 
 ### Changed

@@ -1,0 +1,82 @@
+{
+  "integrations": null,
+  "journal": {
+    "tracked_behaviors": [
+      {
+        "behavior_tracker": {
+          "id": 80,
+          "behavior_type": "NEGATIVE",
+          "title": "Bloating",
+          "status": "active",
+          "category": "DAYTIME",
+          "journal_view_category": "DAYTIME",
+          "question_text": "Experienced bloating?",
+          "question_type": "YES_NO",
+          "internal_name": "bloating"
+        },
+        "tracker_input": {
+          "journal_entry_id": 0,
+          "created_at": 1780865476.129,
+          "updated_at": 1780865476.129,
+          "behavior_tracker_id": 80,
+          "magnitude_input_label": null,
+          "magnitude_input_value": null,
+          "source": "USER",
+          "answered_yes": null
+        }
+      },
+      {
+        "behavior_tracker": {
+          "id": 271,
+          "behavior_type": "POSITIVE",
+          "title": "Read",
+          "status": "active",
+          "category": "DAYTIME",
+          "question_type": "YES_NO",
+          "internal_name": "read"
+        },
+        "tracker_input": {
+          "journal_entry_id": 0,
+          "created_at": 1780865476.131,
+          "updated_at": 1780865476.131,
+          "behavior_tracker_id": 271,
+          "magnitude_input_label": null,
+          "magnitude_input_value": null,
+          "source": "USER",
+          "answered_yes": true
+        }
+      },
+      {
+        "behavior_tracker": {
+          "id": 274,
+          "behavior_type": "POSITIVE",
+          "title": "Caffeine",
+          "status": "active",
+          "category": "DAYTIME",
+          "question_type": "MAGNITUDE",
+          "internal_name": "caffeine_mg"
+        },
+        "tracker_input": {
+          "journal_entry_id": 0,
+          "created_at": 1780865476.133,
+          "updated_at": 1780865476.133,
+          "behavior_tracker_id": 274,
+          "magnitude_input_label": "22",
+          "magnitude_input_value": 22,
+          "source": "USER",
+          "answered_yes": true
+        }
+      }
+    ],
+    "user_id": 200001,
+    "cycle_id": 1553063494,
+    "journal_entry_id": null,
+    "notes": "felt good today",
+    "user_reviewed": null
+  },
+  "metadata": {
+    "header_text": "What's happening today?",
+    "experiment_variant": "neutral-state-for-all-behaviors"
+  },
+  "experiment_variant": "neutral-state-for-all-behaviors"
+}
