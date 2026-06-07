@@ -4,6 +4,14 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [1.4.2] — 2026-06-07
+
+### Added
+
+- **`totem update` is now an interactive updater.** Running it opens a version picker — every release, newest first, with dates + notes from GitHub Releases. The newest is the default; choosing an older one warns you what you'd be behind on (and you can re-run to go forward — being on the latest doesn't lock you out of pinning an older version). After you choose, it applies the change with a guided, animated build (git installs fast-forward `main` or check out the pinned tag, reinstall deps, rebuild; npm installs reinstall the chosen version), then redeploys to your existing host and health-checks `/health`. Requires a clean working tree (won't clobber local edits); a failed deploy leaves the live server untouched.
+- **Opt-in auto-update.** After updating to the latest, `totem update` offers to turn on auto-update — or toggle it directly with **`totem update --auto on`** / **`--auto off`**. When on, a background job (launchd on macOS, cron on Linux) checks for new releases every 6 hours and applies them the same way (pull → build → redeploy → health-check), logging to `.totem-autoupdate.log`. It's a scheduled poll (there's no push channel to a user's machine) and only ever moves you to **released**, CI-gated versions — never bleeding-edge `main`. `--auto on` also pulls the newest immediately.
+- Versions come from where they already live — git tags + GitHub Releases (git installs) and the npm registry (global installs) — so there's no separate version index to host. `totem update --check` remains a non-interactive installed-vs-latest preview and now also reports the auto-update state.
+
 ## [1.4.1] — 2026-06-07
 
 ### Fixed

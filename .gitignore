@@ -57,6 +57,8 @@ fly.toml
 
 # deploy record written by `totem cloud` (host-specific)
 .totem-deploy.json
+# log written by the `totem update --auto` background job
+.totem-autoupdate.log
 tool_audit_results.json
 tool_audit_condensed.json
 captures/

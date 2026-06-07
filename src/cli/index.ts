@@ -19,7 +19,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { request as httpsRequest } from "node:https";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
-import { runScript, capture } from "./ui.js";
+import { runUpdate } from "./update.js";
+import { runScript } from "./ui.js";
 
 // ── locate package root ──────────────────────────────────────────────────
 // This file lives at one of:
@@ -200,75 +201,18 @@ const commands: Record<string, Cmd> = {
   },
   update: {
     group: "Deployed",
-    desc: "Pull the latest code from GitHub, rebuild, and re-deploy your deployment — then health-check it. Updates this local install too. Use --check to preview without changing anything.",
-    usage: "totem update [--check]",
-    run: async (args) => {
-      const checkOnly = args.includes("--check");
-      const isGit = existsSync(resolve(ROOT, ".git"));
-      const d = detectDeploy();
-      console.log(c.bold("\ntotem update") + c.gray(`  — currently v${VERSION}\n`));
-
-      // ── 1. bring the local source/build up to date ──────────────────────
-      if (isGit) {
-        console.log(c.gray("Checking GitHub for newer code…"));
-        if ((await run("git", ["fetch", "--quiet", "origin"])) !== 0) {
-          console.error(c.red("  git fetch failed (offline, or no `origin` remote).")); return 1;
-        }
-        const behind = capture("git", ["rev-list", "--count", "HEAD..origin/main"], { cwd: ROOT }).stdout.trim();
-        const ahead = capture("git", ["rev-list", "--count", "origin/main..HEAD"], { cwd: ROOT }).stdout.trim();
-        if (behind === "0" || behind === "") {
-          console.log(c.green("  ✓ already up to date with GitHub."));
-        } else {
-          console.log(`  ${c.bold(behind)} new commit(s) upstream:`);
-          await run("git", ["--no-pager", "log", "--oneline", "HEAD..origin/main"]);
-          if (ahead !== "0" && ahead !== "") {
-            console.log(c.red(`\n  ⚠ You have ${ahead} local commit(s) not on GitHub — push or stash them first. Not pulling.`));
-            return 1;
-          }
-          if (checkOnly) {
-            console.log(c.gray("\n  --check: nothing applied. Run `totem update` to pull + rebuild + redeploy.")); return 0;
-          }
-          console.log(c.gray("\n  Pulling + rebuilding…"));
-          if ((await run("git", ["pull", "--ff-only", "origin", "main"])) !== 0) { console.error(c.red("  git pull failed.")); return 1; }
-          await run("npm", ["install"]);
-          if ((await run(npmBin("tsc"), [])) !== 0) { console.error(c.red("  build failed — local left at the previous build.")); return 1; }
-          console.log(c.green("  ✓ local updated + rebuilt."));
-        }
-      } else {
-        console.log(c.gray("Installed via npm (no git checkout) — updating from the registry…"));
-        if (checkOnly) {
-          const latest = capture("npm", ["view", PKG.name, "version"]).stdout.trim();
-          console.log(`  installed: v${VERSION}   ·   latest: v${latest || "?"}`);
-          console.log(c.gray(`  --check: run \`npm i -g ${PKG.name}@latest\` to update.`)); return 0;
-        }
-        if ((await run("npm", ["install", "-g", `${PKG.name}@latest`])) !== 0) { console.error(c.red("  npm update failed.")); return 1; }
-        console.log(c.green("  ✓ updated to the latest published version."));
-      }
-
-      // ── 2. re-deploy the cloud instance (if any) + health-check ──────────
-      if (d && d.platform !== "local") {
-        if (checkOnly) { console.log(c.gray(`\n  Would re-deploy your ${d.platform} deployment${d.app ? ` (${d.app})` : ""}.`)); return 0; }
-        console.log(c.bold(`\nRe-deploying ${d.platform}${d.app ? ` (${d.app})` : ""}…`));
-        if ((await commands.deploy!.run([])) !== 0) { console.error(c.red("  deploy failed — your live server is unchanged.")); return 1; }
-        if (d.url) {
-          console.log(c.gray(`\n  health check → GET ${cleanUrl(d.url)}/health`));
-          if ((await ping(`${cleanUrl(d.url)}/health`)) !== 0) {
-            console.log(c.red("\n  ⚠ /health didn't return 200 after deploy — the server may be unhealthy."));
-            console.log(c.gray(d.platform === "fly"
-              ? `  Roll back: \`fly releases -a ${d.app}\` then re-deploy the prior release.`
-              : "  Roll back to the previous version on your host."));
-            return 1;
-          }
-          console.log(c.green("  ✓ /health 200"));
-        }
-      } else if (!checkOnly) {
-        console.log(c.gray("\n  No cloud deployment recorded — local only. Restart your MCP client to load the new build."));
-      }
-
-      const now = (JSON.parse(readFileSync(PKG_PATH, "utf8")) as { version: string }).version;
-      console.log(c.green(`\n✓ Update complete — now on v${now}.\n`));
-      return 0;
-    },
+    desc: "Interactive updater: pick a version (newest is the default; older warns), apply it with a guided build + redeploy, then optionally turn on auto-update. `--auto on|off` toggles auto-update; `--check` previews installed-vs-latest.",
+    usage: "totem update [--check] [--auto on|off]",
+    run: async (args) => runUpdate(args, {
+      root: ROOT,
+      version: VERSION,
+      pkgPath: PKG_PATH,
+      pkgName: PKG.name,
+      cliEntry: fileURLToPath(import.meta.url),
+      isGit: existsSync(resolve(ROOT, ".git")),
+      detectDeploy,
+      redeploy: () => commands.deploy!.run([]),
+    }),
   },
   logs: {
     group: "Deployed",

@@ -30,7 +30,7 @@
   <sub>▶ 2-min demo — the full <code>totem cloud</code> flow: install → Whoop login → Fly deploy → Claude connector → first query.</sub>
 </p>
 
-48 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, session-scoped catalog gate. TypeScript 6, Node 24, 219 tests.
+48 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, session-scoped catalog gate. TypeScript 6, Node 24, 233 tests.
 
 > **Totem is becoming a universal wearables bridge.** Whoop is the first adapter — every metric, fully wired. Fitbit, Apple Watch, and Garmin are in progress ([contributors welcome](CONTRIBUTING.md)). The MCP + projection layer is device-agnostic; an adapter just maps its source into the same shared schemas, so everything below applies to whatever you wear.
 
@@ -435,14 +435,25 @@ Commands by group:
 |---|---|
 | **Get started** | `cloud` ★ (guided server deploy + Claude connect) · `local` (guided local setup) |
 | **Setup** | `auth` (log in + save tokens — re-run to re-auth; auto-detects local vs deployed and pushes new tokens to your deployment) |
-| **Deployed** | `deploy` · `update` (pull latest + redeploy) · `logs` · `status` · `ping` |
+| **Deployed** | `deploy` · `update` (interactive version picker + auto-update) · `logs` · `status` · `ping` |
 | **Local dev** | `start [--http]` · `dev` · `dev:http` · `build` · `test` · `typecheck` |
 | **Inspect** | `info` · `tools` · `config <stdio\|http>` |
 | **Help** | `help` · `version` (+ `--help`, `-v` aliases) |
 
 Most people only ever need the two **Get started** commands plus `auth` (to re-auth when tokens expire). The rest are for power users — `totem ping` ("is my deploy alive"), `totem logs`, `totem start` (drop-in for `node dist/server.js`), etc.
 
-**Staying current — `totem update`.** Pulls the latest release from GitHub and redeploys in place: it compares your `HEAD` against `origin/main`, fast-forwards (or reinstalls the global package), rebuilds, redeploys to your existing host, and pings `/health` to confirm. `totem update --check` is a no-write dry run that just reports installed-vs-latest. It's opt-in — nothing auto-updates — so you stay in control of when new code ships to your deployment.
+**Staying current — `totem update`.** An interactive updater. Run it and you get a version picker — every release, newest first, with dates and notes pulled from GitHub Releases. The newest is the default; pick anything older and it warns you what you'd be behind on (you can always run it again to go forward). After you choose, it applies the change with a guided, animated build — git installs fast-forward `main` (or check out the pinned tag), reinstall deps, and rebuild; npm installs reinstall the chosen version — then redeploys to your existing host and health-checks `/health`. A clean working tree is required (it won't clobber local edits), and a failed deploy leaves your live server untouched.
+
+After a successful update to the latest it offers **auto-update**. Turn it on and a background job (launchd on macOS, cron on Linux) checks for new releases every 6 hours and applies them the same way — pull, build, redeploy, health-check — logging to `.totem-autoupdate.log`. There's no push channel to your machine, so it's a scheduled poll, not instant. Toggle it directly anytime:
+
+```bash
+totem update              # interactive: pick a version, then optionally enable auto-update
+totem update --auto on    # turn auto-update on (and pull the newest now)
+totem update --auto off   # turn it off
+totem update --check       # non-interactive: print installed-vs-latest + auto state
+```
+
+Versions are sourced from the places that already host them — git tags + GitHub Releases for git installs, the npm registry for global installs — so there's nothing extra to maintain. Auto-update is opt-in and only ever moves you to **released** versions (every release is CI-gated), never bleeding-edge `main`.
 
 ---
 
