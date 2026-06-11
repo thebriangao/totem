@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/briangaoo-totem-badge.png)](https://mseep.ai/app/briangaoo-totem)
+
 <p align="center">
   <img src="assets/banner.svg" alt="totem — 48 tools, 47 microservices, 311 endpoints" width="820">
 </p>
