@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.briangaoo/totem",
+  "name": "io.github.thebriangao/totem",
   "description": "Totem — talk to your wearables with AI. Today: full Whoop access (48 tools).",
   "repository": {
-    "url": "https://github.com/briangaoo/totem",
+    "url": "https://github.com/thebriangao/totem",
     "source": "github"
   },
-  "version": "1.4.3",
+  "version": "1.4.4",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "@briangaoo/totem",
-      "version": "1.4.3",
+      "identifier": "@thebriangao/totem",
+      "version": "1.4.4",
       "transport": {
         "type": "stdio"
       },

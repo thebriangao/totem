@@ -21,7 +21,7 @@ This server holds AWS Cognito access + refresh tokens for your Whoop account and
 
 Email **briangaoo2@gmail.com** with subject `[totem security]`. Please don't open a public GitHub issue for security reports.
 
-For non-security bug reports, [open an issue](https://github.com/briangaoo/totem/issues).
+For non-security bug reports, [open an issue](https://github.com/thebriangao/totem/issues).
 
 ## What counts as security
 

@@ -37,7 +37,7 @@ See [README.md → Architecture](README.md#architecture) for the full pattern wa
 ## Setup
 
 ```bash
-git clone https://github.com/briangaoo/totem.git
+git clone https://github.com/thebriangao/totem.git
 cd totem
 npm install
 npx tsc && npm link          # one-time: builds + puts `totem` on PATH

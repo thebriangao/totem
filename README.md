@@ -68,7 +68,7 @@
 **Prerequisites:** Node 24+ and a Whoop account (any membership tier).
 
 ```bash
-git clone https://github.com/briangaoo/totem.git
+git clone https://github.com/thebriangao/totem.git
 cd totem && npm install && npx tsc && npm link
 ```
 
@@ -364,7 +364,7 @@ In your Space → **Settings → Variables and Secrets**, add the following. The
 Clone this repo and add your HuggingFace Space as a remote, then push:
 
 ```bash
-git clone https://github.com/briangaoo/totem
+git clone https://github.com/thebriangao/totem
 cd totem
 
 # Add your HuggingFace Space as a remote

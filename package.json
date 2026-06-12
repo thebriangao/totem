@@ -1,15 +1,15 @@
 {
-  "name": "@briangaoo/totem",
-  "version": "1.4.3",
-  "mcpName": "io.github.briangaoo/totem",
+  "name": "@thebriangao/totem",
+  "version": "1.4.4",
+  "mcpName": "io.github.thebriangao/totem",
   "description": "Totem — talk to your wearables with AI over MCP. Today: full Whoop access via its private iOS API (48 tools, read + write, zod-validated outputs, auto-refresh Cognito auth). Fitbit, Apple Watch, and Garmin adapters in progress.",
   "license": "MIT",
   "author": "Brian Gao",
   "repository": {
     "type": "git",
-    "url": "https://github.com/briangaoo/totem.git"
+    "url": "https://github.com/thebriangao/totem.git"
   },
-  "homepage": "https://github.com/briangaoo/totem#readme",
+  "homepage": "https://github.com/thebriangao/totem#readme",
   "keywords": [
     "mcp",
     "totem",

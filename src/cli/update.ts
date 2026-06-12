@@ -23,7 +23,7 @@ export interface UpdateCtx {
   root: string;
   version: string;        // current version (PKG.version)
   pkgPath: string;        // path to package.json
-  pkgName: string;        // @briangaoo/totem
+  pkgName: string;        // @thebriangao/totem
   cliEntry: string;       // absolute path to the running dist/cli/index.js (for the scheduler)
   isGit: boolean;         // git checkout vs npm-global install
   detectDeploy: () => DeployInfo | null;
