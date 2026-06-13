@@ -1,4 +1,4 @@
-# The 48 tools
+# The 49 tools
 
 > Full reference for every tool exposed by [totem](README.md). Each entry has the input shape, source endpoint(s), and output shape. Catalog tools (`whoop_sports_catalog`, `whoop_lift_catalog`, `whoop_journal_catalog`) unlock their gated counterparts — see [README → Bundled catalogs](README.md#bundled-catalogs).
 
@@ -35,7 +35,7 @@ Per-day recovery / sleep / strain scores for a month.
 - **Source endpoints (2 parallel):** `/home-service/v1/calendar/overview?date=`, `/home-service/v1/calendar/recovery?date=`
 - **Output:** `{month: "YYYY-MM", days: [{date, recovery_score, recovery_state, sleep_score, day_strain}]}`
 
-### Deep dives (3)
+### Deep dives (3 read + 1 write)
 
 #### `whoop_recovery`
 Recovery score + HRV (with baseline) + RHR (with baseline) + respiratory rate + SpO2 + skin temp + sleep performance.
@@ -57,6 +57,14 @@ Sleep duration, time in bed, efficiency, performance, consistency, all 4 stages 
 Note: the underlying endpoint is 848 KB. The projection extracts ~500 chars.
 
 **Partially populated** — `sleep_hrv_ms`, `respiratory_rate`, `debt_ms`, `latency_ms` aren't exposed by this endpoint and return `null`. Everything else **is** populated: the per-stage durations + percentages (REM/light/SWS/wake), the **`hypnogram`** (reconstructed from the per-stage HR-curve points — timed off their clock labels, anchored to the sleep window), and **`sleep_hr`** (avg/min).
+
+#### `whoop_sleep_edit` ⚠️ WRITE
+Change a sleep's start and/or end time. Resolves the sleep's `activity_id` from `date`; an omitted bound keeps the current value. Times are sent as UTC. Set `resolve_overlaps:true` if the new window overlaps an adjacent sleep/nap.
+
+- **Input:** `{date?: string, start?: string (ISO+offset), end?: string (ISO+offset), resolve_overlaps?: boolean, confirm?: boolean}` (at least one of `start`/`end` required)
+- **Source:** `GET /home-service/v1/deep-dive/sleep/last-night?date=` to resolve `activity_id` + current window, then `PUT /core-details-bff/v2/sleep-details/{activityId}` with body `{start_time, end_time, resolve_overlaps?}`
+- **Output (confirm=false):** `{preview: true, will_execute: {...}, set_confirm_true_to_run: true}`
+- **Output (confirm=true):** `{edited: true, activity_id, start, end}`
 
 #### `whoop_strain`
 Day strain + HR zone time buckets + steps + strength activity time + workouts count.

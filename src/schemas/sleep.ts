@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IsoDateTime } from "./primitives.js";
+import { IsoDateTime, withPreview } from "./primitives.js";
 
 export const SleepStageEnum = z.enum(["AWAKE", "LIGHT", "REM", "SWS"]);
 
@@ -38,3 +38,10 @@ export const SleepOut = z.object({
   respiratory_rate: z.number().nullable(),
 });
 export type SleepOutT = z.infer<typeof SleepOut>;
+
+export const SleepEditOut = withPreview(z.object({
+  edited: z.literal(true),
+  activity_id: z.string(),
+  start: IsoDateTime,
+  end: IsoDateTime,
+}));
