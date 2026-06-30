@@ -13,6 +13,7 @@ import { projectBehaviorImpact } from "../../src/projections/behavior_impact.js"
 import { projectWorkout } from "../../src/projections/workout.js";
 import { projectLiftProgression } from "../../src/projections/lift_progression.js";
 import { projectRecovery } from "../../src/projections/recovery.js";
+import { projectPerformanceAssessment } from "../../src/projections/performance_assessment.js";
 
 import { TrendOut } from "../../src/schemas/trend.js";
 import { CycleOut } from "../../src/schemas/womens_health.js";
@@ -22,6 +23,7 @@ import { BehaviorImpactOut } from "../../src/schemas/journal.js";
 import { WorkoutOut } from "../../src/schemas/workouts.js";
 import { LiftProgressionOut } from "../../src/schemas/strength.js";
 import { RecoveryOut } from "../../src/schemas/recovery.js";
+import { PerformanceAssessmentOut } from "../../src/schemas/performance.js";
 
 const load = (name: string): unknown => JSON.parse(readFileSync(resolve("tests/fixtures", name), "utf8"));
 
@@ -175,5 +177,30 @@ describe("projectRecovery — SpO2 + skin temp from /developer/v2/recovery", () 
   });
   it("surfaces skin temperature from the v2 record (was null pre-fix)", () => {
     expect(out.skin_temp_c).toBe(33.7);
+  });
+});
+
+
+describe("projectPerformanceAssessment - 1000 sentinel for recovery counts -> null", () => {
+  const raw = {
+    is_assessment_needed: true,
+    has_assessment: false,
+    total_recoveries: 1000,
+    required_recoveries: 14,
+    recoveries_before_recent_cutoff: 1000,
+    expected_assessment_during: "['2026-05-01','2026-06-01')",
+    next_assessment_during: "['2026-06-01','2026-07-01')",
+  };
+  const out = projectPerformanceAssessment(raw, "MONTH");
+
+  it("parses schema", () => {
+    expect(() => PerformanceAssessmentOut.parse(out)).not.toThrow();
+  });
+  it("nulls the 1000 sentinel rather than reporting a fake count", () => {
+    expect(out.total_recoveries).toBeNull();
+    expect(out.recoveries_before_recent_cutoff).toBeNull();
+  });
+  it("keeps real counts intact", () => {
+    expect(out.required_recoveries).toBe(14);
   });
 });

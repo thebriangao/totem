@@ -22,7 +22,9 @@ export function registerDay(server: McpServer, client: WhoopClient): void {
         client.get("/home-service/v1/home", { date }),
         // Light sleep summary (~1 KB) — the full hypnogram lives in whoop_sleep.
         client.get("/developer/v2/activity/sleep", { start, end, limit: "10" }).catch(() => null),
-        client.get("/developer/v2/recovery", { start, end, limit: "10" }).catch(() => null),
+        // Deep-dive recovery is date-aligned; the /developer/v2/recovery records
+        // match by UTC created_at, which is off-by-one on historical lookups.
+        client.get("/home-service/v1/deep-dive/recovery", { date }).catch(() => null),
       ]);
       const projected = projectToday({ home, sleep, recovery, state: null, date });
       try {
