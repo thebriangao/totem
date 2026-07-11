@@ -18,8 +18,10 @@ export function registerToday(server: McpServer, client: WhoopClient): void {
         client.get("/home-service/v1/home", { date }),
         // Light sleep summary (~1 KB) — the full hypnogram lives in whoop_sleep.
         client.get("/developer/v2/activity/sleep", { limit: "5" }).catch(() => null),
-        // HRV / RHR (the /home gauge only carries the recovery score).
-        client.get("/developer/v2/recovery", { limit: "5" }).catch(() => null),
+        // HRV / RHR from the date-aligned deep-dive recovery tile. (The /home gauge
+        // only carries the score; matching /developer/v2/recovery by created_at is
+        // off-by-one for non-UTC users because created_at is UTC.)
+        client.get("/home-service/v1/deep-dive/recovery", { date }).catch(() => null),
         client.get("/activities-service/v1/user-state").catch(() => null),
       ]);
       const projected = projectToday({ home, sleep, recovery, state, date });

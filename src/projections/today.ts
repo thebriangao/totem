@@ -1,6 +1,6 @@
 import type { TodayOutT } from "../schemas/today.js";
 import { findByType, isObject, asArray, asNumber, asString } from "../lib/walk.js";
-import { stateFromStyle } from "./recovery.js";
+import { projectRecovery, stateFromStyle } from "./recovery.js";
 
 // Whoop's home payload's authoritative score source is SCORE_GAUGE_STICKY which
 // contains a gauges[] array with one entry per pillar (SLEEP, RECOVERY, STRAIN).
@@ -74,18 +74,11 @@ function sleepSummary(resp: unknown, date: string): SleepSummary | null {
   };
 }
 
-// HRV + RHR from the lightweight /developer/v2/recovery endpoint (the /home gauge
-// only carries the recovery *score*, not the underlying HRV/RHR). Picks the
-// recovery whose created date matches `date`, else the most recent.
-function recoverySummary(resp: unknown, date: string): { hrv_ms: number | null; rhr_bpm: number | null } {
-  const records = asArray(isObject(resp) ? resp.records : null).filter(
-    (r): r is Record<string, unknown> => isObject(r),
-  );
-  const pick = records.find((r) => asString(r.created_at)?.slice(0, 10) === date) ?? records[0];
-  const score = pick && isObject(pick.score) ? (pick.score as Record<string, unknown>) : {};
-  const hrv = asNumber(score.hrv_rmssd_milli);
-  return { hrv_ms: hrv === null ? null : Math.round(hrv), rhr_bpm: asNumber(score.resting_heart_rate) };
-}
+// HRV + RHR come from the date-aligned deep-dive recovery payload via
+// projectRecovery (the same source whoop_recovery uses). The previous approach
+// matched /developer/v2/recovery records by created_at.slice(0,10), which is
+// off-by-one because created_at is UTC: on a historical lookup it returned the
+// adjacent day HRV/RHR.
 
 export function projectToday(input: ProjectTodayInput): TodayOutT {
   const { home, sleep, recovery, state, date } = input;
@@ -99,8 +92,11 @@ export function projectToday(input: ProjectTodayInput): TodayOutT {
 
   const recoveryStyle = recoveryGauge ? asString(recoveryGauge.progress_fill_style) : null;
 
-  // Count workouts: ACTIVITY tiles in home (excludes the navigation tiles by checking for content)
-  let workoutsCount = 0;
+  // Count workouts: ACTIVITY tiles in home with real content. Whoop lists the
+  // nightly SLEEP as an ACTIVITY tile too (content.type === "SLEEP"); exclude it
+  // so the count reflects true exercises only. Dedupe by activity id in case a
+  // tile is referenced from more than one section.
+  const workoutIds = new Set<string>();
   function countWorkouts(n: unknown): void {
     if (Array.isArray(n)) {
       for (const x of n) countWorkouts(x);
@@ -109,15 +105,21 @@ export function projectToday(input: ProjectTodayInput): TodayOutT {
     if (!isObject(n)) return;
     if (n.type === "ACTIVITY") {
       const c = isObject(n.content) ? (n.content as Record<string, unknown>) : null;
-      if (c && asString(c.title)) workoutsCount++;
+      const title = c ? asString(c.title) : null;
+      const innerType = c ? asString(c.type) : null;
+      if (c && title && innerType?.toUpperCase() !== "SLEEP") {
+        const id = asString(c.activity_v2_id) ?? `${title}|${asString(c.start_time_text) ?? ""}`;
+        workoutIds.add(id);
+      }
     }
     for (const v of Object.values(n)) countWorkouts(v);
   }
   countWorkouts(home);
+  const workoutsCount = workoutIds.size;
 
   // Sleep summary from the lightweight /developer/v2/activity/sleep endpoint
   const sleepSum = sleep ? sleepSummary(sleep, date) : null;
-  const recSum = recovery ? recoverySummary(recovery, date) : null;
+  const recProj = recovery ? projectRecovery(recovery, date) : null;
 
   // Activity state
   const stateObj = isObject(state) ? state : {};
@@ -133,8 +135,8 @@ export function projectToday(input: ProjectTodayInput): TodayOutT {
     recovery: {
       score: gaugeScore(recoveryGauge),
       state: stateFromStyle(recoveryStyle),
-      hrv_ms: recSum?.hrv_ms ?? null,
-      rhr_bpm: recSum?.rhr_bpm ?? null,
+      hrv_ms: recProj?.hrv.ms ?? null,
+      rhr_bpm: recProj?.rhr.bpm ?? null,
     },
     sleep: {
       performance_pct: gaugeScore(sleepGauge) ?? sleepSum?.performance_pct ?? null,

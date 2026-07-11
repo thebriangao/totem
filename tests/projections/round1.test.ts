@@ -148,7 +148,7 @@ describe("projectSleep (captured)", () => {
 describe("projectToday for whoop_day (state=null, past date)", () => {
   const home = load("home.json");
   const sleep = load("activity_sleep.json");
-  const out = projectToday({ home, sleep, recovery: load("activity_recovery.json"), state: null, date: "2026-05-22" });
+  const out = projectToday({ home, sleep, recovery: load("deep_dive_recovery.json"), state: null, date: "2026-05-22" });
 
   it("parses schema with state=null", () => {
     expect(() => TodayOut.parse(out)).not.toThrow();
@@ -171,7 +171,7 @@ describe("projectToday for whoop_day (state=null, past date)", () => {
 describe("projectToday (captured)", () => {
   const home = load("home.json");
   const sleep = load("activity_sleep.json");
-  const out = projectToday({ home, sleep, recovery: load("activity_recovery.json"), state: null, date: "2026-05-23" });
+  const out = projectToday({ home, sleep, recovery: load("deep_dive_recovery.json"), state: null, date: "2026-05-23" });
 
   it("parses schema", () => {
     expect(() => TodayOut.parse(out)).not.toThrow();
@@ -186,8 +186,10 @@ describe("projectToday (captured)", () => {
   it("extracts strain score (17.8)", () => {
     expect(out.strain.score).toBe(17.8);
   });
-  it("counts ACTIVITY tiles for workouts_count > 0", () => {
-    expect(out.strain.workouts_count).toBeGreaterThanOrEqual(0);
+  it("counts ACTIVITY tiles, excluding the SLEEP tile", () => {
+    // home.json has two titled ACTIVITY tiles: "SLEEP" and "STRENGTH TRAINER".
+    // Only the workout counts toward the total.
+    expect(out.strain.workouts_count).toBe(1);
   });
   it("populates sleep stages from the companion sleep summary", () => {
     expect(out.sleep.stages.rem_ms).toBeGreaterThan(0);
@@ -195,9 +197,9 @@ describe("projectToday (captured)", () => {
     expect(out.sleep.stages.sws_ms).toBeGreaterThan(0);
     expect(out.sleep.total_sleep_ms).toBeGreaterThan(0);
   });
-  it("populates recovery HRV + RHR from /developer/v2/recovery", () => {
-    expect(out.recovery.hrv_ms).toBeGreaterThan(0);
-    expect(out.recovery.rhr_bpm).toBeGreaterThan(0);
+  it("populates recovery HRV + RHR from the date-aligned deep-dive recovery tile", () => {
+    expect(out.recovery.hrv_ms).toBe(42);
+    expect(out.recovery.rhr_bpm).toBe(68);
   });
 });
 
