@@ -88,7 +88,7 @@ function printBanner(): void {
     "",
     w(ANSI.brandDim, "   ▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁"),
     "",
-    `   ${w(ANSI.bold, "v" + VERSION)}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "48 tools")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "47 microservices")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "311 endpoints")}`,
+    `   ${w(ANSI.bold, "v" + VERSION)}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "49 tools")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "47 microservices")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "311 endpoints")}`,
     "",
   ];
   for (const line of lines) console.error(line);
@@ -312,7 +312,7 @@ const commands: Record<string, Cmd> = {
   },
   tools: {
     group: "Inspect",
-    desc: "List the MCP tools the server exposes (48 total)",
+    desc: "List the MCP tools the server exposes (49 total)",
     run: async () => {
       const reads = [
         "whoop_today", "whoop_day", "whoop_profile", "whoop_calendar", "whoop_recovery",
@@ -325,7 +325,7 @@ const commands: Record<string, Cmd> = {
         "whoop_smart_alarm", "whoop_leaderboard", "whoop_communities", "whoop_hr_zones",
       ];
       const writes = [
-        "whoop_activity_create", "whoop_activity_delete", "whoop_lift_log",
+        "whoop_activity_create", "whoop_activity_delete", "whoop_sleep_edit", "whoop_lift_log",
         "whoop_lift_template_save", "whoop_lift_custom_exercise", "whoop_journal_log",
         "whoop_journal_autopop", "whoop_cycle_log", "whoop_symptom_log",
         "whoop_smart_alarm_set", "whoop_hr_zones_set", "whoop_profile_update",

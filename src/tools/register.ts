@@ -9,6 +9,7 @@ import { registerCalendar } from "./v2/calendar.js";
 // Deep dives
 import { registerRecovery } from "./v2/recovery.js";
 import { registerSleep } from "./v2/sleep.js";
+import { registerSleepEdit } from "./v2/sleep_edit.js";
 import { registerStrain } from "./v2/strain.js";
 // Trends + compare
 import { registerTrend } from "./v2/trend.js";
@@ -99,9 +100,10 @@ export function registerTools(server: McpServer, client: WhoopClient): void {
   registerLeaderboard(server, client);
   registerCommunities(server, client);
   registerHrZones(server, client);
-  // Writes (14: 13 + coach_ask)
+  // Writes (15: 14 + coach_ask)
   registerActivityCreate(server, client);
   registerActivityDelete(server, client);
+  registerSleepEdit(server, client);
   registerLiftLog(server, client);
   registerLiftTemplateSave(server, client);
   registerLiftCustomExercise(server, client);
