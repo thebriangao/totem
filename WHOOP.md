@@ -1909,6 +1909,71 @@ The captured body is 457 KB. Abridged structure:
 
 Wrapped as `whoop_lift_log`. Set timestamps default to a 100ms placeholder range per set; Whoop accepts this.
 
+#### Link-cardio-workout body (attach a lift to an existing activity)
+
+`POST /weightlifting-service/v2/weightlifting-workout/link-cardio-workout` is the endpoint behind the app's **"Calculate Muscular Load"** option on a strap-tracked activity (the `LINK_MSK_WORKOUT` menu action, gated by `link_workout_option_enabled` in `cardio-details`). Unlike `.../weightlifting-workout/activity` — which *creates* a new Strength Trainer activity — this **attaches** set-by-set strength data to an activity that already exists (e.g. a `weightlifting` cardio activity the strap recorded), so the one activity carries both the HR/cardio strain and the computed Muscular Load. Afterwards the activity reports as `weightlifting_msk`.
+
+It is a **two-call sequence**, mirroring the iOS app:
+
+1. `POST /weightlifting-service/v3/workout-template` with `{name, workout_groups}` → returns `{workout_template_key, ...}`.
+2. `POST /weightlifting-service/v2/weightlifting-workout/link-cardio-workout` with the template inline **plus** that key and the target `activity_id`:
+
+```json
+{
+  "template": {
+    "workout_groups": [
+      {
+        "workout_exercises": [
+          {
+            "sets": [
+              { "weight": 15, "number_of_reps": 2 },
+              { "weight": 15, "number_of_reps": 3 }
+            ],
+            "exercise_details": { /* full catalog exercise, same shape as the log body */ }
+          }
+        ]
+      }
+    ],
+    "name": "20 Jul 2026",
+    "source": "USER",
+    "workout_template_key": {templateId}
+  },
+  "rpe": 0,
+  "template_id": {templateId},
+  "activity_id": "{activityId}"
+}
+```
+
+**Critical details:**
+
+- **Sets are far simpler here than in the log body** — just `{weight, number_of_reps}` (plus `time_in_seconds` for `TIME`-format exercises). No `during` range, no `weightlifting_workout_set_id`, no `strap_location*`, no per-set `msk_total_volume_kg`: Whoop derives the workout window from the linked activity.
+- `exercise_details` is still the full denormalized catalog object (`created_at`/`updated_at` must be non-empty, same 422-on-empty rule as the log body).
+- `template_id` and `template.workout_template_key` are both the integer returned by the step-1 template `POST`; they match.
+- `rpe` observed as `0`.
+- Response 200: `{original_activity_id, original_activity_type, workout_metadata}`, where `workout_metadata` is the now-linked activity carrying a fresh `weightlifting_workout_id`, `workout_template_id`, `total_effective_volume_kg`, and `scaled_msk_strain_score`:
+
+```json
+{
+  "original_activity_id": "{activityId}",
+  "original_activity_type": "weightlifting",
+  "workout_metadata": {
+    "id": "{activityId}",
+    "user_id": {userId},
+    "during": "['2026-07-20T16:36:34.972Z','2026-07-20T18:09:29.181Z')",
+    "score_type": "CARDIO",
+    "type": "weightlifting",
+    "weightlifting_workout_id": "{uuid}",
+    "workout_template_id": {templateId},
+    "total_effective_volume_kg": 141.65,
+    "raw_msk_strain_score": 0.00199,
+    "msk_intensity_percent": 0.4,
+    "scaled_msk_strain_score": 0.197
+  }
+}
+```
+
+Not yet wrapped by the MCP. Independently captured from the iOS app (mitmproxy); account-specific IDs above are templated as `{activityId}` / `{userId}` / `{templateId}` / `{uuid}`.
+
 The MCP exposes `whoop_lift_prs, whoop_lift_exercise, whoop_lift_progression, whoop_lift_history, whoop_lift_library, whoop_lift_catalog, whoop_lift_log, whoop_lift_template_save, whoop_lift_custom_exercise`.
 
 ### widget-service
