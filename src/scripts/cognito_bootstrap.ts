@@ -10,42 +10,29 @@
 // When invoked as a sub-step of `totem cloud` / `local` (which handle the
 // deploy themselves), set WHOOP_AUTH_TOKENS_ONLY=1 to skip the push step.
 import "dotenv/config";
-import { readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { createInterface } from "node:readline/promises";
 import { resolve } from "node:path";
 import { bootstrapCognito, refreshCognitoSession } from "../whoop/cognito.js";
+import { readEnvFile, upsertEnvFile, deleteEnvKeys as deleteEnvFileKeys } from "../lib/env_file.js";
+import { prompt, promptHidden } from "../cli/ui.js";
 
 const ENV_PATH = resolve(".env");
 const RECORD_PATH = resolve(".totem-deploy.json");
 
+// All .env access goes through src/lib/env_file.ts so values containing `#`
+// (or quotes, or edge whitespace) survive the round-trip — see issue #27.
 function readEnv(key: string): string | undefined {
-  if (!existsSync(ENV_PATH)) return undefined;
-  const m = readFileSync(ENV_PATH, "utf8").match(new RegExp(`^${key}=(.+)$`, "m"));
-  return m ? m[1] : undefined;
+  return readEnvFile(ENV_PATH)[key];
 }
 
 function upsertEnv(updates: Record<string, string>): void {
-  const current = existsSync(ENV_PATH) ? readFileSync(ENV_PATH, "utf8") : "";
-  const lines = current.split("\n");
-  for (const [key, value] of Object.entries(updates)) {
-    const idx = lines.findIndex((l) => l.startsWith(`${key}=`));
-    const entry = `${key}=${value}`;
-    if (idx >= 0) lines[idx] = entry;
-    else lines.push(entry);
-  }
-  // 0600 — holds the refresh token (and, transiently, the password).
-  writeFileSync(ENV_PATH, lines.join("\n"), { mode: 0o600 });
-  try { chmodSync(ENV_PATH, 0o600); } catch { /* best-effort */ }
+  upsertEnvFile(ENV_PATH, updates);
 }
 
 // Remove keys from .env (used to wipe the one-time password after bootstrap).
 function deleteEnvKeys(keys: string[]): void {
-  if (!existsSync(ENV_PATH)) return;
-  const lines = readFileSync(ENV_PATH, "utf8").split("\n")
-    .filter((l) => !keys.some((k) => l.startsWith(`${k}=`)));
-  writeFileSync(ENV_PATH, lines.join("\n"), { mode: 0o600 });
-  try { chmodSync(ENV_PATH, 0o600); } catch { /* best-effort */ }
+  deleteEnvFileKeys(ENV_PATH, keys);
 }
 
 interface DeployTarget {
@@ -142,37 +129,22 @@ function pushTokens(t: DeployTarget, accessToken: string, refreshToken: string):
   }
 }
 
-// Masked question — the typed password is never echoed to the screen (so it
-// can't be read off a recording / over a shoulder). Only the prompt and the
-// commit newline are written; per-character echoes are swallowed.
-async function questionHidden(rl: ReturnType<typeof createInterface>, query: string): Promise<string> {
-  // Write the prompt ourselves, swallow ALL readline echo (no redraw can leak
-  // the secret), then RESTORE echo — the same readline handles the visible MFA
-  // prompt afterward.
-  process.stdout.write(query);
-  const out = rl as unknown as { _writeToOutput?: (s: string) => void };
-  const orig = out._writeToOutput?.bind(rl);
-  out._writeToOutput = (): void => {};
-  try {
-    const answer = (await rl.question("")).trim();
-    process.stdout.write("\n");
-    return answer;
-  } finally {
-    if (orig) out._writeToOutput = orig;
-  }
-}
-
 async function main(): Promise<void> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  // Ctrl-C at any prompt: readline swallows SIGINT, so exit explicitly.
-  rl.on("SIGINT", () => process.exit(130));
+  // Prompts come from src/cli/ui.ts: `promptHidden` reads in raw mode with the
+  // terminal's own echo off, so nothing is drawn and nothing can erase it. The
+  // previous local helper wrote the prompt and then let readline's line refresh
+  // (cursorTo + clearScreenDown, which bypass `_writeToOutput`) wipe it, leaving
+  // the process waiting at an invisible prompt that looked like a hang (#27).
+  // Each prompt opens and closes its own readline, so nothing competes for stdin.
 
   // Email + password — prompt + persist if not already in .env / env.
-  let email = process.env.WHOOP_EMAIL ?? readEnv("WHOOP_EMAIL");
-  if (!email) { email = (await rl.question("Your Whoop account email: ")).trim(); if (email) upsertEnv({ WHOOP_EMAIL: email }); }
-  let password = process.env.WHOOP_PASSWORD ?? readEnv("WHOOP_PASSWORD");
-  if (!password) { password = await questionHidden(rl, "Your Whoop account password (stored in local .env, used once): "); if (password) upsertEnv({ WHOOP_PASSWORD: password }); }
-  if (!email || !password) { console.error("Email + password are required."); rl.close(); process.exit(1); }
+  // `||` not `??`: an empty string must fall through to the prompt rather than
+  // being accepted as a real value.
+  let email = process.env.WHOOP_EMAIL || readEnv("WHOOP_EMAIL");
+  if (!email) { email = (await prompt("Your Whoop account email")).trim(); if (email) upsertEnv({ WHOOP_EMAIL: email }); }
+  let password = process.env.WHOOP_PASSWORD || readEnv("WHOOP_PASSWORD");
+  if (!password) { password = await promptHidden("Your Whoop account password (stored in local .env, used once)"); if (password) upsertEnv({ WHOOP_PASSWORD: password }); }
+  if (!email || !password) { console.error("Email + password are required."); process.exit(1); }
 
   const tokensOnly = process.env.WHOOP_AUTH_TOKENS_ONLY === "1";
   const hadTokens = Boolean(readEnv("WHOOP_IOS_BEARER_TOKEN") && readEnv("WHOOP_COGNITO_REFRESH_TOKEN"));
@@ -193,15 +165,13 @@ async function main(): Promise<void> {
       password,
       mfaPrompt: async () => {
         console.log("");
-        return rl.question("Enter the SMS MFA code Whoop just texted you: ");
+        return prompt("Enter the SMS MFA code Whoop just texted you");
       },
     });
   } catch (err) {
-    rl.close();
     console.error("\nAuth failed:", err instanceof Error ? err.message : err);
     process.exit(1);
   }
-  rl.close();
   console.log("  → got fresh access + refresh tokens.");
 
   let access = tokens.accessToken;
