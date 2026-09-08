@@ -4,6 +4,15 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Fixed
+
+- **`totem auth` / `totem cloud` appeared to hang forever when the Whoop password contained `#`** ([#27](https://github.com/thebriangao/totem/issues/27), reported with a full root-cause write-up by @TotallyKyle). Two bugs stacked. First, `.env` values were written **unquoted**, and dotenv treats an unquoted `#` as the start of an inline comment: `#hunter2` parsed back as `""` and `abc#def` as `abc`, so a correct password produced a `NotAuthorizedException` that looked like a wrong one. Because the fallback was `process.env.X ?? readEnv(X)`, and `??` does not fall through on `""`, the empty value won. Second, the bootstrap's own masked-input helper wrote its prompt and then called `rl.question("")`; readline's line refresh writes `cursorTo(0)` + `clearScreenDown` **directly to the output stream**, bypassing the no-op'd `_writeToOutput` and erasing the prompt — so the process sat waiting at an invisible prompt.
+  - New `src/lib/env_file.ts` is now the single reader/writer for `.env`. It parses with `dotenv.parse` (so reads match what the server sees at boot) and serializes each value in the least-noisy form that round-trips exactly: bare when safe, otherwise `'…'`, `"…"`, or `` `…` `` chosen so the quote character cannot appear in the value. Writes update keys in place, preserve comments and unrelated entries, collapse duplicate assignments, and keep the file `0600`.
+  - `src/cli/setup.ts`, `src/scripts/cognito_bootstrap.ts`, and `EnvFileTokenStore` all route through it, so every reader and writer agrees.
+  - The bootstrap now uses the CLI's existing raw-mode `promptHidden` (terminal echo off, nothing drawn that can be erased) instead of the local helper, opens a readline per prompt so nothing competes for stdin, and uses `||` rather than `??` so an empty value falls through to a **visible** prompt instead of being accepted.
+  - This also covered a latent case: `genPassword` includes `#` in its alphabet, so an auto-generated connector password could hit the same mangling.
+  - 30 new tests (`tests/lib/env_file.test.ts`, `tests/whoop/token_store.test.ts`) covering round-trips for `#hunter2`, `abc#def`, edge whitespace, quotes, backslashes and empty values, plus in-place update, comment preservation, duplicate collapse, key deletion, and `0600` mode.
+
 ## [1.5.0] — 2026-08-28
 
 A reliability + efficiency pass, landed as a series of focused PRs (#15–#22, #24) reviewed individually. Tool count 49 → **55**; test suite → **278**.

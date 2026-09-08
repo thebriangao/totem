@@ -11,7 +11,8 @@
 //     systems (Cloudflare Workers, read-only container disks). Accept that you'll
 //     re-bootstrap every 30 days. Opt in via WHOOP_TOKEN_STORE=memory.
 
-import { readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { upsertEnvFile } from "../lib/env_file.js";
 
 export interface TokenStore {
   save(updates: { accessToken: string; refreshToken: string }): void;
@@ -21,20 +22,14 @@ export class EnvFileTokenStore implements TokenStore {
   constructor(private path: string) {}
 
   save(updates: { accessToken: string; refreshToken: string }): void {
+    // Deliberately does nothing when the file is absent (memory-store hosts).
     if (!existsSync(this.path)) return;
-    const lines = readFileSync(this.path, "utf8").split("\n");
-    const upsert = (key: string, value: string): void => {
-      const idx = lines.findIndex((l) => l.startsWith(`${key}=`));
-      const entry = `${key}=${value}`;
-      if (idx >= 0) lines[idx] = entry;
-      else lines.push(entry);
-    };
-    upsert("WHOOP_IOS_BEARER_TOKEN", updates.accessToken);
-    upsert("WHOOP_COGNITO_REFRESH_TOKEN", updates.refreshToken);
-    // 0600: this file holds the refresh token. mode only applies on create, so
-    // chmod too — repairs files written by older versions under a 0644 umask.
-    writeFileSync(this.path, lines.join("\n"), { mode: 0o600 });
-    try { chmodSync(this.path, 0o600); } catch { /* best-effort on exotic FS */ }
+    // Shared writer: quotes anything dotenv would otherwise mangle on read-back,
+    // preserves comments/unrelated keys, and writes 0600 (see issue #27).
+    upsertEnvFile(this.path, {
+      WHOOP_IOS_BEARER_TOKEN: updates.accessToken,
+      WHOOP_COGNITO_REFRESH_TOKEN: updates.refreshToken,
+    });
   }
 }
 

@@ -10,6 +10,7 @@ import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, chmodSync }
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { resolve, dirname } from "node:path";
+import { readEnvFile, upsertEnvFile } from "../lib/env_file.js";
 import {
   c, run, capture, captureAsync, commandExists, genToken, genPassword, copyToClipboard, httpGet,
   prompt, promptHidden, promptYesNo, select, confirmStep, step, closePrompts,
@@ -21,27 +22,14 @@ import {
 function envPath(root: string): string {
   return resolve(root, ".env");
 }
+// Both go through src/lib/env_file.ts so a value containing `#` (an auto-
+// generated connector password can) round-trips instead of being read back
+// truncated — see issue #27.
 function readEnv(root: string): Record<string, string> {
-  const p = envPath(root);
-  if (!existsSync(p)) return {};
-  const out: Record<string, string> = {};
-  for (const line of readFileSync(p, "utf8").split("\n")) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && m[1]) out[m[1]] = m[2] ?? "";
-  }
-  return out;
+  return readEnvFile(envPath(root));
 }
 function upsertEnv(root: string, updates: Record<string, string>): void {
-  const p = envPath(root);
-  const lines = existsSync(p) ? readFileSync(p, "utf8").split("\n") : [];
-  for (const [k, v] of Object.entries(updates)) {
-    const idx = lines.findIndex((l) => l.startsWith(`${k}=`));
-    if (idx >= 0) lines[idx] = `${k}=${v}`;
-    else lines.push(`${k}=${v}`);
-  }
-  // 0600 — this file holds the refresh token (and, transiently, the password).
-  writeFileSync(p, lines.join("\n"), { mode: 0o600 });
-  try { chmodSync(p, 0o600); } catch { /* best-effort */ }
+  upsertEnvFile(envPath(root), updates);
 }
 
 // A user-chosen connector password gates public web/mobile access to the

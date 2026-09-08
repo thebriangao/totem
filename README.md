@@ -471,6 +471,9 @@ Versions are sourced from the places that already host them — git tags + GitHu
 **"AUTH FAIL: Cognito InitiateAuth failed (400)"**
 > Wrong email or password. Double-check `.env`.
 
+**`totem auth` / `totem cloud` seems to stall right after "Authenticating with Whoop…", or a correct password gets a 401**
+> Your password almost certainly contains `#`. Before 1.5.1, `.env` values were written unquoted and `#` starts a comment, so `#hunter2` was read back as an empty string and `abc#def` as `abc`. Fixed: values are now quoted on write, and the password prompt is drawn in raw mode so it can no longer erase itself. If you have an **existing** `.env` written by an older version, that line is still unquoted — just re-run `totem auth` and type the password when prompted (it gets rewritten correctly), or quote it by hand: `WHOOP_PASSWORD='#hunter2'`.
+
 **"AUTH FAIL: Cognito MFA challenge missing Session token"**
 > The InitiateAuth response was malformed (unusual). Re-run `totem auth` — Cognito occasionally drops sessions.
 
