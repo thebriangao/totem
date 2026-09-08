@@ -76,7 +76,7 @@ async function main(): Promise<void> {
   }
 
   // stdio (default — local Claude Desktop / Claude Code)
-  const server = new McpServer({ name: "totem", version: "1.5.0" });
+  const server = new McpServer({ name: "totem", version: "1.5.1" });
   registerTools(server, client);
   await server.connect(new StdioServerTransport());
 }
