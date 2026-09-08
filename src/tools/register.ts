@@ -30,6 +30,7 @@ import { registerWorkouts } from "./v2/workouts.js";
 import { registerWorkout } from "./v2/workout.js";
 import { registerActivityCreate } from "./v2/activity_create.js";
 import { registerActivityDelete } from "./v2/activity_delete.js";
+import { registerNapCreate } from "./v2/nap_create.js";
 import { registerSportsCatalog } from "./v2/sports_catalog.js";
 // Strength reads
 import { registerLiftPrs } from "./v2/lift_prs.js";
@@ -112,9 +113,10 @@ export function registerTools(server: McpServer, client: WhoopClient): void {
   registerCommunities(server, client);
   registerHrZones(server, client);
   registerPreferences(server, client);
-  // Writes (15: 14 + coach_ask)
+  // Writes (16: 15 + coach_ask)
   registerActivityCreate(server, client);
   registerActivityDelete(server, client);
+  registerNapCreate(server, client);
   registerSleepEdit(server, client);
   registerLiftLog(server, client);
   registerLiftTemplateSave(server, client);

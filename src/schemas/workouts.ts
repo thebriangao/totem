@@ -53,3 +53,17 @@ export const ActivityDeleteOut = withPreview(z.object({
   deleted: z.literal(true),
   activity_id: z.string(),
 }));
+
+export const NapCreateOut = withPreview(z.object({
+  created: z.literal(true),
+  activity_id: z.string(),
+  cycle_id: z.number().int(),
+  start: IsoDateTime,
+  end: IsoDateTime,
+  type: z.string(),
+  score_state: z.string(),
+  // The just-created activity was read back and its type confirmed. A false here
+  // means WHOOP returned a 2xx create receipt but the re-read did not show the
+  // expected nap/sleep activity — treat it as a failure, not a success.
+  verified: z.boolean(),
+}));
