@@ -4,6 +4,8 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-09-08
+
 ### Fixed
 
 - **`totem auth` / `totem cloud` appeared to hang forever when the Whoop password contained `#`** ([#27](https://github.com/thebriangao/totem/issues/27), reported with a full root-cause write-up by @TotallyKyle). Two bugs stacked. First, `.env` values were written **unquoted**, and dotenv treats an unquoted `#` as the start of an inline comment: `#hunter2` parsed back as `""` and `abc#def` as `abc`, so a correct password produced a `NotAuthorizedException` that looked like a wrong one. Because the fallback was `process.env.X ?? readEnv(X)`, and `??` does not fall through on `""`, the empty value won. Second, the bootstrap's own masked-input helper wrote its prompt and then called `rl.question("")`; readline's line refresh writes `cursorTo(0)` + `clearScreenDown` **directly to the output stream**, bypassing the no-op'd `_writeToOutput` and erasing the prompt — so the process sat waiting at an invisible prompt.
