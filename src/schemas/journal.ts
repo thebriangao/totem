@@ -72,6 +72,10 @@ export const JournalLogOut = withPreview(z.object({
   logged: z.literal(true),
   date: z.iso.date(),
   behaviors_count: z.number().int(),
+  // Answers already on the date that the write carried over untouched.
+  preserved_count: z.number().int(),
+  // The day was read back and the requested rows are answered server-side.
+  verified: z.literal(true),
 }));
 
 export const JournalAutopopOut = withPreview(z.object({

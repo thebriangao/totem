@@ -246,13 +246,14 @@ describe("write-tool validation through MCP", () => {
     expect(put).not.toHaveBeenCalled();
   });
 
-  it("validates a journal behavior's required value shape", async () => {
+  it("rejects a journal behavior nobody can resolve", async () => {
     const put = vi.fn();
-    const whoop = { put } as unknown as WhoopClient;
+    const get = vi.fn().mockResolvedValue({});
+    const whoop = { put, get } as unknown as WhoopClient;
     const client = await connect((server) => registerJournalLog(server, whoop));
     const result = await client.callTool({
       name: "whoop_journal_log",
-      arguments: { behaviors: [{ behavior: "alcohol", magnitude_value: 2 }], confirm: true },
+      arguments: { behaviors: [{ behavior: "definitely not a behavior" }], confirm: true },
     });
     expect(result.isError).toBe(true);
     expect(put).not.toHaveBeenCalled();
