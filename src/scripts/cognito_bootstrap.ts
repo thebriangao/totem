@@ -130,20 +130,17 @@ function pushTokens(t: DeployTarget, accessToken: string, refreshToken: string):
 }
 
 async function main(): Promise<void> {
-  // Prompts come from src/cli/ui.ts: `promptHidden` reads in raw mode with the
-  // terminal's own echo off, so nothing is drawn and nothing can erase it. The
-  // previous local helper wrote the prompt and then let readline's line refresh
-  // (cursorTo + clearScreenDown, which bypass `_writeToOutput`) wipe it, leaving
-  // the process waiting at an invisible prompt that looked like a hang (#27).
-  // Each prompt opens and closes its own readline, so nothing competes for stdin.
-
-  // Email + password — prompt + persist if not already in .env / env.
+  // Persist the email, but consume legacy saved passwords only once. Remove
+  // them before contacting WHOOP so failures and interrupted logins cannot
+  // silently reuse a rejected password on the next attempt.
   // `||` not `??`: an empty string must fall through to the prompt rather than
   // being accepted as a real value.
   let email = process.env.WHOOP_EMAIL || readEnv("WHOOP_EMAIL");
   if (!email) { email = (await prompt("Your Whoop account email")).trim(); if (email) upsertEnv({ WHOOP_EMAIL: email }); }
   let password = process.env.WHOOP_PASSWORD || readEnv("WHOOP_PASSWORD");
-  if (!password) { password = await promptHidden("Your Whoop account password (stored in local .env, used once)"); if (password) upsertEnv({ WHOOP_PASSWORD: password }); }
+  deleteEnvKeys(["WHOOP_PASSWORD"]);
+  delete process.env.WHOOP_PASSWORD;
+  if (!password) password = await promptHidden("Your Whoop account password (not saved)");
   if (!email || !password) { console.error("Email + password are required."); process.exit(1); }
 
   const tokensOnly = process.env.WHOOP_AUTH_TOKENS_ONLY === "1";
@@ -205,8 +202,7 @@ async function main(): Promise<void> {
 
   // The account password is only needed for this one bootstrap — every
   // subsequent refresh uses the refresh token. Don't leave it on disk.
-  deleteEnvKeys(["WHOOP_PASSWORD"]);
-  console.log("  → removed your password from .env (only the tokens are needed now).");
+  console.log("  → only tokens are saved; your password is not stored.");
 
   console.log("");
   if (tokensOnly) {
