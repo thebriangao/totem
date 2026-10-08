@@ -3,6 +3,7 @@
 // and the guided setup flows (setup.ts).
 import { spawn, spawnSync, type SpawnOptions } from "node:child_process";
 import { createInterface } from "node:readline/promises";
+import { Writable } from "node:stream";
 import { randomBytes } from "node:crypto";
 import { request as httpsRequest } from "node:https";
 import { existsSync } from "node:fs";
@@ -317,40 +318,28 @@ export async function prompt(question: string, fallback = ""): Promise<string> {
   return answer || fallback;
 }
 
-// Like `ask`, but typed characters are NOT echoed — standard password-prompt
-// behavior, so a secret never appears on screen (or on camera). The override
-// lets the prompt itself and the commit newline through and swallows every
-// per-character echo; readline still captures the full value in its buffer.
+// Keep all readline redraws on a muted stream, including cursor/erase writes.
+// The visible prompt goes directly to stdout, so it cannot be erased (#27).
+// Readline handles paste markers and editing; secrets must never be trimmed.
 async function askHidden(query: string): Promise<string> {
-  // Explicit raw-mode read: readline's _writeToOutput trick doesn't reliably
-  // disable the TERMINAL's own echo, so the secret can still render. Here we set
-  // raw mode ourselves (terminal echo off), read char-by-char, and echo nothing
-  // — the password never appears on screen. Falls back to a normal line read
-  // when there's no TTY to put in raw mode (piped/CI).
   const stdin = process.stdin;
-  if (!(stdin.isTTY && typeof stdin.setRawMode === "function")) return ask(query);
-
+  const wasRaw = stdin.isRaw;
+  const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  const rl = createInterface({ input: stdin, output: muted, terminal: Boolean(stdin.isTTY) });
+  rl.on("SIGINT", () => { rl.close(); process.stdout.write("\n"); process.exit(130); });
   process.stdout.write(query);
-  return new Promise<string>((resolve) => {
-    let buf = "";
-    const cleanup = (): void => {
-      stdin.removeListener("data", onData);
-      try { stdin.setRawMode(false); } catch { /* */ }
-      stdin.pause();
-    };
-    const onData = (chunk: string): void => {
-      for (const ch of chunk) {
-        if (ch === "\r" || ch === "\n" || ch === "\u0004") { cleanup(); process.stdout.write("\n"); resolve(buf.trim()); return; }
-        if (ch === "\u0003") { cleanup(); process.stdout.write("\n"); process.exit(130); }     // Ctrl-C
-        if (ch === "\u007f" || ch === "\b") { buf = buf.slice(0, -1); continue; }              // backspace
-        if (ch >= " ") buf += ch;                                                              // printable: captured, not echoed
-      }
-    };
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-    stdin.on("data", onData);
-  });
+  try {
+    return await new Promise<string>((resolve) => {
+      rl.once("close", () => resolve(""));
+      rl.question("").then(resolve).catch(() => resolve(""));
+    });
+  } finally {
+    rl.close();
+    if (stdin.isTTY && typeof stdin.setRawMode === "function") stdin.setRawMode(Boolean(wasRaw));
+    stdin.pause();
+    muted.end();
+    process.stdout.write("\n");
+  }
 }
 
 // A masked prompt for secrets (the Whoop account password). Same look as
