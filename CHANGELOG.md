@@ -4,6 +4,10 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Fixed
+
+- **A remote connector stayed broken after any server restart, failing every call with `400 Bad Request: Server not initialized`.** Sessions live in memory, so a restart (`totem auth` pushing new tokens, a redeploy, a cold start) or the 30-minute idle sweep leaves clients holding a session id the server no longer knows. `getOrCreateSession` answered an unknown id by minting a fresh, uninitialized transport, which the SDK rejects with 400. The MCP spec says an unknown session id must get **404**, which is the signal that tells a client to send a new `initialize`; on 400 the claude.ai connector did not re-initialize, and stayed broken across a manual reconnect. The `/mcp` handler now returns 404 (`-32001 Session not found`) for an id it doesn't hold, and no longer leaks one orphan session per stale request. 2 new tests in `tests/whoop/http_auth.test.ts`.
+
 ## [1.5.1] — 2026-09-08
 
 ### Fixed

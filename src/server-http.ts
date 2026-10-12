@@ -233,6 +233,14 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     try {
       const sessionIdHeader = req.headers["mcp-session-id"];
       const sid = typeof sessionIdHeader === "string" ? sessionIdHeader : undefined;
+      // Sessions live in memory, so an id we don't know is one from before a
+      // restart / cold start / idle sweep. MCP spec: answer 404 so the client
+      // re-initializes. Minting a fresh transport for it instead answers 400
+      // "Server not initialized", which clients don't recover from.
+      if (sid && !sessions.has(sid)) {
+        res.status(404).json({ jsonrpc: "2.0", error: { code: -32001, message: "Session not found" }, id: null });
+        return;
+      }
       const session = await getOrCreateSession(sid);
       await session.transport.handleRequest(req, res, req.body);
     } catch (err) {
