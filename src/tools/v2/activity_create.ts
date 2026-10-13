@@ -2,8 +2,8 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
 import { ActivityCreateOut } from "../../schemas/workouts.js";
-import { preview } from "../../whoop/write_safety.js";
-import { WhoopApiError, WhoopProjectionError, apiErrorDetail } from "../../whoop/errors.js";
+import { preview, writeRejected } from "../../whoop/write_safety.js";
+import { WhoopApiError, WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { SPORTS_BY_ID, SPORTS_BY_NAME } from "../../data/sports.js";
 import { canonicalUtc } from "../../lib/dates.js";
@@ -69,16 +69,8 @@ export function registerActivityCreate(server: McpServer, client: WhoopClient): 
         receipt = await client.post(PATH, body);
       } catch (error) {
         if (error instanceof WhoopApiError) {
-          return {
-            content: [{ type: "text", text: jsonOut({
-              error: "WHOOP rejected the activity.",
-              status: error.status,
-              endpoint: PATH,
-              reason: apiErrorDetail(error.body) ?? null,
-              hint: "Start and end were sent as canonical UTC timestamps. Check the activity window, sport, and any WHOOP account restrictions.",
-            }) }],
-            isError: true,
-          };
+          return writeRejected("activity", PATH, error,
+            "Start and end were sent as canonical UTC timestamps. Check the activity window, sport, and any WHOOP account restrictions.");
         }
         throw error;
       }

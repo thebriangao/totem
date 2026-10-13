@@ -6,6 +6,8 @@ import {
   kgToLb,
   msToMinutes,
   secondsToMinutes,
+  fatFractionToPercent,
+  fatPercentToFraction,
 } from "../../src/lib/format.js";
 
 describe("format helpers", () => {
@@ -28,5 +30,13 @@ describe("format helpers", () => {
   });
   it("secondsToMinutes", () => {
     expect(secondsToMinutes(120)).toBe(2);
+  });
+
+  it("fatFractionToPercent", () => {
+    expect(fatFractionToPercent(0.18500000236350522)).toBe(18.5);
+  });
+
+  it("fatPercentToFraction", () => {
+    expect(fatPercentToFraction(18.5)).toBe(0.185);
   });
 });

@@ -167,8 +167,8 @@ function cachePolicy(
   }
   if (path.includes("weightlifting-service")) return { ttlMs: 5 * 60_000, tags: ["lift"] };
   if (path.includes("community-service")) return { ttlMs: 5 * 60_000, tags: ["community"] };
+  if (path.includes("bootstrap")) return { ttlMs: 10 * 60_000, tags: ["settings", "profile", "bootstrap"] };
   if (
-    path.includes("bootstrap") ||
     path.includes("hidden-metrics") ||
     path.includes("stealth-mode") ||
     path.includes("hr-zones") ||
@@ -189,6 +189,8 @@ function writeInvalidationTags(path: string): readonly string[] {
   if (path.includes("profile-service") || path.includes("hr-zones") || path.includes("smart-alarm") || path.includes("hidden-metrics")) {
     return ["settings", "profile", "daily", "sleep_plan"];
   }
+  // A weight reading may also move the profile weight that bootstrap reports.
+  if (path.includes("progression-service")) return ["trend", "bootstrap"];
   // whoop_raw can mutate any undocumented endpoint.
   return ["all"];
 }

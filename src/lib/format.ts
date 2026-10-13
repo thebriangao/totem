@@ -25,3 +25,17 @@ export function msToMinutes(ms: number): number {
 export function secondsToMinutes(s: number): number {
   return Math.round(s / 60);
 }
+
+export function round(n: number, digits: number): number {
+  return Number(n.toFixed(digits));
+}
+
+/** Body fat as WHOOP stores it (fraction, 0.185) → percentage (18.5). */
+export function fatFractionToPercent(fraction: number): number {
+  return round(fraction * 100, 1);
+}
+
+/** Body fat percentage (18.5) → the fraction WHOOP stores (0.185). */
+export function fatPercentToFraction(percent: number): number {
+  return round(percent / 100, 4);
+}

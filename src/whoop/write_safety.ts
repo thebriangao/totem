@@ -1,6 +1,7 @@
-// Preview helper for write tools. Returns a structured "would-execute" payload
-// when confirm:false; the tool handler executes the actual call when confirm:true.
+// Result helpers for write tools.
 import { z } from "zod";
+import { apiErrorDetail, type WhoopApiError } from "./errors.js";
+import { jsonOut } from "./json_out.js";
 
 export const WritePreviewSchema = z.object({
   preview: z.literal(true),
@@ -13,6 +14,7 @@ export const WritePreviewSchema = z.object({
 });
 export type WritePreview = z.infer<typeof WritePreviewSchema>;
 
+/** Structured "would-execute" payload for confirm:false; the handler runs the call on confirm:true. */
 export function preview(
   method: string,
   path: string,
@@ -27,4 +29,18 @@ export function preview(
 
 export function withPreview<T extends z.ZodTypeAny>(receipt: T) {
   return z.union([WritePreviewSchema, receipt]);
+}
+
+/** Tool result for a write WHOOP refused: status + its reason, never the raw body. */
+export function writeRejected(what: string, path: string, error: WhoopApiError, hint?: string) {
+  return {
+    content: [{ type: "text" as const, text: jsonOut({
+      error: `WHOOP rejected the ${what}.`,
+      status: error.status,
+      endpoint: path,
+      reason: apiErrorDetail(error.body) ?? null,
+      ...(hint ? { hint } : {}),
+    }) }],
+    isError: true as const,
+  };
 }

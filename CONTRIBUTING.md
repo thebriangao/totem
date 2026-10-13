@@ -15,8 +15,8 @@ src/
 │   ├── cognito.ts       # Cognito proxy auth (no AWS SDK, no client secret)
 │   ├── token_manager.ts # Auto-refresh, single-flight, persists via TokenStore
 │   ├── token_store.ts   # EnvFileTokenStore + MemoryTokenStore (since v1.1.0)
-│   ├── write_safety.ts  # preview() + withPreview() helpers
-│   ├── build_lift_body.ts
+│   ├── write_safety.ts  # preview() + withPreview() + writeRejected() helpers
+│   ├── build_lift_body.ts, build_measurement_body.ts
 │   ├── client.ts        # ...also holds the bounded in-memory read cache + write invalidation
 │   ├── errors.ts, json_out.ts, constants.ts, types.ts
 ├── data/                # Auto-generated catalogs (behaviors, exercises, sports, endpoints)
@@ -44,7 +44,7 @@ npx tsc && npm link          # one-time: builds + puts `totem` on PATH
 cp .env.example .env
 # edit .env with your Whoop creds
 totem auth
-totem test               # 278 tests, <2s
+totem test               # unit tests, <2s
 totem typecheck
 totem build
 
@@ -98,7 +98,7 @@ Recent precedents to read:
 
 ## Testing
 
-- **`totem test`** — 278 unit tests in <2s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
+- **`totem test`** — unit tests in <2s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
 - **Live-API tests live in a separate `whoop-testing` archive.** They require a dummy account and aren't safe to expose to first-time users. If you want to add or run them, ask Brian.
 - When fixing a projection, update its fixture in `tests/fixtures/` and the corresponding test in `tests/projections/` (`round1`/`round2`/`round3`, plus `round3_data_fixes.test.ts` for the live-audit data-extraction regressions).
 - When changing the HTTP transport (`src/server-http.ts`) or auth model, add coverage to `tests/whoop/http_auth.test.ts`. The pattern is: boot a real server on an ephemeral port with a stub `WhoopClient`, then assert with `fetch()`.

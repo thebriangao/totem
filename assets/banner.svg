@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 260" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" text-rendering="geometricPrecision">
   <title>totem</title>
-  <desc>ASCII banner for the totem project — your wearables, talk to them with AI. 55 tools, 47 microservices, 311 endpoints, remote-ready.</desc>
+  <desc>ASCII banner for the totem project — your wearables, talk to them with AI. 58 tools, 47 microservices, 311 endpoints, remote-ready.</desc>
   <style>
     .block { font-size: 26px; font-weight: 700; fill: #1f1f1f; letter-spacing: 0; }
     .pulse { stroke: #6b6b6b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
@@ -34,5 +34,5 @@
   "/>
 
   <!-- Stats: horizontally centered to viewBox midpoint -->
-  <text class="stats" x="410" y="245" text-anchor="middle" xml:space="preserve">v1.5.1<tspan class="sep">  ·  </tspan>55 tools<tspan class="sep">  ·  </tspan>47 microservices<tspan class="sep">  ·  </tspan>311 endpoints</text>
+  <text class="stats" x="410" y="245" text-anchor="middle" xml:space="preserve">v1.5.1<tspan class="sep">  ·  </tspan>58 tools<tspan class="sep">  ·  </tspan>47 microservices<tspan class="sep">  ·  </tspan>311 endpoints</text>
 </svg>

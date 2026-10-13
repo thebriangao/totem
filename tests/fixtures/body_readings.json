@@ -1,0 +1,78 @@
+{
+  "navigation_bar_title": "All recorded data",
+  "title": "All recorded data",
+  "subtitle": "View all of your past recorded Weight and Lean Body Mass data below.",
+  "add_manual_measurement": {
+    "title": "ADD MANUAL MEASUREMENT"
+  },
+  "sections": {
+    "records": [
+      {
+        "title": "Oct 2026",
+        "measurements": [
+          {
+            "type": "MEASUREMENT_BOX",
+            "content": {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "icon": null,
+              "icon_url": "https://example.invalid/apple_health.png",
+              "weight": 80.69999694824219,
+              "metric_unit": "kg",
+              "subtitle": "\u2026",
+              "source": "apple_health_kit",
+              "weight_details_screen": {
+                "timestamp": "2026-10-04T11:10:00.000+03:00",
+                "start_date_timestamp": "2026-03-30T18:50:34.378+03:00",
+                "weight_kg": 80.69999694824219,
+                "body_fat_percent": 0.18500000236350522,
+                "lean_body_mass_kg": 65.77050018310547,
+                "body_fat_suffix": "%",
+                "metric_type": "KG",
+                "delete_title": "DELETE MEASUREMENT",
+                "save_title": null,
+                "replace_dialog": null,
+                "source": "apple_health_kit"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "Aug 2026",
+        "measurements": [
+          {
+            "type": "MEASUREMENT_BOX",
+            "content": {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "icon": null,
+              "icon_url": null,
+              "weight": 77,
+              "metric_unit": "kg",
+              "subtitle": "\u2026",
+              "source": "manual",
+              "weight_details_screen": {
+                "timestamp": "2026-08-01T09:27:14.000+03:00",
+                "start_date_timestamp": "2026-03-30T18:50:34.378+03:00",
+                "weight_kg": 77,
+                "body_fat_percent": null,
+                "lean_body_mass_kg": null,
+                "body_fat_suffix": "%",
+                "metric_type": "KG",
+                "delete_title": "DELETE MEASUREMENT",
+                "save_title": null,
+                "replace_dialog": null,
+                "source": "manual"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "next_token": "page-2"
+  },
+  "manual_measurement_updates": {
+    "timestamp": "2026-10-13T18:51:22.673+03:00",
+    "weight_kg": 80.69999694824219,
+    "save_title": "ADD MEASUREMENT"
+  }
+}

@@ -17,6 +17,9 @@ import { registerTrend } from "./v2/trend.js";
 import { registerTrendPack } from "./v2/trend_pack.js";
 import { registerWeeklyPlan } from "./v2/weekly_plan.js";
 import { registerCompare } from "./v2/compare.js";
+import { registerBodyMeasurements } from "./v2/body_measurements.js";
+import { registerBodyMeasurementLog } from "./v2/body_measurement_log.js";
+import { registerBodyMeasurementDelete } from "./v2/body_measurement_delete.js";
 // Stress + sleep_need
 import { registerStress } from "./v2/stress.js";
 import { registerSleepNeed } from "./v2/sleep_need.js";
@@ -86,6 +89,7 @@ export function registerTools(server: McpServer, client: WhoopClient): void {
   registerTrendPack(server, client);
   registerWeeklyPlan(server, client);
   registerCompare(server, client);
+  registerBodyMeasurements(server, client);
   registerStress(server, client);
   registerSleepNeed(server, client);
   registerLiveHr(server, client);
@@ -112,7 +116,7 @@ export function registerTools(server: McpServer, client: WhoopClient): void {
   registerCommunities(server, client);
   registerHrZones(server, client);
   registerPreferences(server, client);
-  // Writes (15: 14 + coach_ask)
+  // Writes (17: 16 + coach_ask)
   registerActivityCreate(server, client);
   registerActivityDelete(server, client);
   registerSleepEdit(server, client);
@@ -126,6 +130,8 @@ export function registerTools(server: McpServer, client: WhoopClient): void {
   registerSmartAlarmSet(server, client);
   registerHrZonesSet(server, client);
   registerProfileUpdate(server, client);
+  registerBodyMeasurementLog(server, client);
+  registerBodyMeasurementDelete(server, client);
   registerHiddenMetric(server, client);
   registerCoachAsk(server, client);
   // Escape (2)

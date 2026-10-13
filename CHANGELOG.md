@@ -4,6 +4,17 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Added
+
+- **Weight + body composition readings** — the readings behind Trends → Weight / Lean Body Mass, which the app's ADD MANUAL MEASUREMENT writes. Tool count 55 → **58**.
+  - `whoop_body_measurements` lists every reading (manual, Apple Health, Withings).
+  - `whoop_body_measurement_log` ⚠️ adds a reading: weight plus body fat % or lean body mass kg.
+  - `whoop_body_measurement_delete` ⚠️ removes one reading by id.
+
+### Changed
+
+- Writes to `progression-service` now invalidate only trend reads and the bootstrap profile instead of the whole read cache.
+
 ## [1.5.1] — 2026-09-08
 
 ### Fixed
