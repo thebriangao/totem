@@ -25,12 +25,36 @@ import type { WhoopClient } from "./whoop/client.js";
 import { registerTools } from "./tools/register.js";
 import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
 import { BUILD_ID } from "./build_info.js";
+import { isObject } from "./lib/walk.js";
 
 export interface HttpServerOptions {
   /** Bearer token clients must present + JWT signing secret. Required, ≥16 chars. */
   authToken: string;
   port?: number;
   host?: string;
+}
+
+// Workaround for @modelcontextprotocol/sdk 1.30.0: JSON responses leave a
+// _streamMapping entry whose resolveJson closure retains the response body.
+// send() removes the request mappings once all responses are ready, so only
+// release JSON streams with no pending requests. Leave SSE streams alone.
+// If the SDK changes these private fields, do nothing. The canary test flags
+// when the SDK fixes the leak and this workaround can be removed.
+export function releaseSettledJsonStreams(transport: StreamableHTTPServerTransport): number {
+  const inner = (transport as unknown as { _webStandardTransport?: unknown })._webStandardTransport;
+  if (!isObject(inner)) return 0;
+  const streams = inner._streamMapping;
+  const pending = inner._requestToStreamMapping;
+  if (!(streams instanceof Map) || !(pending instanceof Map)) return 0;
+
+  const live = new Set(pending.values());
+  let released = 0;
+  for (const [streamId, stream] of streams) {
+    if (live.has(streamId) || !isObject(stream) || typeof stream.resolveJson !== "function") continue;
+    streams.delete(streamId);
+    released++;
+  }
+  return released;
 }
 
 export async function startHttpServer(client: WhoopClient, opts: HttpServerOptions): Promise<void> {
@@ -234,7 +258,11 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       const sessionIdHeader = req.headers["mcp-session-id"];
       const sid = typeof sessionIdHeader === "string" ? sessionIdHeader : undefined;
       const session = await getOrCreateSession(sid);
-      await session.transport.handleRequest(req, res, req.body);
+      try {
+        await session.transport.handleRequest(req, res, req.body);
+      } finally {
+        releaseSettledJsonStreams(session.transport);
+      }
     } catch (err) {
       console.error("[totem] request error:", err);
       if (!res.headersSent) res.status(500).json({ error: "internal server error" });

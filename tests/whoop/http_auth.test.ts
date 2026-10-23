@@ -1,7 +1,8 @@
 // Verifies the HTTP transport boots, rejects unauthenticated requests, and
-// accepts authenticated ones. Doesn't exercise the full MCP protocol — just
-// the auth gate, the health probe, and the route shape.
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+// accepts authenticated ones. Also checks JSON stream cleanup through the
+// application's MCP request handler with a stub client.
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { startHttpServer } from "../../src/server-http.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
 
@@ -82,6 +83,43 @@ describe("HTTP transport: bearer-auth gate", () => {
     expect(r.status).toBe(204);
     expect(r.headers.get("access-control-allow-origin")).toBe("*");
     expect(r.headers.get("access-control-allow-methods")).toMatch(/POST/);
+  });
+
+  it("releases JSON streams through the MCP request handler", async () => {
+    const handled = vi.spyOn(StreamableHTTPServerTransport.prototype, "handleRequest");
+    try {
+      const post = (body: unknown, sid?: string) => fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-06-18",
+          ...(sid ? { "mcp-session-id": sid } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      const init = await post({
+        jsonrpc: "2.0", id: 0, method: "initialize",
+        params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "0" } },
+      });
+      expect(init.status).toBe(200);
+      const sid = init.headers.get("mcp-session-id");
+      expect(sid).toBeTruthy();
+      await init.text();
+      await (await post({ jsonrpc: "2.0", method: "notifications/initialized" }, sid!)).text();
+      for (let id = 1; id <= 3; id++) {
+        const response = await post({ jsonrpc: "2.0", id, method: "tools/list" }, sid!);
+        expect(response.status).toBe(200);
+        expect((await response.json()).result.tools.length).toBeGreaterThan(0);
+      }
+      const transport = handled.mock.contexts[0] as unknown as {
+        _webStandardTransport: { _streamMapping: Map<string, unknown> };
+      };
+      await vi.waitFor(() => expect(transport._webStandardTransport._streamMapping.size).toBe(0));
+    } finally {
+      handled.mockRestore();
+    }
   });
 });
 
