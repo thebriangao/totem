@@ -7,6 +7,7 @@ import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { resolveOfficialExercise } from "../../lib/exercise_lookup.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerLiftProgression(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -17,6 +18,7 @@ export function registerLiftProgression(server: McpServer, client: WhoopClient):
       exercise: z.string().optional().describe("Exact official exercise name; avoids a separate catalog lookup."),
       end_date: z.iso.date().optional(),
     },
+    READ_ONLY,
     async ({ exercise_id, exercise, end_date }) => {
       const resolvedId = exercise_id ?? (exercise ? resolveOfficialExercise(exercise) : null);
       if (!resolvedId) return { content: [{ type: "text", text: jsonOut({ error: "Provide an exercise_id or exact official exercise name." }) }], isError: true };

@@ -6,6 +6,7 @@ import { projectTrend } from "../../projections/trend.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerTrend(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -15,6 +16,7 @@ export function registerTrend(server: McpServer, client: WhoopClient): void {
       metric: z.enum(METRICS).describe("Which metric to trend."),
       end_date: z.iso.date().optional().describe("End date. Defaults to today."),
     },
+    READ_ONLY,
     async ({ metric, end_date }) => {
       const d = end_date ?? todayIso();
       const raw = await client.get(`/progression-service/v3/trends/${metric}`, { endDate: d });

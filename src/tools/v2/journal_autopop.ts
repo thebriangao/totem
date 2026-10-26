@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { JournalAutopopOut } from "../../schemas/journal.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 export function registerJournalAutopop(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -13,6 +14,7 @@ export function registerJournalAutopop(server: McpServer, client: WhoopClient): 
       cycle_id: z.number().int().describe("Get from whoop_journal or whoop_today."),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ cycle_id, confirm }) => {
       const path = `/autopop-service/v1/autopop/JOURNAL/${cycle_id}`;
       if (!confirm) {

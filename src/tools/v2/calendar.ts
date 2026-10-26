@@ -6,6 +6,7 @@ import { projectCalendar } from "../../projections/calendar.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerCalendar(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -14,6 +15,7 @@ export function registerCalendar(server: McpServer, client: WhoopClient): void {
     {
       date: z.iso.date().optional().describe("Any date in the target month. Defaults to today."),
     },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       // Both endpoints contain the same state grid. Prefer recovery and only

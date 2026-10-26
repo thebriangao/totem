@@ -5,12 +5,14 @@ import { ProfileOut } from "../../schemas/profile.js";
 import { projectProfile } from "../../projections/profile.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerProfile(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_profile",
     "Static account + body data: name, email, height, weight, max HR, resting HR, hidden metrics, stealth mode.",
     {},
+    READ_ONLY,
     async () => {
       const userId = process.env.WHOOP_USER_ID;
       const bootstrapQuery = userId ? { accountType: "users", id: userId } : {};

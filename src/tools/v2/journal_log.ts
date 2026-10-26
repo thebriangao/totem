@@ -7,6 +7,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { BEHAVIORS, BEHAVIORS_BY_ID, BEHAVIORS_BY_NAME } from "../../data/behaviors.js";
 import { isObject, asArray, asNumber, asString, asBool } from "../../lib/walk.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 // A journal row only renders in the Whoop app when `answered_yes` is true. A
 // tracker_input written without it lands server-side with `answered_yes: null`
@@ -114,6 +115,7 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
       allow_empty_replace: z.boolean().default(false),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ date, behaviors, notes, replace_day, allow_empty_replace, confirm }) => {
       const d = date ?? todayIso();
       const draftPath = `/journal-service/v3/journals/drafts/mobile/${d}`;

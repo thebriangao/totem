@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { RawOut } from "../../schemas/escape.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 export function registerRaw(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -16,6 +17,7 @@ export function registerRaw(server: McpServer, client: WhoopClient): void {
       body: z.unknown().optional(),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ path, method, query, body, confirm }) => {
       const safePath = path.startsWith("/") ? path : `/${path}`;
       const isMutate = method !== "GET";

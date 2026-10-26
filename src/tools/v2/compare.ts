@@ -8,6 +8,7 @@ import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { runPaced } from "../../lib/concurrency.js";
+import { READ_ONLY } from "../annotations.js";
 
 const COMPARE_METRICS = ["RECOVERY", "SLEEP_PERFORMANCE", "DAY_STRAIN", "HRV", "RHR"] as const;
 type CompareMetric = typeof COMPARE_METRICS[number];
@@ -29,6 +30,7 @@ export function registerCompare(server: McpServer, client: WhoopClient): void {
         "metrics must not contain duplicates",
       ).default([...COMPARE_METRICS]),
     },
+    READ_ONLY,
     async ({ window, end_a, end_b, metrics }) => {
       const a = end_a ?? todayIso();
       const offsetDays = window === "week" ? 7 : 30;

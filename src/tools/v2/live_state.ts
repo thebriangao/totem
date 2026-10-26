@@ -6,12 +6,14 @@ import { projectLiveState } from "../../projections/live_state.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { liveFreshness } from "../../lib/live_freshness.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerLiveState(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_live_state",
     "Are you currently in a tracked workout, sleep, or idle? Returns sport name + start time if active.",
     {},
+    READ_ONLY,
     async () => {
       const raw = await client.get("/activities-service/v1/user-state");
       const projected = projectLiveState(raw);

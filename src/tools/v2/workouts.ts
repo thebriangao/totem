@@ -6,6 +6,7 @@ import { projectWorkoutsList } from "../../projections/workouts.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { rangeFromDays } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerWorkouts(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -17,6 +18,7 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
       sport: z.string().optional().describe("Case-insensitive substring match on sport_name."),
       limit: z.number().int().min(1).max(25).default(10),
     },
+    READ_ONLY,
     async ({ start, end, sport, limit }) => {
       const window = start && end ? { start, end } : rangeFromDays(30);
       const raw = await client.get("/developer/v2/activity/workout", {

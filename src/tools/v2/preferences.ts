@@ -5,6 +5,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 import { asArray, asBool, asString, isObject } from "../../lib/walk.js";
 import { PreferencesOut } from "../../schemas/compact.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
+import { READ_ONLY } from "../annotations.js";
 
 /** Compact, read-only account preferences that otherwise require raw API calls. */
 export function registerPreferences(server: McpServer, client: WhoopClient): void {
@@ -14,6 +15,7 @@ export function registerPreferences(server: McpServer, client: WhoopClient): voi
     {
       include: z.array(z.enum(["journal", "notifications"])).min(1).max(2).default(["journal", "notifications"]),
     },
+    READ_ONLY,
     async ({ include }) => {
       const wantsJournal = include.includes("journal");
       const wantsNotifications = include.includes("notifications");

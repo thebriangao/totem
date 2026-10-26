@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { CycleLogOut } from "../../schemas/womens_health.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 const PATH = "/womens-health-service/v1/menstrual-cycle-insights/log";
 
@@ -18,6 +19,7 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
       ovulation: z.boolean().optional(),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ date, period, period_flow, ovulation, confirm }) => {
       if (period === true && ovulation === true) {
         return {

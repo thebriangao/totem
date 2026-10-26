@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { JournalCatalogOut } from "../../schemas/journal.js";
 import { BEHAVIORS } from "../../data/behaviors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 const CATEGORIES = [
   "Drugs & Medication",
@@ -26,6 +27,7 @@ export function registerJournalCatalog(server: McpServer, _client: unknown): voi
       magnitude_type: z.enum(["bare", "boolean", "magnitude"]).optional(),
       limit: z.number().int().min(1).max(308).default(100),
     },
+    READ_ONLY,
     async ({ category, search, magnitude_type, limit }) => {
       const s = search?.toLowerCase();
       const matches = BEHAVIORS.filter((b) => {

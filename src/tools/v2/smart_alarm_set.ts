@@ -6,6 +6,7 @@ import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { normalizeClockTime } from "../../lib/clock.js";
 import { projectSmartAlarm } from "../../projections/smart_alarm.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 const TIMEZONE_OFFSET_RE = /^[+-](?:[01]\d|2[0-3]):?[0-5]\d$/;
 const ClockTime = z.string().trim().transform((value, ctx) => {
@@ -49,6 +50,7 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
       preferences: PreferencesShape.optional(),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ mode, schedule_id, schedule, preferences, confirm }) => {
       let path: string;
       let body: unknown;

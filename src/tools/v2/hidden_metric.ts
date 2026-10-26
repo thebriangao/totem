@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { HiddenMetricOut } from "../../schemas/settings.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 export function registerHiddenMetric(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -14,6 +15,7 @@ export function registerHiddenMetric(server: McpServer, client: WhoopClient): vo
       action: z.enum(["hide", "show"]),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ metric, action, confirm }) => {
       const path = `/users-service/v1/hidden-metrics/${metric}`;
       const method = action === "hide" ? "POST" : "DELETE";

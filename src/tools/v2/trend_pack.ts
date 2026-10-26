@@ -7,6 +7,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { TrendPackOut } from "../../schemas/compact.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerTrendPack(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -18,6 +19,7 @@ export function registerTrendPack(server: McpServer, client: WhoopClient): void 
       window: z.enum(["week", "month", "six_month", "year"]).default("month"),
       include_points: z.boolean().default(false),
     },
+    READ_ONLY,
     async ({ metrics, end_date, window, include_points }) => {
       const d = end_date ?? todayIso();
       const trends = await Promise.all(metrics.map(async (metric) => {

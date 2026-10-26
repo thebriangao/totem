@@ -5,6 +5,7 @@ import { TodayOut } from "../../schemas/today.js";
 import { projectToday } from "../../projections/today.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerDay(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -13,6 +14,7 @@ export function registerDay(server: McpServer, client: WhoopClient): void {
     {
       date: z.iso.date().describe("YYYY-MM-DD date to fetch. Required."),
     },
+    READ_ONLY,
     async ({ date }) => {
       // Window the target date so we catch the sleep that *ends* on it.
       const dayMs = Date.parse(`${date}T00:00:00.000Z`);

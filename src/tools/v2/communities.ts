@@ -5,6 +5,7 @@ import { CommunitiesOut } from "../../schemas/communities.js";
 import { projectCommunities } from "../../projections/communities.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 // Compute the date range for the given period, ending today. Used for the
 // leaderboard segment of the memberships query.
@@ -29,6 +30,7 @@ export function registerCommunities(server: McpServer, client: WhoopClient): voi
       limit: z.number().int().min(1).max(100).default(50),
       offset: z.number().int().min(0).default(0),
     },
+    READ_ONLY,
     async ({ team_type, metric, period, include_rank, limit, offset }) => {
       const userId = process.env.WHOOP_USER_ID;
       const { startDate, endDate } = dateRange(period);

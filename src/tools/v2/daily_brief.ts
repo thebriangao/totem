@@ -8,6 +8,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { DailyBriefOut } from "../../schemas/compact.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
+import { READ_ONLY } from "../annotations.js";
 
 const SECTIONS = ["recovery", "sleep", "strain", "sleep_plan", "activity"] as const;
 
@@ -21,6 +22,7 @@ export function registerDailyBrief(server: McpServer, client: WhoopClient): void
       sections: z.array(z.enum(SECTIONS)).min(1).refine((v) => new Set(v).size === v.length, "sections must not contain duplicates").default(["recovery", "sleep", "strain", "sleep_plan"]),
       detail: z.enum(["compact", "standard"]).default("compact"),
     },
+    READ_ONLY,
     async ({ date, sections, detail }) => {
       const d = date ?? todayIso();
       const isToday = d === todayIso();

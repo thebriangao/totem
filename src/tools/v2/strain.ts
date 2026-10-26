@@ -6,12 +6,14 @@ import { projectStrain } from "../../projections/strain.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerStrain(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_strain",
     "Day strain deep-dive: score, calories, avg/max HR, time in 6 HR zones, workouts count, steps, strength activity time.",
     { date: z.iso.date().optional() },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       const raw = await client.get("/home-service/v1/deep-dive/strain", { date: d });

@@ -5,6 +5,7 @@ import { HrZonesSetOut } from "../../schemas/settings.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { projectHrZones } from "../../projections/hr_zones.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 export function registerHrZonesSet(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -23,6 +24,7 @@ export function registerHrZonesSet(server: McpServer, client: WhoopClient): void
         .describe("Required for mode=custom. Must be 5 entries."),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ mode, max_hr, zones, confirm }) => {
       let path: string;
       let body: unknown;

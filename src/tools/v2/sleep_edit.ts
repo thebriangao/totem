@@ -6,6 +6,7 @@ import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { canonicalUtc, todayIso } from "../../lib/dates.js";
 import { isObject, asString } from "../../lib/walk.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 // The sleep's activity_id + current window live at
 // header_section.destination.parameters of the deep-dive (same source projectSleep reads).
@@ -31,6 +32,7 @@ export function registerSleepEdit(server: McpServer, client: WhoopClient): void 
       resolve_overlaps: z.boolean().optional(),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ date, start, end, resolve_overlaps, confirm }) => {
       const d = date ?? todayIso();
       if (!start && !end) {

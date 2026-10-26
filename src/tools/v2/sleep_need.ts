@@ -5,12 +5,14 @@ import { SleepNeedOut } from "../../schemas/sleep_need.js";
 import { projectSleepNeed } from "../../projections/sleep_need.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerSleepNeed(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_sleep_need",
     "Recommended bedtime/wake time + sleep need breakdown (baseline + debt + strain need) + smart-alarm eligibility.",
     {},
+    READ_ONLY,
     async () => {
       const raw = await client.get("/coaching-service/v2/sleepneed");
       const projected = projectSleepNeed(raw);

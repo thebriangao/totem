@@ -8,6 +8,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 import { buildExerciseGroups } from "../../whoop/build_lift_body.js";
 import { resolveOfficialExercise } from "../../lib/exercise_lookup.js";
 import { canonicalUtc } from "../../lib/dates.js";
+import { WRITE_ADDITIVE } from "../annotations.js";
 
 const PATH = "/weightlifting-service/v2/weightlifting-workout/activity";
 
@@ -40,6 +41,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       })).min(1),
       confirm: z.boolean().default(false),
     },
+    WRITE_ADDITIVE,
     async ({ name, start, end, exercises, confirm }) => {
       const endTs = end ? new Date(end).getTime() : Date.now();
       const startTs = start ? new Date(start).getTime() : endTs - 30 * 60 * 1000;

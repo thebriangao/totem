@@ -5,6 +5,7 @@ import { WorkoutOut } from "../../schemas/workouts.js";
 import { projectWorkout } from "../../projections/workout.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerWorkout(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -13,6 +14,7 @@ export function registerWorkout(server: McpServer, client: WhoopClient): void {
     {
       activity_id: z.string().describe("Workout UUID (from whoop_workouts; must be a scored, non-pending activity)."),
     },
+    READ_ONLY,
     async ({ activity_id }) => {
       const raw = await client.get("/core-details-bff/v1/cardio-details", { activityId: activity_id });
       const projected = projectWorkout(raw, activity_id);

@@ -4,6 +4,11 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Added
+
+- **MCP tool annotations on all 55 tools** (`src/tools/annotations.ts`). Every tool now declares `readOnlyHint`, and every write also declares `destructiveHint`, so clients can tell reads from writes without parsing descriptions. claude.ai uses these to group a connector's tools into read-only vs write/delete and to set permissions per group; before this, every Totem tool landed in one ungrouped list. 39 reads are `READ_ONLY`; 5 writes that only add records (`activity_create`, `coach_ask`, `lift_custom_exercise`, `lift_log`, `lift_template_save`) are `WRITE_ADDITIVE`; the 11 that can overwrite, clear or delete (`activity_delete`, `cycle_log`, `hidden_metric`, `hr_zones_set`, `journal_autopop`, `journal_log`, `profile_update`, `raw`, `sleep_edit`, `smart_alarm_set`, `symptom_log`) are `WRITE_DESTRUCTIVE`. When in doubt a write is classed destructive. Hints only — the `confirm:true` preview gate is unchanged.
+  - `tests/tools/annotations.test.ts` lists the tools over MCP and pins the classification, so a new write tool fails the suite until it is classified.
+
 ## [1.5.1] — 2026-09-08
 
 ### Fixed

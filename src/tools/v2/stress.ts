@@ -6,12 +6,14 @@ import { projectStress } from "../../projections/stress.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerStress(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_stress",
     "Stress monitor for a day: timeline buckets (15-min), current level, baseline, daily min/peak.",
     { date: z.iso.date().optional() },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       const raw = await client.get(`/health-service/v2/stress-bff/${d}`);
