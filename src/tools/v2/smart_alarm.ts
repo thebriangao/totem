@@ -5,12 +5,14 @@ import { SmartAlarmOut } from "../../schemas/smart_alarm.js";
 import { projectSmartAlarm } from "../../projections/smart_alarm.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerSmartAlarm(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_smart_alarm",
     "Current Smart Alarm state: schedules (per-day-of-week) + global prefs (lower/upper bounds, goal mode, enabled).",
     {},
+    READ_ONLY,
     async () => {
       const [schedules, preferences] = await Promise.all([
         client.get("/smart-alarm-bff/v1/schedule/all"),

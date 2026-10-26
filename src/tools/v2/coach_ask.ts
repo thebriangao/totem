@@ -5,6 +5,7 @@ import { CoachAskOut } from "../../schemas/coach.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { randomInt } from "node:crypto";
+import { WRITE_ADDITIVE } from "../annotations.js";
 
 const TERMINAL_STATUSES = new Set(["COMPLETE", "COMPLETED", "DONE", "FINISHED"]);
 
@@ -77,6 +78,7 @@ export function registerCoachAsk(server: McpServer, client: WhoopClient): void {
         .default("HOME"),
       confirm: z.boolean().default(false).describe("Set true to actually send. Default returns a preview."),
     },
+    WRITE_ADDITIVE,
     async ({ message, context, confirm }) => {
       if (!confirm) {
         return {

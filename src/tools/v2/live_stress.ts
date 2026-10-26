@@ -7,12 +7,14 @@ import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { liveFreshness } from "../../lib/live_freshness.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerLiveStress(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_live_stress",
     "Current stress level (terse). Cheaper than whoop_stress if you just want the latest reading.",
     {},
+    READ_ONLY,
     async () => {
       const date = todayIso();
       const raw = await client.get(`/health-service/v2/stress-bff/${date}`);

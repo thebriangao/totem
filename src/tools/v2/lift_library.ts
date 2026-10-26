@@ -5,12 +5,14 @@ import { LiftLibraryOut } from "../../schemas/strength.js";
 import { projectLibraryList, projectLibrarySingle } from "../../projections/lift_library.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerLiftLibrary(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_lift_library",
     "Your saved Strength Trainer templates. Pass template_id for full detail of one; omit for the list.",
     { template_id: z.number().int().optional() },
+    READ_ONLY,
     async ({ template_id }) => {
       const projected =
         template_id !== undefined

@@ -6,6 +6,7 @@ import { projectPerformanceAssessment } from "../../projections/performance_asse
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { getTimezone, zonedParts } from "../../lib/timezone.js";
+import { READ_ONLY } from "../annotations.js";
 
 // "now" as a wall-clock timestamp in the USER's timezone with the user's offset
 // (e.g. "2026-05-27T13:05:00-0700"). Uses the configured WHOOP_TIMEZONE / profile
@@ -28,6 +29,7 @@ export function registerPerformanceAssessment(server: McpServer, client: WhoopCl
     "whoop_performance_assessment",
     "Whoop's performance assessment for a period — recoveries logged vs required, whether an assessment is due, and the next assessment window. period: WEEK or MONTH (default MONTH).",
     { period: z.enum(["WEEK", "MONTH"]).default("MONTH") },
+    READ_ONLY,
     async ({ period }) => {
       const ts = localIsoNow();
       const raw = await client.get(`/coaching-service/v1/performance-assessment/${period}/data/${ts}`);

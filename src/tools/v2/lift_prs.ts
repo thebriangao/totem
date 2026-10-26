@@ -5,12 +5,14 @@ import { LiftPrsOut } from "../../schemas/strength.js";
 import { projectLiftPrs } from "../../projections/lift_prs.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerLiftPrs(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_lift_prs",
     "All Strength Trainer personal records: per-exercise top weight, units, date, medal.",
     {},
+    READ_ONLY,
     async () => {
       const raw = await client.get("/weightlifting-service/v3/prs");
       const projected = projectLiftPrs(raw);

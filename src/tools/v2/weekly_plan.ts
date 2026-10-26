@@ -6,6 +6,7 @@ import { todayIso } from "../../lib/dates.js";
 import { asArray, asNumber, asString, isObject } from "../../lib/walk.js";
 import { WeeklyPlanOut } from "../../schemas/compact.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
+import { READ_ONLY } from "../annotations.js";
 
 /** A compact projection of Whoop's weekly-plan home tile. */
 export function registerWeeklyPlan(server: McpServer, client: WhoopClient): void {
@@ -13,6 +14,7 @@ export function registerWeeklyPlan(server: McpServer, client: WhoopClient): void
     "whoop_weekly_plan",
     "EXPERIMENTAL: Weekly-plan progress in a compact form. Its upstream endpoint has not yet been verified against a live account.",
     { date: z.iso.date().optional().describe("Any date in the target week. Defaults to today.") },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       const raw = await client.get(`/progression-service/v2/weekly-plan/home-tile/${d}`);

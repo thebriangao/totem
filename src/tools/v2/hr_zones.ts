@@ -5,12 +5,14 @@ import { HrZonesOut } from "../../schemas/settings.js";
 import { projectHrZones } from "../../projections/hr_zones.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerHrZones(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_hr_zones",
     "Current heart-rate zones + max HR + last updated.",
     {},
+    READ_ONLY,
     async () => {
       const [zones, settings] = await Promise.all([
         client.get("/hr-zones-service/v1/bff/zones").catch(() => null),

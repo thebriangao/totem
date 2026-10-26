@@ -5,6 +5,7 @@ import { ProfileUpdateOut } from "../../schemas/settings.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { isObject } from "../../lib/walk.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 const PATH = "/profile-service/v1/profile";
 
@@ -27,6 +28,7 @@ export function registerProfileUpdate(server: McpServer, client: WhoopClient): v
       unit_system: z.enum(["imperial", "metric"]).optional().describe("Display preference only."),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async (args) => {
       const { confirm, weight_kg, height_m, birthday } = args;
       const changed = Object.entries(args)

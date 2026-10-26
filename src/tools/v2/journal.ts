@@ -6,12 +6,14 @@ import { projectJournal } from "../../projections/journal.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerJournal(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_journal",
     "Your journal entry for a date: tracked behaviors with values + human-readable names (resolved from the bundled catalog).",
     { date: z.iso.date().optional() },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       // v3 drafts is the authoritative endpoint for "what did I log".

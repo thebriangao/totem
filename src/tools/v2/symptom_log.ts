@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { SymptomLogOut } from "../../schemas/womens_health.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 export function registerSymptomLog(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -30,6 +31,7 @@ export function registerSymptomLog(server: McpServer, client: WhoopClient): void
         .default([]),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ date, menstruation, cervical_mucus, symptoms, confirm }) => {
       // zod fills the default [] on the MCP path, but guard anyway so a
       // menstruation/cervical_mucus-only call can never trip on undefined.

@@ -6,6 +6,7 @@ import { LiftCustomExerciseOut } from "../../schemas/strength.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { EXERCISES_BY_ID } from "../../data/exercises.js";
+import { WRITE_ADDITIVE } from "../annotations.js";
 
 const PATH = "/weightlifting-service/v2/custom-exercise";
 
@@ -46,6 +47,7 @@ export function registerLiftCustomExercise(server: McpServer, client: WhoopClien
       trackable: z.boolean().default(true),
       confirm: z.boolean().default(false),
     },
+    WRITE_ADDITIVE,
     async (args) => {
       const linked = EXERCISES_BY_ID.get(args.push_core_name);
       if (!linked) {

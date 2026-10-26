@@ -6,12 +6,14 @@ import { projectToday } from "../../projections/today.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerToday(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_today",
     "Composite snapshot for today: recovery score, sleep performance + stages, day strain so far, workouts logged today, current activity state.",
     {},
+    READ_ONLY,
     async () => {
       const date = todayIso();
       const [home, sleep, recovery, state] = await Promise.all([

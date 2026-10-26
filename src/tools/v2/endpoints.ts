@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { EndpointsOut } from "../../schemas/escape.js";
 import { ENDPOINTS } from "../../data/endpoints.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerEndpoints(server: McpServer, _client: unknown): void {
   server.tool(
@@ -13,6 +14,7 @@ export function registerEndpoints(server: McpServer, _client: unknown): void {
       method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional(),
       limit: z.number().int().min(1).max(500).default(200),
     },
+    READ_ONLY,
     async ({ filter, method, limit }) => {
       const f = filter?.toLowerCase();
       const matches = ENDPOINTS.filter((line) => {

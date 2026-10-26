@@ -7,6 +7,7 @@ import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { rangeFromDays } from "../../lib/dates.js";
 import { runPaced } from "../../lib/concurrency.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerLiftHistory(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -16,6 +17,7 @@ export function registerLiftHistory(server: McpServer, client: WhoopClient): voi
       limit: z.number().int().min(1).max(20).default(10),
       end_date: z.iso.date().optional(),
     },
+    READ_ONLY,
     async ({ limit, end_date }) => {
       const endDate = end_date ? new Date(end_date) : new Date();
       const start = rangeFromDays(60, endDate).start;

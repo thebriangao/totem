@@ -7,12 +7,14 @@ import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { projectActivitySleepSummary } from "../../projections/today.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerSleep(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_sleep",
     "Last night's sleep deep-dive: all 4 stages (REM/light/SWS/wake) with durations + percentages, the full per-stage hypnogram, efficiency, performance, consistency, disturbances, and in-sleep heart rate. (Sleep HRV, respiratory rate, debt, and latency aren't exposed by this endpoint and return null.)",
     { date: z.iso.date().optional() },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       const [raw, activitySleep] = await Promise.all([

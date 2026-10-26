@@ -7,6 +7,7 @@ import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { buildExerciseGroups, type InputExercise } from "../../whoop/build_lift_body.js";
 import { resolveOfficialExercise } from "../../lib/exercise_lookup.js";
+import { WRITE_ADDITIVE } from "../annotations.js";
 
 const PATH = "/weightlifting-service/v3/workout-template";
 
@@ -30,6 +31,7 @@ export function registerLiftTemplateSave(server: McpServer, client: WhoopClient)
       })).min(1),
       confirm: z.boolean().default(false),
     },
+    WRITE_ADDITIVE,
     async ({ name, base_template_key, exercises, confirm }) => {
       const inputExercises: InputExercise[] = exercises.map((e) => ({
         exercise_id: e.exercise_id ?? (e.exercise ? resolveOfficialExercise(e.exercise) ?? "" : ""),

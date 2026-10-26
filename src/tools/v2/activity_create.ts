@@ -7,6 +7,7 @@ import { WhoopApiError, WhoopProjectionError, apiErrorDetail } from "../../whoop
 import { jsonOut } from "../../whoop/json_out.js";
 import { SPORTS_BY_ID, SPORTS_BY_NAME } from "../../data/sports.js";
 import { canonicalUtc } from "../../lib/dates.js";
+import { WRITE_ADDITIVE } from "../annotations.js";
 
 const PATH = "/core-details-bff/v0/create-activity";
 
@@ -22,6 +23,7 @@ export function registerActivityCreate(server: McpServer, client: WhoopClient): 
       gps_enabled: z.boolean().default(false),
       confirm: z.boolean().default(false),
     },
+    WRITE_ADDITIVE,
     async ({ sport_id, sport: sportName, start, end, gps_enabled, confirm }) => {
       const sport = sport_id !== undefined
         ? SPORTS_BY_ID.get(sport_id)

@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { ActivityDeleteOut } from "../../schemas/workouts.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
 
 export function registerActivityDelete(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -13,6 +14,7 @@ export function registerActivityDelete(server: McpServer, client: WhoopClient): 
       activity_id: z.string(),
       confirm: z.boolean().default(false),
     },
+    WRITE_DESTRUCTIVE,
     async ({ activity_id, confirm }) => {
       const path = "/core-details-bff/v1/cardio-details";
       if (!confirm) {

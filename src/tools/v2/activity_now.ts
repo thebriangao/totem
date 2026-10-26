@@ -8,6 +8,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { ActivityNowOut } from "../../schemas/compact.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
+import { READ_ONLY } from "../annotations.js";
 
 const FIELDS = ["state", "heart_rate", "stress"] as const;
 
@@ -32,6 +33,7 @@ export function registerActivityNow(server: McpServer, client: WhoopClient): voi
     "whoop_activity_now",
     "Fresh live activity snapshot. Select state, heart_rate, and/or stress; no completed live value is cached.",
     { include: z.array(z.enum(FIELDS)).min(1).refine((v) => new Set(v).size === v.length, "include must not contain duplicates").default(["state"]) },
+    READ_ONLY,
     async ({ include }) => {
       const date = todayIso();
       const [state, heartRate, stress] = await Promise.all([

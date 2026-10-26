@@ -5,6 +5,7 @@ import { BehaviorImpactOut, BehaviorImpactListOut } from "../../schemas/journal.
 import { projectBehaviorImpact, projectBehaviorImpactList } from "../../projections/behavior_impact.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerBehaviorImpact(server: McpServer, client: WhoopClient): void {
   server.tool(
@@ -13,6 +14,7 @@ export function registerBehaviorImpact(server: McpServer, client: WhoopClient): 
     {
       behavior_id: z.string().optional().describe("An impact_uuid from the no-argument list. Omit to get that list."),
     },
+    READ_ONLY,
     async ({ behavior_id }) => {
       // No id → return the discovery list (the only place impact_uuids are exposed).
       if (!behavior_id) {

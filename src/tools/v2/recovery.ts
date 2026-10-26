@@ -6,12 +6,14 @@ import { projectRecovery } from "../../projections/recovery.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
+import { READ_ONLY } from "../annotations.js";
 
 export function registerRecovery(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_recovery",
     "Recovery deep-dive: score, state, HRV and RHR (each with baseline), respiratory rate, SpO2, skin temp, and sleep performance. (The generic contributors[] array and calibration_state are empty in the current tile shape — the per-metric data is in the typed fields.)",
     { date: z.iso.date().optional().describe("YYYY-MM-DD. Defaults to today.") },
+    READ_ONLY,
     async ({ date }) => {
       const d = date ?? todayIso();
       // Window the date so the lightweight recovery record (which carries SpO2 +
