@@ -4,6 +4,10 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Fixed
+
+- Smart Alarm schedules now accept the current `EXACT_TIME`, `SLEEP_GOAL`, `IN_THE_GREEN`, and `NO_ALARM` modes instead of legacy preferences goal values. Sleep Goal writes require `PEAK`, `PERFORM`, or `GET_BY`; reads preserve current schedule modes and preferences goals such as `EXACT_TIME_PERFORM` instead of reporting `IN_THE_GREEN` or `null`.
+
 ## [1.5.1] — 2026-09-08
 
 ### Fixed

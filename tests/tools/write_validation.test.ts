@@ -159,7 +159,7 @@ describe("write-tool validation through MCP", () => {
           enabled: true,
           days_of_week: ["MONDAY"],
           latest_wake_time: "29:99:00",
-          alarm_mode: "EXACT_TIME_PEAK",
+          alarm_mode: "EXACT_TIME",
           timezone_offset: "-0400",
         },
         confirm: true,
@@ -178,7 +178,7 @@ describe("write-tool validation through MCP", () => {
       name: "whoop_smart_alarm_set",
       arguments: {
         mode: "schedule", schedule_id: "schedule-1",
-        schedule: { enabled: true, days_of_week: ["MONDAY"], latest_wake_time: "7:05 AM", alarm_mode: "EXACT_TIME_PEAK", timezone_offset: "-0400" },
+        schedule: { enabled: true, days_of_week: ["MONDAY"], latest_wake_time: "7:05 AM", alarm_mode: "EXACT_TIME", timezone_offset: "-0400" },
         confirm: true,
       },
     });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
-import { SmartAlarmSetOut } from "../../schemas/smart_alarm.js";
+import { AlarmMode, SmartAlarmSetOut } from "../../schemas/smart_alarm.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { normalizeClockTime } from "../../lib/clock.js";
@@ -19,10 +19,13 @@ const ScheduleShape = z.object({
   enabled: z.boolean(),
   days_of_week: z.array(z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"])).min(1),
   latest_wake_time: ClockTime,
-  alarm_mode: z.enum(["IN_THE_GREEN", "EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP"]),
-  sleep_goal: z.string().default(""),
+  alarm_mode: AlarmMode,
+  sleep_goal: z.enum(["", "PEAK", "PERFORM", "GET_BY"]).default(""),
   timezone_offset: z.string().regex(TIMEZONE_OFFSET_RE),
 }).superRefine((schedule, ctx) => {
+  if (schedule.alarm_mode === "SLEEP_GOAL" && !schedule.sleep_goal) {
+    ctx.addIssue({ code: "custom", path: ["sleep_goal"], message: "SLEEP_GOAL requires PEAK, PERFORM, or GET_BY" });
+  }
   if (new Set(schedule.days_of_week).size !== schedule.days_of_week.length) {
     ctx.addIssue({ code: "custom", path: ["days_of_week"], message: "days_of_week must not contain duplicates" });
   }
@@ -41,7 +44,7 @@ const PreferencesShape = z.object({
 export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_smart_alarm_set",
-    "WRITE: update Smart Alarm. To change WHEN the alarm wakes you, use mode=schedule (needs schedule_id + latest_wake_time) — that's the setting that actually controls the wake time. mode=preferences sets the global goal + enable flags, but its lower/upper_time_bound are ignored by the server whenever an explicit schedule exists, so don't use it to set a wake time. master_enable / master_disable turn the whole system on/off. For schedule/preferences, call whoop_smart_alarm first for the schedule_id + current values, then resend with your edits (these replace, not merge).",
+    "WRITE: update Smart Alarm. To change WHEN the alarm wakes you, use mode=schedule (needs schedule_id + latest_wake_time) — that's the setting that actually controls the wake time. mode=preferences sets the global goal + enable flags, but its lower/upper_time_bound are ignored by the server whenever an explicit schedule exists, so don't use it to set a wake time. master_enable / master_disable turn the whole system on/off. Schedule alarm_mode uses EXACT_TIME or SLEEP_GOAL (sleep_goal: PEAK, PERFORM, GET_BY), IN_THE_GREEN, or NO_ALARM; EXACT_TIME_PEAK is a legacy preferences goal, not a schedule mode. If a SLEEP_GOAL schedule omits sleep_goal, read /smart-alarm-bff/v1/schedule/components/populated/{schedule_id} via whoop_raw for the selected goal before resending. For schedule/preferences, call whoop_smart_alarm first for the schedule_id + current values, then resend with your edits (these replace, not merge).",
     {
       mode: z.enum(["schedule", "preferences", "master_enable", "master_disable"]),
       schedule_id: z.string().optional(),
