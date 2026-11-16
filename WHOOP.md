@@ -1693,7 +1693,7 @@ Smart Alarm CRUD. Two-layer architecture: `-bff` for the schedule UI, `-service`
 |---|---|---|---|
 | GET | `/smart-alarm-bff/v1/schedule/all` | 200 | 1,745 B `{all_alarm_schedule_label_display, alarm_schedule_list, alarm_schedule_footer, schedule_button_component, schedule_enabled, should_show_overlay, schedule_disabled_text, deleting_in_progress_modal, deleting_success_modal, delete_error_modal}` — schedule list page. |
 | GET | `/smart-alarm-bff/v1/schedule/components/populated/{uuid}` | 200 | 4,013 B `{repeat_days, wake_mode, wake_time, sleep_goal, schedule_save_success_modal, schedule_saving_modal, schedule_save_error_modal}` — single schedule slot. |
-| PUT | `/smart-alarm-bff/v1/schedule/{uuid}` | 200 | Body: `{alarm_mode, day_of_week_list, enabled, latest_wake_time, sleep_goal, time_zone_offset}`. Example: `{"sleep_goal":"","day_of_week_list":["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"],"time_zone_offset":"-0700","enabled":true,"latest_wake_time":"07:30:00","alarm_mode":"IN_THE_GREEN"}`. `alarm_mode` enum: `IN_THE_GREEN, EXACT_TIME_PEAK, EXACT_TIME_OPTIMIZE_SLEEP`. |
+| PUT | `/smart-alarm-bff/v1/schedule/{uuid}` | 200 | Body: `{alarm_mode, day_of_week_list, enabled, latest_wake_time, sleep_goal, time_zone_offset}`. Example: `{"sleep_goal":"","day_of_week_list":["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"],"time_zone_offset":"-0700","enabled":true,"latest_wake_time":"07:30:00","alarm_mode":"IN_THE_GREEN"}`. `alarm_mode` enum: `EXACT_TIME, SLEEP_GOAL, IN_THE_GREEN, NO_ALARM`. `SLEEP_GOAL` requires `sleep_goal: PEAK, PERFORM, GET_BY` (100%, 85%, 70% of sleep need). |
 
 #### smart-alarm-service (v1)
 
@@ -1701,12 +1701,16 @@ Smart Alarm CRUD. Two-layer architecture: `-bff` for the schedule UI, `-service`
 |---|---|---|---|
 | PUT | `/smart-alarm-service/v1/alarm-schedule/disable` | 204 | No body — master disable for all schedules. |
 | PUT | `/smart-alarm-service/v1/alarm-schedule/enable` | 204 | No body — master enable. |
-| GET | `/smart-alarm-service/v1/smartalarm/preferences` | 200 | 601 B `{lower_time_bound, recovery_score_goal, sleep_score_goal, weekly_plan_goal, weekly_plan_sleep_hours_goal_in_minutes, weekly_plan_sleep_hours_goal, weekly_plan_goal_info, alarm_bounds, last_triggered_at, created_at}`. Note: `alarm_bounds` nests `{goal, upper, lower, enabled}` — the upper time bound + goal mode are NOT at top level. |
-| PUT | `/smart-alarm-service/v1/smartalarm/preferences` | 200 | Body: `{default, enabled, goal, lower_time_bound, schedule_enabled, time_zone_offset, upper_time_bound, weekly_plan_goal}`. Two shapes observed — full and partial. `goal` enum: `EXACT_TIME_PEAK, EXACT_TIME_OPTIMIZE_SLEEP, IN_THE_GREEN`. |
+| GET | `/smart-alarm-service/v1/smartalarm/preferences` | 200 | 601 B `{lower_time_bound, recovery_score_goal, sleep_score_goal, weekly_plan_goal, weekly_plan_sleep_hours_goal_in_minutes, weekly_plan_sleep_hours_goal, weekly_plan_goal_info, alarm_bounds, last_triggered_at, created_at}`. Preferences can expose the upper time bound and goal at top level, or inside an `alarm_bounds` object; current responses can also contain an `alarm_bounds` range string. |
+| PUT | `/smart-alarm-service/v1/smartalarm/preferences` | 200 | Body: `{default, enabled, goal, lower_time_bound, schedule_enabled, time_zone_offset, upper_time_bound, weekly_plan_goal}`. Two shapes observed — full and partial. `goal` values: `EXACT_TIME_PERFORM` (single Exact Time), legacy `EXACT_TIME_PEAK, EXACT_TIME_OPTIMIZE_SLEEP`, and `IN_THE_GREEN`. |
 | POST | `/smart-alarm-service/v1/smartalarm/wbl` | 204/401 | "WBL" = wake-by-log. Body: array of events `{timestamp, event_type, mobile_event_metadata}`. `event_type` enum: `PHONE_DISABLED_ALARM, PHONE_SET_ALARM_TIME, STRAP_DRIVEN_ALARM_SET`. `mobile_event_metadata` includes `strap_id, firmware_maxim_version, nordic_version, device_platform, device_os, device_model, is_strap_connected, is_using_battery_optimizers, is_ack_success`. |
 | PUT | `/smart-alarm-service/v1/strap-status` | 200 | Body: `{"strap_driven_alarm_time": "2026-05-25T07:30:00.000-0700"}` — pushes the alarm time to the strap firmware. The iOS app does this on a delay after a schedule edit. |
 
-The MCP wraps `whoop_smart_alarm` (read) + `whoop_smart_alarm_set` (write) with 4 modes (schedule / preferences / master_enable / master_disable). The strap-status push is NOT wrapped — the strap will pick up changes when the iOS app next syncs.
+**Schedule modes versus preferences goals (verified November 2026).** The populated schedule UI returns `wake_mode.alarm_mode_type_list[].alarm_mode_value` as `EXACT_TIME`, `SLEEP_GOAL`, `IN_THE_GREEN`, or `NO_ALARM`; `sleep_goal.sleep_goal_list[].sleep_goal_value` is `PEAK`, `PERFORM`, or `GET_BY`. These are separate from legacy preferences goals such as `EXACT_TIME_PEAK` / `EXACT_TIME_OPTIMIZE_SLEEP`. After an Exact Time schedule write, preferences can return `goal: "EXACT_TIME_PERFORM"`; reads preserve that value. Schedule reads must not relabel `EXACT_TIME` or `SLEEP_GOAL` as `IN_THE_GREEN`. The schedule list may omit `sleep_goal`; when editing an existing Sleep Goal schedule, retrieve its selected goal (`toggle_selected: true`) from the populated components endpoint first. Exact Time schedule PUT and GET were confirmed against a connected account; Sleep Goal write/read coverage uses a credential-free stdio MCP test server.
+
+The MCP wraps `whoop_smart_alarm` (read) + `whoop_smart_alarm_set` (write) with 4 modes (schedule / preferences / master_enable / master_disable). A recurring template and the current alarm are separate: schedule-list `schedule_enabled` can be true while preferences `enabled` is false. Single Exact Time alarms use preferences `goal: "EXACT_TIME_PERFORM"`, `enabled: true`, `schedule_enabled: false`; `weekly_plan_goal` can be null. A recurring schedule edit must not be substituted for a single alarm request. Preserve/read `alarm_bounds` (including its date), `day_of_week`, and both preferences enable flags to detect disabled or next-day alarms.
+
+The MCP does not perform a Bluetooth write or receive a strap delivery acknowledgement. An API update/readback must not be reported as proof of physical vibration. An empty `last_triggered_at` also does not establish a sync failure. The `strap-status` call is not wrapped by the dedicated Smart Alarm tool; do not infer device delivery from a server response.
 
 ### social-service
 
@@ -2074,8 +2078,9 @@ Every enum value observed across the captured traffic. When an endpoint says "mu
 
 ### Smart Alarm
 
-`alarm_mode` (per schedule): `IN_THE_GREEN, EXACT_TIME_PEAK, EXACT_TIME_OPTIMIZE_SLEEP`
-`goal` (in preferences/alarm_bounds): same three
+`alarm_mode` (per schedule): `EXACT_TIME, SLEEP_GOAL, IN_THE_GREEN, NO_ALARM`
+`sleep_goal` (for `SLEEP_GOAL`): `PEAK, PERFORM, GET_BY`
+`goal` (in preferences/alarm_bounds): legacy `EXACT_TIME_PEAK, EXACT_TIME_OPTIMIZE_SLEEP, IN_THE_GREEN`; current GET responses also include `EXACT_TIME_PERFORM`
 `day_of_week_list`: array of `MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY`
 `wbl event_type`: `PHONE_DISABLED_ALARM, PHONE_SET_ALARM_TIME, STRAP_DRIVEN_ALARM_SET`
 `schedule_state` / `alarm_schedule_state` (from sleepneed response): `ACTIVE, INACTIVE, ALL_DISABLED`

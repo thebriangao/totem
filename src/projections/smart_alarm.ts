@@ -22,7 +22,7 @@ interface ProjectSmartAlarmInput {
 
 const VALID_DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
 type Day = typeof VALID_DAYS[number];
-const VALID_MODES = ["IN_THE_GREEN", "EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP"] as const;
+const VALID_MODES = ["IN_THE_GREEN", "EXACT_TIME", "SLEEP_GOAL", "NO_ALARM"] as const;
 type Mode = typeof VALID_MODES[number];
 
 export function projectSmartAlarm(input: ProjectSmartAlarmInput): SmartAlarmOutT {
@@ -60,11 +60,13 @@ export function projectSmartAlarm(input: ProjectSmartAlarmInput): SmartAlarmOutT
   return {
     enabled: asBool(sched.schedule_enabled) ?? asBool(prefs.schedule_enabled) ?? false,
     preferences: {
+      enabled: asBool(prefs.enabled) ?? asBool(bounds.enabled),
+      schedule_enabled: asBool(prefs.schedule_enabled),
+      day_of_week: (VALID_DAYS as readonly unknown[]).includes(prefs.day_of_week) ? prefs.day_of_week as Day : null,
+      alarm_bounds: asString(prefs.alarm_bounds),
       lower_time_bound: lowerTimeBound,
       upper_time_bound: upperTimeBound,
-      goal: (VALID_MODES as readonly string[]).includes(goal ?? "")
-        ? (goal as Mode)
-        : null,
+      goal: goal ?? null,
       weekly_plan_goal_minutes:
         asNumber(prefs.weekly_plan_sleep_hours_goal_in_minutes) ?? asNumber(prefs.weekly_plan_goal),
       last_triggered_at: asString(prefs.last_triggered_at),

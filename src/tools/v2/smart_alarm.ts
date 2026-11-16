@@ -9,7 +9,7 @@ import { jsonOut } from "../../whoop/json_out.js";
 export function registerSmartAlarm(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_smart_alarm",
-    "Current Smart Alarm state: schedules (per-day-of-week) + global prefs (lower/upper bounds, goal mode, enabled).",
+    "Smart Alarm server state: recurring schedules plus current preferences. Top-level enabled is the recurring schedule switch; preferences.enabled is the current alarm switch. Inspect preferences.alarm_bounds and day_of_week for the actual date. Server state does not confirm strap delivery or physical vibration.",
     {},
     async () => {
       const [schedules, preferences] = await Promise.all([

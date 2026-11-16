@@ -11,14 +11,18 @@ export const DayOfWeek = z.enum([
   "SUNDAY",
 ]);
 
-export const AlarmMode = z.enum(["IN_THE_GREEN", "EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP"]);
+export const AlarmMode = z.enum(["IN_THE_GREEN", "EXACT_TIME", "SLEEP_GOAL", "NO_ALARM"]);
 
 export const SmartAlarmOut = z.object({
   enabled: z.boolean(),
   preferences: z.object({
+    enabled: z.boolean().nullable(),
+    schedule_enabled: z.boolean().nullable(),
+    day_of_week: DayOfWeek.nullable(),
+    alarm_bounds: z.string().nullable(),
     lower_time_bound: z.string().nullable(),
     upper_time_bound: z.string().nullable(),
-    goal: z.enum(["EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP", "IN_THE_GREEN"]).nullable(),
+    goal: z.string().nullable(),
     weekly_plan_goal_minutes: z.number().int().nullable(),
     last_triggered_at: IsoDateTime.nullable(),
   }),

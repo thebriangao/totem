@@ -4,6 +4,11 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Fixed
+
+- Single Exact Time alarms now accept the observed preferences goal `EXACT_TIME_PERFORM` and preserve nullable `weekly_plan_goal`. Smart Alarm reads expose the current alarm enable flag, recurring enable flag, selected day and dated bounds so an enabled weekly template is not mistaken for an armed single alarm. Tool guidance distinguishes the two paths and does not claim physical delivery from server readback.
+- Smart Alarm schedules now accept the current `EXACT_TIME`, `SLEEP_GOAL`, `IN_THE_GREEN`, and `NO_ALARM` modes instead of legacy preferences goal values. Sleep Goal writes require `PEAK`, `PERFORM`, or `GET_BY`; reads preserve current schedule modes and preferences goals such as `EXACT_TIME_PERFORM` instead of reporting `IN_THE_GREEN` or `null`.
+
 ## [1.5.1] — 2026-09-08
 
 ### Fixed
