@@ -12,6 +12,10 @@
     ]
   },
   "preferences": {
+    "enabled": false,
+    "schedule_enabled": true,
+    "day_of_week": "TUESDAY",
+    "alarm_bounds": "['2026-11-17T06:30:00.000+03','2026-11-17T07:30:00.000+03']",
     "lower_time_bound": "05:25:00",
     "upper_time_bound": "06:25:00",
     "goal": "EXACT_TIME_PERFORM",

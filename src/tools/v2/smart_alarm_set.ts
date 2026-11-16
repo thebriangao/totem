@@ -34,17 +34,17 @@ const ScheduleShape = z.object({
 const PreferencesShape = z.object({
   lower_time_bound: ClockTime,
   upper_time_bound: ClockTime,
-  goal: z.enum(["EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP", "IN_THE_GREEN"]),
+  goal: z.enum(["EXACT_TIME_PERFORM", "EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP", "IN_THE_GREEN"]),
   enabled: z.boolean(),
   schedule_enabled: z.boolean(),
   timezone_offset: z.string().regex(TIMEZONE_OFFSET_RE),
-  weekly_plan_goal: z.number().int().min(0).default(0),
+  weekly_plan_goal: z.number().int().min(0).nullable().default(0),
 });
 
 export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_smart_alarm_set",
-    "WRITE: update Smart Alarm. To change WHEN the alarm wakes you, use mode=schedule (needs schedule_id + latest_wake_time) — that's the setting that actually controls the wake time. mode=preferences sets the global goal + enable flags, but its lower/upper_time_bound are ignored by the server whenever an explicit schedule exists, so don't use it to set a wake time. master_enable / master_disable turn the whole system on/off. Schedule alarm_mode uses EXACT_TIME or SLEEP_GOAL (sleep_goal: PEAK, PERFORM, GET_BY), IN_THE_GREEN, or NO_ALARM; EXACT_TIME_PEAK is a legacy preferences goal, not a schedule mode. If a SLEEP_GOAL schedule omits sleep_goal, read /smart-alarm-bff/v1/schedule/components/populated/{schedule_id} via whoop_raw for the selected goal before resending. For schedule/preferences, call whoop_smart_alarm first for the schedule_id + current values, then resend with your edits (these replace, not merge).",
+    "WRITE: update a recurring Smart Alarm schedule, single-alarm preferences, or recurring master switch. mode=schedule edits a weekly template; it does not prove an alarm is armed for today. For a single Exact Time alarm use mode=preferences with goal=EXACT_TIME_PERFORM, enabled=true and schedule_enabled=false; preserve the user's disabled recurring schedule. master_enable/master_disable control recurring schedules, not the current alarm's preferences.enabled. Read whoop_smart_alarm before replacing a schedule/preferences object and after writing: inspect preferences.enabled, schedule_enabled, day_of_week and alarm_bounds for the actual date. Schedule alarm_mode uses EXACT_TIME, SLEEP_GOAL (sleep_goal: PEAK, PERFORM, GET_BY), IN_THE_GREEN or NO_ALARM; legacy preferences goal values are not schedule modes. If a SLEEP_GOAL schedule omits sleep_goal, look up its selected value from /smart-alarm-bff/v1/schedule/components/populated/{schedule_id} via whoop_raw. A successful API write does not confirm Bluetooth delivery or physical vibration.",
     {
       mode: z.enum(["schedule", "preferences", "master_enable", "master_disable"]),
       schedule_id: z.string().optional(),

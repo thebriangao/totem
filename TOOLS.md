@@ -350,7 +350,8 @@ Current Smart Alarm state: schedules array + preferences (lower/upper bounds, go
 
 - **Input:** `{}`
 - **Source (2 parallel):** `/smart-alarm-bff/v1/schedule/all`, `/smart-alarm-service/v1/smartalarm/preferences`
-- **Output:** `{enabled, preferences: {lower_time_bound, upper_time_bound, goal, weekly_plan_goal_minutes, last_triggered_at}, schedules: [{schedule_id, enabled, days_of_week, latest_wake_time, alarm_mode, sleep_goal, timezone_offset}]}`
+- **Output:** `{enabled, preferences: {enabled, schedule_enabled, day_of_week, alarm_bounds, lower_time_bound, upper_time_bound, goal, weekly_plan_goal_minutes, last_triggered_at}, schedules: [{schedule_id, enabled, days_of_week, latest_wake_time, alarm_mode, sleep_goal, timezone_offset}]}`
+- **State distinction:** Top-level `enabled` is the recurring schedule switch; `preferences.enabled` is the current alarm switch. `preferences.schedule_enabled` indicates whether the recurring schedule controls it. `alarm_bounds` preserves the actual date/time range, and `day_of_week` identifies the selected scheduled day when present. An enabled template does not mean a current alarm is armed.
 - **Quirk:** Preferences may expose `upper_time_bound` and `goal` at top level or inside an `alarm_bounds` object; the MCP handles both. Preferences goals (for example `EXACT_TIME_PERFORM`) differ from schedule alarm modes.
 
 #### `whoop_smart_alarm_set` ⚠️ WRITE
@@ -364,7 +365,8 @@ Update one schedule, the global preferences, or the master enable/disable.
   - `master_disable` → `PUT /smart-alarm-service/v1/alarm-schedule/disable`
 - **Output:** `{updated: true, mode}` (or preview)
 - **Schedule modes:** `EXACT_TIME`, `SLEEP_GOAL`, `IN_THE_GREEN`, `NO_ALARM`. Legacy preferences goals such as `EXACT_TIME_PEAK` are not schedule modes. `SLEEP_GOAL` requires `sleep_goal: "PEAK" | "PERFORM" | "GET_BY"` (100%, 85%, 70% of sleep need). If the schedule list omits an existing sleep goal, read the selected value from `/smart-alarm-bff/v1/schedule/components/populated/{schedule_id}` with `whoop_raw` before editing it.
-- **To change the wake time, use `mode=schedule`** (`schedule_id` + `latest_wake_time`) — that's the setting that actually controls when the alarm fires. `mode=preferences` sets the global goal + enable flags, but its `lower/upper_time_bound` are ignored by the server whenever an explicit schedule exists (the PUT returns 200 but the bounds don't change). Read `whoop_smart_alarm` first for the `schedule_id` + current values; schedule/preferences **replace**, they don't merge.
+- **Recurring versus single alarms:** `mode=schedule` edits a weekly template. For a single Exact Time alarm, use `mode=preferences` with `goal: "EXACT_TIME_PERFORM"`, `enabled: true`, `schedule_enabled: false`, and the desired bounds. Preserve other current values, including a nullable `weekly_plan_goal`. Do not rewrite weekdays or call `master_enable` when the user has disabled their recurring schedule. After writing, check the preferences switches and the date in `alarm_bounds`, not just the template's clock value. A schedule edit can leave the current alarm off or targeting a different date.
+- **Delivery limitation:** A successful API write/read does not verify Bluetooth delivery or physical vibration. A null `last_triggered_at` is not evidence of a Bluetooth failure.
 
 ### Social (2)
 

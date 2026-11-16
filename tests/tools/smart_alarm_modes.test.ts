@@ -26,7 +26,8 @@ const client = {
     throw new Error("Unexpected GET " + path);
   },
   async put(path, body) {
-    requests.push(body);
+    requests.push({ path, ...body });
+    if (path.endsWith("/smartalarm/preferences")) { Object.assign(fixture.preferences, body); return; }
     if (path !== "/smart-alarm-bff/v1/schedule/" + entry.schedule_id) throw new Error("Unexpected PUT");
     if (!["EXACT_TIME", "SLEEP_GOAL", "IN_THE_GREEN", "NO_ALARM"].includes(body.alarm_mode)) throw new Error("API 422: invalid mode");
     if (body.latest_wake_time === "00:01:00") throw new Error("API 422: fixture rejection");
@@ -77,6 +78,7 @@ describe("Smart Alarm modes over stdio MCP", () => {
     const state = await read();
     expect(state.schedules[0]?.alarm_mode).toBe("EXACT_TIME");
     expect(state.preferences.goal).toBe("EXACT_TIME_PERFORM");
+    expect(state.preferences).toMatchObject({ enabled: false, schedule_enabled: true, day_of_week: "TUESDAY", alarm_bounds: "['2026-11-17T06:30:00.000+03','2026-11-17T07:30:00.000+03']" });
   });
 
   it("previews Exact Time without writing, then preserves time and days on write/read", async () => {
@@ -101,6 +103,18 @@ describe("Smart Alarm modes over stdio MCP", () => {
   it.each(["", "INVALID"])("rejects missing or invalid Sleep Goal (%s) without writing", async (sleep_goal) => {
     expect((await set({ alarm_mode: "SLEEP_GOAL", sleep_goal })).isError).toBe(true);
     expect(await requests()).toMatchObject({ response: [] });
+  });
+
+  it("sets a single Exact Time alarm through preferences without rewriting or enabling schedules", async () => {
+    const before = (await read()).schedules;
+    const args = { mode: "preferences", preferences: { lower_time_bound: "06:30:00", upper_time_bound: "07:30:00", goal: "EXACT_TIME_PERFORM", enabled: true, schedule_enabled: false, timezone_offset: "-0400", weekly_plan_goal: null } };
+    expect(parse(await client.callTool({ name: "whoop_smart_alarm_set", arguments: args }))).toMatchObject({ preview: true });
+    expect(await requests()).toMatchObject({ response: [] });
+    expect(parse(await client.callTool({ name: "whoop_smart_alarm_set", arguments: { ...args, confirm: true } }))).toMatchObject({ updated: true });
+    const state = await read();
+    expect(state.preferences).toMatchObject({ enabled: true, schedule_enabled: false, goal: "EXACT_TIME_PERFORM" });
+    expect(state.schedules).toEqual(before);
+    expect(await requests()).toMatchObject({ response: [expect.objectContaining({ path: "/smart-alarm-service/v1/smartalarm/preferences", enabled: true, schedule_enabled: false })] });
   });
 
   it("reports upstream rejection as an error", async () => {

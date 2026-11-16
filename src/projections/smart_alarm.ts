@@ -60,6 +60,10 @@ export function projectSmartAlarm(input: ProjectSmartAlarmInput): SmartAlarmOutT
   return {
     enabled: asBool(sched.schedule_enabled) ?? asBool(prefs.schedule_enabled) ?? false,
     preferences: {
+      enabled: asBool(prefs.enabled) ?? asBool(bounds.enabled),
+      schedule_enabled: asBool(prefs.schedule_enabled),
+      day_of_week: (VALID_DAYS as readonly unknown[]).includes(prefs.day_of_week) ? prefs.day_of_week as Day : null,
+      alarm_bounds: asString(prefs.alarm_bounds),
       lower_time_bound: lowerTimeBound,
       upper_time_bound: upperTimeBound,
       goal: goal ?? null,
