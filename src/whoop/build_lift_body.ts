@@ -21,10 +21,19 @@ export interface BuildResult {
   unknown_exercises: string[];
 }
 
-export function buildExerciseGroups(exercises: InputExercise[], startMs: number): BuildResult {
+export function setSlots(startMs: number, endMs: number | undefined, n: number): Array<[number, number]> {
+  const slot = endMs !== undefined && endMs > startMs ? Math.floor((endMs - startMs) / n) : 100;
+  return Array.from({ length: n }, (_, i) => [
+    startMs + i * slot,
+    endMs !== undefined && endMs > startMs && i === n - 1 ? endMs : startMs + (i + 1) * slot,
+  ]);
+}
+
+export function buildExerciseGroups(exercises: InputExercise[], startMs: number, endMs?: number): BuildResult {
   const groups: unknown[] = [];
   const unknown: string[] = [];
-  let cursor = startMs;
+  const known = exercises.filter((ex) => EXERCISES_BY_ID.has(ex.exercise_id));
+  const slots = setSlots(startMs, endMs, known.reduce((n, ex) => n + ex.sets.length, 0));
   let setCount = 0;
   for (const ex of exercises) {
     const meta = EXERCISES_BY_ID.get(ex.exercise_id);
@@ -33,9 +42,9 @@ export function buildExerciseGroups(exercises: InputExercise[], startMs: number)
       continue;
     }
     const sets = ex.sets.map((s) => {
-      const setStart = new Date(cursor).toISOString();
-      const setEnd = new Date(cursor + 100).toISOString();
-      cursor += 100;
+      const [a, b] = slots[setCount]!;
+      const setStart = new Date(a).toISOString();
+      const setEnd = new Date(b).toISOString();
       setCount++;
       const baseSet: Record<string, unknown> = {
         during: `['${setStart}','${setEnd}')`,

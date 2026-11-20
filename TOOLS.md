@@ -232,10 +232,10 @@ Local lookup over the bundled 372-exercise catalog. Zero network calls.
 #### `whoop_lift_log` ⚠️ WRITE
 Log a finished strength workout. Builds Whoop's full nested `workout_groups → workout_exercises → sets` body shape, denormalizing each exercise from the bundled catalog. Validates that every `exercise_id` exists in `EXERCISES_BY_ID` and fails early with a clear error if not.
 
-- **Input:** `{name?: string, start?: string, end?: string, exercises: [{exercise_id, sets: [{reps, weight?, time_seconds?, strap_location?}]}], confirm?: boolean}`
-- **Source:** `POST /weightlifting-service/v2/weightlifting-workout/activity`
-- **Output:** `{logged: true, activity_id, exercise_count, set_count, total_volume_kg}` (or preview)
-- **Quirks:** Whoop's POST validates `exercise_details.created_at` and `exercise_details.updated_at` as non-empty ISO timestamps. The MCP populates them automatically. Overlapping time windows return 409. Default duration is 30 minutes ending now if `start`/`end` not passed.
+- **Input:** `{name?: string, start?: string, end?: string, exercises: [{exercise_id, sets: [{reps, weight?, time_seconds?, strap_location?}]}], replace_overlapping?: boolean, confirm?: boolean}`
+- **Source:** `GET /developer/v2/activity/workout` (overlap check, 24 h lookback), then `DELETE /core-details-bff/v1/cardio-details?activityId=` per overlapping activity only when `replace_overlapping:true`, then `POST /weightlifting-service/v2/weightlifting-workout/activity`
+- **Output:** `{logged: true, activity_id, exercise_count, set_count, total_volume_kg, requested_during, saved_during, warning?, deleted_overlapping?}`, or a preview with `time_range` (exact `during` sent, local start/end, timezone, duration), `set_timing`, and `overlapping_activities`
+- **Quirks:** Whoop's POST validates `exercise_details.created_at` and `exercise_details.updated_at` as non-empty ISO timestamps. The MCP populates them automatically. Whoop no longer returns 409 for an overlapping window: it removes the existing activity and saves the new one with its window shrunk to the span of the set timestamps. So overlap is checked before the POST: by default the tool refuses and names each clashing activity with its times; `replace_overlapping:true` deletes them first and lists them in `deleted_overlapping`. Set timestamps tile the requested window evenly, with the last set ending at `end`. Sets with `weight > 0` and `reps: 0` (and no `time_seconds`) are rejected, because Whoop awards weight PRs without checking reps. Default duration is 30 minutes ending now if `start`/`end` not passed.
 
 #### `whoop_lift_template_save` ⚠️ WRITE
 Create or save-as a workout template (e.g. "Push Day", "Heavy Legs").
