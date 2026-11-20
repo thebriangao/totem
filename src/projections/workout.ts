@@ -1,5 +1,6 @@
 import type { WorkoutOutT } from "../schemas/workouts.js";
 import { isObject, asArray, asNumber, asString, labelToNumber, timeLabelToMs } from "../lib/walk.js";
+import { parseClockMinutes } from "./sleep.js";
 
 // Whoop's /core-details-bff/v1/cardio-details returns:
 //   title_bar.title_display              → sport name ("STRENGTH TRAINER")
@@ -71,23 +72,23 @@ export function projectWorkout(raw: unknown, activityId: string): WorkoutOutT {
   }
 
   // HR curve from graph_response. The points carry NO absolute timestamp — the
-  // bpm is in data_scrubber_details.value_display ("76", unit "bpm"), and the
-  // time is encoded as position_x (fraction 0..1 of the workout's [start,end]
-  // window). The old code read dsd.timestamp/pt.timestamp (never present), so
-  // every point was dropped and hr_curve came back empty. We rebuild absolute
-  // timestamps from start + position_x·duration, then evenly downsample (a real
-  // workout has hundreds–thousands of samples — far too many for context).
+  // bpm is in data_scrubber_details.value_display ("76", unit "bpm") and the
+  // local clock in secondary_contextual_display ("9:35 AM"). The old code read
+  // dsd.timestamp/pt.timestamp (never present), so every point was dropped and
+  // hr_curve came back empty. We rebuild absolute timestamps from the clock
+  // labels (position_x·duration only as a fallback), then evenly downsample (a
+  // real workout has hundreds–thousands of samples — far too many for context).
   const MAX_HR_POINTS = 120;
   const graph = isObject(root.graph_response) ? (root.graph_response as Record<string, unknown>) : {};
   const startMs = start ? Date.parse(start) : NaN;
   // Collect bpm points per plot; the HR line is the plot with the most of them
   // (other plots are zone bands / overlays).
-  let bestPlot: { x: number; bpm: number }[] = [];
+  let bestPlot: { x: number; bpm: number; clockMin: number | null }[] = [];
   for (const p of asArray(graph.plots)) {
     if (!isObject(p)) continue;
     const plot = isObject(p.plot) ? (p.plot as Record<string, unknown>) : null;
     if (!plot) continue;
-    const pts: { x: number; bpm: number }[] = [];
+    const pts: { x: number; bpm: number; clockMin: number | null }[] = [];
     for (const seg of asArray(plot.segments)) {
       if (!isObject(seg)) continue;
       for (const pt of asArray(seg.points)) {
@@ -96,22 +97,40 @@ export function projectWorkout(raw: unknown, activityId: string): WorkoutOutT {
         if (asString(dsd.unit_display) !== "bpm") continue;
         const bpm = labelToNumber(asString(dsd.value_display)) ?? asNumber(dsd.value);
         const x = asNumber(pt.position_x);
-        if (bpm !== null && x !== null) pts.push({ x, bpm: Math.round(bpm) });
+        const clockMin = parseClockMinutes(asString(dsd.secondary_contextual_display));
+        if (bpm !== null && x !== null) pts.push({ x, bpm: Math.round(bpm), clockMin });
       }
     }
     if (pts.length > bestPlot.length) bestPlot = pts;
   }
   bestPlot.sort((a, b) => a.x - b.x);
-  const sampled = bestPlot.length > MAX_HR_POINTS
-    ? Array.from({ length: MAX_HR_POINTS }, (_, i) => bestPlot[Math.floor((i * bestPlot.length) / MAX_HR_POINTS)]!)
-    : bestPlot;
-  const hrCurve: { at: string; bpm: number }[] = [];
-  if (Number.isFinite(startMs) && durationMs && durationMs > 0) {
-    for (const pt of sampled) {
-      const frac = Math.min(1, Math.max(0, pt.x));
-      hrCurve.push({ at: new Date(startMs + frac * durationMs).toISOString(), bpm: pt.bpm });
+  // The graph x-axis is padded past [start, end], so position_x isn't a fraction
+  // of the workout. Time each point from its local clock label instead, relative
+  // to the start's local clock (formatted_time_display), and drop padding points.
+  const endMs = end ? Date.parse(end) : NaN;
+  const startClock = parseClockMinutes(asString(startSelector.formatted_time_display))
+    ?? parseClockMinutes(/\d{1,2}:\d{2}\s*[AP]M/i.exec(asString(titleBar.subtitle_display) ?? "")?.[0] ?? null);
+  const clocked = bestPlot.filter((p) => p.clockMin !== null);
+  let timed: { at: number; bpm: number }[] = [];
+  if (Number.isFinite(startMs) && Number.isFinite(endMs) && startClock !== null && clocked.length >= 2) {
+    const baseMs = Math.floor(startMs / 60000) * 60000;
+    let rel = ((((clocked[0]!.clockMin! - startClock) % 1440) + 1440 + 720) % 1440) - 720;
+    for (let i = 0; i < clocked.length; i++) {
+      if (i > 0) {
+        let delta = clocked[i]!.clockMin! - clocked[i - 1]!.clockMin!;
+        if (delta < -720) delta += 1440;
+        rel += delta;
+      }
+      const at = baseMs + rel * 60000;
+      if (at >= baseMs && at <= endMs) timed.push({ at: Math.max(at, startMs), bpm: clocked[i]!.bpm });
     }
+  } else if (Number.isFinite(startMs) && durationMs && durationMs > 0) {
+    timed = bestPlot.map((pt) => ({ at: startMs + Math.min(1, Math.max(0, pt.x)) * durationMs, bpm: pt.bpm }));
   }
+  const sampled = timed.length > MAX_HR_POINTS
+    ? Array.from({ length: MAX_HR_POINTS }, (_, i) => timed[Math.floor((i * timed.length) / MAX_HR_POINTS)]!)
+    : timed;
+  const hrCurve = sampled.map((pt) => ({ at: new Date(pt.at).toISOString(), bpm: pt.bpm }));
 
   // MSK fields
   const sportName = asString(titleBar.title_display);

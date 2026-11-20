@@ -1,5 +1,6 @@
 import type { RecoveryOutT } from "../schemas/recovery.js";
 import { isObject, asArray, asString, asNumber } from "../lib/walk.js";
+import { isoDay } from "../lib/dates.js";
 
 // Whoop migrated the /home-service/v1/deep-dive/recovery shape in May 2026 from
 // GRAPHING_CARD tiles (titled "RECOVERY", "HEART RATE VARIABILITY", etc.) to a
@@ -63,11 +64,32 @@ function findContributor(metrics: unknown[], idSuffix: string): Record<string, u
 
 // SpO2 + skin temperature aren't carried by the deep-dive recovery tiles; they
 // live on the lightweight /developer/v2/recovery records (score.spo2_percentage,
-// score.skin_temp_celsius). Pick the record whose created date matches, else the
-// most recent — same rule the today/day projections use for HRV/RHR.
+// score.skin_temp_celsius). Pick the record whose created date matches; fall back
+// to the most recent only when `date` is newer than every record (today, before
+// it's scored). A past date with no match gets nothing rather than another day.
+export function pickForDate(
+  records: Record<string, unknown>[],
+  date: string,
+  dayOf: (r: Record<string, unknown>) => string | undefined,
+): Record<string, unknown> | undefined {
+  const match = records.find((r) => dayOf(r) === date);
+  if (match) return match;
+  return records.every((r) => (dayOf(r) ?? "") < date) ? records[0] : undefined;
+}
+
+// The member's calendar day for a timestamp. One carrying a local offset is
+// already local; a UTC ("Z") one is shifted into the member's timezone, else
+// east-of-UTC members would match the previous day's UTC date.
+export function localDay(ts: string | null | undefined): string | undefined {
+  if (!ts) return undefined;
+  if (!/(Z|[+-]00:?00)$/i.test(ts)) return ts.slice(0, 10);
+  const ms = Date.parse(ts);
+  return Number.isNaN(ms) ? ts.slice(0, 10) : isoDay(new Date(ms));
+}
+
 function v2Score(recoveryV2: unknown, date: string): Record<string, unknown> {
   const records = asArray(isObject(recoveryV2) ? recoveryV2.records : null).filter(isObject);
-  const pick = records.find((r) => asString(r.created_at)?.slice(0, 10) === date) ?? records[0];
+  const pick = pickForDate(records, date, (r) => localDay(asString(r.created_at)));
   return pick && isObject(pick.score) ? (pick.score as Record<string, unknown>) : {};
 }
 

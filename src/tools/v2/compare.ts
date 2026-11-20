@@ -70,8 +70,8 @@ export function registerCompare(server: McpServer, client: WhoopClient): void {
 
       const out = {
         window,
-        a: { start_date: dateBefore(a, offsetDays), end_date: a },
-        b: { start_date: dateBefore(b, offsetDays), end_date: b },
+        a: { start_date: dateBefore(a, offsetDays - 1), end_date: a },
+        b: { start_date: dateBefore(b, offsetDays - 1), end_date: b },
         metrics: projected,
       };
       try {
