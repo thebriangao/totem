@@ -27,3 +27,33 @@ describe("TokenManager persistence failures", () => {
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("could not persist"));
   });
 });
+
+describe("TokenManager.invalidate", () => {
+  it("forces a refresh only when the rejected token is still the current one", async () => {
+    const { refreshCognitoSession } = await import("../../src/whoop/cognito.js");
+    const refresh = vi.mocked(refreshCognitoSession);
+    const manager = new TokenManager({
+      email: "test@example.com",
+      accessToken: "expired",
+      refreshToken: "old-refresh",
+      store: { save: () => {} },
+    });
+    await manager.getToken();
+    const callsAfterFirst = refresh.mock.calls.length;
+
+    manager.invalidate("some-older-token");
+    await expect(manager.getToken()).resolves.toBe("fresh-access");
+    expect(refresh.mock.calls.length).toBe(callsAfterFirst);
+
+    // Within a minute of the last refresh, a rejection doesn't refresh again.
+    manager.invalidate("fresh-access");
+    await manager.getToken();
+    expect(refresh.mock.calls.length).toBe(callsAfterFirst);
+
+    const later = Date.now() + 61_000;
+    vi.spyOn(Date, "now").mockReturnValue(later);
+    manager.invalidate("fresh-access");
+    await manager.getToken();
+    expect(refresh.mock.calls.length).toBe(callsAfterFirst + 1);
+  });
+});

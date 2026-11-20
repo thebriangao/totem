@@ -57,7 +57,10 @@ async function main(): Promise<void> {
     store: chooseStore(),
   });
 
-  const client = new WhoopClient({ getToken: () => tokenManager.getToken() });
+  const client = new WhoopClient({
+    getToken: () => tokenManager.getToken(),
+    onUnauthorized: (token) => tokenManager.invalidate(token),
+  });
 
   // Tier 2 of the timezone resolution chain: auto-detect from Whoop's profile
   // so responses come back in the user's local TZ without manual config.
