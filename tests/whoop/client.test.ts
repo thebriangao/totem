@@ -190,4 +190,82 @@ describe("WhoopClient", () => {
     await client.get("/home-service/v1/home", { date: "2026-05-23" });
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
+
+  it("does not retain developer-API records still in PENDING_SCORE", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ records: [{ score_state: "PENDING_SCORE" }] }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/developer/v2/activity/sleep", { limit: 5 });
+    await client.get("/developer/v2/activity/sleep", { limit: 5 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidates dependent GETs even when the write fails", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ score: 1 }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/home-service/v1/home", { date: "2026-05-23" });
+    fetchMock.mockResolvedValueOnce(new Response("oops", { status: 502 }));
+    await expect(client.post("/core-details-bff/v0/create-activity", {})).rejects.toBeInstanceOf(WhoopServerError);
+    await client.get("/home-service/v1/home", { date: "2026-05-23" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not store a read that was in flight when a write landed", async () => {
+    let resolveRead!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveRead = resolve; }));
+    const client = makeClient();
+    const stale = client.get("/journal-service/v3/journals/drafts/mobile/2026-05-23");
+    await Promise.resolve();
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await client.put("/journal-service/v3/journals/mobile/2026-05-23", {});
+    resolveRead(new Response(JSON.stringify({ v: "before" }), { status: 200 }));
+    await stale;
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ v: "after" }), { status: 200 }));
+    await expect(client.get("/journal-service/v3/journals/drafts/mobile/2026-05-23")).resolves.toEqual({ v: "after" });
+  });
+
+  it("bypasses the cache for fresh reads", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/users-service/v2/bootstrap");
+    await client.get("/users-service/v2/bootstrap", {}, { fresh: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await client.get("/users-service/v2/bootstrap");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("never lets an older read overwrite a newer fresh read's cached value", async () => {
+    let resolveOld!: (response: Response) => void;
+    fetchMock
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveOld = resolve; }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ v: "new" }), { status: 200 }));
+    const client = makeClient();
+    const old = client.get("/users-service/v2/bootstrap");
+    await Promise.resolve();
+    await client.get("/users-service/v2/bootstrap", {}, { fresh: true });
+    resolveOld(new Response(JSON.stringify({ v: "old" }), { status: 200 }));
+    await old;
+    await expect(client.get("/users-service/v2/bootstrap")).resolves.toEqual({ v: "new" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats the current month's calendar and current week's plan as current, not historical", async () => {
+    let now = Date.parse("2026-08-24T12:00:00.000Z");
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = new WhoopClient({ getToken: async () => "test-bearer", now: () => now });
+    await client.get("/home-service/v1/calendar/recovery", { date: "2026-08-01" });
+    await client.get("/progression-service/v2/weekly-plan/home-tile/2026-08-20");
+    now += 16 * 60_000;
+    await client.get("/home-service/v1/calendar/recovery", { date: "2026-08-01" });
+    await client.get("/progression-service/v2/weekly-plan/home-tile/2026-08-20");
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("invalidates trends after an activity write", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/progression-service/v3/trends/hrv", { endDate: "2026-05-23" });
+    await client.post("/core-details-bff/v0/create-activity", {});
+    await client.get("/progression-service/v3/trends/hrv", { endDate: "2026-05-23" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
 });
