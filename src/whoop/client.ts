@@ -12,6 +12,11 @@ export interface WhoopClientConfig {
   getToken: () => Promise<string>;
   /** Injectable clock for deterministic cache tests. */
   now?: () => number;
+  /**
+   * Called with the rejected token when Whoop answers 401, before the single
+   * retry, so the token source can force a refresh.
+   */
+  onUnauthorized?: (rejectedToken: string) => void;
 }
 
 type QueryValue = string | number | boolean | undefined | null;
@@ -34,6 +39,11 @@ class RequestCache {
   private readonly values = new Map<string, CacheEntry>();
   private readonly inFlight = new Map<string, Promise<unknown>>();
   private bytes = 0;
+  // Bumped on every invalidation so a read that started before a write can't
+  // store (or be shared as) pre-write data once it lands.
+  private generation = 0;
+  private loadSeq = 0;
+  private readonly latestLoad = new Map<string, number>();
 
   constructor(private readonly now: () => number) {}
 
@@ -41,8 +51,9 @@ class RequestCache {
     key: string,
     policy: { ttlMs: number; tags: readonly string[] } | null,
     load: () => Promise<T>,
+    fresh = false,
   ): Promise<T> {
-    const cached = this.values.get(key);
+    const cached = fresh ? undefined : this.values.get(key);
     if (cached) {
       if (cached.expiresAt > this.now()) {
         // Map insertion order is the LRU order.
@@ -55,22 +66,34 @@ class RequestCache {
 
     // Even live endpoints share an already-running identical request, but their
     // completed values are never retained.
-    const existing = this.inFlight.get(key);
+    const existing = fresh ? undefined : this.inFlight.get(key);
     if (existing) return existing as Promise<T>;
 
-    const pending = load()
+    const generation = this.generation;
+    const seq = ++this.loadSeq;
+    this.latestLoad.set(key, seq);
+    const pending: Promise<T> = load()
       .then((value) => {
         // Pending activities are mutable server-side objects; serving one after
-        // Whoop finishes scoring it would be misleading.
-        if (policy && !containsPendingState(value)) this.store(key, value, policy);
+        // Whoop finishes scoring it would be misleading. A load superseded by a
+        // newer one for the same key (a fresh read) must not overwrite it.
+        const latest = this.latestLoad.get(key) === seq;
+        if (policy && latest && generation === this.generation && !containsPendingState(value)) {
+          this.store(key, value, policy);
+        }
         return value;
       })
-      .finally(() => this.inFlight.delete(key));
+      .finally(() => {
+        if (this.inFlight.get(key) === pending) this.inFlight.delete(key);
+        if (this.latestLoad.get(key) === seq) this.latestLoad.delete(key);
+      });
     this.inFlight.set(key, pending);
     return pending;
   }
 
   invalidate(tags: readonly string[]): void {
+    this.generation++;
+    this.inFlight.clear();
     if (tags.includes("all")) {
       this.values.clear();
       this.bytes = 0;
@@ -114,7 +137,8 @@ class RequestCache {
 
 function containsPendingState(value: unknown): boolean {
   try {
-    return JSON.stringify(value).toLowerCase().includes('"pending"');
+    // Matches both the iOS "PENDING" state and the developer API's "PENDING_SCORE".
+    return /"pending(_score)?"/.test(JSON.stringify(value).toLowerCase());
   } catch {
     return true;
   }
@@ -144,7 +168,18 @@ function cachePolicy(
   // use the following bounded TTLs: home 30s; activity 60s; recovery, sleep,
   // trends, lifts, communities and journal 5m; calendar 15m; settings 10m.
   // Historical reads may use their longer endpoint-specific TTLs below.
-  const historical = Boolean(dateHint && dateHint < isoDay(new Date(now())));
+  const today = isoDay(new Date(now()));
+  // Calendar reads cover the whole month containing the date, and weekly-plan
+  // reads the week containing it, so they're only historical once that whole
+  // period is over.
+  const periodEnd = !dateHint
+    ? undefined
+    : path.includes("calendar/")
+      ? `${dateHint.slice(0, 7)}-31`
+      : path.includes("weekly-plan")
+        ? new Date(Date.parse(`${dateHint}T00:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10)
+        : dateHint;
+  const historical = Boolean(periodEnd && periodEnd < today);
   // Freshness-sensitive endpoints must never return a completed cached value.
   if (
     path === "/health-tab-bff/v1/health-tab" ||
@@ -181,11 +216,11 @@ function cachePolicy(
 function writeInvalidationTags(path: string): readonly string[] {
   if (
     path.includes("create-activity") || path.includes("cardio-details") || path.includes("sleep-details")
-  ) return ["activity", "daily", "sleep", "recovery", "sleep_plan", "calendar"];
+  ) return ["activity", "daily", "sleep", "recovery", "sleep_plan", "calendar", "trend", "lift"];
   if (path.includes("journal-service") || path.includes("menstrual") || path.includes("symptom")) {
-    return ["journal", "daily", "recovery", "sleep"];
+    return ["journal", "daily", "recovery", "sleep", "trend"];
   }
-  if (path.includes("weightlifting-service")) return ["lift", "activity", "daily"];
+  if (path.includes("weightlifting-service")) return ["lift", "activity", "daily", "trend"];
   if (path.includes("profile-service") || path.includes("hr-zones") || path.includes("smart-alarm") || path.includes("hidden-metrics")) {
     return ["settings", "profile", "daily", "sleep_plan"];
   }
@@ -203,9 +238,13 @@ export class WhoopClient {
   async get<T = unknown>(
     path: string,
     query: Record<string, QueryValue> = {},
+    options: { fresh?: boolean } = {},
   ): Promise<T> {
+    // `fresh` skips cached and in-flight values. Use it for reads that a write
+    // merges into or compares against, since the app may have changed them.
     return this.cache.getOrLoad(cacheKey(path, query), cachePolicy(path, query, this.config.now ?? Date.now), () =>
       this.request<T>("GET", path, query, undefined),
+      options.fresh,
     );
   }
 
@@ -242,6 +281,23 @@ export class WhoopClient {
     path: string,
     query: Record<string, QueryValue>,
     body: unknown,
+  ): Promise<T> {
+    if (method === "GET") return this.send<T>(method, path, query, body);
+    // A failed or timed-out write may still have been applied server-side, so
+    // drop dependent reads whatever the outcome.
+    try {
+      return await this.send<T>(method, path, query, body);
+    } finally {
+      this.cache.invalidate(writeInvalidationTags(path));
+    }
+  }
+
+  private async send<T>(
+    method: string,
+    path: string,
+    query: Record<string, QueryValue>,
+    body: unknown,
+    retried = false,
   ): Promise<T> {
     const url = new URL(BASE_URL + path);
     url.searchParams.set("apiVersion", API_VERSION);
@@ -284,6 +340,13 @@ export class WhoopClient {
     }
 
     if (response.status === 401) {
+      // Whoop can reject a token before its local expiry (revocation, clock
+      // skew). Force one refresh and retry before giving up.
+      if (!retried && this.config.onUnauthorized) {
+        await response.body?.cancel().catch(() => {});
+        this.config.onUnauthorized(token);
+        return this.send<T>(method, path, query, body, true);
+      }
       throw new WhoopAuthExpiredError();
     }
     if (response.status >= 500) {
@@ -301,8 +364,6 @@ export class WhoopClient {
       throw new WhoopApiError(response.status, path, text, description);
     }
 
-    const result = response.status === 204 ? undefined as T : (await response.json()) as T;
-    if (method !== "GET") this.cache.invalidate(writeInvalidationTags(path));
-    return result;
+    return response.status === 204 ? undefined as T : (await response.json()) as T;
   }
 }

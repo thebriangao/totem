@@ -237,6 +237,38 @@ describe("write-tool validation through MCP", () => {
     expect(output).toMatchObject({ updated: false, no_change: true, is_hidden: false });
   });
 
+  it("still writes when the hidden-metric status can't be read", async () => {
+    const get = vi.fn().mockRejectedValue(new Error("boom"));
+    const del = vi.fn().mockResolvedValue(undefined);
+    const whoop = { get, delete: del } as unknown as WhoopClient;
+    const client = await connect((server) => registerHiddenMetric(server, whoop));
+    const result = await client.callTool({
+      name: "whoop_hidden_metric",
+      arguments: { metric: "BODY_COMP", action: "show", confirm: true },
+    });
+    expect(result.isError).not.toBe(true);
+    expect(del).toHaveBeenCalledOnce();
+  });
+
+  it("drops the old state when the country changes, and reads the profile fresh", async () => {
+    const get = vi.fn().mockResolvedValue({
+      user: { first_name: "A", last_name: "B", city: "Austin", admin_division: "TX", country: "US" },
+      profile: { gender: "MALE", weight: 80, height: 1.8, unit_system: "metric" },
+      account: { email: "a@b.com" },
+    });
+    const put = vi.fn().mockResolvedValue({});
+    const whoop = { get, put } as unknown as WhoopClient;
+    const client = await connect((server) => registerProfileUpdate(server, whoop));
+    const result = await client.callTool({
+      name: "whoop_profile_update",
+      arguments: { country: "ca", city: "Toronto", confirm: true },
+    });
+    expect(result.isError).not.toBe(true);
+    expect(get.mock.calls[0]![2]).toEqual({ fresh: true });
+    expect(put.mock.calls[0]![1]).toMatchObject({ country: "CA", city: "Toronto" });
+    expect(put.mock.calls[0]![1]).not.toHaveProperty("state");
+  });
+
   it("blocks an empty journal replacement unless explicitly allowed", async () => {
     const put = vi.fn();
     const whoop = { put } as unknown as WhoopClient;

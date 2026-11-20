@@ -28,6 +28,7 @@ export class TokenManager {
   private skewMs: number;
   private store: TokenStore;
   private refreshing: Promise<void> | null = null;
+  private lastRefreshAt = 0;
 
   constructor(config: TokenManagerConfig) {
     this.email = config.email;
@@ -56,6 +57,18 @@ export class TokenManager {
     return this.accessToken;
   }
 
+  /**
+   * Force the next getToken() to refresh. Ignored when `rejectedToken` is no
+   * longer current, so parallel 401s on the same token cause a single refresh,
+   * and within a minute of the last refresh, so a token Whoop keeps rejecting
+   * doesn't cost a Cognito call per request.
+   */
+  invalidate(rejectedToken: string): void {
+    if (rejectedToken !== this.accessToken) return;
+    if (Date.now() - this.lastRefreshAt < 60_000) return;
+    this.expiresAt = 0;
+  }
+
   private isFresh(): boolean {
     return Date.now() < this.expiresAt - this.skewMs;
   }
@@ -71,6 +84,7 @@ export class TokenManager {
       console.error("[totem] Cognito rotated the refresh token — persisting the new one.");
     }
     this.expiresAt = next.expiresAt;
+    this.lastRefreshAt = Date.now();
     try {
       this.store.save({ accessToken: this.accessToken, refreshToken: this.refreshToken });
     } catch (error) {

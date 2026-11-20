@@ -38,7 +38,7 @@ export function registerSleepEdit(server: McpServer, client: WhoopClient): void 
       }
 
       // Resolve the sleep + its current window so an omitted bound is preserved.
-      const sleep = sleepActivity(await client.get("/home-service/v1/deep-dive/sleep/last-night", { date: d }));
+      const sleep = sleepActivity(await client.get("/home-service/v1/deep-dive/sleep/last-night", { date: d }, { fresh: true }));
       if (!sleep.activityId) {
         return { content: [{ type: "text", text: jsonOut({ error: `No sleep found for ${d}.` }) }], isError: true };
       }
