@@ -41,7 +41,7 @@ export function registerProfileUpdate(server: McpServer, client: WhoopClient): v
 
       // The PUT is non-partial (a sparse body → 422), so pull the current profile
       // and overlay only what the caller passed. Every field stays editable.
-      const boot = await client.get<Record<string, unknown>>("/users-service/v2/bootstrap");
+      const boot = await client.get<Record<string, unknown>>("/users-service/v2/bootstrap", {}, { fresh: true });
       const u = isObject(boot.user) ? boot.user : {};
       const p = isObject(boot.profile) ? boot.profile : {};
       const acc = isObject(boot.account) ? boot.account : {};
@@ -52,6 +52,10 @@ export function registerProfileUpdate(server: McpServer, client: WhoopClient): v
       const curBirthday = Number.isNaN(birthdayMs) ? undefined : new Date(birthdayMs).toISOString().slice(0, 10);
       const curBaseline = typeof p.physiological_baseline === "string" ? p.physiological_baseline.toUpperCase() : undefined;
 
+      // A state from the old country doesn't belong to a new one, and Whoop
+      // rejects mismatched pairs, so drop it unless the caller sets one.
+      const newCountry = args.country?.toUpperCase();
+      const countryChanged = newCountry !== undefined && newCountry !== u.country;
       const merged: Record<string, unknown> = {
         first_name: args.first_name ?? u.first_name,
         last_name: args.last_name ?? u.last_name,
@@ -62,8 +66,8 @@ export function registerProfileUpdate(server: McpServer, client: WhoopClient): v
         weight: weight_kg ?? (typeof p.weight === "number" ? p.weight : undefined),
         height: height_m ?? (typeof p.height === "number" ? p.height : undefined),
         city: args.city ?? u.city,
-        state: args.state ?? u.admin_division,
-        country: args.country?.toUpperCase() ?? u.country,
+        state: args.state ?? (countryChanged ? undefined : u.admin_division),
+        country: newCountry ?? u.country,
         unit_system: args.unit_system ?? p.unit_system,
       };
       for (const k of Object.keys(merged)) if (merged[k] === undefined || merged[k] === null) delete merged[k];

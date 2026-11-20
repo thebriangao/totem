@@ -23,9 +23,10 @@ export function registerHiddenMetric(server: McpServer, client: WhoopClient): vo
       // This endpoint returns 200 for both states: `{ is_hidden: boolean }`.
       // Treating a successful GET as "hidden" turns an already-visible metric
       // into a needless DELETE write.
-      const status = await client.get(path).catch(() => null) as { is_hidden?: unknown } | null;
+      const status = await client.get(path, {}, { fresh: true }).catch(() => null) as { is_hidden?: unknown } | null;
       const currentlyHidden = status?.is_hidden === true;
-      if (currentlyHidden === (action === "hide")) {
+      // An unreadable status is unknown, not "visible": write rather than skip.
+      if (typeof status?.is_hidden === "boolean" && currentlyHidden === (action === "hide")) {
         const out = HiddenMetricOut.parse({ updated: false, no_change: true, metric, is_hidden: currentlyHidden });
         return { content: [{ type: "text", text: jsonOut(out) }] };
       }
