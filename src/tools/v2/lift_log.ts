@@ -5,11 +5,15 @@ import { LiftLogOut } from "../../schemas/strength.js";
 import { preview } from "../../whoop/write_safety.js";
 import { WhoopProjectionError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
-import { buildExerciseGroups } from "../../whoop/build_lift_body.js";
+import { buildExerciseGroups, setSlots, type InputExercise } from "../../whoop/build_lift_body.js";
 import { resolveOfficialExercise } from "../../lib/exercise_lookup.js";
-import { canonicalUtc } from "../../lib/dates.js";
+import { canonicalUtc, isoDay } from "../../lib/dates.js";
 
 const PATH = "/weightlifting-service/v2/weightlifting-workout/activity";
+const WORKOUTS_PATH = "/developer/v2/activity/workout";
+const DELETE_PATH = "/core-details-bff/v1/cardio-details";
+// An activity that started up to a day earlier can still overlap the window.
+const LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 function isValidIanaTimezone(timezone: string): boolean {
   try {
@@ -20,10 +24,92 @@ function isValidIanaTimezone(timezone: string): boolean {
   }
 }
 
+export interface Overlap {
+  activity_id: string;
+  sport_name: string | null;
+  start: string;
+  end: string;
+}
+
+export function resolveWindow(
+  start: string | undefined,
+  end: string | undefined,
+  nowMs: number,
+): { startTs: number; endTs: number } | { error: string } {
+  const endTs = end ? new Date(end).getTime() : nowMs;
+  const startTs = start ? new Date(start).getTime() : endTs - 30 * 60 * 1000;
+  if (endTs <= startTs) return { error: "Strength workout end must be after start." };
+  return { startTs, endTs };
+}
+
+export function duringLiteral(startTs: number, endTs: number): string {
+  return `['${canonicalUtc(startTs)}','${canonicalUtc(endTs)}')`;
+}
+
+export function parseDuring(during: unknown): [number, number] | null {
+  if (typeof during !== "string") return null;
+  const m = during.match(/^[[(]'?([^',]+)'?,\s*'?([^',)\]]+)'?[)\]]$/);
+  if (!m) return null;
+  const a = Date.parse(m[1]!);
+  const b = Date.parse(m[2]!);
+  return Number.isNaN(a) || Number.isNaN(b) ? null : [a, b];
+}
+
+export function zeroRepWeightedSets(exercises: InputExercise[]): Array<{ exercise_id: string; set_number: number; weight: number }> {
+  const bad: Array<{ exercise_id: string; set_number: number; weight: number }> = [];
+  for (const ex of exercises) {
+    ex.sets.forEach((s, i) => {
+      if (s.reps === 0 && (s.weight ?? 0) > 0 && s.time_seconds === undefined) {
+        bad.push({ exercise_id: ex.exercise_id, set_number: i + 1, weight: s.weight! });
+      }
+    });
+  }
+  return bad;
+}
+
+export function findOverlaps(raw: unknown, startTs: number, endTs: number): Overlap[] {
+  const records = raw && typeof raw === "object" && Array.isArray((raw as { records?: unknown }).records)
+    ? (raw as { records: unknown[] }).records
+    : [];
+  const out: Overlap[] = [];
+  for (const r of records) {
+    if (!r || typeof r !== "object") continue;
+    const rec = r as Record<string, unknown>;
+    if (typeof rec.id !== "string" || typeof rec.start !== "string" || typeof rec.end !== "string") continue;
+    const s = Date.parse(rec.start);
+    const e = Date.parse(rec.end);
+    if (s < endTs && e > startTs) {
+      out.push({
+        activity_id: rec.id,
+        sport_name: typeof rec.sport_name === "string" ? rec.sport_name : null,
+        start: rec.start,
+        end: rec.end,
+      });
+    }
+  }
+  return out;
+}
+
+function localTime(ts: number, timezone: string): string {
+  return new Date(ts).toLocaleString("sv-SE", { timeZone: timezone });
+}
+
+function overlapList(overlaps: Overlap[], timezone: string) {
+  return overlaps.map((o) => ({
+    ...o,
+    start_local: localTime(Date.parse(o.start), timezone),
+    end_local: localTime(Date.parse(o.end), timezone),
+  }));
+}
+
+function errorOut(payload: unknown) {
+  return { content: [{ type: "text" as const, text: jsonOut(payload) }], isError: true };
+}
+
 export function registerLiftLog(server: McpServer, client: WhoopClient): void {
   server.tool(
     "whoop_lift_log",
-    "WRITE: log a finished strength workout — pass exercises by ID or exact name, each with sets (reps and/or weight in kg and/or time_seconds). Preview unless confirm:true.",
+    "WRITE: log a finished strength workout - pass exercises by ID or exact name, each with sets (reps and/or weight in kg and/or time_seconds). Preview unless confirm:true. Refuses if the window overlaps an existing activity unless replace_overlapping:true, which deletes the overlapping activities first. Sets with weight but reps:0 are rejected (missed lifts would be awarded weight PRs).",
     {
       name: z.string().optional(),
       start: z.iso.datetime({ offset: true }).optional(),
@@ -38,39 +124,37 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
           strap_location: z.enum(["LEFT", "RIGHT", "BOTH"]).default("LEFT"),
         })).min(1),
       })).min(1),
+      replace_overlapping: z.boolean().default(false).describe("Delete any existing activity overlapping start..end before logging. Destructive; the deleted activities are listed in the response."),
       confirm: z.boolean().default(false),
     },
-    async ({ name, start, end, exercises, confirm }) => {
-      const endTs = end ? new Date(end).getTime() : Date.now();
-      const startTs = start ? new Date(start).getTime() : endTs - 30 * 60 * 1000;
-      if (endTs <= startTs) {
-        return {
-          content: [{ type: "text", text: jsonOut({ error: "Strength workout end must be after start." }) }],
-          isError: true,
-        };
-      }
-      const resolvedExercises = exercises.map((exercise) => ({
-        ...exercise,
-        exercise_id: exercise.exercise_id ?? (exercise.exercise ? resolveOfficialExercise(exercise.exercise) ?? undefined : undefined),
+    async ({ name, start, end, exercises: rawExercises, replace_overlapping, confirm }) => {
+      const resolved = rawExercises.map((e) => ({
+        ...e,
+        exercise_id: e.exercise_id ?? (e.exercise ? resolveOfficialExercise(e.exercise) ?? undefined : undefined),
       }));
-      if (resolvedExercises.some((exercise) => !exercise.exercise_id)) {
-        return { content: [{ type: "text", text: jsonOut({ error: "Each exercise needs an exercise_id or exact exercise name." }) }], isError: true };
+      if (resolved.some((e) => !e.exercise_id)) {
+        return errorOut({ error: "Each exercise needs an exercise_id or exact exercise name." });
       }
-      const { workout_groups, set_count, unknown_exercises } = buildExerciseGroups(resolvedExercises as Array<{ exercise_id: string; sets: typeof exercises[number]["sets"] }>, startTs);
+      const exercises = resolved as InputExercise[];
+      const window = resolveWindow(start, end, Date.now());
+      if ("error" in window) return errorOut({ error: window.error, start, end });
+      const { startTs, endTs } = window;
+      const zeroRep = zeroRepWeightedSets(exercises);
+      if (zeroRep.length > 0) {
+        return errorOut({
+          error: "Sets with weight > 0 and reps: 0 are rejected.",
+          sets: zeroRep,
+          reason: "Whoop awards weight PRs and medals without checking reps, so a missed lift logged as reps:0 becomes a PR, and individual sets can't be deleted in the app afterwards.",
+          hint: "Leave missed attempts out, or log only the completed reps.",
+        });
+      }
+      const { workout_groups, set_count, unknown_exercises } = buildExerciseGroups(exercises, startTs, endTs);
       if (unknown_exercises.length > 0) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: jsonOut({
-                error: "Unknown exercise IDs",
-                unknown_exercises,
-                hint: "Use whoop_lift_catalog or whoop_lift_custom_exercise",
-              }),
-            },
-          ],
-          isError: true,
-        };
+        return errorOut({
+          error: "Unknown exercise IDs",
+          unknown_exercises,
+          hint: "Use whoop_lift_catalog or whoop_lift_custom_exercise",
+        });
       }
       // Whoop's body wants an IANA zone name. Prefer WHOOP_TIMEZONE when it's an
       // IANA name (cloud hosts run in UTC, so the system zone would mislabel the
@@ -81,9 +165,10 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       const timezone = tzEnv && tzEnv.includes("/") && isValidIanaTimezone(tzEnv)
         ? tzEnv
         : isValidIanaTimezone(systemTimezone) ? systemTimezone : "UTC";
+      const during = duringLiteral(startTs, endTs);
       const body = {
-        name: name ?? new Date(endTs).toISOString().slice(0, 10),
-        during: `['${canonicalUtc(startTs)}','${canonicalUtc(endTs)}')`,
+        name: name ?? isoDay(new Date(endTs)),
+        during,
         timezone,
         scaled_msk_strain_score: 0,
         msk_total_volume_kg: 0,
@@ -91,29 +176,111 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
         raw_msk_strain_score: 0,
         workout_groups,
       };
+      const timeRange = {
+        during,
+        start_local: localTime(startTs, timezone),
+        end_local: localTime(endTs, timezone),
+        timezone,
+        duration_minutes: Math.round((endTs - startTs) / 600) / 100,
+      };
+
+      // Whoop no longer rejects an overlapping log: it removes the existing
+      // activity and saves the new one. Check first and make the caller choose.
+      let overlaps: Overlap[];
+      try {
+        const raw = await client.get(WORKOUTS_PATH, {
+          start: new Date(startTs - LOOKBACK_MS).toISOString(),
+          end: new Date(endTs).toISOString(),
+          limit: 25,
+        });
+        overlaps = findOverlaps(raw, startTs, endTs);
+      } catch (e) {
+        return errorOut({
+          error: "Could not check for overlapping activities, so nothing was logged.",
+          detail: e instanceof Error ? e.message : String(e),
+        });
+      }
+      const clashing = overlapList(overlaps, timezone);
+
       if (!confirm) {
+        const slots = setSlots(startTs, endTs, set_count);
         return {
           content: [
             {
               type: "text",
               text: jsonOut(
                 preview("POST", PATH, {
-                  exercise_count: resolvedExercises.length,
+                  time_range: timeRange,
+                  set_timing: set_count > 0
+                    ? {
+                        first_set_start: new Date(slots[0]![0]).toISOString(),
+                        last_set_end: new Date(slots[set_count - 1]![1]).toISOString(),
+                        seconds_per_set: Math.round((slots[0]![1] - slots[0]![0]) / 1000),
+                      }
+                    : null,
+                  exercise_count: exercises.length,
                   set_count,
-                  exercise_list: resolvedExercises.map((e) => ({ name: e.exercise_id, set_count: e.sets.length })),
+                  exercise_list: exercises.map((e) => ({ name: e.exercise_id, set_count: e.sets.length })),
+                  overlapping_activities: clashing,
+                  overlap_action: clashing.length === 0
+                    ? "none"
+                    : replace_overlapping
+                      ? "will DELETE the overlapping activities listed above, then log"
+                      : "will refuse: pass replace_overlapping:true to delete them, or pick a window that doesn't overlap",
                 }),
               ),
             },
           ],
         };
       }
-      const receipt = await client.post<{ id: string }>(PATH, body);
+
+      if (clashing.length > 0 && !replace_overlapping) {
+        return errorOut({
+          error: "The requested window overlaps an existing activity. Nothing was logged.",
+          requested: timeRange,
+          overlapping_activities: clashing,
+          hint: "Pick a window that doesn't overlap, or pass replace_overlapping:true to delete the overlapping activities and log over the full window.",
+        });
+      }
+
+      const deleted: typeof clashing = [];
+      for (const o of clashing) {
+        try {
+          await client.delete(DELETE_PATH, { activityId: o.activity_id });
+          deleted.push(o);
+        } catch (e) {
+          return errorOut({
+            error: `Failed to delete overlapping activity ${o.activity_id}. Nothing was logged.`,
+            deleted_before_failure: deleted,
+            detail: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      let receipt: { id: string; during?: unknown };
+      try {
+        receipt = await client.post<{ id: string; during?: unknown }>(PATH, body);
+      } catch (e) {
+        if (deleted.length === 0) throw e;
+        return errorOut({
+          error: "Overlapping activities were deleted but the log POST failed.",
+          deleted_overlapping: deleted,
+          detail: e instanceof Error ? e.message : String(e),
+        });
+      }
+      const saved = parseDuring(receipt.during);
       const projected = {
         logged: true as const,
         activity_id: receipt.id,
-        exercise_count: resolvedExercises.length,
+        exercise_count: exercises.length,
         set_count,
         total_volume_kg: null,
+        requested_during: during,
+        saved_during: typeof receipt.during === "string" ? receipt.during : null,
+        ...(saved && (saved[0] !== startTs || saved[1] !== endTs)
+          ? { warning: "Whoop saved a different time window than was requested; check the activity in the app." }
+          : {}),
+        ...(deleted.length > 0 ? { deleted_overlapping: deleted } : {}),
       };
       try {
         const out = LiftLogOut.parse(projected);

@@ -173,6 +173,17 @@ export const LiftLogOut = withPreview(z.object({
   exercise_count: z.number().int(),
   set_count: z.number().int(),
   total_volume_kg: z.number().nullable(),
+  requested_during: z.string(),
+  saved_during: z.string().nullable(),
+  warning: z.string().optional(),
+  deleted_overlapping: z.array(z.object({
+    activity_id: z.string(),
+    sport_name: z.string().nullable(),
+    start: z.string(),
+    end: z.string(),
+    start_local: z.string(),
+    end_local: z.string(),
+  })).optional(),
 }));
 
 export const LiftTemplateSaveOut = withPreview(z.object({
