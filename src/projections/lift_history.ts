@@ -1,12 +1,14 @@
 import type { LiftHistoryOutT } from "../schemas/strength.js";
 import { isObject, asArray, asNumber, asString } from "../lib/walk.js";
 
-// Whoop returns these internal_name values for set-based strength workouts.
-// "weightlifting_msk" = Strength Trainer. "weightlifting" and "powerlifting"
-// are manual logs. None of them contain "strength" — match by broader pattern.
-function isStrengthSport(name: string | null): boolean {
-  if (!name) return false;
-  return /weight|strength|powerlift/i.test(name);
+export function hasLiftData(detail: unknown): boolean {
+  if (!isObject(detail) || !isObject(detail.weightlifting_cardio_details)) return false;
+  const wld = detail.weightlifting_cardio_details as Record<string, unknown>;
+  if (!isObject(wld.weightlifting_exercises)) return false;
+  const wex = wld.weightlifting_exercises as Record<string, unknown>;
+  if (!isObject(wex.exercise_summary_carousel)) return false;
+  const items = asArray((wex.exercise_summary_carousel as Record<string, unknown>).items);
+  return items.some((it) => isObject(it) && asString(it.exercise_id) !== null);
 }
 
 // Parse "5 Sets" → 5, "1 Set" → 1, "0 Sets" → 0. Returns null if not parseable.
@@ -23,14 +25,12 @@ interface ProjectLiftHistoryInput {
 
 export function projectLiftHistory(input: ProjectLiftHistoryInput): LiftHistoryOutT {
   const root = isObject(input.workouts) ? input.workouts : {};
-  const records = asArray(root.records).filter(
-    (r) => isObject(r) && isStrengthSport(asString((r as Record<string, unknown>).sport_name)),
-  );
+  const records = asArray(root.records);
   const out: LiftHistoryOutT = [];
   for (let i = 0; i < records.length; i++) {
     const r = records[i] as Record<string, unknown>;
     const detail = input.details[i];
-    if (!isObject(detail)) continue;
+    if (!isObject(r) || !isObject(detail) || !hasLiftData(detail)) continue;
 
     // Set-level data lives at:
     //   weightlifting_cardio_details.weightlifting_exercises.exercise_summary_carousel.items[]
@@ -125,6 +125,7 @@ export function projectLiftHistory(input: ProjectLiftHistoryInput): LiftHistoryO
 
     out.push({
       activity_id: asString(r.id) ?? "",
+      sport_name: asString(r.sport_name),
       date: start.slice(0, 10),
       name: asString(r.name) ?? null,
       duration_ms: start && end ? new Date(end).getTime() - new Date(start).getTime() : 0,
