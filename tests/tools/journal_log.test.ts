@@ -3,6 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
+import { WhoopApiError, WhoopServerError } from "../../src/whoop/errors.js";
 import { registerJournalLog, specsFromDraft, verifyWritten } from "../../src/tools/v2/journal_log.js";
 
 // Draft shape as the v3 endpoint returns it: the behavior's real question type
@@ -140,6 +141,38 @@ describe("whoop_journal_log", () => {
 
     expect(result.isError).toBe(true);
     expect(parse(result).unconfirmed_behavior_tracker_ids).toEqual([52]);
+  });
+
+  it("refuses to write when the existing day can't be read, instead of wiping it", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const get = vi.fn().mockRejectedValueOnce(new WhoopServerError(503, "/journal"));
+    const whoop = { put, get } as unknown as WhoopClient;
+    const client = await connect((server) => registerJournalLog(server, whoop));
+
+    const result = await client.callTool({
+      name: "whoop_journal_log",
+      arguments: { behaviors: [{ behavior: "sauna" }], confirm: true },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("treats a 404 draft as an empty day", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const get = vi.fn()
+      .mockRejectedValueOnce(new WhoopApiError(404, "/journal", ""))
+      .mockResolvedValueOnce(draft([{ behavior_tracker_id: 52, answered_yes: true }]));
+    const whoop = { put, get } as unknown as WhoopClient;
+    const client = await connect((server) => registerJournalLog(server, whoop));
+
+    const result = await client.callTool({
+      name: "whoop_journal_log",
+      arguments: { behaviors: [{ behavior: "sauna" }], confirm: true },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(put).toHaveBeenCalledOnce();
   });
 });
 
