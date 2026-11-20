@@ -30,6 +30,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { redirectUriMatches } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
 
 const ACCESS_TTL_S = 3600;            // 1 hour
 const REFRESH_TTL_S = 30 * 24 * 3600; // 30 days
@@ -182,7 +183,7 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     resource: string;
     password: string;
   }): string | null {
-    if (!constantTimeEqual(input.password, this.password)) {
+    if (!this.checkPassword(input.password)) {
       console.error("[totem] consent REJECTED: password mismatch");
       return null;
     }
@@ -192,7 +193,9 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       console.error("[totem] consent REJECTED: client_id failed to decode (stale registration / signing-key mismatch) — password was correct");
       return null;
     }
-    if (!client.redirect_uris.includes(input.redirectUri)) {
+    // Same rule as the SDK's /authorize (RFC 8252: any port on a loopback host),
+    // so a redirect /authorize accepted isn't rejected here.
+    if (!client.redirect_uris.some((registered) => redirectUriMatches(input.redirectUri, registered))) {
       console.error(`[totem] consent REJECTED: redirect_uri not registered: ${input.redirectUri} — password was correct`);
       return null;
     }
@@ -211,6 +214,10 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     url.searchParams.set("code", code);
     if (input.state) url.searchParams.set("state", input.state);
     return url.toString();
+  }
+
+  checkPassword(password: string): boolean {
+    return constantTimeEqual(password, this.password);
   }
 
   async challengeForAuthorizationCode(
