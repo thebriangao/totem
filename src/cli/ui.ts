@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { request as httpsRequest } from "node:https";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { spawnArgs, pkgBin } from "./spawn.js";
 
 export const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
 // Modern truecolor palette (Tailwind-400-ish) — vivid but easy on a dark terminal.
@@ -46,7 +47,7 @@ export const c = {
 // Spawn a command, inheriting stdio. Resolves with the exit code.
 export function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
   return new Promise((res) => {
-    const child = spawn(cmd, args, { stdio: "inherit", ...opts });
+    const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", ...opts }));
     child.on("exit", (code, signal) => {
       if (signal) {
         console.error(c.red(`\nKilled by signal ${signal}`));
@@ -64,7 +65,7 @@ export function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promi
 
 // Run a command and capture stdout (for parsing CLI output like a deploy URL).
 export function capture(cmd: string, args: string[], opts: SpawnOptions = {}): { code: number; stdout: string; stderr: string } {
-  const r = spawnSync(cmd, args, { encoding: "utf8", ...opts });
+  const r = spawnSync(...spawnArgs(cmd, args, { encoding: "utf8" as const, ...opts }));
   return { code: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
@@ -81,7 +82,7 @@ export function captureAsync(
   return new Promise((res) => {
     // input set → pipe stdin so secrets can be fed over a pipe (off the argv,
     // which is visible in `ps`/`/proc`); otherwise ignore stdin as before.
-    const child = spawn(cmd, args, { stdio: [input !== undefined ? "pipe" : "ignore", "pipe", "pipe"], ...spawnOpts });
+    const child = spawn(...spawnArgs(cmd, args, { stdio: [input !== undefined ? "pipe" : "ignore", "pipe", "pipe"], ...spawnOpts }));
     let stdout = "";
     let stderr = "";
     child.stdout?.on("data", (d: Buffer) => (stdout += d.toString()));
@@ -203,14 +204,11 @@ export function runScript(
   const { preferSource = false, ...spawnOpts } = opts;
   const distJs = resolve(root, "dist", `${relNoExt}.js`);
   const srcTs = resolve(root, "src", `${relNoExt}.ts`);
-  const tsx = resolve(root, "node_modules", ".bin", "tsx");
-  const viaDist: [string, string] = [process.execPath, distJs];
-  const viaTsx: [string, string] = [tsx, srcTs];
-  const order = preferSource ? [viaTsx, viaDist] : [viaDist, viaTsx];
-  for (const [bin, script] of order) {
-    const binOk = bin === process.execPath || existsSync(bin);
-    if (binOk && existsSync(script)) return run(bin, [script, ...args], { cwd: root, ...spawnOpts });
-  }
+  const tsx = pkgBin(root, "tsx");
+  const viaDist = existsSync(distJs) ? [distJs] : null;
+  const viaTsx = tsx && existsSync(srcTs) ? [tsx, srcTs] : null;
+  const pick = preferSource ? viaTsx ?? viaDist : viaDist ?? viaTsx;
+  if (pick) return run(process.execPath, [...pick, ...args], { cwd: root, ...spawnOpts });
   console.error(c.red(`Can't run ${relNoExt}: need either a built dist/ or the tsx dev dependency.`));
   console.error(c.gray("Run ") + c.bold("npm install && totem build") + c.gray(" in a source checkout, or reinstall the published package."));
   return Promise.resolve(1);

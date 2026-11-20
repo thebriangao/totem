@@ -7,8 +7,9 @@
 //   - Single-file CLI dispatcher.
 //   - `ROOT` is the package root, resolved from `import.meta.url` so the CLI
 //     always operates on its install dir regardless of cwd.
-//   - Commands that wrap dev tooling spawn the local node_modules/.bin binaries
-//     (tsx, vitest, tsc) so a `npm link`-ed install picks up the right versions.
+//   - Commands that wrap dev tooling run the local tsx/vitest/tsc JS entries
+//     with node (not the .bin shims, which break on Windows) so a `npm link`-ed
+//     install picks up the right versions.
 //   - Commands that wrap Fly assume `fly` is on the system PATH.
 //   - Banner uses 24-bit truecolor ANSI escapes (RGB); honors NO_COLOR and
 //     skips colors if stdout is not a TTY.
@@ -21,6 +22,7 @@ import { request as httpsRequest } from "node:https";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
 import { runUpdate } from "./update.js";
 import { runScript } from "./ui.js";
+import { spawnArgs, pkgBin, claudeDesktopConfigPath } from "./spawn.js";
 
 // ── locate package root ──────────────────────────────────────────────────
 // This file lives at one of:
@@ -149,18 +151,18 @@ const commands: Record<string, Cmd> = {
   build: {
     group: "Local",
     desc: "Compile TypeScript to dist/",
-    run: async () => run(npmBin("tsc"), []),
+    run: async () => run(process.execPath, [npmBin("typescript", "tsc")]),
   },
   test: {
     group: "Local",
     desc: "Run the test suite (vitest)",
     usage: "totem test [test-filter]",
-    run: async (args) => run(npmBin("vitest"), ["run", ...args]),
+    run: async (args) => run(process.execPath, [npmBin("vitest"), "run", ...args]),
   },
   typecheck: {
     group: "Local",
     desc: "Run `tsc --noEmit`",
-    run: async () => run(npmBin("tsc"), ["--noEmit"]),
+    run: async () => run(process.execPath, [npmBin("typescript", "tsc"), "--noEmit"]),
   },
 
   // ── Setup ────────────────────────────────────────────────────────────
@@ -359,8 +361,7 @@ const commands: Record<string, Cmd> = {
         console.log("  " + c.brand("totem config http") + c.gray("    # remote deployment (uses mcp-remote bridge)"));
         return 1;
       }
-      const home = process.env.HOME ?? "~";
-      const cfgPath = resolve(home, "Library/Application Support/Claude/claude_desktop_config.json");
+      const cfgPath = claudeDesktopConfigPath();
       console.log(c.gray(`Edit:  ${cfgPath}`));
       console.log("");
       if (mode === "stdio") {
@@ -426,11 +427,11 @@ const aliases: Record<string, string> = {
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────
-function npmBin(name: string): string {
-  const path = resolve(ROOT, "node_modules", ".bin", name);
-  if (!existsSync(path)) {
-    console.error(c.red(`Missing dev dependency: ${name}`));
-    console.error(c.gray(`Expected at: ${path}`));
+function npmBin(pkg: string, bin: string = pkg): string {
+  const path = pkgBin(ROOT, pkg, bin);
+  if (!path) {
+    console.error(c.red(`Missing dev dependency: ${pkg}`));
+    console.error(c.gray(`Expected under: ${resolve(ROOT, "node_modules", pkg)}`));
     console.error(c.gray(`Run `) + c.bold(`cd ${ROOT} && npm install`) + c.gray(` first.`));
     process.exit(1);
   }
@@ -467,7 +468,7 @@ const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
 
 function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
   return new Promise((res) => {
-    const child = spawn(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts });
+    const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts }));
     child.on("exit", (code, signal) => {
       if (signal) {
         console.error(c.red(`\nKilled by signal ${signal}`));

@@ -66,7 +66,8 @@ describe("upsertEnvFile", () => {
   it("creates the file with 0600 and appends keys", () => {
     upsertEnvFile(envPath, { WHOOP_EMAIL: "a@b.com", WHOOP_PASSWORD: "#hunter2" });
     expect(readEnvFile(envPath)).toEqual({ WHOOP_EMAIL: "a@b.com", WHOOP_PASSWORD: "#hunter2" });
-    expect(statSync(envPath).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX permission bits.
+    if (process.platform !== "win32") expect(statSync(envPath).mode & 0o777).toBe(0o600);
   });
 
   it("updates in place, preserving comments, blanks and unrelated keys", () => {
