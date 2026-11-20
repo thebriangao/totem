@@ -106,6 +106,34 @@ describe("WhoopOAuthProvider — authorization code flow + PKCE", () => {
     expect(result).toBeNull();
   });
 
+  it("accepts a loopback redirect_uri on a different port (RFC 8252, same rule as the SDK's /authorize)", async () => {
+    const p = provider();
+    const client = await registerClient(p, "http://127.0.0.1:33418/callback");
+    const redirectUrl = p.consent({
+      clientId: client.client_id, redirectUri: "http://127.0.0.1:51234/callback", codeChallenge: "x",
+      state: "", scopes: "", resource: "", password: PASSWORD,
+    });
+    expect(redirectUrl).not.toBeNull();
+    expect(new URL(redirectUrl!).port).toBe("51234");
+  });
+
+  it("still rejects a non-loopback or different-path redirect_uri", async () => {
+    const p = provider();
+    const loop = await registerClient(p, "http://127.0.0.1:33418/callback");
+    const web = await registerClient(p, "https://claude.ai/cb");
+    const base = { codeChallenge: "x", state: "", scopes: "", resource: "", password: PASSWORD };
+    expect(p.consent({ ...base, clientId: loop.client_id, redirectUri: "http://127.0.0.1:1/other" })).toBeNull();
+    expect(p.consent({ ...base, clientId: loop.client_id, redirectUri: "http://localhost:33418/callback" })).toBeNull();
+    expect(p.consent({ ...base, clientId: web.client_id, redirectUri: "https://claude.ai:8443/cb" })).toBeNull();
+  });
+
+  it("checkPassword distinguishes a wrong password from other consent failures", () => {
+    const p = provider();
+    expect(p.checkPassword(PASSWORD)).toBe(true);
+    expect(p.checkPassword("wrong")).toBe(false);
+    expect(p.checkPassword("")).toBe(false);
+  });
+
   it("an authorization code is single-use", async () => {
     const p = provider();
     const redirect = "https://claude.ai/cb";
