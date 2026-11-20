@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import { bootstrapCognito, refreshCognitoSession } from "../whoop/cognito.js";
 import { readEnvFile, upsertEnvFile, deleteEnvKeys as deleteEnvFileKeys } from "../lib/env_file.js";
 import { prompt, promptHidden } from "../cli/ui.js";
+import { spawnArgs } from "../cli/spawn.js";
 
 const ENV_PATH = resolve(".env");
 const RECORD_PATH = resolve(".totem-deploy.json");
@@ -91,20 +92,20 @@ function pushTokens(t: DeployTarget, accessToken: string, refreshToken: string):
       console.log(`Pushing to Fly app '${t.app}'…`);
       // `secrets import` reads KEY=val from stdin — keeps the token values off
       // the argv (which any local user could read from `ps`/`/proc`).
-      const r = spawnSync("fly", ["secrets", "import", "-a", t.app], {
+      const r = spawnSync(...spawnArgs("fly", ["secrets", "import", "-a", t.app], {
         input: `WHOOP_IOS_BEARER_TOKEN=${accessToken}\nWHOOP_COGNITO_REFRESH_TOKEN=${refreshToken}\n`,
         stdio: ["pipe", "inherit", "inherit"],
-      });
+      }));
       if (r.status === 0) { console.log(`  → done. Test: curl https://${t.app}.fly.dev/health`); return true; }
       console.error("`fly secrets import` failed (is flyctl installed + `fly auth login` done?)."); manual(); return false;
     }
 
     case "railway": {
       console.log(`Pushing to Railway project '${t.app ?? "(linked)"}'…`);
-      if (t.app) spawnSync("railway", ["link", "--project", t.app], inherit);
-      const r = spawnSync("railway", ["variables", "--set",
+      if (t.app) spawnSync(...spawnArgs("railway", ["link", "--project", t.app], inherit));
+      const r = spawnSync(...spawnArgs("railway", ["variables", "--set",
         `WHOOP_IOS_BEARER_TOKEN=${accessToken}`, "--set",
-        `WHOOP_COGNITO_REFRESH_TOKEN=${refreshToken}`], inherit);
+        `WHOOP_COGNITO_REFRESH_TOKEN=${refreshToken}`], inherit));
       if (r.status === 0) { console.log("  → done. Railway is redeploying with the new tokens."); return true; }
       console.error("`railway variables` failed (is the CLI installed, logged in, and the project linked?)."); manual(); return false;
     }
@@ -113,11 +114,11 @@ function pushTokens(t: DeployTarget, accessToken: string, refreshToken: string):
       if (!t.app) { console.error("No Cloud Run service recorded."); manual(); return false; }
       const region = t.region ?? "us-west1";
       console.log(`Pushing to Cloud Run service '${t.app}' (${region})…`);
-      const r = spawnSync("gcloud", ["run", "services", "update", t.app,
+      const r = spawnSync(...spawnArgs("gcloud", ["run", "services", "update", t.app,
         "--region", region,
         ...(t.project ? ["--project", t.project] : []),
         "--update-env-vars", `WHOOP_IOS_BEARER_TOKEN=${accessToken},WHOOP_COGNITO_REFRESH_TOKEN=${refreshToken}`,
-        "--quiet"], inherit);
+        "--quiet"], inherit));
       if (r.status === 0) { console.log("  → done. Cloud Run deployed a new revision with the new tokens."); return true; }
       console.error("`gcloud run services update` failed (is gcloud installed, authed, on the right project?)."); manual(); return false;
     }
@@ -139,10 +140,18 @@ async function main(): Promise<void> {
 
   // Email + password — prompt + persist if not already in .env / env.
   // `||` not `??`: an empty string must fall through to the prompt rather than
-  // being accepted as a real value.
-  let email = process.env.WHOOP_EMAIL || readEnv("WHOOP_EMAIL");
+  // being accepted as a real value. .env wins over the process environment:
+  // `totem cloud`/`local` write what you just typed to .env, and a stale
+  // WHOOP_EMAIL/WHOOP_PASSWORD exported in your shell must not beat it (#38).
+  // (dotenv/config never overrides, so process.env alone can be the stale one.)
+  const fromShell = (key: string): string | undefined => {
+    const v = process.env[key];
+    if (v) console.log(`Using ${key} from your shell environment (not .env).`);
+    return v;
+  };
+  let email = readEnv("WHOOP_EMAIL") || fromShell("WHOOP_EMAIL");
   if (!email) { email = (await prompt("Your Whoop account email")).trim(); if (email) upsertEnv({ WHOOP_EMAIL: email }); }
-  let password = process.env.WHOOP_PASSWORD || readEnv("WHOOP_PASSWORD");
+  let password = readEnv("WHOOP_PASSWORD") || fromShell("WHOOP_PASSWORD");
   if (!password) { password = await promptHidden("Your Whoop account password (stored in local .env, used once)"); if (password) upsertEnv({ WHOOP_PASSWORD: password }); }
   if (!email || !password) { console.error("Email + password are required."); process.exit(1); }
 
