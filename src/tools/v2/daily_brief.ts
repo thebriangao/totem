@@ -28,11 +28,14 @@ export function registerDailyBrief(server: McpServer, client: WhoopClient): void
         return { content: [{ type: "text", text: jsonOut({ error: "sleep_plan and activity are only available for today." }) }], isError: true };
       }
       const coreNeeded = sections.some((section) => ["recovery", "sleep", "activity"].includes(section));
+      const dayMs = Date.parse(`${d}T00:00:00.000Z`);
+      const sleepStart = new Date(dayMs - 86_400_000).toISOString();
+      const sleepEnd = new Date(dayMs + 2 * 86_400_000).toISOString();
       const [core, strain, sleepPlan] = await Promise.all([
         coreNeeded
           ? Promise.all([
               client.get("/home-service/v1/home", { date: d }),
-              client.get("/developer/v2/activity/sleep", { limit: "5" }).catch(() => null),
+              client.get("/developer/v2/activity/sleep", { start: sleepStart, end: sleepEnd, limit: "10" }).catch(() => null),
               client.get("/home-service/v1/deep-dive/recovery", { date: d }).catch(() => null),
               sections.includes("activity") ? client.get("/activities-service/v1/user-state").catch(() => null) : Promise.resolve(null),
             ]).then(([home, sleep, recovery, state]) => projectToday({ home, sleep, recovery, state, date: d }))

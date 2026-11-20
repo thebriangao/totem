@@ -1,6 +1,6 @@
 import type { TodayOutT } from "../schemas/today.js";
 import { findByType, isObject, asArray, asNumber, asString } from "../lib/walk.js";
-import { projectRecovery, stateFromStyle } from "./recovery.js";
+import { localDay, pickForDate, projectRecovery, stateFromStyle } from "./recovery.js";
 
 // Whoop's home payload's authoritative score source is SCORE_GAUGE_STICKY which
 // contains a gauges[] array with one entry per pillar (SLEEP, RECOVERY, STRAIN).
@@ -39,14 +39,16 @@ export interface SleepSummary {
 }
 
 // Map a /developer/v2/activity/sleep response → the snapshot's sleep summary.
-// Picks the main (non-nap) sleep whose local end date matches `date`, else the
-// most recent. All stage durations come straight from score.stage_summary.
+// Picks the main (non-nap) sleep whose local end date matches `date`. Falls back
+// to the most recent only when `date` is newer than every record (today, before
+// the night is scored); a past date with no match returns null, not another
+// night. All stage durations come straight from score.stage_summary.
 export function projectActivitySleepSummary(resp: unknown, date: string): SleepSummary | null {
   const root = isObject(resp) ? resp : {};
   const records = asArray(root.records).filter(
     (r): r is Record<string, unknown> => isObject(r) && r.nap !== true,
   );
-  const pick = records.find((r) => asString(r.end)?.slice(0, 10) === date) ?? records[0];
+  const pick = pickForDate(records, date, (r) => localDay(asString(r.end)));
   if (!pick) return null;
   const score = isObject(pick.score) ? (pick.score as Record<string, unknown>) : {};
   const st = isObject(score.stage_summary) ? (score.stage_summary as Record<string, unknown>) : {};

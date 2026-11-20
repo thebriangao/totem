@@ -198,6 +198,8 @@ describe("projectToday (captured)", () => {
     expect(out.strain.workouts_count).toBe(1);
   });
   it("populates sleep stages from the companion sleep summary", () => {
+    // activity_sleep.json was captured later (nights ending 05-28..05-30).
+    const out = projectToday({ home, sleep, recovery: null, state: null, date: "2026-05-30" });
     expect(out.sleep.stages.rem_ms).toBeGreaterThan(0);
     expect(out.sleep.stages.light_ms).toBeGreaterThan(0);
     expect(out.sleep.stages.sws_ms).toBeGreaterThan(0);
