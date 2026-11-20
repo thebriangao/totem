@@ -6,6 +6,8 @@ import {
   parseDuring,
   findOverlaps,
   zeroRepWeightedSets,
+  linkTarget,
+  linkWorkoutGroups,
 } from "../../src/tools/v2/lift_log.js";
 import { buildExerciseGroups, setSlots } from "../../src/whoop/build_lift_body.js";
 
@@ -122,13 +124,13 @@ describe("zeroRepWeightedSets", () => {
 
 type Call = { method: string; path: string; query?: unknown; body?: unknown };
 
-function harness(workouts: unknown, opts: { failGet?: boolean; receiptDuring?: string } = {}) {
+function harness(workouts: unknown, opts: { failGet?: boolean; receiptDuring?: string; cardio?: unknown; failLink?: boolean } = {}) {
   const calls: Call[] = [];
   const client = {
     get: async (path: string, query: unknown) => {
       calls.push({ method: "GET", path, query });
       if (opts.failGet) throw new Error("boom");
-      return workouts;
+      return path.includes("cardio-details") ? opts.cardio : workouts;
     },
     delete: async (path: string, query: unknown) => {
       calls.push({ method: "DELETE", path, query });
@@ -136,6 +138,14 @@ function harness(workouts: unknown, opts: { failGet?: boolean; receiptDuring?: s
     },
     post: async (path: string, body: unknown) => {
       calls.push({ method: "POST", path, body });
+      if (path.endsWith("/workout-template")) return { workout_template_key: 4242 };
+      if (path.endsWith("/link-cardio-workout")) {
+        if (opts.failLink) throw new Error("link failed");
+        return {
+          original_activity_type: "functional-fitness",
+          workout_metadata: { id: "act-1", type: "functional-fitness", during: "['2030-01-15T07:40:00.000Z','2030-01-15T09:10:00.000Z')", total_effective_volume_kg: 300 },
+        };
+      }
       return { id: "new-activity", during: opts.receiptDuring ?? (body as { during: string }).during };
     },
   };
@@ -147,7 +157,7 @@ function harness(workouts: unknown, opts: { failGet?: boolean; receiptDuring?: s
   };
   registerLiftLog(server as never, client as never);
   const run = async (args: Record<string, unknown>) => {
-    const res = await handler({ replace_overlapping: false, confirm: false, ...args });
+    const res = await handler({ replace_overlapping: false, keep_template: false, confirm: false, ...args });
     return { isError: res.isError ?? false, out: JSON.parse(res.content[0]!.text) };
   };
   return { calls, run };
@@ -238,6 +248,106 @@ describe("whoop_lift_log handler", () => {
     expect(isError).toBe(true);
     expect(out.sets).toEqual([{ exercise_id: "BACKSQUAT_BARBELL", set_number: 1, weight: 90 }]);
     expect(out.reason).toMatch(/PR/);
+    expect(calls).toEqual([]);
+  });
+});
+
+const CARDIO = (linkable: boolean) => ({
+  link_workout_option_enabled: linkable,
+  details_edit_components: {
+    activity_type_internal_name: "functional-fitness",
+    start_time_selector: { initial_time: "2030-01-15T09:40:00.000+02:00" },
+    end_time_selector: { initial_time: "2030-01-15T11:10:00.000+02:00" },
+  },
+});
+
+describe("linkTarget / linkWorkoutGroups", () => {
+  it("reads linkability, sport and window from cardio-details", () => {
+    expect(linkTarget(CARDIO(true))).toEqual({
+      linkable: true,
+      sport_name: "functional-fitness",
+      start: "2030-01-15T09:40:00.000+02:00",
+      end: "2030-01-15T11:10:00.000+02:00",
+    });
+    expect(linkTarget({}).linkable).toBe(false);
+    expect(linkTarget(null)).toEqual({ linkable: false, sport_name: null, start: null, end: null });
+  });
+
+  it("reduces sets to {weight, number_of_reps, time_in_seconds?} and keeps exercise_details", () => {
+    const exercises = [{ exercise_id: "BACKSQUAT_BARBELL", sets: [{ reps: 2, weight: 80 }, { reps: 1, time_seconds: 30 }] }];
+    const { workout_groups } = buildExerciseGroups(exercises, 0);
+    const out = linkWorkoutGroups(workout_groups, exercises) as Array<{ workout_exercises: Array<{ sets: unknown[]; exercise_details: { exercise_id: string } }> }>;
+    expect(out[0]!.workout_exercises[0]!.sets).toEqual([
+      { weight: 80, number_of_reps: 2 },
+      { weight: 0, number_of_reps: 1, time_in_seconds: 30 },
+    ]);
+    expect(out[0]!.workout_exercises[0]!.exercise_details.exercise_id).toBe("BACKSQUAT_BARBELL");
+  });
+});
+
+describe("whoop_lift_log attach_to_activity_id", () => {
+  it("preview reads the target and writes nothing", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(true) });
+    const { isError, out } = await run({ ...base, attach_to_activity_id: "act-1" });
+    expect(isError).toBe(false);
+    expect(out.will_execute.body_summary.attach_to.sport_name).toBe("functional-fitness");
+    expect(calls.map((c) => c.method)).toEqual(["GET"]);
+    expect(calls[0]!.query).toEqual({ activityId: "act-1" });
+  });
+
+  it("saves a template, links it, then deletes the template, without an overlap check or new activity", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(true) });
+    const { isError, out } = await run({ ...base, confirm: true, attach_to_activity_id: "act-1" });
+    expect(isError).toBe(false);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "GET /core-details-bff/v1/cardio-details",
+      "POST /weightlifting-service/v3/workout-template",
+      "POST /weightlifting-service/v2/weightlifting-workout/link-cardio-workout",
+      "DELETE /weightlifting-service/v2/workout-template/4242",
+    ]);
+    const link = calls[2]!.body as Record<string, unknown> & { template: Record<string, unknown> };
+    expect(link).toMatchObject({ rpe: 0, template_id: 4242, activity_id: "act-1" });
+    expect(link.template).toMatchObject({ source: "USER", workout_template_key: 4242 });
+    expect(out).toMatchObject({ attached: true, activity_id: "act-1", template_id: 4242, template_deleted: true, type: "functional-fitness", set_count: 2 });
+  });
+
+  it("keeps the template with keep_template:true", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(true) });
+    const { out } = await run({ ...base, confirm: true, attach_to_activity_id: "act-1", keep_template: true });
+    expect(calls.map((c) => c.method)).toEqual(["GET", "POST", "POST"]);
+    expect(out.template_deleted).toBe(false);
+  });
+
+  it("deletes the template if the link call fails", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(true), failLink: true });
+    await expect(run({ ...base, confirm: true, attach_to_activity_id: "act-1" })).rejects.toThrow("link failed");
+    expect(calls.map((c) => c.method)).toEqual(["GET", "POST", "POST", "DELETE"]);
+  });
+
+  it("refuses when Whoop says the activity isn't linkable", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(false) });
+    const { isError, out } = await run({ ...base, confirm: true, attach_to_activity_id: "act-1" });
+    expect(isError).toBe(true);
+    expect(out.activity.activity_id).toBe("act-1");
+    expect(calls.map((c) => c.method)).toEqual(["GET"]);
+  });
+
+  it("can't be combined with replace_overlapping", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(true) });
+    const { isError } = await run({ ...base, confirm: true, attach_to_activity_id: "act-1", replace_overlapping: true });
+    expect(isError).toBe(true);
+    expect(calls).toEqual([]);
+  });
+
+  it("still rejects 0-rep weighted sets", async () => {
+    const { run, calls } = harness({ records: [] }, { cardio: CARDIO(true) });
+    const { isError } = await run({
+      ...base,
+      confirm: true,
+      attach_to_activity_id: "act-1",
+      exercises: [{ exercise_id: "BACKSQUAT_BARBELL", sets: [{ reps: 0, weight: 90, strap_location: "LEFT" }] }],
+    });
+    expect(isError).toBe(true);
     expect(calls).toEqual([]);
   });
 });

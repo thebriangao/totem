@@ -186,6 +186,19 @@ export const LiftLogOut = withPreview(z.object({
   })).optional(),
 }));
 
+export const LiftAttachOut = z.object({
+  attached: z.literal(true),
+  activity_id: z.string(),
+  template_id: z.number(),
+  template_deleted: z.boolean(),
+  original_activity_type: z.string().nullable(),
+  type: z.string().nullable(),
+  during: z.string().nullable(),
+  exercise_count: z.number().int(),
+  set_count: z.number().int(),
+  total_volume_kg: z.number().nullable(),
+});
+
 export const LiftTemplateSaveOut = withPreview(z.object({
   created: z.literal(true),
   template_id: z.number().int(),
