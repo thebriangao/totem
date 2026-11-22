@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { registerJournal } from "../../src/tools/v2/journal.js";
+import { WhoopApiError } from "../../src/whoop/errors.js";
 import { parseDraft } from "../../src/lib/journal_behaviors.js";
 import { projectBehaviorImpacts, projectJournalDay } from "../../src/projections/journal_v2.js";
 import { connect, fixture, mockWhoop, parse, toolBudget } from "./journal_profile_helpers.js";
@@ -152,6 +153,27 @@ describe("whoop_journal tool", () => {
     const out = parse(await client.callTool({ name: "whoop_journal", arguments: { date: DATE, impact_id: id } }));
     expect(out.impact.detail).toMatchObject({ behavior_name: "Daylight Eating" });
     expect(out.impact.detail.metrics[0]).toMatchObject({ metric: "RECOVERY IMPACT", delta_avg: 7 });
+  });
+
+  // Live 2026-11-21: impact_id "not-an-impact" made WHOOP answer 404, and the whole call
+  // failed with "Whoop API error 404 on /behavior-impact-service/v2/impact/details/…".
+  it("an impact_id WHOOP doesn't know (400 or 404) is a warning, and the day and rows still come back", async () => {
+    for (const status of [400, 404]) {
+      const id = "not-an-impact";
+      const path = `/behavior-impact-service/v2/impact/details/${id}`;
+      const whoop = mockWhoop({
+        [DRAFT]: draft(),
+        "/behavior-impact-service/v1/impact": v1Fixture("behavior_impact_list.json"),
+        [path]: new WhoopApiError(status, path, "HTTP 404 Not Found", "HTTP 404 Not Found"),
+      });
+      const client = await connect(registerJournal, whoop);
+      const res = await client.callTool({ name: "whoop_journal", arguments: { date: DATE, impact_id: id } });
+      expect(res.isError, `status ${status}`).not.toBe(true);
+      const out = parse(res);
+      expect(out.impact.rows.length).toBeGreaterThan(0);
+      expect(out.impact).not.toHaveProperty("detail");
+      expect(out.warnings.join(" ")).toMatch(/no personal impact not-an-impact/);
+    }
   });
 
   it("stays inside the description budgets", async () => {

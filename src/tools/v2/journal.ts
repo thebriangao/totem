@@ -68,8 +68,9 @@ export function registerJournal(server: McpServer, client: WhoopClient): void {
           try {
             detail = projectBehaviorImpact(await client.get(`/behavior-impact-service/v2/impact/details/${encodeURIComponent(impact_id)}`), impact_id);
           } catch (e) {
-            if (!(e instanceof WhoopApiError && e.status === 400)) throw e;
-            warnings.push(`WHOOP has no personal impact ${impact_id}; only your own impacts have detail.`);
+            // 400 for an unknown impact uuid; 404 for an id that isn't a uuid at all (live 2026-11-21).
+            if (!(e instanceof WhoopApiError && (e.status === 400 || e.status === 404))) throw e;
+            warnings.push(`WHOOP has no personal impact ${impact_id}; only your own impacts have detail (their id is on the impact rows).`);
           }
         }
       }
