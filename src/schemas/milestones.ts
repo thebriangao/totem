@@ -5,7 +5,8 @@ export const BADGE_COLUMNS = ["type", "tag", "name", "count", "status"] as const
 export const Badge = z.object({
   type: z.string(),
   name: z.string().nullable(),
-  count: z.number().int(),
+  /** Times earned; null when WHOOP shows none (a locked badge). */
+  count: z.number().int().nullable(),
   /** "top 7%" (rarity of an earned badge) or "3/5" (progress to the first). */
   status: z.string().nullable(),
 });

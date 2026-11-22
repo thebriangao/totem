@@ -24,6 +24,8 @@ describe("projectMilestonesHub", () => {
     expect(hub.badges.some((b) => b.tag === "all")).toBe(false);
     expect(hub.badges.find((b) => b.type === "ACTIVITY_WEIGHTLIFTING_MSK")).toEqual({ type: "ACTIVITY_WEIGHTLIFTING_MSK", tag: "activities", name: "Barbell Boss", count: 5, status: "top 7%" });
     expect(hub.badges.find((b) => b.type === "ACTIVITY_WALKING")).toMatchObject({ count: 0, status: "3/5" });
+    // A locked badge has an empty overlay: its count is unknown, not zero.
+    expect(hub.badges.find((b) => b.type === "HEALTHSPAN_STEPS")).toMatchObject({ count: null, status: null });
   });
 
   it("top earned badges and the closest unearned ones", () => {

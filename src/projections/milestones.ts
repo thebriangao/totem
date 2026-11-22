@@ -39,7 +39,8 @@ function badge(cell: Node, tag: string): BadgeT | null {
     type,
     tag,
     name: str(get(c, "caption_text")),
-    count: parseNumber(get(c, "media", "text_overlay")) ?? 0,
+    // Locked badges (Healthspan before it unlocks) carry an empty overlay: no count, not zero.
+    count: parseNumber(get(c, "media", "text_overlay")),
     status: badgeStatus(str(get(c, "sub_caption_text"))),
   };
 }
@@ -81,7 +82,7 @@ const progressFrac = (b: BadgeT): number => {
 
 /** Earned badges, most-earned (then rarest) first. */
 export function topBadges(badges: BadgeT[], n = 5): BadgeT[] {
-  return badges.filter((b) => b.count > 0).sort((a, b) => b.count - a.count || topPct(a) - topPct(b)).slice(0, n);
+  return badges.filter((b) => (b.count ?? 0) > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || topPct(a) - topPct(b)).slice(0, n);
 }
 
 /** Unearned badges closest to their first level. */

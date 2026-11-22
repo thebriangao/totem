@@ -25,7 +25,9 @@ describe("whoop_milestones", () => {
     const { out } = await call(client, "whoop_milestones", { include: ["badges"] });
     expect(out.streak).toBeUndefined();
     expect(out.badges.columns).toEqual(["type", "tag", "name", "count", "status"]);
-    expect(out.badges.rows).toContainEqual(["HEALTHSPAN_STEPS", "healthspan", "Stepping It Up", 0, null]);
+    // Healthspan badges are locked on this account: WHOOP shows no count, so totem reports none (not 0).
+    expect(out.badges.rows).toContainEqual(["HEALTHSPAN_STEPS", "healthspan", "Stepping It Up", null, null]);
+    expect(out.badges.rows).toContainEqual(["HIGH_SLEEP_PERFORMANCE", "sleep", "Sleep Specialist", 0, null]);
   });
 
   it("milestone_type returns one badge's detail; an unknown type is a tool error", async () => {

@@ -15,7 +15,7 @@ import { toolError } from "../../lib/health_plans_write.js";
 import { WhoopApiError } from "../../whoop/errors.js";
 
 const BFF = "/milestones-service/v1/bff/milestones";
-const strip = ({ tag: _tag, ...b }: { tag: string; type: string; name: string | null; count: number; status: string | null }) => b;
+const strip = ({ tag: _tag, ...b }: { tag: string; type: string; name: string | null; count: number | null; status: string | null }) => b;
 
 export function registerMilestones(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
