@@ -73,10 +73,11 @@ describe("v2 tool registry", () => {
   it("keeps the whole tools/list payload within its budget", async () => {
     // Every MCP client sends this to the model on every turn. v1 was 45,283
     // characters for 55 tools and v2 started at 50,318 for 40; the budget is 20%
-    // under v1 (36,226). It was 36,000 until whoop_day gained the heart-rate
-    // series and the day table (+366 characters). Measured now: 36,177.
+    // under v1 (36,226). whoop_day's heart-rate series and day table added 366
+    // characters; plain-string time inputs (src/lib/instant.ts) took 189 back.
+    // Measured now: 35,988.
     const { tools } = await (await connect()).listTools();
-    expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_200);
+    expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_000);
     // Write tools say once, the same way, that they preview by default.
     for (const t of tools.filter((x) => x.annotations?.readOnlyHint === false && x.name !== "whoop_raw")) {
       expect(t.description, t.name).toMatch(/Previews unless confirm:true\.$/);

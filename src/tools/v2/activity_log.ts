@@ -20,6 +20,7 @@ import {
   CARDIO_DETAILS_V1, CREATE_PATH, readActivityAs, recordFromActivity, sameInstant, type ActivityRecord,
 } from "../../lib/activity_records.js";
 import { MAIN_SLEEP_WARNING, errorResult, writeRejection } from "../../lib/activity_results.js";
+import { instantInput, toInstant } from "../../lib/instant.js";
 
 const MIN_DURATION_MS = 60_000;
 const SLEEP_READBACK_DELAYS_MS = [0, 2_000, 5_000];
@@ -41,14 +42,16 @@ export function registerActivityLog(server: McpServer, client: WhoopClient, opts
     input: {
       type: z.string().optional(),
       sport_id: z.number().int().optional().describe("Instead of type"),
-      start: z.iso.datetime({ offset: true }),
-      end: z.iso.datetime({ offset: true }),
+      start: instantInput(),
+      end: instantInput(),
       gps_enabled: z.boolean().default(false),
       garment_id: z.number().int().optional().describe("Strap location id; a miss lists them"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_ADDITIVE,
-  }, async ({ type, sport_id, start, end, gps_enabled, garment_id, confirm }) => {
+  }, async ({ type, sport_id, start: startIn, end: endIn, gps_enabled, garment_id, confirm }) => {
+    const start = toInstant(startIn, undefined, "start");
+    const end = toInstant(endIn, undefined, "end");
     if ((type === undefined) === (sport_id === undefined)) {
       return errorResult({ error: "Pass exactly one of type or sport_id." });
     }

@@ -31,6 +31,7 @@ import { findHistoryCard, weightMismatch } from "../../lib/lift_history.js";
 import { readActivityAs } from "../../lib/activity_records.js";
 import { overlappingTiles } from "../../lib/activity_list.js";
 import { setScheme } from "../../projections/lift_sessions.js";
+import { instantInput, toInstantOpt } from "../../lib/instant.js";
 
 const TOOL = "whoop_lift_log";
 export const LIFT_PATH = "/weightlifting-service/v2/weightlifting-workout/activity";
@@ -119,15 +120,17 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     input: {
       exercises: z.array(ExerciseIn).min(1).max(30),
       unit: z.enum(["kg", "lb"]).optional(),
-      start: z.iso.datetime({ offset: true }).optional().describe("Default end minus 30 min"),
-      end: z.iso.datetime({ offset: true }).optional().describe("Default now"),
+      start: instantInput().optional().describe("Default end minus 30 min"),
+      end: instantInput().optional().describe("Default now"),
       name: z.string().min(1).max(100).optional(),
       rpe: z.number().int().min(0).max(10).optional(),
       attach_to_activity_id: z.string().optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_ADDITIVE,
-  }, async ({ exercises, unit, start, end, name, rpe, attach_to_activity_id, confirm }) => {
+  }, async ({ exercises, unit, start: startIn, end: endIn, name, rpe, attach_to_activity_id, confirm }) => {
+    const start = toInstantOpt(startIn, "start");
+    const end = toInstantOpt(endIn, "end");
     const warnings: string[] = [];
     const attach = attach_to_activity_id?.trim();
 

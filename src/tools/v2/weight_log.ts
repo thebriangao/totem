@@ -12,6 +12,7 @@ import { WhoopApiError } from "../../whoop/errors.js";
 import { assertNotFuture, isoDay } from "../../lib/dates.js";
 import { toLocalIso } from "../../lib/timezone.js";
 import { fetchWeightPage } from "./weight.js";
+import { instantInput, toInstantOpt } from "../../lib/instant.js";
 
 const MAX_PAGES = 5;
 
@@ -73,11 +74,12 @@ export function registerWeightLog(server: McpServer, client: WhoopClient): void 
       unit: z.enum(["kg", "lb"]).optional(),
       body_fat_pct: z.number().gt(0).lt(100).nullable().optional().describe("Percent, e.g. 18.5; on edit null clears body composition"),
       lean_mass: z.number().positive().optional(),
-      at: z.iso.datetime({ offset: true }).optional().describe("Default now; edit keeps it"),
+      at: instantInput().optional().describe("Default now; edit keeps it"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
-  }, async ({ action, reading_id, weight, unit, body_fat_pct, lean_mass, at, confirm }) => {
+  }, async ({ action, reading_id, weight, unit, body_fat_pct, lean_mass, at: atIn, confirm }) => {
+    const at = toInstantOpt(atIn, "at");
     if (action === "add" && weight === undefined) return toolError("action:add needs weight (and unit).");
     if (action === "add" && reading_id) return toolError("action:add creates a new reading; to change an existing one use action:edit with reading_id.");
     if (action !== "add" && !reading_id) return toolError(`action:${action} needs reading_id (from whoop_weight).`);

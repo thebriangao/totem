@@ -20,6 +20,7 @@ import { mainSleepTile } from "../../projections/v2/sleep.js";
 import { projectSleepNeedV2 } from "../../projections/v2/core_sleep_need.js";
 import { hrWindow } from "../../projections/v2/heart_rate.js";
 import { projectHistory } from "../../projections/v2/history.js";
+import { instantInput, toInstantOpt } from "../../lib/instant.js";
 
 const NAME = "whoop_day";
 const DEFAULT_SECTIONS: DaySection[] = ["scores", "sleep", "strain", "activities"];
@@ -58,12 +59,14 @@ export function registerDay(server: McpServer, client: WhoopClient): void {
         end_date: z.iso.date().optional().describe("Table from date: default 30 days, max 180"),
         include: z.array(z.enum(DAY_SECTIONS)).min(1).optional()
           .describe("Default scores, sleep, strain, activities"),
-        hr_from: z.iso.datetime({ offset: true }).optional().describe("With hr_to, max 48 h"),
-        hr_to: z.iso.datetime({ offset: true }).optional(),
+        hr_from: instantInput().optional().describe("With hr_to, max 48 h"),
+        hr_to: instantInput().optional(),
       },
       annotations: READ_ONLY,
     },
-    async ({ date, end_date, include, hr_from, hr_to }) => {
+    async ({ date, end_date, include, hr_from: hrFromIn, hr_to: hrToIn }) => {
+      const hr_from = toInstantOpt(hrFromIn, "hr_from");
+      const hr_to = toInstantOpt(hrToIn, "hr_to");
       const today = todayIso();
       const now = Date.now();
 

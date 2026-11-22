@@ -92,9 +92,13 @@ describe("whoop_day heart rate", () => {
     await expect(bad({ hr_from: "2026-11-20T15:00:00-08:00", hr_to: "2026-11-20T14:00:00-08:00" })).rejects.toThrow(/before hr_to/);
     await expect(bad({ hr_from: "2026-11-21T13:00:00-08:00", hr_to: "2026-11-21T14:00:00-08:00" })).rejects.toThrow(/future/);
     await expect(bad({ hr_from: "2026-11-18T00:00:00-08:00", hr_to: "2026-11-20T00:00:01-08:00" })).rejects.toThrow(/48 hours/);
-    await expect(bad({ hr_from: "2026-11-20 15:00", hr_to: "2026-11-20 16:00" })).rejects.toThrow();
+    await expect(bad({ hr_from: "yesterday 3pm", hr_to: "2026-11-20 16:00" })).rejects.toThrow();
     // None of the refusals reached WHOOP.
     expect(get).not.toHaveBeenCalled();
+
+    // A time without an offset is on the person's clock (the WHOOP timezone, Los Angeles here).
+    await call(client, "whoop_day", { hr_from: "2026-11-20 15:00", hr_to: "2026-11-20T16:00" });
+    expect(queryFor(get, HR)).toMatchObject({ start: "2026-11-20T23:00:00.000Z", end: "2026-11-21T00:00:00.000Z" });
   });
 
   it("fails loudly when a series that was asked for can't be read, and says so for an empty window", async () => {

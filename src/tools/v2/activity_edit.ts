@@ -28,6 +28,7 @@ import {
 import { overlappingTiles, type ActivityTile } from "../../lib/activity_list.js";
 import { DELETE_MAIN_SLEEP_WARNING, NAP_TO_SLEEP_WARNING, errorResult, writeRejection } from "../../lib/activity_results.js";
 import type { ScoreType } from "../../data/sports.js";
+import { instantInput, toInstantOpt } from "../../lib/instant.js";
 
 const LAST_NIGHT_PATH = "/home-service/v1/deep-dive/sleep/last-night";
 const MIN_DURATION_MS = 60_000;
@@ -53,8 +54,8 @@ export function registerActivityEdit(server: McpServer, client: WhoopClient): vo
     input: {
       activity_id: z.string().min(1).optional(),
       sleep_date: z.iso.date().optional(),
-      start: z.iso.datetime({ offset: true }).optional(),
-      end: z.iso.datetime({ offset: true }).optional(),
+      start: instantInput().optional(),
+      end: instantInput().optional(),
       type: z.string().optional().describe("internal_name, display name or sport_id"),
       garment_id: z.number().int().optional().describe("Activities only"),
       delete_overlapping: z.array(z.string().min(1)).optional()
@@ -62,7 +63,9 @@ export function registerActivityEdit(server: McpServer, client: WhoopClient): vo
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
-  }, async ({ activity_id, sleep_date, start, end, type, garment_id, delete_overlapping, confirm }) => {
+  }, async ({ activity_id, sleep_date, start: startIn, end: endIn, type, garment_id, delete_overlapping, confirm }) => {
+    const start = toInstantOpt(startIn, "start");
+    const end = toInstantOpt(endIn, "end");
     if ((activity_id === undefined) === (sleep_date === undefined)) {
       return errorResult({ error: "Pass exactly one of activity_id or sleep_date." });
     }
