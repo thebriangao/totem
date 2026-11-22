@@ -4,6 +4,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { JournalLogOut } from "../../schemas/journal.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
+import { WhoopApiError } from "../../whoop/errors.js";
 import { todayIso } from "../../lib/dates.js";
 import { BEHAVIORS, BEHAVIORS_BY_ID, BEHAVIORS_BY_NAME } from "../../data/behaviors.js";
 import { isObject, asArray, asNumber, asString, asBool } from "../../lib/walk.js";
@@ -139,7 +140,20 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
         };
       }
 
-      const draft = await client.get(draftPath).catch(() => null);
+      // The PUT replaces the whole day, so without the current draft we can't
+      // preserve the other answers. Only a 404 means "nothing logged yet".
+      let draft: unknown = null;
+      try {
+        draft = await client.get(draftPath);
+      } catch (error) {
+        if (!(error instanceof WhoopApiError && error.status === 404) && !replace_day) {
+          const detail = error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text", text: jsonOut({ error: `Couldn't read the existing journal for ${d}, so writing now could erase other answers. Nothing was written. Retry, or pass replace_day:true to overwrite the day.`, detail }) }],
+            isError: true,
+          };
+        }
+      }
       const specs = specsFromDraft(draft);
 
       for (const b of resolved) {
