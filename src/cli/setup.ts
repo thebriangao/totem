@@ -10,27 +10,20 @@ import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, chmodSync }
 import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { resolve, dirname } from "node:path";
-import { readEnvFile, upsertEnvFile } from "../lib/env_file.js";
 import {
   c, run, capture, captureAsync, commandExists, genToken, genPassword, copyToClipboard, httpGet,
   prompt, promptHidden, promptYesNo, select, confirmStep, step, closePrompts,
   withSpinner, spin, pause, maskArgs,
-  runScript, ensureCli, openUrl,
+  ensureCli, openUrl,
 } from "./ui.js";
 import { pkgBin, claudeDesktopConfigPath, vscodeUserMcpPath } from "./spawn.js";
+import { runAuth } from "./auth.js";
+import { cliEnv, readLocalStatus } from "./auth_flow.js";
+import { writeDeployRecord, type DeployRecord } from "./deploy_record.js";
+import { migrateFromEnv, resolveTokenFilePath } from "../whoop/token_store.js";
 
-// ── .env helpers ────────────────────────────────────────────────────────────
 function envPath(root: string): string {
   return resolve(root, ".env");
-}
-// Both go through src/lib/env_file.ts so a value containing `#` (an auto-
-// generated connector password can) round-trips instead of being read back
-// truncated — see issue #27.
-function readEnv(root: string): Record<string, string> {
-  return readEnvFile(envPath(root));
-}
-function upsertEnv(root: string, updates: Record<string, string>): void {
-  upsertEnvFile(envPath(root), updates);
 }
 
 // A user-chosen connector password gates public web/mobile access to the
@@ -43,19 +36,6 @@ function weakPassword(pw: string): string | null {
   if (/^(.)\1+$/.test(pw)) return "That's a single repeated character — pick something stronger.";
   if (/^(password|whoop|123456|qwerty|letmein)/i.test(pw)) return "That's too guessable — pick something stronger.";
   return null;
-}
-
-// Record of where we deployed, so `auth` can push rotated tokens to the right
-// place later (or know it's a local install with nothing remote to update).
-interface DeployRecord {
-  platform: string;          // fly | railway | cloudrun | custom | local
-  app?: string;              // app/project/service name (none for local)
-  url?: string;
-  region?: string;           // Cloud Run needs this to target the service
-  project?: string;          // Cloud Run GCP project (for logs/status/refresh)
-}
-function writeDeployRecord(root: string, rec: DeployRecord): void {
-  writeFileSync(resolve(root, ".totem-deploy.json"), JSON.stringify(rec, null, 2));
 }
 
 // ── shared: ensure dependencies are installed (offer to run npm install) ─────
@@ -72,35 +52,18 @@ async function ensureDeps(root: string): Promise<boolean> {
   return (await run("npm", ["install"], { cwd: root })) === 0;
 }
 
-// ── shared: ensure we have Whoop tokens (run auth if not) ────────────────────
-async function ensureAuth(root: string): Promise<boolean> {
-  const env = readEnv(root);
-  if (env.WHOOP_IOS_BEARER_TOKEN && env.WHOOP_COGNITO_REFRESH_TOKEN) {
-    const reuse = await promptYesNo("Found existing Whoop tokens in .env. Reuse them?", true);
-    if (reuse) return true;
+// ── shared: a WHOOP login on this machine (for `totem local`) ───────────────
+async function ensureLocalAuth(root: string): Promise<boolean> {
+  const env = cliEnv(envPath(root));
+  const local = readLocalStatus(resolveTokenFilePath(env));
+  if (local.state === "tokens") {
+    if (await promptYesNo(`Found a WHOOP login in ${local.tokenFile}. Reuse it?`, true)) return true;
+  } else if (local.state !== "handed-off" && migrateFromEnv(env)) {
+    // v1 tokens in .env: the server moves them into the token file on first start.
+    if (await promptYesNo("Found WHOOP tokens from an older totem in .env. Reuse them?", true)) return true;
   }
-  // Need email + password in .env for the auth (cognito_bootstrap) script.
-  if (!env.WHOOP_EMAIL) {
-    const email = await promptRequired("Your Whoop account email", {
-      validate: (v) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) ? null : "That doesn't look like an email address — try again."),
-    });
-    upsertEnv(root, { WHOOP_EMAIL: email });
-  }
-  if (!readEnv(root).WHOOP_PASSWORD) {
-    const pw = await promptRequired("Your Whoop account password (stored only in local .env, used once)", { hidden: true });
-    upsertEnv(root, { WHOOP_PASSWORD: pw });
-  }
-  console.log(c.gray("Authenticating with Whoop (you'll get an SMS code if your account has MFA)…"));
-  // closePrompts so the auth script owns stdin for its own SMS prompt.
   closePrompts();
-  // runScript prefers the compiled dist/ (works in a published install with no
-  // tsx), falling back to tsx on source for a dev checkout. TOKENS_ONLY: the
-  // guided flow handles the deploy itself, so the auth script must NOT push.
-  const code = await runScript(root, "scripts/cognito_bootstrap", [], {
-    env: { ...process.env, WHOOP_AUTH_TOKENS_ONLY: "1" },
-  });
-  if (code !== 0) { console.log(c.red("Auth failed.")); return false; }
-  return true;
+  return (await runAuth(root, ["--local"])) === 0;
 }
 
 // ── prerequisites (guided preflight, consistent across every path) ────────────
@@ -478,9 +441,9 @@ export async function runLocalSetup(root: string): Promise<number> {
   step(1, TOTAL, "Prerequisites");
   if (!(await preflight([nodePrereq, depsPrereq(root), buildPrereq(root)]))) return 1;
 
-  step(2, TOTAL, "Whoop authentication");
-  if (!(await ensureAuth(root))) return 1;
-  console.log(c.green("  ✓ tokens in .env"));
+  step(2, TOTAL, "WHOOP login");
+  if (!(await ensureLocalAuth(root))) return 1;
+  console.log(c.green("  ✓ WHOOP login saved on this machine"));
   // Record this as a local install (overriding any stale cloud record) so
   // `auth` knows the tokens just go to .env — no remote to push to.
   writeDeployRecord(root, { platform: "local" });
@@ -511,12 +474,7 @@ export async function runCloudSetup(root: string): Promise<number> {
   const TOTAL = 6;
   if (!(await preflight([nodePrereq, depsPrereq(root)]))) return 1;
 
-  step(1, TOTAL, "Whoop authentication");
-  if (!(await ensureAuth(root))) return 1;
-  const env = readEnv(root);
-  console.log(c.green("  ✓ tokens ready"));
-
-  step(2, TOTAL, "Choose a host");
+  step(1, TOTAL, "Choose a host");
   const platformIdx = await select("Where should the server run?", [
     { label: "Fly.io", hint: "fast-booting micro-VMs on a global edge network" },
     { label: "Railway", hint: "polished PaaS, instant deploys + a clean dashboard" },
@@ -543,7 +501,7 @@ export async function runCloudSetup(root: string): Promise<number> {
     : true;
   if (!targetOk) { console.log(c.red("  Couldn't set the deploy target.")); closePrompts(); return 1; }
 
-  step(3, TOTAL, "Generate secrets");
+  step(2, TOTAL, "Generate secrets");
   const mcpToken = genToken();
   console.log(`  MCP_AUTH_TOKEN: ${c.gray(mcpToken.slice(0, 12) + "… (generated)")}`);
   console.log(c.gray("  Connector password — you'll paste this into Claude once when adding the server."));
@@ -567,18 +525,15 @@ export async function runCloudSetup(root: string): Promise<number> {
     }
   }
 
+  // No WHOOP tokens in the host's env: the server boots without a login, and
+  // step 5 pushes one to its token file (a volume) over POST /admin/tokens.
   const baseEnv: Record<string, string> = {
-    WHOOP_EMAIL: env.WHOOP_EMAIL ?? "",
-    WHOOP_IOS_BEARER_TOKEN: env.WHOOP_IOS_BEARER_TOKEN ?? "",
-    WHOOP_COGNITO_REFRESH_TOKEN: env.WHOOP_COGNITO_REFRESH_TOKEN ?? "",
     MCP_TRANSPORT: "http",
     MCP_AUTH_TOKEN: mcpToken,
     AUTH_PASSWORD: password,
-    WHOOP_TOKEN_STORE: "memory",
   };
-  if (env.WHOOP_USER_ID) baseEnv.WHOOP_USER_ID = env.WHOOP_USER_ID;
 
-  step(4, TOTAL, `Deploy to ${platform}`);
+  step(3, TOTAL, `Deploy to ${platform}`);
   const defaultName = `totem-${genToken().slice(0, 6)}`;
   let appName = "totem";
   if (platform !== "custom") {
@@ -600,7 +555,7 @@ export async function runCloudSetup(root: string): Promise<number> {
     return 1;
   }
 
-  step(5, TOTAL, "Verify the server + OAuth are live");
+  step(4, TOTAL, "Verify the server + OAuth are live");
   const ok = await verifyDeployment(url);
   if (!ok) {
     console.log(c.yellow("  Couldn't confirm the OAuth endpoints yet (the host may still be starting). Give it a minute, then run `totem ping`."));
@@ -613,7 +568,14 @@ export async function runCloudSetup(root: string): Promise<number> {
     const proj = capture("gcloud", ["config", "get-value", "project"]).stdout.trim();
     if (proj) extra.project = proj;
   }
-  writeDeployRecord(root, { platform, app: ctx.appName, url, ...extra });
+  writeDeployRecord(root, { platform, app: ctx.appName, url, ...extra, mcp_auth_token: mcpToken });
+
+  step(5, TOTAL, "WHOOP login");
+  console.log(c.gray("  Log in on this machine; the login goes straight to the server, which keeps it fresh."));
+  closePrompts();
+  if ((await runAuth(root, [], { target: { kind: "remote", url, adminToken: mcpToken, platform } })) !== 0) {
+    console.log(c.yellow("  The server is up but has no WHOOP login yet. Run `totem auth` to finish."));
+  }
 
   step(6, TOTAL, "Connect your AI");
   printConnectInstructions(url, password, mcpToken);
@@ -770,20 +732,31 @@ async function createFlyApp(fly: string, ctx: DeployCtx): Promise<boolean> {
   return false;
 }
 
-async function deployFly(ctx: DeployCtx): Promise<string | null> {
-  const fly = commandExists("fly") ? "fly" : "flyctl";
+export const FLY_VOLUME = "totem_data";
+export const FLY_REGION = "sjc";
 
-  if (!(await createFlyApp(fly, ctx))) return null;
-  const url = `https://${ctx.appName}.fly.dev`;
-  const env = { ...ctx.env, PUBLIC_URL: url };
-
-  // Minimal fly.toml so `fly deploy` is non-interactive (builds the Dockerfile).
-  writeFileSync(resolve(ctx.root, "fly.toml"), [
-    `app = "${ctx.appName}"`,
-    `primary_region = "sjc"`,
+/**
+ * The fly.toml `totem cloud` writes. With a volume, [mounts] puts it at /data,
+ * where the image keeps the WHOOP token file (TOTEM_TOKEN_FILE=/data/tokens.json),
+ * so the login survives restarts and deploys.
+ */
+export function flyToml(appName: string, withVolume: boolean): string {
+  return [
+    `app = "${appName}"`,
+    `primary_region = "${FLY_REGION}"`,
     ``,
     `[build]`,
     ``,
+    ...(withVolume
+      ? [
+          `# The WHOOP login lives here (/data/tokens.json). WHOOP rotates the refresh`,
+          `# token on every refresh, so it must survive restarts.`,
+          `[mounts]`,
+          `  source = "${FLY_VOLUME}"`,
+          `  destination = "/data"`,
+          ``,
+        ]
+      : []),
     `[http_service]`,
     `  internal_port = 3000`,
     `  force_https = true`,
@@ -793,7 +766,36 @@ async function deployFly(ctx: DeployCtx): Promise<string | null> {
     `  auto_start_machines = true`,
     `  min_machines_running = 1`,
     ``,
-  ].join("\n"));
+  ].join("\n");
+}
+
+/** Make sure the app has its token volume; creates it (with consent) if missing. */
+async function ensureFlyVolume(fly: string, ctx: DeployCtx): Promise<boolean> {
+  const list = await withSpinner("checking for the token volume", () => captureAsync(fly, ["volumes", "list", "--app", ctx.appName, "--json"]));
+  if (list.code === 0 && new RegExp(`"name"\\s*:\\s*"${FLY_VOLUME}"`).test(list.stdout)) {
+    console.log(c.green(`  ✓ volume ${FLY_VOLUME} exists`));
+    return true;
+  }
+  const args = ["volumes", "create", FLY_VOLUME, "--app", ctx.appName, "--region", FLY_REGION, "--size", "1", "--yes"];
+  if (!(await confirmStep(`Create a 1 GB volume '${FLY_VOLUME}' for the WHOOP login?`, {
+    cmd: `fly ${args.join(" ")}`,
+    detail: "keeps the login across restarts and deploys (a small monthly charge from Fly)",
+    defaultYes: true,
+  }))) return false;
+  return runWithRetry(`creating volume ${FLY_VOLUME}`, () => run(fly, args, { cwd: ctx.root }));
+}
+
+async function deployFly(ctx: DeployCtx): Promise<string | null> {
+  const fly = commandExists("fly") ? "fly" : "flyctl";
+
+  if (!(await createFlyApp(fly, ctx))) return null;
+  const url = `https://${ctx.appName}.fly.dev`;
+  const env = { ...ctx.env, PUBLIC_URL: url };
+
+  const volume = await ensureFlyVolume(fly, ctx);
+  if (!volume) console.log(c.yellow("  No volume: the server will lose its WHOOP login on every restart (run `totem auth` after each)."));
+  // Minimal fly.toml so `fly deploy` is non-interactive (builds the Dockerfile).
+  writeFileSync(resolve(ctx.root, "fly.toml"), flyToml(ctx.appName, volume));
   // Set secrets (staged; applied on deploy) — surface the error if it fails.
   // `secrets import` reads KEY=val from stdin, keeping the token + password
   // values off the argv (which any local user could read via `ps`/`/proc`).
@@ -971,6 +973,14 @@ async function deployRailway(ctx: DeployCtx): Promise<string | null> {
         retries: 3,
         confirm: { summary: "Deploy to Railway now?", detail: "creates a service + starts a build on your Railway account", defaultYes: true },
       },
+      {
+        // Railway volumes mount root-owned; the image's entrypoint hands /data to
+        // the unprivileged user before starting the server.
+        desc: "add a volume at /data for the WHOOP login",
+        cmd: ["railway", ["volume", "add", "--mount-path", "/data"]],
+        retries: 1,
+        confirm: { summary: "Add a volume at /data so the WHOOP login survives restarts?", detail: "without it, every restart or redeploy needs `totem auth` again (a small charge from Railway)", cmd: "railway volume add --mount-path /data", defaultYes: true, skippable: true },
+      },
       { desc: "set environment variables (redeploys with them)", cmd: ["railway", varArgs], retries: 3 },
     ],
     getUrl: async () => {
@@ -994,6 +1004,7 @@ async function deployRailway(ctx: DeployCtx): Promise<string | null> {
 
 // GOOGLE CLOUD RUN — gcloud, builds from source. Best-effort.
 async function deployCloudRun(ctx: DeployCtx): Promise<string | null> {
+  console.log(c.yellow("  Cloud Run has no persistent disk here: after a restart or a new revision, run `totem auth` again."));
   // Env vars go in a temp YAML file (--env-vars-file), NOT --set-env-vars: values
   // include an email (with `@`) and a random password, so any inline delimiter can
   // collide (the `^@^` form broke on the email's `@`). The file lives in the OS
@@ -1040,6 +1051,9 @@ async function deployCloudRun(ctx: DeployCtx): Promise<string | null> {
             "--allow-unauthenticated",
             "--port", "3000",
             "--min-instances", "1",
+            // One instance: the WHOOP login lives in that instance's token file,
+            // and a second instance would have none (or a competing copy).
+            "--max-instances", "1",
             "--env-vars-file", envFile,
             "--quiet",
           ]],
@@ -1066,7 +1080,7 @@ async function deployCloudRun(ctx: DeployCtx): Promise<string | null> {
 // ready-to-run env file (so the real secret values are usable, not truncated on
 // screen) + prints the exact docker commands.
 async function deployCustom(ctx: DeployCtx): Promise<string | null> {
-  // All settings — including the full tokens + generated password — go into an
+  // All settings — including the MCP token + generated password — go into an
   // env file (chmod 600) instead of being printed (truncated + leaked) on screen.
   const envFile = resolve(ctx.root, ".env.deploy");
   const body =
@@ -1080,13 +1094,14 @@ async function deployCustom(ctx: DeployCtx): Promise<string | null> {
   console.log(`  ${c.violet("1")}  ${c.white("Build the image")} ${c.gray("— the repo already has a Dockerfile:")}`);
   console.log(`        ${c.cyan("docker build -t totem .")}`);
   console.log("");
-  console.log(`  ${c.violet("2")}  ${c.white("Your full config")} ${c.gray("(tokens + the generated password) was written to:")}`);
+  console.log(`  ${c.violet("2")}  ${c.white("Your full config")} ${c.gray("(MCP token + the generated password) was written to:")}`);
   console.log(`        ${c.brand(envFile)}  ${c.gray("(chmod 600 — keep it private)")}`);
   console.log(`        ${c.gray("Open it and set")} ${c.bold(c.white("PUBLIC_URL"))} ${c.gray("to the")} ${c.white("https:// address your server will live at")}`);
   console.log(`        ${c.gray("— you need a public domain/hostname with HTTPS. That same URL is what you paste below.")}`);
   console.log("");
   console.log(`  ${c.violet("3")}  ${c.white("Run it")} ${c.gray("(serves on port 3000):")}`);
-  console.log(`        ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 --env-file ${envFile} totem`)}`);
+  console.log(`        ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 -v totem-data:/data --env-file ${envFile} totem`)}`);
+  console.log(`        ${c.gray("(the totem-data volume keeps the WHOOP login across restarts)")}`);
   console.log(`        ${c.gray("then put it behind HTTPS at that domain (a reverse proxy, Cloudflare Tunnel, your host's TLS, …).")}`);
   console.log("");
   return promptUrl("Once it's reachable, paste that public URL (the PUBLIC_URL you set)");
