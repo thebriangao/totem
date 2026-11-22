@@ -215,6 +215,39 @@ describe("TokenManager keep-alive (G7)", () => {
     manager.stop();
   });
 
+  it("still refreshes on time when timers stood still while the machine slept", async () => {
+    // Node's timers count running time. On Linux that excludes suspend, so a
+    // timer set for "in 50 minutes" fires 50 minutes of AWAKE time later.
+    const t0 = Date.now();
+    const store = new MemoryTokenStore(login(t0, { access_token: jwtExpiring(t0, HOUR) }));
+    const { refresh } = fakeCognito(() => Date.now());
+    const manager = new TokenManager({ store, refresh, keepAliveMs: 0, ...quiet });
+    manager.start();
+    // The status names the real due time (expiry minus 10 minutes), not the next wake-up.
+    expect(manager.status().next_keepalive_at).toBe(new Date(Math.floor((t0 + HOUR) / 1000) * 1000 - 10 * MIN).toISOString());
+    await vi.advanceTimersByTimeAsync(10 * MIN);
+    expect(refresh).not.toHaveBeenCalled();
+    vi.setSystemTime(Date.now() + 8 * HOUR); // lid closed: the wall clock jumps, timers don't
+    await vi.advanceTimersByTimeAsync(61_000);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    manager.stop();
+  });
+
+  it("keeps a failed refresh's backoff even though it wakes every minute", async () => {
+    const t0 = Date.now();
+    const store = new MemoryTokenStore(login(t0, { refreshed_at: new Date(t0 - 13 * HOUR).toISOString() }));
+    const refresh = vi.fn().mockRejectedValue(new Error("ECONNRESET"));
+    const manager = new TokenManager({ store, refresh, retryBaseMs: 4 * MIN, ...quiet });
+    manager.start();
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(3 * MIN); // three wake-ups, all before the 4-minute retry
+    expect(refresh).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(MIN + 1_000);
+    expect(refresh).toHaveBeenCalledTimes(2);
+    manager.stop();
+  });
+
   it("uses an unref'd timer so it never keeps the process alive", () => {
     const store = new MemoryTokenStore(login(Date.now()));
     const spy = vi.spyOn(globalThis, "setTimeout");

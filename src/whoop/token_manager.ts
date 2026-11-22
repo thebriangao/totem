@@ -24,8 +24,12 @@ import { isHandoff, type HandoffRecord, type TokenRecord, type TokenSource, type
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
-/** setTimeout's ceiling (~24.8 days). */
-const MAX_TIMER_MS = 2 ** 31 - 1;
+/**
+ * The keep-alive timer wakes at least this often and compares wall clocks.
+ * Node's timers count running time, which on Linux excludes suspend: a timer
+ * set for "in 12 hours" would fire 12 hours of awake time later.
+ */
+const MAX_TICK_MS = MINUTE;
 /**
  * A token we refreshed less than this long ago is used as it is, whatever its
  * `exp` says. Without it a clock running far ahead (every new token looks
@@ -519,16 +523,27 @@ export class TokenManager {
   private schedule(delayOverride?: number): void {
     this.clearTimer();
     if (this.stopped || this.fatal || this.handoff || this.expired || !this.record) return;
-    const delay = Math.min(Math.max(delayOverride ?? this.followerAwareDue(this.record) - this.now(), 1_000), MAX_TIMER_MS);
+    const delay = Math.max(delayOverride ?? this.followerAwareDue(this.record) - this.now(), 1_000);
     this.nextAt = this.now() + delay;
-    this.timer = setTimeout(() => void this.keepAlive(), delay);
+    this.arm();
+  }
+
+  /** Sleep until `nextAt` by the wall clock, in steps of at most MAX_TICK_MS. */
+  private arm(): void {
+    if (this.nextAt === null) return;
+    const wait = Math.min(Math.max(this.nextAt - this.now(), 0), MAX_TICK_MS);
+    this.timer = setTimeout(() => void this.keepAlive(), wait);
     this.timer.unref?.();
   }
 
   private async keepAlive(): Promise<void> {
     this.timer = null;
-    this.nextAt = null;
     if (this.stopped) return;
+    if (this.nextAt !== null && this.now() < this.nextAt) {
+      this.arm(); // only a tick: not due yet by the wall clock
+      return;
+    }
+    this.nextAt = null;
     try {
       this.sync();
       if (!this.record || this.handoff || this.fatal || this.expired) return;
