@@ -1,0 +1,195 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { registerPreferencesSet } from "../../src/tools/v2/preferences_set.js";
+import { zoneOffset } from "../../src/lib/profile_settings.js";
+import { connect, fixture, mockWhoop, parse, toolBudget } from "./journal_profile_helpers.js";
+
+const DASH_READ = "/home-service/v2/home/dashboard/customize";
+const DASH_WRITE = "/user-preferences-service/v1/home/dashboard/customize";
+const NOTIF = "/notification-service/v1/notifications/user-settings/bff";
+const BLOCK = "/notification-service/v1/notifications/user-settings/block/namespace";
+const TRACKED = "/activities-service/v1/journals/behaviors/user";
+
+async function call(whoop: ReturnType<typeof mockWhoop>, args: Record<string, unknown>) {
+  const client = await connect(registerPreferencesSet, whoop);
+  const result = await client.callTool({ name: "whoop_preferences_set", arguments: { confirm: true, ...args } });
+  return { result, out: parse(result) };
+}
+const seq = (...values: unknown[]) => (n: number) => values[Math.min(n, values.length) - 1];
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe("whoop_preferences_set: hidden_metric, stealth", () => {
+  it("hides a metric with POST and reads it back", async () => {
+    const whoop = mockWhoop({ "/users-service/v1/hidden-metrics/BODY_COMP": seq({ is_hidden: false }, { is_hidden: true }) });
+    const { out } = await call(whoop, { setting: "hidden_metric", metric: "BODY_COMP", hidden: true });
+    expect(whoop.post).toHaveBeenCalledWith("/users-service/v1/hidden-metrics/BODY_COMP", undefined);
+    expect(out).toMatchObject({ updated: true, verified: true, before: { hidden: false }, after: { hidden: true } });
+  });
+
+  it("does nothing when the metric is already in that state", async () => {
+    const whoop = mockWhoop({ "/users-service/v1/hidden-metrics/HEALTHSPAN": { is_hidden: false } });
+    const { out } = await call(whoop, { setting: "hidden_metric", metric: "HEALTHSPAN", hidden: false });
+    expect(whoop.delete).not.toHaveBeenCalled();
+    expect(out).toMatchObject({ updated: false, no_change: true });
+  });
+
+  it("refuses metrics outside the closed enum (WHOOP stores any string)", async () => {
+    const whoop = mockWhoop({});
+    const { result } = await call(whoop, { setting: "hidden_metric", metric: "NOT_A_METRIC", hidden: true });
+    expect(result.isError).toBe(true);
+    expect(whoop.post).not.toHaveBeenCalled();
+  });
+
+  it("turns stealth off with a bare false and on with {enabled:true}", async () => {
+    const off = mockWhoop({ "/users-service/v1/stealth-mode": seq(true, false) });
+    expect((await call(off, { setting: "stealth", enabled: false })).out).toMatchObject({ verified: true });
+    expect(off.put).toHaveBeenCalledWith("/users-service/v1/stealth-mode", false);
+    const on = mockWhoop({ "/users-service/v1/stealth-mode": seq(false, true) });
+    await call(on, { setting: "stealth", enabled: true });
+    expect(on.put).toHaveBeenCalledWith("/users-service/v1/stealth-mode", { enabled: true });
+  });
+
+  it("refuses inputs that belong to another setting", async () => {
+    const whoop = mockWhoop({});
+    const { result } = await call(whoop, { setting: "stealth", enabled: true, metric: "BODY_COMP" });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toMatch(/doesn't take metric/);
+  });
+});
+
+describe("whoop_preferences_set: dashboard", () => {
+  const dash = fixture("dashboard_customize.json");
+  const after = (gauges: string[], pinned: string[]) => ({
+    gauge_metrics: [{ index: 0, metric: "RECOVERY" }, { index: 1, metric: gauges[0] }, { index: 2, metric: "DAY_STRAIN" }, { index: 3, metric: gauges[1] }],
+    pinned_metrics_section: { metrics: pinned.map((metric, index) => ({ index, metric })) },
+  });
+
+  it("always sends both lists: changing gauges keeps the current pinned order", async () => {
+    const pinned = dash.pinned_metrics_section.metrics.map((m: { metric: string }) => m.metric);
+    const whoop = mockWhoop({ [DASH_READ]: seq(dash, after(["RHR", "STEPS"], pinned)) });
+    const { out } = await call(whoop, { setting: "dashboard", gauges: ["RHR", "STEPS"] });
+    expect(whoop.put).toHaveBeenCalledWith(DASH_WRITE, { gauge_metrics: ["RHR", "STEPS"], pinned_metrics: pinned });
+    expect(out).toMatchObject({ verified: true, after: { gauges: ["RHR", "STEPS"] } });
+  });
+
+  it("refuses to send one list when the other can't be read (WHOOP would reset it)", async () => {
+    const whoop = mockWhoop({ [DASH_READ]: new Error("down") });
+    const { result } = await call(whoop, { setting: "dashboard", pinned: ["HRV"] });
+    expect(result.isError).toBe(true);
+    expect(whoop.put).not.toHaveBeenCalled();
+  });
+
+  it("requires exactly two gauges, never the fixed ones, no duplicates", async () => {
+    for (const gauges of [["RHR"], ["RHR", "STEPS", "HRV"], ["RECOVERY", "HRV"], ["HRV", "HRV"]]) {
+      const whoop = mockWhoop({ [DASH_READ]: dash });
+      const { result } = await call(whoop, { setting: "dashboard", gauges });
+      expect(result.isError).toBe(true);
+      expect(whoop.put).not.toHaveBeenCalled();
+    }
+  });
+});
+
+describe("whoop_preferences_set: notification, journal_prefs", () => {
+  const notif = (gps: boolean) => ({ settings: [{ push_namespace: "GPS", active: gps }, { push_namespace: "CheckIn", active: true }] });
+
+  it("blocks a namespace with PUT and unblocks with DELETE", async () => {
+    const block = mockWhoop({ [NOTIF]: seq(notif(true), notif(false)) });
+    expect((await call(block, { setting: "notification", namespace: "GPS", enabled: false })).out).toMatchObject({ verified: true });
+    expect(block.put).toHaveBeenCalledWith(BLOCK, { namespace: "GPS" });
+    const unblock = mockWhoop({ [NOTIF]: seq(notif(false), notif(true)) });
+    await call(unblock, { setting: "notification", namespace: "GPS", enabled: true });
+    expect(unblock.delete).toHaveBeenCalledWith(`${BLOCK}/GPS`);
+  });
+
+  it("refuses a namespace in the wrong case", async () => {
+    const whoop = mockWhoop({});
+    const { result } = await call(whoop, { setting: "notification", namespace: "gps", enabled: false });
+    expect(result.isError).toBe(true);
+  });
+
+  it("always includes journal_enabled in the journal prefs PUT", async () => {
+    const prefs = fixture("journal_preferences.json");
+    const whoop = mockWhoop({ "/journal-service/v1/journals/preferences": seq(prefs, { ...prefs, journal_autopop_enabled: false }) });
+    const { out } = await call(whoop, { setting: "journal_prefs", journal_autopop_enabled: false });
+    expect(whoop.put).toHaveBeenCalledWith("/journal-service/v1/journals/preferences", { journal_enabled: true, journal_autopop_enabled: false });
+    expect(out.verified).toBe(true);
+  });
+
+  it("refuses journal prefs when journal_enabled can't be read and wasn't passed", async () => {
+    const whoop = mockWhoop({ "/journal-service/v1/journals/preferences": new Error("down") });
+    const { result } = await call(whoop, { setting: "journal_prefs", ai_autopop_enabled: false });
+    expect(result.isError).toBe(true);
+    expect(whoop.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("whoop_preferences_set: tracked_behaviors", () => {
+  const list = (ids: number[]) => ({ total_count: ids.length, offset: ids.length, records: ids.map((id) => ({ id })) });
+
+  it("read-modify-writes the full id list as strings", async () => {
+    const whoop = mockWhoop({ [TRACKED]: seq(list([1, 2, 171]), list([1, 171, 3])) });
+    const { out } = await call(whoop, { setting: "tracked_behaviors", untrack: ["Caffeine"], track: [3] });
+    expect(whoop.put).toHaveBeenCalledWith(TRACKED, ["1", "171", "3"]);
+    expect(out).toMatchObject({ verified: true, after: { count: 3, added: ["Marijuana"], removed: ["Caffeine"] } });
+    expect(out.warnings.join(" ")).toMatch(/only hides/);
+  });
+
+  it("re-tracks an untracked custom behaviour found on the customize screen", async () => {
+    const whoop = mockWhoop({
+      [TRACKED]: seq(list([1]), list([1, 163752])),
+      "/journal-service/v3/journals/behaviors": { grouped_toggles: [{ toggles: [{ id: "163752", title: "Probe Hip Mobility", custom: true, selected: false }] }] },
+    });
+    const { out } = await call(whoop, { setting: "tracked_behaviors", track: ["Probe Hip Mobility"] });
+    expect(whoop.put).toHaveBeenCalledWith(TRACKED, ["1", "163752"]);
+    expect(out.verified).toBe(true);
+  });
+
+  it("refuses when the current list is incomplete", async () => {
+    const whoop = mockWhoop({ [TRACKED]: { total_count: 400, offset: 2, records: [{ id: 1 }, { id: 2 }] } });
+    const { result } = await call(whoop, { setting: "tracked_behaviors", track: [3] });
+    expect(result.isError).toBe(true);
+    expect(whoop.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("whoop_preferences_set: clock_format", () => {
+  const boot = (offset: string | null) => ({ profile: { timezone_offset: offset } });
+
+  it("sends the configured timezone unchanged and verifies from the response row", async () => {
+    vi.stubEnv("WHOOP_TIMEZONE", "America/Los_Angeles");
+    const whoop = mockWhoop({ "/users-service/v2/bootstrap": boot(zoneOffset("America/Los_Angeles")) });
+    whoop.post.mockResolvedValueOnce({ clock_format: "TWENTY_FOUR_HOUR_FORMAT", timezone: "America/Los_Angeles" });
+    const { out } = await call(whoop, { setting: "clock_format", clock_format: "TWENTY_FOUR_HOUR_FORMAT" });
+    const [path, body] = whoop.post.mock.calls[0]! as unknown as [string, Record<string, string>];
+    expect(path).toBe("/users-service/v1/users/preferences/time");
+    expect(body).toMatchObject({ clock_format: "TWENTY_FOUR_HOUR_FORMAT", timezone: "America/Los_Angeles" });
+    expect(body.current_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+0000$/);
+    expect(out).toMatchObject({ verified: true, after: { clock_format: "TWENTY_FOUR_HOUR_FORMAT" } });
+  });
+
+  it("refuses when the timezone it would send doesn't match the profile offset", async () => {
+    vi.stubEnv("WHOOP_TIMEZONE", "Asia/Tokyo");
+    const whoop = mockWhoop({ "/users-service/v2/bootstrap": boot("-0800") });
+    const { result } = await call(whoop, { setting: "clock_format", clock_format: "TWELVE_HOUR_FORMAT" });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toMatch(/re-cut your days/);
+    expect(whoop.post).not.toHaveBeenCalled();
+  });
+});
+
+describe("whoop_preferences_set: preview and budgets", () => {
+  it("previews without writing", async () => {
+    const whoop = mockWhoop({ "/users-service/v1/stealth-mode": false });
+    const { out } = await call(whoop, { setting: "stealth", enabled: true, confirm: false });
+    expect(whoop.put).not.toHaveBeenCalled();
+    expect(out).toMatchObject({ preview: true, will_execute: { method: "PUT", path: "/users-service/v1/stealth-mode", body_summary: { before: { enabled: false }, after: { enabled: true } } } });
+  });
+
+  it("stays inside the description budgets", async () => {
+    const client = await connect(registerPreferencesSet, mockWhoop({}));
+    for (const t of await toolBudget(client)) {
+      expect(t.description).toBeLessThanOrEqual(600);
+      expect(t.longestDescribe).toBeLessThanOrEqual(80);
+    }
+  });
+});

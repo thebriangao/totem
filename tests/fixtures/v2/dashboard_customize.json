@@ -1,0 +1,436 @@
+{
+ "gauge_metrics": [
+  {
+   "index": 0,
+   "metric": "RECOVERY",
+   "preview_icon": null,
+   "icon": "RECOVERY",
+   "name": "RECOVERY",
+   "short_name": "RECOVERY"
+  },
+  {
+   "index": 1,
+   "metric": "HRV",
+   "preview_icon": null,
+   "icon": "HRV_OUTLINE",
+   "name": "HEART RATE VARIABILITY",
+   "short_name": "HRV"
+  },
+  {
+   "index": 2,
+   "metric": "DAY_STRAIN",
+   "preview_icon": null,
+   "icon": "STRAIN",
+   "name": "DAY STRAIN",
+   "short_name": "DAY STRAIN"
+  },
+  {
+   "index": 3,
+   "metric": "SLEEP_PERFORMANCE",
+   "preview_icon": null,
+   "icon": "SLEEP",
+   "name": "SLEEP PERFORMANCE",
+   "short_name": "SLEEP PERFORMANCE"
+  }
+ ],
+ "gauge_header": "My Focus Metrics",
+ "description": "These metrics will show up below your Strain and Recovery scores at the top of the screen.",
+ "pinned_metrics_header": "My Dashboard",
+ "unpinned_metrics_header": "Add to My Dashboard",
+ "pinned_metrics_section": {
+  "type": "PINNED",
+  "metrics": [
+   {
+    "index": 0,
+    "metric": "HRV",
+    "preview_icon": null,
+    "icon": "HRV_OUTLINE",
+    "name": "HEART RATE VARIABILITY",
+    "short_name": "HRV"
+   },
+   {
+    "index": 1,
+    "metric": "RHR",
+    "preview_icon": null,
+    "icon": "RHR",
+    "name": "RESTING HEART RATE",
+    "short_name": "RHR"
+   },
+   {
+    "index": 2,
+    "metric": "STEPS",
+    "preview_icon": null,
+    "icon": "STEPS",
+    "name": "STEPS (BETA)",
+    "short_name": "STEPS (BETA)"
+   },
+   {
+    "index": 3,
+    "metric": "HR_ZONES_1_3",
+    "preview_icon": null,
+    "icon": "HR_ZONES_1_3",
+    "name": "HR ZONES 1-3 (WEEKLY)",
+    "short_name": "HR ZONES 1-3"
+   },
+   {
+    "index": 4,
+    "metric": "HR_ZONES_4_5",
+    "preview_icon": null,
+    "icon": "HR_ZONES_4_5",
+    "name": "HR ZONES 4-5 (WEEKLY)",
+    "short_name": "HR ZONES 4-5"
+   },
+   {
+    "index": 5,
+    "metric": "STRENGTH_ACTIVITY_TIME",
+    "preview_icon": null,
+    "icon": "TONNAGE",
+    "name": "STRENGTH ACTIVITY TIME",
+    "short_name": "STRENGTH ACTIVITY TIME"
+   },
+   {
+    "index": 6,
+    "metric": "VO2_MAX",
+    "preview_icon": null,
+    "icon": "VO2_MAX",
+    "name": "VO\u2082 MAX",
+    "short_name": "VO\u2082 MAX"
+   },
+   {
+    "index": 7,
+    "metric": "CALORIES",
+    "preview_icon": null,
+    "icon": "CALORIES",
+    "name": "CALORIES",
+    "short_name": "CALORIES"
+   },
+   {
+    "index": 8,
+    "metric": "STRESS_MONITOR",
+    "preview_icon": "DATA",
+    "icon": "STRESS_MONITOR_DEFAULT",
+    "name": "STRESS MONITOR",
+    "short_name": "STRESS MONITOR"
+   },
+   {
+    "index": 9,
+    "metric": "STRAIN_AND_RECOVERY",
+    "preview_icon": "DATA",
+    "icon": "STRAIN",
+    "name": "STRAIN & RECOVERY",
+    "short_name": "STRAIN & RECOVERY"
+   }
+  ]
+ },
+ "unpinned_metrics_section": {
+  "type": "UNPINNED",
+  "metrics": [
+   {
+    "index": 0,
+    "metric": "AVERAGE_HR",
+    "preview_icon": null,
+    "icon": "HEART_RATE",
+    "name": "AVERAGE HEART RATE",
+    "short_name": "AVG HR"
+   },
+   {
+    "index": 1,
+    "metric": "DAY_STRAIN",
+    "preview_icon": null,
+    "icon": "STRAIN",
+    "name": "DAY STRAIN",
+    "short_name": "DAY STRAIN"
+   },
+   {
+    "index": 2,
+    "metric": "SLEEP_HOURS",
+    "preview_icon": null,
+    "icon": "HOURS_OF_SLEEP",
+    "name": "HOURS OF SLEEP",
+    "short_name": "HRS OF SLEEP"
+   },
+   {
+    "index": 3,
+    "metric": "HR_ZONES_ALL",
+    "preview_icon": null,
+    "icon": "HR_ZONES_ALL",
+    "name": "HR ZONES ALL (WEEKLY)",
+    "short_name": "HR ZONES ALL"
+   },
+   {
+    "index": 4,
+    "metric": "BODY_COMPOSITION_LEAN",
+    "preview_icon": null,
+    "icon": "SEGMENTAL_BODY_COMP",
+    "name": "LEAN BODY MASS",
+    "short_name": "LEAN MASS"
+   },
+   {
+    "index": 5,
+    "metric": "RECOVERY",
+    "preview_icon": null,
+    "icon": "RECOVERY",
+    "name": "RECOVERY",
+    "short_name": "RECOVERY"
+   },
+   {
+    "index": 6,
+    "metric": "RESPIRATORY_RATE",
+    "preview_icon": null,
+    "icon": "RESPIRATORY_RATE",
+    "name": "RESPIRATORY RATE",
+    "short_name": "RESPIRATORY RATE"
+   },
+   {
+    "index": 7,
+    "metric": "RESTORATIVE_SLEEP_PERCENT",
+    "preview_icon": null,
+    "icon": "SLEEP_CYCLE",
+    "name": "RESTORATIVE SLEEP (%)",
+    "short_name": "RESTORATIVE SLEEP (%)"
+   },
+   {
+    "index": 8,
+    "metric": "REM_SLEEP_DURATION",
+    "preview_icon": null,
+    "icon": "SLEEP_CYCLE",
+    "name": "RESTORATIVE SLEEP (HOURS)",
+    "short_name": "RESTORATIVE SLEEP (HRS)"
+   },
+   {
+    "index": 9,
+    "metric": "SLEEP_CONSISTENCY",
+    "preview_icon": null,
+    "icon": "SLEEP_CONSISTENCY",
+    "name": "SLEEP CONSISTENCY",
+    "short_name": "SLEEP CONSISTENCY"
+   },
+   {
+    "index": 10,
+    "metric": "SLEEP_NEED_FROM_SLEEP_DEBT_POST",
+    "preview_icon": null,
+    "icon": "SLEEP_DEBT",
+    "name": "SLEEP DEBT",
+    "short_name": "SLEEP DEBT"
+   },
+   {
+    "index": 11,
+    "metric": "IN_SLEEP_EFFICIENCY",
+    "preview_icon": null,
+    "icon": "SLEEP_EFFICIENCY",
+    "name": "SLEEP EFFICIENCY",
+    "short_name": "SLEEP EFFICIENCY"
+   },
+   {
+    "index": 12,
+    "metric": "SLEEP_NEED",
+    "preview_icon": null,
+    "icon": "SLEEP_NEED",
+    "name": "SLEEP NEEDED",
+    "short_name": "SLEEP NEEDED"
+   },
+   {
+    "index": 13,
+    "metric": "SLEEP_PERFORMANCE",
+    "preview_icon": null,
+    "icon": "SLEEP",
+    "name": "SLEEP PERFORMANCE",
+    "short_name": "SLEEP PERFORMANCE"
+   },
+   {
+    "index": 14,
+    "metric": "TIME_IN_BED",
+    "preview_icon": null,
+    "icon": "DURATION",
+    "name": "TIME IN BED",
+    "short_name": "TIME IN BED"
+   },
+   {
+    "index": 15,
+    "metric": "WEIGHT",
+    "preview_icon": null,
+    "icon": "WEIGHT",
+    "name": "WEIGHT",
+    "short_name": "WEIGHT"
+   }
+  ]
+ },
+ "bottom_sheet_metrics": [
+  {
+   "index": 0,
+   "metric": "AVERAGE_HR",
+   "preview_icon": null,
+   "icon": "HEART_RATE",
+   "name": "AVERAGE HEART RATE",
+   "short_name": "AVG HR"
+  },
+  {
+   "index": 1,
+   "metric": "CALORIES",
+   "preview_icon": null,
+   "icon": "CALORIES",
+   "name": "CALORIES",
+   "short_name": "CALORIES"
+  },
+  {
+   "index": 2,
+   "metric": "HRV",
+   "preview_icon": null,
+   "icon": "HRV_OUTLINE",
+   "name": "HEART RATE VARIABILITY",
+   "short_name": "HRV"
+  },
+  {
+   "index": 3,
+   "metric": "SLEEP_HOURS",
+   "preview_icon": null,
+   "icon": "HOURS_OF_SLEEP",
+   "name": "HOURS OF SLEEP",
+   "short_name": "HRS OF SLEEP"
+  },
+  {
+   "index": 4,
+   "metric": "HR_ZONES_1_3",
+   "preview_icon": null,
+   "icon": "HR_ZONES_1_3",
+   "name": "HR ZONES 1-3 (WEEKLY)",
+   "short_name": "HR ZONES 1-3"
+  },
+  {
+   "index": 5,
+   "metric": "HR_ZONES_4_5",
+   "preview_icon": null,
+   "icon": "HR_ZONES_4_5",
+   "name": "HR ZONES 4-5 (WEEKLY)",
+   "short_name": "HR ZONES 4-5"
+  },
+  {
+   "index": 6,
+   "metric": "HR_ZONES_ALL",
+   "preview_icon": null,
+   "icon": "HR_ZONES_ALL",
+   "name": "HR ZONES ALL (WEEKLY)",
+   "short_name": "HR ZONES ALL"
+  },
+  {
+   "index": 7,
+   "metric": "BODY_COMPOSITION_LEAN",
+   "preview_icon": null,
+   "icon": "SEGMENTAL_BODY_COMP",
+   "name": "LEAN BODY MASS",
+   "short_name": "LEAN MASS"
+  },
+  {
+   "index": 8,
+   "metric": "RESPIRATORY_RATE",
+   "preview_icon": null,
+   "icon": "RESPIRATORY_RATE",
+   "name": "RESPIRATORY RATE",
+   "short_name": "RESPIRATORY RATE"
+  },
+  {
+   "index": 9,
+   "metric": "RHR",
+   "preview_icon": null,
+   "icon": "RHR",
+   "name": "RESTING HEART RATE",
+   "short_name": "RHR"
+  },
+  {
+   "index": 10,
+   "metric": "RESTORATIVE_SLEEP_PERCENT",
+   "preview_icon": null,
+   "icon": "SLEEP_CYCLE",
+   "name": "RESTORATIVE SLEEP (%)",
+   "short_name": "RESTORATIVE SLEEP (%)"
+  },
+  {
+   "index": 11,
+   "metric": "REM_SLEEP_DURATION",
+   "preview_icon": null,
+   "icon": "SLEEP_CYCLE",
+   "name": "RESTORATIVE SLEEP (HOURS)",
+   "short_name": "RESTORATIVE SLEEP (HRS)"
+  },
+  {
+   "index": 12,
+   "metric": "SLEEP_CONSISTENCY",
+   "preview_icon": null,
+   "icon": "SLEEP_CONSISTENCY",
+   "name": "SLEEP CONSISTENCY",
+   "short_name": "SLEEP CONSISTENCY"
+  },
+  {
+   "index": 13,
+   "metric": "SLEEP_NEED_FROM_SLEEP_DEBT_POST",
+   "preview_icon": null,
+   "icon": "SLEEP_DEBT",
+   "name": "SLEEP DEBT",
+   "short_name": "SLEEP DEBT"
+  },
+  {
+   "index": 14,
+   "metric": "IN_SLEEP_EFFICIENCY",
+   "preview_icon": null,
+   "icon": "SLEEP_EFFICIENCY",
+   "name": "SLEEP EFFICIENCY",
+   "short_name": "SLEEP EFFICIENCY"
+  },
+  {
+   "index": 15,
+   "metric": "SLEEP_NEED",
+   "preview_icon": null,
+   "icon": "SLEEP_NEED",
+   "name": "SLEEP NEEDED",
+   "short_name": "SLEEP NEEDED"
+  },
+  {
+   "index": 16,
+   "metric": "SLEEP_PERFORMANCE",
+   "preview_icon": null,
+   "icon": "SLEEP",
+   "name": "SLEEP PERFORMANCE",
+   "short_name": "SLEEP PERFORMANCE"
+  },
+  {
+   "index": 17,
+   "metric": "STEPS",
+   "preview_icon": null,
+   "icon": "STEPS",
+   "name": "STEPS (BETA)",
+   "short_name": "STEPS (BETA)"
+  },
+  {
+   "index": 18,
+   "metric": "STRENGTH_ACTIVITY_TIME",
+   "preview_icon": null,
+   "icon": "TONNAGE",
+   "name": "STRENGTH ACTIVITY TIME",
+   "short_name": "STRENGTH ACTIVITY TIME"
+  },
+  {
+   "index": 19,
+   "metric": "TIME_IN_BED",
+   "preview_icon": null,
+   "icon": "DURATION",
+   "name": "TIME IN BED",
+   "short_name": "TIME IN BED"
+  },
+  {
+   "index": 20,
+   "metric": "VO2_MAX",
+   "preview_icon": null,
+   "icon": "VO2_MAX",
+   "name": "VO\u2082 MAX",
+   "short_name": "VO\u2082 MAX"
+  },
+  {
+   "index": 21,
+   "metric": "WEIGHT",
+   "preview_icon": null,
+   "icon": "WEIGHT",
+   "name": "WEIGHT",
+   "short_name": "WEIGHT"
+  }
+ ]
+}

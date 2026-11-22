@@ -1,0 +1,48 @@
+{
+ "title": "AI SETTINGS",
+ "settings": [
+  {
+   "title": "AI SETTINGS",
+   "tag": "BETA",
+   "body": "Enable AI powered WHOOP Coach to get personalized advice and coaching to help you unlock optimal performance. You can disable this feature at any time.",
+   "primary": true,
+   "disabled": true,
+   "setting_key": "WHOOP_COACH",
+   "active": true
+  },
+  {
+   "title": "INCORPORATE WHOOP METRICS",
+   "tag": null,
+   "body": "Allow WHOOP Coach to use your WHOOP metrics for a more personalized coaching experience. WHOOP Coach will analyze your unique data to generate recommendations that are specific to you. If enabled, your WHOOP metrics may be shared with our third-party Large Language Learning Model (LLM) partner. Even when enabled, the WHOOP metrics we share will not be stored, retained, or used for further training of LLM models.",
+   "primary": false,
+   "disabled": true,
+   "setting_key": "WHOOP_COACH_DATA",
+   "active": true
+  },
+  {
+   "title": "RESPONSE LENGTH",
+   "tag": null,
+   "body": "Response length determines how detailed your WHOOP Coach responses will be. Select your preferred response length below:",
+   "primary": false,
+   "disabled": false,
+   "setting_key": "WHOOP_COACH_CONCISE",
+   "active": false
+  },
+  {
+   "title": "MEMORY",
+   "tag": null,
+   "body": "Allow WHOOP to remember details from past conversations to provide personalized guidance. \nAll data is stored securely by WHOOP and never shared with a third party.",
+   "primary": false,
+   "disabled": false,
+   "setting_key": "WHOOP_COACH_MEMORY",
+   "active": true
+  }
+ ],
+ "footer": {
+  "title": "Data privacy",
+  "body": "We exist to improve your life, not invade it. You control your personal data. Read more about our commitment to Data Privacy.",
+  "cta_title": "LEARN MORE",
+  "cta_icon": "ARROW_RIGHT",
+  "cta_url_link": "https://www.whoop.com/privacy/full-privacy-policy/"
+ }
+}

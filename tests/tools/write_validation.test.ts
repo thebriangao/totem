@@ -251,12 +251,12 @@ describe("write-tool validation through MCP", () => {
   });
 
   it("drops the old state when the country changes, and reads the profile fresh", async () => {
+    // v2 merges from the profile-edit screen (PUT format), not bootstrap.
     const get = vi.fn().mockResolvedValue({
-      user: { first_name: "A", last_name: "B", city: "Austin", admin_division: "TX", country: "US" },
-      profile: { gender: "MALE", weight: 80, height: 1.8, unit_system: "metric" },
-      account: { email: "a@b.com" },
+      first_name: "A", last_name: "B", email: "a@b.com", city: "Austin", state: "TX", country: "US",
+      gender: "MALE", weight: 80, height: 1.8, unit_system: "metric", birthday: "1990-01-01",
     });
-    const put = vi.fn().mockResolvedValue({});
+    const put = vi.fn().mockResolvedValue(true);
     const whoop = { get, put } as unknown as WhoopClient;
     const client = await connect((server) => registerProfileUpdate(server, whoop));
     const result = await client.callTool({
