@@ -58,6 +58,8 @@ RUN apk add --no-cache su-exec \
 COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/package.json ./
+# The consent page's typeface is compiled into dist/; its licence travels with it.
+COPY --chown=node:node assets/fonts/Manrope-OFL.txt ./assets/fonts/Manrope-OFL.txt
 
 # Runtime settings. Set MCP_AUTH_TOKEN (and optionally AUTH_PASSWORD +
 # PUBLIC_URL) via your host's secrets (`fly secrets set`, Railway variables,

@@ -17,7 +17,7 @@
 //   - verifyAccessToken also accepts the static MCP_AUTH_TOKEN, so Claude Code
 //     (--header) and the Claude Desktop mcp-remote bridge keep working unchanged.
 
-import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import type { Response } from "express";
 import type {
   OAuthServerProvider,
@@ -31,6 +31,10 @@ import type {
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { InvalidGrantError, InvalidScopeError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { redirectUriMatches } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
+import { cleanClientName, redirectDestination, renderConsentForm, setConsentSecurityHeaders } from "./consent_page.js";
+
+// The consent page moved to consent_page.ts; these stay importable from here.
+export { CONSENT_CSP, redirectDestination, renderConsentForm, setConsentSecurityHeaders } from "./consent_page.js";
 
 const ACCESS_TTL_S = 3600;            // 1 hour
 const REFRESH_TTL_S = 30 * 24 * 3600; // 30 days
@@ -114,8 +118,10 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     if (!clientId.startsWith("c.")) return undefined;
     const payload = verifyToken(clientId.slice(2), this.signingSecret);
     if (!payload || payload.t !== "client") return undefined;
+    const name = cleanClientName(payload.n);
     return {
       client_id: clientId,
+      ...(name ? { client_name: name } : {}),
       redirect_uris: (payload.ru as string[]) ?? [],
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
@@ -133,12 +139,17 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
         client: Omit<OAuthClientInformationFull, "client_id" | "client_id_issued_at">,
       ): OAuthClientInformationFull => {
         // Encode the client's redirect_uris into a signed client_id so the
-        // registration survives server restarts with no storage.
+        // registration survives server restarts with no storage. The name it
+        // gave rides along (cleaned and capped): the consent page shows it for
+        // a client on the owner's own device, and never for one on the internet.
+        const name = cleanClientName(client.client_name);
         const signed = signToken(
-          { t: "client", ru: client.redirect_uris ?? [], sc: client.scope ?? "", jti: randomUUID() },
+          { t: "client", ru: client.redirect_uris ?? [], sc: client.scope ?? "", ...(name ? { n: name } : {}), jti: randomUUID() },
           this.signingSecret,
         );
         const clientId = `c.${signed}`;
+        // Registration is open to anyone, so say who came by. Names and addresses only.
+        console.error(`[totem] client registered: ${JSON.stringify(name ?? "(no name)")} -> ${(client.redirect_uris ?? []).map(redirectDestination).join(", ") || "(no redirect)"}`);
         return {
           ...client,
           client_id: clientId,
@@ -168,7 +179,29 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       scopes: (params.scopes ?? []).join(" "),
       resource: params.resource?.toString() ?? "",
       error: false,
+      clientName: client.client_name,
     }));
+  }
+
+  /** The name a client registered with, for re-rendering the page after a wrong password. */
+  registeredName(clientId: string): string | undefined {
+    return this.decodeClient(clientId)?.client_name;
+  }
+
+  // ─── consent POST, Deny ──────────────────────────────────────────────────
+  // The owner said no: send the client back with `access_denied` (RFC 6749
+  // §4.1.2.1) so it can say so instead of waiting. Only ever to a redirect URI
+  // this client registered; null means there is nowhere safe to send it.
+  deny(input: { clientId: string; redirectUri: string; state: string }): string | null {
+    const client = this.decodeClient(input.clientId);
+    if (!client || !URL.canParse(input.redirectUri)) return null;
+    if (!client.redirect_uris.some((registered) => redirectUriMatches(input.redirectUri, registered))) return null;
+    const url = new URL(input.redirectUri);
+    url.searchParams.set("error", "access_denied");
+    url.searchParams.set("error_description", "The owner denied the request.");
+    if (input.state) url.searchParams.set("state", input.state);
+    console.error(`[totem] consent denied by the owner: ${redirectDestination(input.redirectUri)}`);
+    return url.toString();
   }
 
   // ─── consent POST: validate password, issue an auth code ─────────────────
@@ -334,186 +367,4 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     // generic Error would be mapped to 500).
     throw new InvalidTokenError("invalid or expired access token");
   }
-}
-
-// ─── consent page ───────────────────────────────────────────────────────────
-// The one page of totem a person sees in a browser: a client (claude.ai,
-// ChatGPT, an editor) has asked to connect, and the server asks its owner for
-// the connector password before it hands out access to their health data.
-//
-// It is a password form on a public URL, so it is built to be boring and safe:
-// one self-contained document, no scripts, no images, no fonts, nothing loaded
-// from anywhere. Every value it shows or posts back goes through esc().
-
-// The page's only stylesheet. Kept as one constant because the
-// Content-Security-Policy below allows exactly this text (by its hash) and no
-// other style, inline or external.
-const CONSENT_CSS = `
-:root {
-  color-scheme: light dark;
-  --page: #f3f4f6; --card: #ffffff; --text: #14171c; --muted: #5a6370; --line: #d8dce2;
-  --field: #ffffff; --button: #14171c; --button-text: #ffffff; --focus: #1d5fd6;
-  --dest: #f1f5fd; --dest-line: #c3d2f3; --error: #b3261e;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page: #0d1014; --card: #171b21; --text: #eceff3; --muted: #9ba5b2; --line: #2c333c;
-    --field: #0f1317; --button: #eceff3; --button-text: #12161b; --focus: #8ab4ff;
-    --dest: #141c2c; --dest-line: #2d3f66; --error: #ff8f85;
-  }
-}
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-body {
-  margin: 0; min-height: 100vh; min-height: 100dvh; padding: 24px 16px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--page); color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-.card {
-  width: 100%; max-width: 400px; padding: 28px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 12px 32px rgba(0, 0, 0, .07);
-}
-.brand { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: .02em; }
-.brand svg { width: 22px; height: 22px; flex: none; }
-h1 { margin: 0 0 16px; font-size: 21px; line-height: 1.3; font-weight: 650; letter-spacing: -.01em; }
-.to { margin: 0 0 10px; padding: 12px 14px; background: var(--dest); border: 1px solid var(--dest-line); border-radius: 10px; }
-.to span { display: block; margin: 0 0 2px; color: var(--muted); font-size: 13px; }
-.dest { display: block; font: 600 17px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }
-.only { margin: 0 0 22px; font-size: 15px; }
-label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; }
-input[type=password] {
-  display: block; width: 100%; height: 46px; padding: 0 12px;
-  font: inherit; color: inherit; background: var(--field);
-  border: 1px solid var(--line); border-radius: 10px;
-}
-input[type=password][aria-invalid=true] { border-color: var(--error); }
-input:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.error { margin: 8px 0 0; color: var(--error); font-size: 14px; font-weight: 600; }
-.help { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
-button {
-  display: block; width: 100%; height: 46px; margin: 20px 0 0; padding: 0 16px;
-  font: inherit; font-weight: 600; color: var(--button-text); background: var(--button);
-  border: 1px solid transparent; border-radius: 10px; cursor: pointer;
-}
-button:hover { opacity: .9; }
-button:active { opacity: .8; }
-.foot { margin: 20px 0 0; padding: 16px 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
-@media (max-width: 420px) {
-  body { padding: 12px; }
-  .card { padding: 22px 18px; }
-  h1 { font-size: 20px; }
-}
-@media (forced-colors: active) {
-  .card, .to, input[type=password], button { border: 1px solid CanvasText; }
-}
-`;
-
-const CONSENT_CSS_HASH = createHash("sha256").update(CONSENT_CSS).digest("base64");
-
-/**
- * The consent page's Content-Security-Policy: nothing may load or run. No
- * scripts, images, fonts, frames or connections; the one stylesheet above, by
- * hash; no <base>; no framing.
- *
- * It deliberately has NO `form-action`: that directive also governs where the
- * form's response may redirect, and the whole point of this form is a 302 to
- * the client's own origin (claude.ai, a loopback port, an app's scheme). With
- * `form-action 'self'` the browser refuses that redirect and the password
- * submit silently goes nowhere. `default-src` does not stand in for
- * `form-action`, so leaving it out leaves the redirect alone.
- */
-export const CONSENT_CSP = `default-src 'none'; style-src 'sha256-${CONSENT_CSS_HASH}'; base-uri 'none'; frame-ancestors 'none'`;
-
-// Security headers for the HTML consent page (a password form) ONLY. A
-// document CSP or X-Frame-Options on the JSON metadata and API responses made
-// Claude's connector flag a "server configuration issue", so these are never
-// set globally.
-export function setConsentSecurityHeaders(res: Response): void {
-  res.setHeader("Content-Security-Policy", CONSENT_CSP);
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "no-referrer");
-}
-
-/**
- * Who receives the authorization code, for display on the consent page.
- *
- * Client registration is open to anyone, so a link to this server's own
- * /authorize can carry an attacker's client and redirect URI. The page used to
- * say "connect this server to Claude" whatever the redirect was: the owner saw
- * their own server asking for their password, and typing it sent the code (and
- * with it their health data) to the attacker's site. Name the destination.
- */
-export function redirectDestination(redirectUri: string): string {
-  if (!URL.canParse(redirectUri)) return "an unrecognised address";
-  const { protocol, hostname, host } = new URL(redirectUri);
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
-    return `an app on this device (${host})`;
-  }
-  // A non-https destination (http, or an app's custom scheme) shows its scheme.
-  return protocol === "https:" ? host : `${protocol}//${host}`;
-}
-
-/**
- * The page: what is being asked, where access goes, the password, one button.
- *
- * Reading order is the security order. The destination comes before the
- * password field, set apart and in a monospace face (look-alike letters stay
- * distinguishable), with the line telling the owner to continue only if they
- * started this from there. On a wrong password the same page comes back with
- * the error next to the field and every hidden field intact, so trying again
- * is one keystroke away; the error is announced (role="alert") and tied to the
- * field (aria-invalid, aria-describedby).
- */
-export function renderConsentForm(d: {
-  clientId: string;
-  redirectUri: string;
-  codeChallenge: string;
-  state: string;
-  scopes: string;
-  resource: string;
-  error: boolean;
-}): string {
-  const esc = (s: string): string =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  const destination = esc(redirectDestination(d.redirectUri));
-  const error = d.error ? `\n      <p class="error" id="pw-error" role="alert">Incorrect password. Try again.</p>` : "";
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="robots" content="noindex">
-<title>${d.error ? "Incorrect password" : "Allow access"} · totem</title>
-<style>${CONSENT_CSS}</style>
-</head>
-<body>
-  <main class="card">
-    <p class="brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l2.5-7 4 14 3-9 1.5 2h5"/></svg>
-      totem
-    </p>
-    <h1>Allow access to your WHOOP data?</h1>
-    <p class="to"><span>Access goes to</span><strong class="dest">${destination}</strong></p>
-    <p class="only">Continue only if you started this from there. If you didn't, close this page.</p>
-    <form method="POST" action="/oauth/consent">
-      <input type="hidden" name="client_id" value="${esc(d.clientId)}">
-      <input type="hidden" name="redirect_uri" value="${esc(d.redirectUri)}">
-      <input type="hidden" name="code_challenge" value="${esc(d.codeChallenge)}">
-      <input type="hidden" name="state" value="${esc(d.state)}">
-      <input type="hidden" name="scope" value="${esc(d.scopes)}">
-      <input type="hidden" name="resource" value="${esc(d.resource)}">
-      <input type="text" name="username" value="totem connector" autocomplete="username" readonly hidden>
-      <label for="pw">Connector password</label>
-      <input type="password" id="pw" name="password" required autofocus autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="${d.error ? "pw-error pw-help" : "pw-help"}"${d.error ? ' aria-invalid="true"' : ""}>${error}
-      <p class="help" id="pw-help">The one <code>totem cloud</code> gave you when you set this server up.</p>
-      <button type="submit">Allow access</button>
-    </form>
-    <p class="foot">This is your own totem server asking. It never sends the password anywhere else.</p>
-  </main>
-</body>
-</html>`;
 }

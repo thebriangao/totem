@@ -237,10 +237,11 @@ describe("consent page — names who receives access", () => {
   });
 
   it("shows the redirect host for the real connector and for anyone else", () => {
-    expect(page("https://claude.ai/api/mcp/auth_callback")).toContain('<strong class="dest">claude.ai</strong>');
+    expect(page("https://claude.ai/api/mcp/auth_callback")).toContain("Access will be sent to <b>claude.ai</b>.");
     const phishing = page("https://claude.ai.evil.example/api/mcp/auth_callback");
-    expect(phishing).toContain('<strong class="dest">claude.ai.evil.example</strong>');
-    expect(phishing).not.toMatch(/to Claude\b/);
+    expect(phishing).toContain("Access will be sent to <b>claude.ai.evil.example</b>.");
+    expect(phishing).toContain("<h1>Allow claude.ai.evil.example to access WHOOP</h1>");
+    expect(phishing).not.toMatch(/Allow Claude\b|from Claude\b/);
   });
 
   it("describes loopback, plain-http and custom-scheme destinations", () => {

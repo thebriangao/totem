@@ -26,7 +26,9 @@ import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middlew
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { WhoopClient } from "./whoop/client.js";
 import { registerTools } from "./tools/register.js";
-import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
+import { WhoopOAuthProvider } from "./whoop/oauth_provider.js";
+import { CONSENT_FONT_PATH, renderConsentClosed, renderConsentForm, setConsentSecurityHeaders } from "./whoop/consent_page.js";
+import { consentFont } from "./whoop/consent_font.js";
 import { timezoneSettled } from "./whoop/init_timezone.js";
 import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
@@ -249,6 +251,17 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   let globalResetAt = 0;
   const GLOBAL_FAIL_MAX = 50;
 
+  // The consent page's typeface: one file, from this server, cacheable forever
+  // (the page's CSP allows fonts from here and nowhere else). Without it the
+  // page falls back to the system font.
+  app.get(CONSENT_FONT_PATH, (_req: Request, res: Response) => {
+    res.setHeader("content-type", "font/woff2");
+    res.setHeader("cache-control", "public, max-age=31536000, immutable");
+    res.setHeader("x-content-type-options", "nosniff");
+    res.setHeader("cross-origin-resource-policy", "same-origin");
+    res.end(consentFont());
+  });
+
   // Password-gate handler for the /authorize step. The form rendered by
   // provider.authorize() POSTs here; we validate the password, mint an auth
   // code, and redirect back to the client.
@@ -289,6 +302,20 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       scopes: field("scope"),
       resource: field("resource"),
     };
+    // Deny needs no password: it only ever sends the client back, to an address
+    // it registered, with "access_denied". With nowhere safe to send it, say so.
+    if (field("decision") === "deny") {
+      const back = provider.deny(fields);
+      if (back) {
+        res.redirect(302, back);
+        return;
+      }
+      setConsentSecurityHeaders(res);
+      res.setHeader("cache-control", "no-store");
+      res.status(400).setHeader("content-type", "text/html; charset=utf-8");
+      res.end(renderConsentClosed("Nothing was authorized."));
+      return;
+    }
     const password = field("password");
     const redirect = provider.consent({ ...fields, password });
     if (!redirect) {
@@ -298,7 +325,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       setConsentSecurityHeaders(res);
       res.setHeader("cache-control", "no-store");
       res.status(401).setHeader("content-type", "text/html; charset=utf-8");
-      res.end(renderConsentForm({ ...fields, error: true }));
+      res.end(renderConsentForm({ ...fields, error: true, clientName: provider.registeredName(fields.clientId) }));
       return;
     }
     res.redirect(302, redirect);
