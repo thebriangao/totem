@@ -23,7 +23,7 @@ describe("whoop_milestones", () => {
     const get = routedGet({ [`${BFF}/hub`]: fx("milestones_hub.json"), [STREAK]: new Error("down") });
     const client = await connect((s) => registerMilestones(s, mockClient({ get })));
     const { out } = await call(client, "whoop_milestones", { include: ["badges"] });
-    expect(out.streak).toBeNull();
+    expect(out.streak).toBeUndefined();
     expect(out.badges.columns).toEqual(["type", "tag", "name", "count", "status"]);
     expect(out.badges.rows).toContainEqual(["HEALTHSPAN_STEPS", "healthspan", "Stepping It Up", 0, null]);
   });

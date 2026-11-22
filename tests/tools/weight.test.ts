@@ -118,7 +118,7 @@ describe("whoop_weight_log add", () => {
     const { out, isError } = await call(client, "whoop_weight_log", { ...args, confirm: true });
     expect(isError).toBe(false);
     expect(post).toHaveBeenCalledWith(PATH, { timestamp: "2026-11-21T14:20:00.000-0800", weight_kg: kg, body_fat_percent: 0.2, lean_body_mass_kg: added.lean });
-    expect(out).toMatchObject({ action: "add", id: "r-new", verified: true, profile_kg: Math.round(kg * 100) / 100, reading: { kg: Math.round(kg * 1e4) / 1e4, fat_pct: 20 } });
+    expect(out).toMatchObject({ action: "add", id: "r-new", verified: true, profile_kg: Math.round(kg * 100) / 100, reading: { kg: Math.round(kg * 1e3) / 1e3, fat_pct: 20 } });
     // Pre-read and read-back are fresh.
     expect(get.mock.calls.filter(([p]) => p === PATH).every(([, , o]) => (o as { fresh: boolean }).fresh)).toBe(true);
   });

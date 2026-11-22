@@ -36,7 +36,7 @@ describe("whoop_smart_alarm", () => {
     expect(out.master_switch).toBe(true);
     expect(out.schedules[1]).toMatchObject({ id: SLEEP, mode: "SLEEP_GOAL", sleep_goal: "PERFORM", wake: "06:45" });
     expect(out.next_alarm).toMatchObject({ date: "2026-11-22", goal: "SLEEP_HEALTH_GET_BY" });
-    expect(out.note).toBeNull();
+    expect(out.note).toBeUndefined();
   });
 
   it("returns 'unavailable' when preferences and schedule/all 500", async () => {

@@ -34,7 +34,7 @@ describe("whoop_cycle", () => {
     expect(out.settings.contraception).toBe("PILL");
     expect(out.cycles).toHaveLength(2);
     expect(out.symptoms.current.logged).toBe(4);
-    expect(out.day_log).toEqual({ flow: "light_flow", mucus: "vaginal-discharge---creamy", symptoms: [{ id: 211, name: "Fatigue", yes: true, mag: null }, { id: 177, name: "Headache", yes: true, mag: 1 }] });
+    expect(out.day_log).toEqual({ flow: "light_flow", mucus: "vaginal-discharge---creamy", symptoms: [{ id: 211, name: "Fatigue", yes: true }, { id: 177, name: "Headache", yes: true, mag: 1 }] });
   });
 
   it("falls back to the old menstrual-cycle-insights screen (D10)", async () => {
@@ -50,7 +50,8 @@ describe("whoop_cycle", () => {
     const client = await connect((s) => registerCycle(s, mockClient({ get })));
     const { out, isError } = await call(client, "whoop_cycle", {});
     expect(isError).toBe(false);
-    expect(out).toMatchObject({ available: false, cycle: null });
+    expect(out).toMatchObject({ available: false });
+    expect(out.cycle).toBeUndefined();
     expect(out.reason).toMatch(/no contraception status/);
   });
 });
