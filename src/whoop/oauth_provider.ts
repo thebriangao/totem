@@ -29,7 +29,7 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { InvalidGrantError, InvalidScopeError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { redirectUriMatches } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
 
 const ACCESS_TTL_S = 3600;            // 1 hour
@@ -200,14 +200,20 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       return null;
     }
 
+    // Codes are otherwise only removed when redeemed; drop the ones nobody came back for.
+    const now = Date.now();
+    for (const [stale, entry] of this.codes) if (entry.expiresAt < now) this.codes.delete(stale);
+
     const code = b64url(randomBytes(32));
     this.codes.set(code, {
       challenge: input.codeChallenge,
       redirectUri: input.redirectUri,
       clientId: input.clientId,
       scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : [],
-      resource: input.resource || undefined,
-      expiresAt: Date.now() + CODE_TTL_MS,
+      // The form posts this field back unchecked. A value that isn't a URL
+      // would be signed into the tokens and then throw in verifyAccessToken.
+      resource: URL.canParse(input.resource) ? input.resource : undefined,
+      expiresAt: now + CODE_TTL_MS,
     });
 
     const url = new URL(input.redirectUri);
@@ -217,28 +223,37 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   }
 
   checkPassword(password: string): boolean {
-    return constantTimeEqual(password, this.password);
+    // No password configured means the OAuth path is off, not that the empty
+    // password is correct ("" equals "" under the comparison below). The HTTP
+    // route also refuses, but the gate shouldn't rest on one caller's `if`.
+    return this.password.length > 0 && constantTimeEqual(password, this.password);
+  }
+
+  // A bad grant must be the SDK's InvalidGrantError: the token endpoint maps it
+  // to 400 `invalid_grant`, the client's cue to send the user back through
+  // /authorize. A plain Error became 500 `server_error`, which reads as an
+  // outage, so an expired 30-day refresh token (or a rotated MCP_AUTH_TOKEN)
+  // left the connector failing instead of asking to reconnect.
+  private liveCode(client: OAuthClientInformationFull, authorizationCode: string): AuthCodeEntry {
+    const entry = this.codes.get(authorizationCode);
+    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
+      throw new InvalidGrantError("invalid or expired authorization code");
+    }
+    return entry;
   }
 
   async challengeForAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<string> {
-    const entry = this.codes.get(authorizationCode);
-    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
-      throw new Error("invalid or expired authorization code");
-    }
-    return entry.challenge;
+    return this.liveCode(client, authorizationCode).challenge;
   }
 
   async exchangeAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<OAuthTokens> {
-    const entry = this.codes.get(authorizationCode);
-    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
-      throw new Error("invalid or expired authorization code");
-    }
+    const entry = this.liveCode(client, authorizationCode);
     this.codes.delete(authorizationCode); // one-time use
     return this.issueTokens(client.client_id, entry.scopes, entry.resource);
   }
@@ -250,10 +265,17 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   ): Promise<OAuthTokens> {
     const payload = verifyToken(refreshToken, this.signingSecret);
     if (!payload || payload.typ !== "refresh" || payload.cid !== client.client_id) {
-      throw new Error("invalid refresh token");
+      throw new InvalidGrantError("invalid or expired refresh token");
     }
-    const grantScopes = scopes ?? ((payload.scopes as string[]) ?? []);
-    return this.issueTokens(client.client_id, grantScopes, payload.resource as string | undefined);
+    // RFC 6749 §6: a refresh may narrow the scope, never widen it. Taking the
+    // requested list as given let any refresh mint a token claiming scopes the
+    // user never approved.
+    const granted = Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [];
+    const requested = scopes?.filter(Boolean);
+    if (requested?.some((scope) => !granted.includes(scope))) {
+      throw new InvalidScopeError("requested scope exceeds the scope originally granted");
+    }
+    return this.issueTokens(client.client_id, requested ?? granted, payload.resource as string | undefined);
   }
 
   private issueTokens(clientId: string, scopes: string[], resource: string | undefined): OAuthTokens {
@@ -303,7 +325,9 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
         scopes: (payload.scopes as string[]) ?? [],
         expiresAt: payload.exp as number,
       };
-      if (typeof payload.resource === "string") info.resource = new URL(payload.resource);
+      // canParse: a token must never fail verification with a TypeError (the
+      // bearer middleware answers anything but InvalidTokenError with a 500).
+      if (typeof payload.resource === "string" && URL.canParse(payload.resource)) info.resource = new URL(payload.resource);
       return info;
     }
     // Throw the SDK's typed error so the bearer middleware returns 401 (a
@@ -326,6 +350,25 @@ export function setConsentSecurityHeaders(res: Response): void {
   res.setHeader("Referrer-Policy", "no-referrer");
 }
 
+/**
+ * Who receives the authorization code, for display on the consent page.
+ *
+ * Client registration is open to anyone, so a link to this server's own
+ * /authorize can carry an attacker's client and redirect URI. The page used to
+ * say "connect this server to Claude" whatever the redirect was: the owner saw
+ * their own server asking for their password, and typing it sent the code (and
+ * with it their health data) to the attacker's site. Name the destination.
+ */
+export function redirectDestination(redirectUri: string): string {
+  if (!URL.canParse(redirectUri)) return "an unrecognised address";
+  const { protocol, hostname, host } = new URL(redirectUri);
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
+    return `an app on this device (${host})`;
+  }
+  // A non-https destination (http, or an app's custom scheme) shows its scheme.
+  return protocol === "https:" ? host : `${protocol}//${host}`;
+}
+
 // ─── consent form HTML ──────────────────────────────────────────────────────
 export function renderConsentForm(d: {
   clientId: string;
@@ -341,6 +384,7 @@ export function renderConsentForm(d: {
   const errorBanner = d.error
     ? `<p style="color:#dc2626;margin:0 0 16px">Incorrect password. Try again.</p>`
     : "";
+  const destination = esc(redirectDestination(d.redirectUri));
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -354,6 +398,7 @@ export function renderConsentForm(d: {
           width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
   h1 { font-size: 18px; margin: 0 0 4px; }
   p.sub { color: #969696; font-size: 13px; margin: 0 0 24px; }
+  .dest { color: #e6e6e6; word-break: break-all; }
   label { display: block; font-size: 13px; margin: 0 0 8px; color: #b0b0b0; }
   input[type=password] { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
          border: 1px solid #30363d; background: #0d1117; color: #e6e6e6; font-size: 14px; margin: 0 0 20px; }
@@ -365,7 +410,8 @@ export function renderConsentForm(d: {
 <body>
   <div class="card">
     <h1>totem</h1>
-    <p class="sub">Enter your access password to connect this server to Claude.</p>
+    <p class="sub">Enter your access password to connect this server.</p>
+    <p class="sub">Access to your WHOOP data will go to <strong class="dest">${destination}</strong>. Continue only if you started this from there.</p>
     ${errorBanner}
     <form method="POST" action="/oauth/consent">
       <input type="hidden" name="client_id" value="${esc(d.clientId)}">

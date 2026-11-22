@@ -233,6 +233,37 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps different queries apart when a value contains & or =", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ which: "one param" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ which: "two params" }), { status: 200 }));
+    const client = makeClient();
+    const path = "/home-service/v1/home";
+    // Sent as ?a=1%26b%3D2 and ?a=1&b=2: two requests that used to share the key "…?a=1&b=2".
+    expect(await client.get(path, { a: "1&b=2" })).toEqual({ which: "one param" });
+    expect(await client.get(path, { a: "1", b: "2" })).toEqual({ which: "two params" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops serving the older cached value after a fresh read that can't itself be cached", async () => {
+    const workouts = (records: unknown[]) => new Response(JSON.stringify({ records }), { status: 200 });
+    fetchMock
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }]))
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }, { id: 2, score_state: "PENDING" }]))
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }, { id: 2, score_state: "SCORED" }]));
+    const client = makeClient();
+    const path = "/developer/v2/activity/workout";
+
+    await client.get(path);                                                    // cached
+    const fresh = await client.get<{ records: unknown[] }>(path, {}, { fresh: true }); // pending → not cacheable
+    expect(fresh.records).toHaveLength(2);
+    // This used to return the first response again: one workout, older than
+    // the two the caller had just been shown.
+    const next = await client.get<{ records: unknown[] }>(path);
+    expect(next.records).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("never lets an older read overwrite a newer fresh read's cached value", async () => {
     let resolveOld!: (response: Response) => void;
     fetchMock
@@ -299,6 +330,78 @@ describe("WhoopClient", () => {
     await expect(client.get("/x")).resolves.toEqual({ ok: true });
     expect(onUnauthorized).toHaveBeenCalledWith("old");
     expect((fetchMock.mock.calls[1]![1] as RequestInit).headers).toMatchObject({ authorization: "Bearer new" });
+  });
+
+  it("refuses a path the URL parser would rewrite, before any request or token use", async () => {
+    const getToken = vi.fn(async () => "t");
+    const client = new WhoopClient({ getToken });
+    for (const path of [
+      "/activities-service/v2/activities/x/../../../users-service/v1/users", // → /users-service/v1/users
+      "/a/%2E%2e/b",
+      "/a/./b",
+      "/a\\b",
+      "/a\tb",
+      "/a#b",
+      "@evil.example/x",       // without the leading "/" this is a different HOST
+      ".evil.example/x",
+    ]) {
+      await expect(client.delete(path), JSON.stringify(path)).rejects.toThrow(/Refusing to call WHOOP path/);
+      await expect(client.get(path), JSON.stringify(path)).rejects.toThrow(/Refusing to call WHOOP path/);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it("still sends ordinary paths, including dots inside a segment and an inline query", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("{}", { status: 200 })));
+    const client = makeClient();
+    await client.get("/weightlifting-service/v2/exercise/a.b..c");
+    await client.get("/x/v1.2/y?z=1");
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      "https://api.prod.whoop.com/weightlifting-service/v2/exercise/a.b..c",
+      "https://api.prod.whoop.com/x/v1.2/y?z=1",
+    ]);
+  });
+
+  describe("a response that sends headers and then stalls", () => {
+    // Headers arrive at once; the body only ever ends when the request's abort
+    // signal fires (which is what undici does to a real stalled body).
+    const stalledBody = (status: number) => (_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"partial":'));
+          init.signal!.addEventListener("abort", () => controller.error(new DOMException("This operation was aborted", "AbortError")));
+        },
+      });
+      return Promise.resolve(new Response(body, { status }));
+    };
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it("times out instead of hanging, and does not poison later identical GETs", async () => {
+      fetchMock.mockImplementationOnce(stalledBody(200));
+      const client = makeClient();
+      const first = client.get("/home-service/v1/home", { date: "2026-05-23" });
+      const settled = vi.fn();
+      first.then(settled, settled);
+      await vi.advanceTimersByTimeAsync(29_000);
+      expect(settled).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2_000); // past REQUEST_TIMEOUT_MS (30s)
+      expect(settled).toHaveBeenCalledTimes(1);
+      await expect(first).rejects.toMatchObject({ name: "AbortError" });
+
+      // The hung load used to stay in-flight forever, so this joined it and hung too.
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      await expect(client.get("/home-service/v1/home", { date: "2026-05-23" })).resolves.toEqual({ ok: true });
+    });
+
+    it("still reports an error status whose body never arrives", async () => {
+      fetchMock.mockImplementationOnce(stalledBody(503));
+      const failed = makeClient().get("/x");
+      const assertion = expect(failed).rejects.toBeInstanceOf(WhoopServerError);
+      await vi.advanceTimersByTimeAsync(31_000);
+      await assertion;
+    });
   });
 
   it("treats a 401 that survives a refresh as endpoint-specific, not an expired login", async () => {

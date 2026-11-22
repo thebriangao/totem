@@ -70,6 +70,39 @@ describe("whoop_raw", () => {
     }
     expect(whoop.put).not.toHaveBeenCalled();
   });
+  it("refuses a denylisted write spelled so the literal path dodges the denylist", async () => {
+    // Each of these is sent by `new URL()` (or routed by WHOOP) as a denylisted
+    // endpoint, while the string itself matched none of the denylist patterns.
+    const { whoop, call } = await setup();
+    for (const path of [
+      "/x/../auth-service/v3/whoop",                              // dot segment → /auth-service/v3/whoop
+      "/x/%2e%2e/auth-service/v3/whoop",                          // encoded dot segment
+      "/./membership-service/v1/membership-management/cancel",
+      "/users-service/v1/users?",                                 // account deletion: `$` no longer matched
+      "/users-service/v1/users#",
+      "/users-service/v1/users/.",
+      "/users-service/v1/users;x=1",                              // servlet path parameter
+      "//users-service/v1/users",
+      "/users-service/v1/users/p%61ssword",                       // percent-encoded keyword
+      "/users-service/v1/users/pass\tword",                       // the URL parser drops tabs and newlines
+      "/auth-\nservice/v3/whoop",
+      "/\\auth-service/v3/whoop",
+      "/AUTH-SERVICE/v3/whoop",
+    ]) {
+      for (const method of ["PUT", "DELETE"]) {
+        const out = await call({ path, method, body: {}, allow_write: true, confirm: true });
+        expect(out.isError, `${method} ${JSON.stringify(path)}`).toBe(true);
+      }
+    }
+    expect(whoop.put).not.toHaveBeenCalled();
+    expect(whoop.delete).not.toHaveBeenCalled();
+  });
+  it("still sends an allowed write whose path carries a query string", async () => {
+    const { whoop, call } = await setup();
+    const out = await call({ path: "/followers-service/v1/following/1?source=x", method: "POST", body: {}, allow_write: true, confirm: true });
+    expect(out.isError).toBe(false);
+    expect(whoop.post).toHaveBeenCalledWith("/followers-service/v1/following/1?source=x", {}, {});
+  });
 });
 
 describe("rawWriteRefusal", () => {
