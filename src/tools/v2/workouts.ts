@@ -18,7 +18,7 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
       limit: z.number().int().min(1).max(25).default(10),
     },
     async ({ start, end, sport, limit }) => {
-      const window = start && end ? { start, end } : rangeFromDays(30);
+      const window = start && end ? { start, end } : rangeFromDays(30, end ? new Date(end) : new Date());
       const raw = await client.get("/developer/v2/activity/workout", {
         start: start ?? window.start,
         end: end ?? window.end,

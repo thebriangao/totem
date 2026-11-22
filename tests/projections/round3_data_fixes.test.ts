@@ -148,6 +148,16 @@ describe("projectWorkout — HR curve from position_x (was always empty)", () =>
     expect(first).toBeGreaterThanOrEqual(Date.parse(out.start!) - 1000);
     expect(first).toBeLessThanOrEqual(Date.parse(out.end!) + 1000);
   });
+  it("times HR points from their clock labels, dropping the padded axis outside [start, end]", () => {
+    // Axis spans 9:35 AM..12:38 PM local (UTC-7); the workout is 9:49 AM..12:24 PM.
+    const ats = out.hr_curve.map((h) => Date.parse(h.at));
+    expect(ats.every((t) => t >= Date.parse(out.start!) && t <= Date.parse(out.end!))).toBe(true);
+    // First in-window label is "9:49 AM" (clamped to start); the downsampled tail
+    // lands on "12:23 PM". The old linear mapping put the 9:35 AM point at start.
+    expect(out.hr_curve[0]!.at).toBe(out.start);
+    expect(out.hr_curve[0]!.bpm).toBe(116);
+    expect(out.hr_curve.at(-1)!.at).toBe("2026-05-23T19:23:00.000Z");
+  });
 });
 
 describe("projectLiftProgression — labels from element_names (positional was wrong)", () => {
@@ -165,7 +175,7 @@ describe("projectLiftProgression — labels from element_names (positional was w
 });
 
 describe("projectRecovery — SpO2 + skin temp from /developer/v2/recovery", () => {
-  const out = projectRecovery(load("deep_dive_recovery.json"), "2026-05-23", load("recovery_v2.json"));
+  const out = projectRecovery(load("deep_dive_recovery.json"), "2026-05-30", load("recovery_v2.json"));
 
   it("parses schema", () => {
     expect(() => RecoveryOut.parse(out)).not.toThrow();
