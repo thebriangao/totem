@@ -160,6 +160,10 @@ async function staged(label: string, fn: () => Promise<{ code: number; stdout: s
 export async function applyVersion(ctx: UpdateCtx, target: VersionInfo): Promise<number> {
   console.log(c.bold(`\n  Updating to v${target.version}`) + c.gray("  ────────────────────────────"));
 
+  // Undo for a git install (set once the checkout is about to move). An npm
+  // install has nothing to undo: a failed `npm install -g` leaves the old one.
+  let rollback: () => Promise<void> = async () => {};
+
   if (ctx.isGit) {
     // Never clobber tracked local edits (a dev checkout). Untracked files (.env,
     // dist/, fly.toml) don't block a checkout, so we ignore them.
@@ -170,15 +174,40 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo): Promise
       return 1;
     }
     if (!(await staged("fetching releases from GitHub", () => captureAsync("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root })))) return 1;
+    // Where to go back to if the update doesn't finish: the branch when on one,
+    // else the commit (a release tag is a detached checkout).
+    const previous = capture("git", ["symbolic-ref", "--short", "-q", "HEAD"], { cwd: ctx.root }).stdout.trim()
+      || capture("git", ["rev-parse", "HEAD"], { cwd: ctx.root }).stdout.trim();
+    const install = (): Promise<{ code: number; stdout: string; stderr: string }> => captureAsync("npm", ["install"], { cwd: ctx.root });
+    const build = async (): Promise<{ code: number; stdout: string; stderr: string }> => {
+      const tsc = pkgBin(ctx.root, "typescript", "tsc");
+      return tsc ? captureAsync(process.execPath, [tsc], { cwd: ctx.root }) : { code: 1, stdout: "", stderr: "typescript isn't installed in node_modules" };
+    };
+    // A half-applied update must not stay: the checkout has already moved
+    // package.json to the new version, so the next check would read that, find
+    // nothing newer and report "up to date" on top of the old build. Going back
+    // (the tracked tree was clean, so this only moves HEAD) means the next run
+    // tries again.
+    rollback = async (): Promise<void> => {
+      if (!previous) return;
+      const back = await captureAsync("git", ["checkout", "--quiet", previous], { cwd: ctx.root });
+      if (back.code !== 0) {
+        console.log(c.red(`  ✗ couldn't go back to v${ctx.version}: ${lastLine(back)}`));
+        console.log(c.gray(`      Run: git checkout ${previous} && npm install && totem build`));
+        return;
+      }
+      // Put the old build back too. Quietly: whatever broke the update may break this.
+      const rebuilt = (await install()).code === 0 && (await build()).code === 0;
+      console.log(rebuilt
+        ? c.gray(`  Went back to v${ctx.version}; nothing changed. The next \`totem update\` tries again.`)
+        : c.yellow(`  Went back to v${ctx.version}'s source, but couldn't rebuild it. Run: npm install && totem build`));
+    };
     // Every version — latest included — is its release tag → detached checkout.
     // Never `main`: that's unreleased code, and on a fork clone origin/main can
     // even be older than the release we're claiming to install.
     if (!(await staged(`checking out ${target.tag}`, () => captureAsync("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root })))) return 1;
-    if (!(await staged("installing dependencies", () => captureAsync("npm", ["install"], { cwd: ctx.root })))) return 1;
-    const tsc = pkgBin(ctx.root, "typescript", "tsc");
-    if (!(await staged("building", async () => tsc
-      ? captureAsync(process.execPath, [tsc], { cwd: ctx.root })
-      : { code: 1, stdout: "", stderr: "typescript isn't installed in node_modules" }))) return 1;
+    if (!(await staged("installing dependencies", install))) { await rollback(); return 1; }
+    if (!(await staged("building", build))) { await rollback(); return 1; }
   } else {
     if (!(await staged(`installing ${ctx.pkgName}@${target.version}`, () => captureAsync("npm", ["install", "-g", `${ctx.pkgName}@${target.version}`])))) return 1;
   }
@@ -213,7 +242,13 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo): Promise
       return 0;
     }
     console.log(c.bold(`\n  Redeploying to ${d.platform}${d.app ? ` (${d.app})` : ""}…`));
-    if ((await ctx.redeploy()) !== 0) { console.log(c.red("  ✗ deploy failed — your live server is unchanged.")); return 1; }
+    if ((await ctx.redeploy()) !== 0) {
+      console.log(c.red("  ✗ deploy failed — your live server is unchanged."));
+      // Keep this install on the version the server runs, so the next check
+      // sees the release as still to do instead of "up to date".
+      await rollback();
+      return 1;
+    }
     if (d.url) {
       const url = `${cleanUrl(d.url)}/health`;
       console.log(c.gray(`  health check → ${url}`));
