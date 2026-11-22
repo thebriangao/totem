@@ -99,7 +99,9 @@ export function registerHrZonesSet(server: McpServer, client: WhoopClient): void
     } else {
       target = IDS.map((id) => before!.default_zones.find((z) => z.id === id)).filter((z): z is ZoneRow => z !== undefined);
       if (target.length !== 5) return fail("WHOOP's default zones are incomplete, so reset can't be built. Nothing was sent.");
-      if (before!.is_custom === false) {
+      // Not flagged custom doesn't prove the defaults are in force: WHOOP stores
+      // whatever zones arrive with is_custom:false, so compare the zones too.
+      if (before!.is_custom === false && sameZones(before!.zones, target)) {
         return respond(NAME, HrZonesSetV2Out, { action, updated: false, no_change: true, before: hrZonesOut(before!), after: null, verified: true, warnings });
       }
       path = CUSTOM;

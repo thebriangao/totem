@@ -69,6 +69,23 @@ describe("whoop_hr_zones_set", () => {
     expect(whoop.post).not.toHaveBeenCalled();
   });
 
+  it("reset still restores the defaults when the zones differ from them but aren't flagged custom", async () => {
+    // WHOOP stores whatever zones arrive with is_custom:false (settings §2.11, probe 42f7d0f7):
+    // toggle off, yet the zones in force aren't the defaults.
+    const drifted = auto();
+    drifted.manual_heart_rate_zones_form.zone_rows = custom().manual_heart_rate_zones_form.zone_rows;
+    const whoop = mockWhoop({ [ZONES]: fixture("hr_zones.json"), [SETTINGS]: seq(drifted, auto()) });
+    const { out } = await call(whoop, { action: "reset" });
+    expect(whoop.post).toHaveBeenCalledWith("/hr-zones-service/v1/bff/custom", {
+      zones: [
+        { id: "ZONE_1", min: 103, max: 126 }, { id: "ZONE_2", min: 127, max: 137 }, { id: "ZONE_3", min: 138, max: 149 },
+        { id: "ZONE_4", min: 150, max: 160 }, { id: "ZONE_5", min: 161, max: 172 },
+      ],
+      is_custom: false,
+    });
+    expect(out).toMatchObject({ updated: true, verified: true });
+  });
+
   it("refuses reset when the defaults can't be read", async () => {
     const whoop = mockWhoop({ [ZONES]: new Error("x"), [SETTINGS]: new Error("x") });
     const { result } = await call(whoop, { action: "reset" });
