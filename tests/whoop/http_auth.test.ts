@@ -85,6 +85,11 @@ describe("HTTP transport: bearer-auth gate", () => {
     expect(r.status).toBe(204);
     expect(r.headers.get("access-control-allow-origin")).toBe("*");
     expect(r.headers.get("access-control-allow-methods")).toMatch(/POST/);
+    const allow = (r.headers.get("access-control-allow-headers") ?? "").split(/,\s*/);
+    for (const h of ["authorization", "content-type", "mcp-session-id", "mcp-protocol-version", "last-event-id"]) {
+      expect(allow).toContain(h);
+    }
+    expect(r.headers.get("access-control-expose-headers")).toMatch(/mcp-session-id/);
   });
 
   it("releases JSON streams through the MCP request handler", async () => {

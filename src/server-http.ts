@@ -21,6 +21,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { WhoopClient } from "./whoop/client.js";
 import { registerTools } from "./tools/register.js";
 import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
@@ -142,7 +143,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   // CORS — a browser-based MCP client (or the OAuth redirect dance) may hit this.
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "authorization, content-type, mcp-session-id");
+    res.setHeader("Access-Control-Allow-Headers", "authorization, content-type, mcp-session-id, mcp-protocol-version, last-event-id");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     res.setHeader("Access-Control-Expose-Headers", "mcp-session-id, www-authenticate");
     if (req.method === "OPTIONS") {
@@ -219,9 +220,9 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       password: body.password ?? "",
     });
     if (!redirect) {
-      // Wrong password (or bad client) — count it toward the global ceiling and
-      // re-render the form with an error.
-      globalFails++;
+      // Wrong password (or bad client) — re-render the form with an error. Only a
+      // wrong password counts toward the global ceiling.
+      if (!provider.checkPassword(body.password ?? "")) globalFails++;
       setConsentSecurityHeaders(res);
       res.status(401).setHeader("content-type", "text/html; charset=utf-8");
       res.end(renderConsentForm({
@@ -261,6 +262,13 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
           error: { code: -32001, message: "Session not found" },
           id: null,
         });
+        return;
+      }
+      // Without a session id only an initialize POST may create a session;
+      // anything else would build an unreachable McpServer that lingers until the sweep.
+      const body: unknown = req.body;
+      if (!sid && !(req.method === "POST" && (Array.isArray(body) ? body.some(isInitializeRequest) : isInitializeRequest(body)))) {
+        res.status(400).json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: No valid session ID provided" }, id: null });
         return;
       }
       const session = existing ?? (await createSession());
