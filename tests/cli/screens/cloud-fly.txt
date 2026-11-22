@@ -73,7 +73,6 @@ Deploy your own totem server and connect your AI clients to it.
 
   ChatGPT
     codex mcp add whoop --url https://totem-c0ffee.fly.dev/mcp
-    codex mcp login whoop
     On chatgpt.com: Plugins → + → Add custom MCP server. Paste the URL.
 
   OpenCode

@@ -36,7 +36,7 @@ export type Recipe =
    * Run the client's own command; `then` are follow-up commands or steps.
    * `remove` un-registers an earlier entry, so a re-run replaces it.
    */
-  | { kind: "command"; argv: string[]; remove: string[]; then: string[]; after: string }
+  | { kind: "command"; argv: string[]; remove: string[]; then: string[]; after: string; /** Said before the command runs, when it needs the person (a sign-in page opens). */ before?: string }
   /** Nothing to write: steps in the client's own settings. */
   | { kind: "steps"; steps: string[] }
   /** This client can't use this kind of install. */
@@ -117,7 +117,14 @@ export const CLIENTS: Client[] = [
       }
       return t.kind === "local"
         ? { kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--", t.node, t.serverJs], remove: ["codex", "mcp", "remove", SERVER_NAME], then: [], after: "Restart ChatGPT, or start a new Codex session." }
-        : { kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--url", t.mcpUrl], remove: ["codex", "mcp", "remove", SERVER_NAME], then: [`codex mcp login ${SERVER_NAME}`, web], after: `Run: codex mcp login ${SERVER_NAME}` };
+        // Seen with codex-cli 0.154: for a server that needs sign-in, `mcp add` opens
+        // the sign-in page itself and waits for it. `mcp login` is how to do it again.
+        : {
+          kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--url", t.mcpUrl], remove: ["codex", "mcp", "remove", SERVER_NAME],
+          then: [web],
+          before: "Codex opens the sign-in page in your browser and waits for you there.",
+          after: `If ChatGPT or Codex asks you to sign in again, run: codex mcp login ${SERVER_NAME}`,
+        };
     },
   },
   {
@@ -372,6 +379,7 @@ export async function applyRecipe(io: Io, client: Client, recipe: Recipe): Promi
         byHand();
         return { done: false, steps: [`Install ${client.name}, then run the command above.`, withSep(recipe.after, k)] };
       }
+      if (recipe.before) ui.hint(recipe.before);
       let r = await ui.task(`Adding ${SERVER_NAME} to ${client.name}`, () => sys.exec(cmd, args));
       let replaced = false;
       // An entry from an earlier setup may point somewhere else (another path,

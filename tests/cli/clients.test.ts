@@ -48,9 +48,13 @@ describe("ChatGPT (the desktop app and the Codex CLI share one config)", () => {
     const remote = command(recipe("chatgpt", REMOTE, sys));
     expect(remote.argv).toEqual(["codex", "mcp", "add", "whoop", "--url", REMOTE.mcpUrl]);
     expect(remote.remove).toEqual(["codex", "mcp", "remove", "whoop"]);
-    expect(remote.then[0]).toBe("codex mcp login whoop");
+    // `codex mcp add` opens the sign-in page itself (seen with codex-cli 0.154), so the
+    // person is told before it runs, and `mcp login` is only the way to do it again.
+    expect(remote.before).toMatch(/opens the sign-in page/);
+    expect(remote.after).toContain("codex mcp login whoop");
     // chatgpt.com has its own path now (Plugins, not Developer mode).
-    expect(remote.then[1]).toMatch(/chatgpt\.com: Plugins .* Add custom MCP server/);
+    expect(remote.then).toHaveLength(1);
+    expect(remote.then[0]).toMatch(/chatgpt\.com: Plugins .* Add custom MCP server/);
     expect(JSON.stringify(remote)).not.toMatch(/Developer mode/i);
   });
 
@@ -188,7 +192,8 @@ describe("totem connect <client> against a deployed server", () => {
     const { code, text, w } = await totem(["connect", "codex"]);
     expect(code).toBe(0);
     expect(w.commands).toContain("exec  codex mcp add whoop --url https://totem-a1b2c3.fly.dev/mcp");
-    expect(text).toContain("Run: codex mcp login whoop");
+    expect(text).toContain("Codex opens the sign-in page in your browser");
+    expect(text).toContain("run: codex mcp login whoop");
   });
 
   it("--print only shows what would be added", async () => {
