@@ -66,7 +66,8 @@ function row(m: Node): TrendRow {
 }
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-const DATE_TOKEN = /([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}|\d{2})\b)?/g;
+// The optional year is 2 or 4 digits and never the hour of a clock time ("MAY 4, 10:30 AM").
+const DATE_TOKEN = /([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}|\d{2})(?![\d:]))?/g;
 
 /**
  * The dates in a WHOOP label, in order: "SUN, MAY 17", "TUE, NOV 25, 2025", a week bar's

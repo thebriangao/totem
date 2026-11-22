@@ -135,6 +135,9 @@ describe("whoop_trend projection", () => {
     expect(pointDate("SUN, MAY 17", "2026-05-23")).toBe("2026-05-17");
     expect(pointDate("TUE, NOV 25, 2025", "2026-05-23")).toBe("2025-11-25");
     expect(pointDate("WED, DEC 31", "2026-01-04")).toBe("2025-12-31");
+    // A clock time after the date is not a year.
+    expect(pointDate("MON, MAY 4, 10:30 AM", "2026-05-23")).toBe("2026-05-04");
+    expect(pointDate("NOV 15 - 21, 26", "2026-11-21")).toBe("2026-11-15");
   });
 
   it("sends points without the empty slots around the data, and hidden only when true", () => {
