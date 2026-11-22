@@ -12,6 +12,7 @@ const HISTORY = `/weightlifting-service/v3/exercise/${BENCH}/exercise_history`;
 const catalogRow = (id: string) => (fixture("catalog") as { exercises: Array<{ exercise_id: string }> }).exercises.find((e) => e.exercise_id === id);
 
 const BASE_ARGS = {
+  unit: "kg",
   start: "2026-11-21T09:00:00.000-08:00",
   end: "2026-11-21T09:20:00.000-08:00",
   exercises: [{ exercise_id: BENCH, sets: [{ reps: 5, weight: 45.36 }, { reps: 5, weight: 45.36 }, { reps: 5, weight: 45.36, performed: false }] }],
@@ -37,7 +38,7 @@ function whoop(overrides: Record<string, unknown> = {}) {
 }
 
 describe("whoop_lift_log", () => {
-  it("previews without writing, with weights converted to the display unit", async () => {
+  it("previews without writing: weights in the caller's unit, plus what WHOOP will be sent", async () => {
     const get = whoop();
     const post = vi.fn();
     const client = await connect(registerLiftLog, { get, post });
@@ -47,12 +48,69 @@ describe("whoop_lift_log", () => {
     expect(out.will_execute).toMatchObject({ method: "POST", path: LIFT_PATH });
     expect(out.will_execute.body_summary).toMatchObject({
       during: "['2026-11-21T17:00:00.000Z','2026-11-21T17:20:00.000Z')",
-      unit: "lb",
-      converted_from: "kg",
-      exercises: [{ id: BENCH, sets: "2x5", weights: [100, 100], skipped: 1 }],
+      unit: "kg",
+      sent_unit: "lb",
+      exercises: [{ id: BENCH, sets: "2x5", weights: [45.36, 45.36], sent: [100, 100], skipped: 1 }],
     });
     // the unit is read fresh, never from cache
     expect(get).toHaveBeenCalledWith("/users-service/v2/bootstrap", {}, { fresh: true });
+  });
+
+  it("converts lb to kg for a metric account, and reports back in lb", async () => {
+    const asKg = JSON.parse(JSON.stringify(fixture("history_bench")).replaceAll('"lbs"', '"kg"'));
+    const get = whoop({ "/users-service/v2/bootstrap": METRIC, [HISTORY]: asKg });
+    const post = vi.fn().mockResolvedValue(fixture("lift_receipt"));
+    const client = await connect(registerLiftLog, { get, post });
+    const args = { ...BASE_ARGS, unit: "lb", exercises: [{ exercise_id: BENCH, sets: [{ reps: 5, weight: 220.46 }, { reps: 5, weight: 220.46 }] }] };
+    const prev = body(await client.callTool({ name: "whoop_lift_log", arguments: args }));
+    expect(prev.will_execute.body_summary).toMatchObject({ unit: "lb", sent_unit: "kg", exercises: [{ weights: [220.46, 220.46], sent: [100, 100] }] });
+    const out = body(await client.callTool({ name: "whoop_lift_log", arguments: { ...args, confirm: true } }));
+    expect(post.mock.calls[0]![1].workout_groups[0].workout_exercises[0].sets.map((s: { weight: number }) => s.weight)).toEqual([100, 100]);
+    expect(out).toMatchObject({ unit: "lb", sent_unit: "kg", sent_weights: [[100, 100]], verified: true });
+  });
+
+  it("sends the caller's numbers untouched when the units already match", async () => {
+    const post = vi.fn().mockResolvedValue(fixture("lift_receipt"));
+    const client = await connect(registerLiftLog, { get: whoop(), post });
+    const args = { ...BASE_ARGS, unit: "lb", exercises: [{ exercise_id: BENCH, sets: [{ reps: 5, weight: 100 }, { reps: 5, weight: 100 }] }], confirm: true };
+    const out = body(await client.callTool({ name: "whoop_lift_log", arguments: args }));
+    expect(post.mock.calls[0]![1].workout_groups[0].workout_exercises[0].sets.map((s: { weight: number }) => s.weight)).toEqual([100, 100]);
+    expect(out).toMatchObject({ unit: "lb", verified: true });
+    expect(out).not.toHaveProperty("sent_unit");
+    expect(out).not.toHaveProperty("sent_weights");
+  });
+
+  it("weights need an explicit unit: nothing is assumed, nothing is read or sent", async () => {
+    const get = vi.fn();
+    const post = vi.fn();
+    const client = await connect(registerLiftLog, { get, post });
+    const { unit: _unit, ...noUnit } = BASE_ARGS;
+    const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...noUnit, confirm: true } });
+    expect(result.isError).toBe(true);
+    expect(body(result).error).toMatch(/unit/);
+    expect(get).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+    // bodyweight sets carry no weight, so no unit is needed
+    const bodyweight = await connect(registerLiftLog, { get: whoop(), post });
+    const prev = body(await bodyweight.callTool({ name: "whoop_lift_log", arguments: { ...noUnit, exercises: [{ exercise_id: BENCH, sets: [{ reps: 5 }] }] } }));
+    expect(prev.preview).toBe(true);
+  });
+
+  it("reads the unit last: the fresh bootstrap GET is the final read before the POST", async () => {
+    const order: string[] = [];
+    const get = whoop();
+    const tracked = vi.fn(async (path: string, query?: Record<string, unknown>, opts?: { fresh?: boolean }) => {
+      order.push(`GET ${path}${opts?.fresh ? " fresh" : ""}`);
+      return get(path, query, opts);
+    });
+    const post = vi.fn(async (path: string) => {
+      order.push(`POST ${path}`);
+      return fixture("lift_receipt");
+    });
+    const client = await connect(registerLiftLog, { get: tracked, post });
+    await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, confirm: true } });
+    const at = order.indexOf(`POST ${LIFT_PATH}`);
+    expect(order[at - 1]).toBe("GET /users-service/v2/bootstrap fresh");
   });
 
   it("sends the catalog row verbatim, spreads performed sets over the window, omits during for skipped sets", async () => {
@@ -90,8 +148,8 @@ describe("whoop_lift_log", () => {
       activity_id: "1f27998b-95c6-4865-acdd-3d413063ce9b",
       saved_during: "['2026-11-21T17:00:00.000Z','2026-11-21T17:20:00.000Z')",
       score_state: "pending",
-      unit: "lb",
-      converted_from: "kg",
+      unit: "kg",
+      sent_unit: "lb",
       sent_weights: [[100, 100, 100]],
       verified: true,
     });
@@ -165,7 +223,7 @@ describe("whoop_lift_log", () => {
     const client = await connect(registerLiftLog, { get: whoop({ "/users-service/v2/bootstrap": METRIC }), post: vi.fn().mockResolvedValue(receipt) });
     const out = body(await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, unit: "kg", confirm: true } }));
     expect(out.warnings.join()).toMatch(/widened/);
-    expect(out.converted_from ?? null).toBeNull();
+    expect(out.sent_unit ?? null).toBeNull();
   });
 
   it("maps a 409 to an overlap error naming whoop_activity_delete; nothing is deleted", async () => {
@@ -259,12 +317,60 @@ describe("whoop_lift_log", () => {
       expect(out.effective_volume_kg).toBeCloseTo(171.78, 1);
     });
 
-    it("maps 409 'already linked'", async () => {
+    it("maps 409 'already linked'; the link is not retried", async () => {
       const post = vi.fn().mockRejectedValue(new WhoopConflictError(LINK_PATH, "Activity already has a linked Strength Trainer workout", [], "Activity already has a linked Strength Trainer workout"));
       const client = await connect(registerLiftLog, { get: attachGet(), post });
       const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...args, confirm: true } });
       expect(result.isError).toBe(true);
       expect(body(result).error).toMatch(/already has Strength Trainer sets linked/);
+      expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    it("converts kg for the link too, reads the unit last, and finds a pending target through its raw record", async () => {
+      const order: string[] = [];
+      const get = whoop({
+        // right after a create, the detail screen refuses; the record answers
+        "/core-details-bff/v1/cardio-details": new WhoopApiError(400, "/core-details-bff/v1/cardio-details", "Cannot view activity details for a pending activity"),
+        [`/activities-service/v2/activities/${TARGET}`]: { id: TARGET, type: "functional-fitness", score_type: "CARDIO", score_state: "pending", during: "['2026-11-21T18:30:00.000Z','2026-11-21T19:00:00.000Z')" },
+        [`/weightlifting-service/v3/exercise/${OHP}/exercise_history`]: fixture("history_ohp_linked"),
+      });
+      const tracked = vi.fn(async (path: string, query?: Record<string, unknown>, opts?: { fresh?: boolean }) => {
+        order.push(`GET ${path}${opts?.fresh ? " fresh" : ""}`);
+        return get(path, query, opts);
+      });
+      const post = vi.fn(async (path: string) => {
+        order.push(`POST ${path}`);
+        return fixture("link_receipt");
+      });
+      const client = await connect(registerLiftLog, { get: tracked, post });
+      const kg = { ...args, unit: "kg", exercises: [{ exercise_id: OHP, sets: [{ reps: 6, weight: 22.68 }] }] };
+      const prev = body(await client.callTool({ name: "whoop_lift_log", arguments: kg }));
+      expect(prev.will_execute.body_summary).toMatchObject({
+        attach_to: { activity_id: TARGET, sport: "functional-fitness", start: "2026-11-21 10:30:00" },
+        unit: "kg",
+        sent_unit: "lb",
+        exercises: [{ weights: [22.68], sent: [50] }],
+      });
+      expect(prev.will_execute.body_summary.warnings).toBeUndefined();
+
+      order.length = 0;
+      const out = body(await client.callTool({ name: "whoop_lift_log", arguments: { ...kg, confirm: true } }));
+      expect((post.mock.calls[0] as unknown as [string, any])[1].template.workout_groups[0].workout_exercises[0].sets).toEqual([{ number_of_reps: 6, weight: 50 }]);
+      expect(order[order.indexOf(`POST ${LINK_PATH}`) - 1]).toBe("GET /users-service/v2/bootstrap fresh");
+      expect(out).toMatchObject({ action: "attached", unit: "kg", sent_unit: "lb", sent_weights: [[50]], verified: true });
+    });
+
+    it("refuses to attach on an account whose unit system it doesn't know", async () => {
+      const post = vi.fn();
+      const get = whoop({
+        "/users-service/v2/bootstrap": { profile: { unit_system: "stone" } },
+        "/core-details-bff/v1/cardio-details": fixture("cardio_details_pending_lift"),
+      });
+      const client = await connect(registerLiftLog, { get, post });
+      const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...args, confirm: true } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toMatch(/stone/);
+      expect(post).not.toHaveBeenCalled();
     });
 
     it("refuses performed:false when attaching", async () => {

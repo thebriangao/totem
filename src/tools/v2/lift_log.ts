@@ -34,7 +34,6 @@ import { setScheme } from "../../projections/lift_sessions.js";
 const TOOL = "whoop_lift_log";
 export const LIFT_PATH = "/weightlifting-service/v2/weightlifting-workout/activity";
 export const LINK_PATH = "/weightlifting-service/v2/weightlifting-workout/link-cardio-workout";
-const DETAILS_PATH = "/core-details-bff/v1/cardio-details";
 const DEFAULT_MINUTES = 30;
 const MAX_HOURS = 12;
 
@@ -50,6 +49,7 @@ const ExerciseIn = z.object({
   sets: z.array(SetIn).min(1).max(50),
 });
 
+/** Per exercise, what will be logged: weights as the caller gave them, plus `sent` (the account's unit) when converted. */
 function sessionSummary(items: ExerciseSets[], units: { input: WeightUnit; account: WeightUnit }) {
   return items.map(({ exercise, sets }) => {
     const timed = exercise.volume_input_format === "TIME";
@@ -58,7 +58,8 @@ function sessionSummary(items: ExerciseSets[], units: { input: WeightUnit; accou
       id: exercise.exercise_id,
       name: exercise.name,
       sets: setScheme(performed.map((s) => (timed ? (s.time_seconds ?? null) : (s.reps ?? null))), timed ? "s" : ""),
-      weights: performed.map((s) => sentWeight(s.weight, units.input, units.account)),
+      weights: performed.map((s) => s.weight ?? 0),
+      ...(units.input !== units.account ? { sent: performed.map((s) => sentWeight(s.weight, units.input, units.account)) } : {}),
       ...(performed.length < sets.length ? { skipped: sets.length - performed.length } : {}),
     };
   });
@@ -114,7 +115,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       "Log a finished strength workout as a new Strength Trainer activity, or attach the sets to an existing activity (attach_to_activity_id; permanent: WHOOP has no unlink). Weights are converted from `unit` to the account's display unit. Sets are spread across start–end. A 409 means the window overlaps another activity: nothing is logged (delete it with whoop_activity_delete or pick another window). Refuses 0-rep weighted sets (WHOOP would award a permanent PR). Preview unless confirm:true.",
     input: {
       exercises: z.array(ExerciseIn).min(1).max(30),
-      unit: z.enum(["kg", "lb"]).default("kg").describe("Unit of the weights you give."),
+      unit: z.enum(["kg", "lb"]).optional().describe("Unit of the weights you give; required when any set has weight."),
       start: z.iso.datetime({ offset: true }).optional().describe("Default end minus 30 min."),
       end: z.iso.datetime({ offset: true }).optional().describe("Default now; never in the future."),
       name: z.string().min(1).max(100).optional().describe("Default: the local date."),
@@ -128,6 +129,10 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     const attach = attach_to_activity_id?.trim();
 
     // 1. Validate what needs no network.
+    // No default unit: a bare 225 read as kg on a lb account logs 496 lb and a PR that can't be removed.
+    if (!unit && exercises.some((e) => e.sets.some((s) => (s.weight ?? 0) > 0))) {
+      return liftError({ error: "Say which unit the weights are in: unit \"kg\" or \"lb\". Nothing is assumed." });
+    }
     let window: { startMs: number; endMs: number } | null = null;
     if (attach) {
       if (start || end) warnings.push("start/end are ignored when attaching: the activity keeps its own window.");
@@ -163,24 +168,37 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     if (zeroRepResolved.length > 0) return refuseZeroRep(zeroRepResolved);
     const problems = setShapeProblems(items);
     if (problems.length > 0) return liftError({ error: "Some sets don't fit their exercise.", problems });
-    const account = await accountWeightUnit(client);
-    const units = { input: unit, account };
-    const converted = unit !== account;
-    const sentWeights = (sets: ExerciseSets["sets"]) => sets.map((s) => sentWeight(s.weight, unit, account));
-
+    // The attach target: the raw record answers in every state; cardio-details (the
+    // fallback) 400s for the first seconds after a create, and the link still works then.
+    let target: Awaited<ReturnType<typeof readActivityAs>> = null;
     if (attach) {
-      let target: unknown = null;
       try {
-        target = await client.get(DETAILS_PATH, { activityId: attach }, { fresh: true });
+        target = await readActivityAs(client, attach, "CARDIO");
+        if (!target) return liftError({ error: `No activity ${attach}.` });
       } catch (e) {
-        // 400 "Cannot view activity details for a pending activity" happens right after a create; the link still works.
         if (!(e instanceof WhoopApiError && e.status === 400)) return liftError({ error: `Couldn't read activity ${attach}: ${errorMessage(e)}` });
         warnings.push("The activity's details aren't readable yet (pending), so its sport and time aren't shown.");
       }
-      const sport = get(target, "details_edit_components", "activity_type_internal_name") ?? null;
+    }
+
+    // The display unit is the last read before the write (D2): WHOOP reads the
+    // numbers in whatever unit the account shows at that moment.
+    const account = await accountWeightUnit(client);
+    const units = { input: unit ?? account, account };
+    const converted = units.input !== account;
+    const sentWeights = (sets: ExerciseSets["sets"]) => sets.map((s) => sentWeight(s.weight, units.input, account));
+    /** Receipt fields: `unit` is the caller's; what WHOOP received is spelled out only when it differs. */
+    const unitFields = {
+      unit: units.input,
+      sent_unit: converted ? account : null,
+      sent_weights: converted ? items.map(({ sets }) => sentWeights(sets)) : null,
+    };
+
+    if (attach) {
+      const sport = target?.type ?? null;
       const tz = liftTimezone();
-      const activityStart = get(target, "details_edit_components", "start_time_selector", "initial_time");
-      const linkName = name ?? (typeof activityStart === "string" ? isoDay(new Date(activityStart)) : isoDay());
+      const activityStart = target?.start ?? null;
+      const linkName = name ?? (activityStart ? isoDay(new Date(activityStart)) : isoDay());
       const body = {
         activity_id: attach,
         rpe: rpe ?? 0,
@@ -189,10 +207,10 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       };
       if (!confirm) {
         return respond(TOOL, LiftLogOutV2, preview("POST", LINK_PATH, {
-          attach_to: { activity_id: attach, sport, start: typeof activityStart === "string" ? localTime(Date.parse(activityStart), tz) : null },
+          attach_to: { activity_id: attach, sport, start: activityStart ? localTime(Date.parse(activityStart), tz) : null },
           exercises: sessionSummary(items, units),
-          unit: account,
-          ...(converted ? { converted_from: unit } : {}),
+          unit: units.input,
+          ...(converted ? { sent_unit: account } : {}),
           permanent: "Linking can't be undone; only deleting the activity removes these sets.",
           ...(warnings.length ? { warnings } : {}),
         }));
@@ -208,7 +226,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       }
       const meta = get(linked, "workout_metadata");
       const linkedStart = parseDuring(get(meta, "during"))?.[0];
-      const notBefore = linkedStart !== undefined ? new Date(linkedStart).toISOString() : typeof activityStart === "string" ? activityStart : undefined;
+      const notBefore = linkedStart !== undefined ? new Date(linkedStart).toISOString() : (activityStart ?? undefined);
       const verified = await verifyInHistory(client, attach, items[0], notBefore, { weights: sentWeights(items[0]!.sets), unit: account }, warnings);
       return respond(TOOL, LiftLogOutV2, {
         action: "attached",
@@ -216,9 +234,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
         saved_during: (get(meta, "during") as string | undefined) ?? null,
         score_state: (get(meta, "score_state") as string | undefined) ?? null,
         effective_volume_kg: (get(meta, "total_effective_volume_kg") as number | undefined) ?? null,
-        unit: account,
-        converted_from: converted ? unit : null,
-        sent_weights: converted ? items.map(({ sets }) => sets.map((s) => sentWeight(s.weight, unit, account))) : null,
+        ...unitFields,
         verified,
         warnings,
       });
@@ -247,8 +263,8 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
         during: requested,
         local: `${localTime(startMs, timezone)} to ${localTime(endMs, timezone).slice(11)} ${timezone}`,
         exercises: sessionSummary(items, units),
-        unit: account,
-        ...(converted ? { converted_from: unit } : {}),
+        unit: units.input,
+        ...(converted ? { sent_unit: account } : {}),
         ...(rpe !== undefined ? { rpe } : {}),
       }));
     }
@@ -297,9 +313,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       saved_during: saved,
       score_state: (get(receipt, "score_state") as string | undefined) ?? null,
       effective_volume_kg: (get(receipt, "total_effective_volume_kg") as number | undefined) ?? null,
-      unit: account,
-      converted_from: converted ? unit : null,
-      sent_weights: converted ? items.map(({ sets }) => sets.map((s) => sentWeight(s.weight, unit, account))) : null,
+      ...unitFields,
       verified,
       warnings,
     });
