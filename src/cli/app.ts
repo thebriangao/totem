@@ -44,7 +44,7 @@ interface Command {
 
 // ── where the server runs ───────────────────────────────────────────────────
 
-export interface DeployInfo { platform: string; app?: string | undefined; url?: string | undefined; region?: string | undefined; project?: string | undefined; mcp_auth_token?: string | undefined }
+export interface DeployInfo { platform: string; app?: string | undefined; service?: string | undefined; url?: string | undefined; region?: string | undefined; project?: string | undefined; mcp_auth_token?: string | undefined }
 const HOST_NAME: Record<string, string> = { fly: "Fly.io", railway: "Railway", cloudflare: "Cloudflare", cloudrun: "Google Cloud Run", custom: "your own server", local: "this computer" };
 /** Wrangler through npx (see setup.ts): Cloudflare needs nothing installed beyond Node. */
 const WRANGLER = ["--yes", "wrangler@4"];
@@ -107,7 +107,7 @@ export function deployCommands(d: DeployInfo, extra: string[] = [], fly = "fly")
     case "fly":
       return [[fly, ["deploy", ...(d.app ? ["-a", d.app] : []), ...extra]]];
     case "railway":
-      return [...(d.app ? [["railway", ["link", "--project", d.app]] as [string, string[]]] : []), ["railway", ["up", ...extra]]];
+      return [...(d.app ? [["railway", ["link", "--project", d.app]] as [string, string[]]] : []), ["railway", ["up", "--ci", ...(d.service ? ["--service", d.service] : []), ...extra]]];
     case "cloudflare":
       return [["npx", [...WRANGLER, "deploy", ...(d.app ? ["--name", d.app] : []), ...extra]]];
     case "cloudrun":
@@ -187,7 +187,7 @@ async function logs(args: string[], app: AppCtx, io: Io): Promise<number> {
       return sys.run(cli, ["logs", ...(d.app ? ["-a", d.app] : []), ...extra], { cwd: app.root });
     case "railway":
       if (d.app) await sys.run("railway", ["link", "--project", d.app], { cwd: app.root });
-      return sys.run("railway", ["logs", ...extra], { cwd: app.root });
+      return sys.run("railway", ["logs", ...(d.service ? ["--service", d.service] : []), ...extra], { cwd: app.root });
     case "cloudflare":
       return sys.run("npx", [...WRANGLER, "tail", ...(d.app ? [d.app] : []), ...extra], { cwd: app.root });
     case "cloudrun":
@@ -258,7 +258,7 @@ async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
     // The host's own view, in its own words.
     const fly = ["fly", "flyctl"].find((n) => sys.has(n)) ?? "fly";
     const view: [string, string[]] | null = d.platform === "fly" && d.app ? [fly, ["status", "-a", d.app]]
-      : d.platform === "railway" ? ["railway", ["status"]]
+      : d.platform === "railway" ? ["railway", ["service", "status", ...(d.service ? ["--service", d.service] : [])]]
       : d.platform === "cloudflare" && d.app ? ["npx", [...WRANGLER, "deployments", "list", "--name", d.app]]
       : d.platform === "cloudrun" && d.app ? ["gcloud", ["run", "services", "describe", d.app, "--region", d.region ?? "us-west1", ...(d.project ? ["--project", d.project] : []), "--format=value(status.url,status.latestReadyRevisionName)"]]
       : null;

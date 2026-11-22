@@ -38,6 +38,16 @@ describe("railwayVariableCommands", () => {
   });
 });
 
+describe("railwayIds", () => {
+  it("finds the service's project, environment and service ids in railway status --json", async () => {
+    const { railwayIds } = await import("../../src/cli/setup.js");
+    const status = JSON.stringify({ id: "p1", environments: { edges: [{ node: { id: "e1", name: "production", serviceInstances: { edges: [{ node: { serviceId: "s1", serviceName: "totem" } }] } } }] } });
+    expect(railwayIds(status, "totem")).toEqual({ projectId: "p1", environmentId: "e1", serviceId: "s1" });
+    expect(railwayIds(status, "other")).toBeNull();
+    expect(railwayIds("not json", "totem")).toBeNull();
+  });
+});
+
 describe("setRailwayVariables", () => {
   type Call = { args: string[]; input?: string };
   const record = (answer: (args: string[]) => { code: number; stdout: string; stderr: string }) => {
@@ -84,8 +94,10 @@ describe("totem cloud on Railway", () => {
     const { commands, code } = await render(SCREENS.find((s) => s.name === "cloud-railway")!);
     expect(code).toBe(0);
     const railway = commands.filter((c) => c.includes(" railway "));
-    expect(railway).toContain("exec  railway variable set MCP_AUTH_TOKEN --stdin --skip-deploys  <stdin>");
-    expect(railway).toContain("exec  railway variable set AUTH_PASSWORD --stdin --skip-deploys  <stdin>");
+    expect(railway).toContain("exec  railway variable set MCP_AUTH_TOKEN --stdin --service totem --skip-deploys  <stdin>");
+    expect(railway).toContain("exec  railway variable set AUTH_PASSWORD --stdin --service totem --skip-deploys  <stdin>");
+    // Every command names the service: \`railway up\` doesn't link the one it makes.
+    for (const line of railway.filter((c) => /railway (up|domain|volume|variable)/.test(c))) expect(line).toContain("--service totem");
     for (const line of commands) expect(line).not.toMatch(/MCP_AUTH_TOKEN=|AUTH_PASSWORD=|a1b2c3d4e5f6a7b8|Kq7m-Rt2x/);
   });
 });

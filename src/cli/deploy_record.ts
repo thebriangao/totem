@@ -10,7 +10,9 @@ export interface DeployRecord {
   platform: string;          // fly | railway | cloudflare | custom | local (cloudrun: deployed by totem 1.x)
   app?: string | undefined;  // app/project/service name (none for local)
   url?: string | undefined;
-  region?: string | undefined;   // Cloud Run needs this to target the service
+  /** The Railway service totem deployed into (records from 1.x have none). */
+  service?: string | undefined;
+  region?: string | undefined;   // Fly region; Cloud Run (1.x) needs it to target the service
   project?: string | undefined;  // Cloud Run GCP project
   /** The deployment's MCP_AUTH_TOKEN (gates POST /admin/tokens). */
   mcp_auth_token?: string | undefined;

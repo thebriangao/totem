@@ -521,6 +521,12 @@ async function deployFly(d: Deploy): Promise<string | null> {
 // RAILWAY ─────────────────────────────────────────────────────────────────────
 
 const SECRET_KEY = /(TOKEN|PASSWORD|SECRET)/i;
+/**
+ * The one service totem creates in its Railway project. Every Railway command
+ * names it: \`railway up\` makes a service without linking it, so a later
+ * command that relies on the link fails with "No service found".
+ */
+export const RAILWAY_SERVICE = "totem";
 
 /**
  * The `railway` invocations that set `env` on the linked service, with every
@@ -530,15 +536,18 @@ const SECRET_KEY = /(TOKEN|PASSWORD|SECRET)/i;
  * call, which triggers the single redeploy. Empty values are skipped (Railway
  * rejects them).
  */
-export function railwayVariableCommands(env: Record<string, string>): Array<{ args: string[]; input?: string }> {
+export function railwayVariableCommands(env: Record<string, string>, opts: { service?: string; deploy?: boolean } = {}): Array<{ args: string[]; input?: string }> {
   const entries = Object.entries(env).filter(([, v]) => v !== "");
   const secrets = entries.filter(([k]) => SECRET_KEY.test(k));
   const plain = entries.filter(([k]) => !SECRET_KEY.test(k));
+  const service = opts.service ? ["--service", opts.service] : [];
+  // With deploy: false every call skips deploying (the caller deploys once, later).
+  const skip = (last: boolean): string[] => (opts.deploy === false || !last ? ["--skip-deploys"] : []);
   const commands: Array<{ args: string[]; input?: string }> = secrets.map(([k, v], i) => ({
-    args: ["variable", "set", k, "--stdin", ...(plain.length || i < secrets.length - 1 ? ["--skip-deploys"] : [])],
+    args: ["variable", "set", k, "--stdin", ...service, ...skip(!plain.length && i === secrets.length - 1)],
     input: v,
   }));
-  if (plain.length) commands.push({ args: ["variable", "set", ...plain.map(([k, v]) => `${k}=${v}`)] });
+  if (plain.length) commands.push({ args: ["variable", "set", ...plain.map(([k, v]) => `${k}=${v}`), ...service, ...skip(true)] });
   return commands;
 }
 
@@ -549,14 +558,19 @@ type Exec = (cmd: string, args: string[], opts: { cwd: string; input?: string })
  * `variable set --stdin` gets the values the old way (`variables --set`), and
  * `onOldCli` is told: that is the only case a secret reaches a command line.
  */
-export async function setRailwayVariables(env: Record<string, string>, root: string, exec: Exec, onOldCli: () => void = () => {}): Promise<ExecResult> {
+export async function setRailwayVariables(
+  env: Record<string, string>, root: string, exec: Exec, onOldCli: () => void = () => {}, opts: { service?: string; deploy?: boolean } = {},
+): Promise<ExecResult> {
   let last: ExecResult = { code: 0, stdout: "", stderr: "" };
-  for (const { args, input } of railwayVariableCommands(env)) {
+  for (const { args, input } of railwayVariableCommands(env, opts)) {
     last = await exec("railway", args, input === undefined ? { cwd: root } : { cwd: root, input });
     if (last.code === 0) continue;
     if (/unexpected argument|unrecognized subcommand|wasn't expected|found argument/i.test(last.stderr + last.stdout)) {
       onOldCli();
-      const legacy = ["variables", ...Object.entries(env).filter(([, v]) => v !== "").flatMap(([k, v]) => ["--set", `${k}=${v}`])];
+      const legacy = [
+        "variables", ...Object.entries(env).filter(([, v]) => v !== "").flatMap(([k, v]) => ["--set", `${k}=${v}`]),
+        ...(opts.service ? ["--service", opts.service] : []), ...(opts.deploy === false ? ["--skip-deploys"] : []),
+      ];
       return exec("railway", legacy, { cwd: root });
     }
     return last;
@@ -588,44 +602,138 @@ async function railwayInitOrLink(d: Deploy): Promise<boolean> {
 
 async function deployRailway(d: Deploy): Promise<string | null> {
   const { ui, sys } = d.io;
-  d.cleanup = ["Remove the unfinished project", "railway delete"];
-  // init creates a PROJECT; `up` creates the service, so it runs before the
-  // variables exist (that first build starts without them and is replaced by
-  // the redeploy the variables trigger).
+  const svc = ["--service", RAILWAY_SERVICE];
+  d.cleanup = ["Remove the unfinished project", `railway delete --project ${d.appName}`];
+  // The secrets and the address are in place before the first build, so it
+  // starts ready to sign in. The volume comes after it: Railway's CLI can only
+  // add one to a service that has been deployed (4.x crashes otherwise).
   const steps: HostStep[] = [
     { label: "Creating the Railway project", done: "Project created", attached: true, run: () => railwayInitOrLink(d) },
-    { label: "Starting the first build", done: "Service created", retries: 3, slow: true, run: hostCommand(d, "railway", ["up", "--detach"]) },
     {
-      // Railway volumes mount root-owned; the image's entrypoint hands /data to
-      // the unprivileged user before starting the server.
-      // Attached: with more than one service in the project, Railway asks which.
-      label: "Adding the volume for the login", done: "Volume added at /data", retries: 1, attached: true,
-      run: async () => (await sys.run("railway", ["volume", "add", "--mount-path", "/data"], { cwd: d.root })) === 0,
-      optional: "Without a volume every restart or redeploy needs totem auth again.",
+      label: "Creating the service", done: `Service ${RAILWAY_SERVICE} created`, retries: 3,
+      run: async (set) => {
+        const made = await sys.exec("railway", ["add", "--service", RAILWAY_SERVICE], { cwd: d.root, onLine: set });
+        // A re-run finds it already there; either way, link it for later commands.
+        if (made.code !== 0 && !/already exists/i.test(`${made.stdout}${made.stderr}`)) return made;
+        return sys.exec("railway", ["service", RAILWAY_SERVICE], { cwd: d.root, onLine: set });
+      },
     },
     {
       label: "Setting the secrets", done: "Secrets set", retries: 3,
       run: () => setRailwayVariables(d.env, d.root, (cmd, args, opts) => sys.exec(cmd, args, opts), () => {
         ui.warn("This Railway CLI can't read a value from stdin, so the secrets are passed on its command line.");
         ui.hint("Update it to keep them off it: npm i -g @railway/cli");
-      }),
+      }, { service: RAILWAY_SERVICE, deploy: false }),
     },
   ];
   for (const step of steps) if ((await runStep(d, step)) === "cancelled") return null;
 
-  // `railway domain` prints the public URL.
+  // `railway domain` gives the service a public address and prints it.
   let url: string | null = null;
   for (let i = 0; i < 4 && !url; i++) {
     if (i > 0) await ui.task(`Railway didn't answer; trying again (${i}/3)`, () => sys.sleep(2500));
-    const r = await ui.task("Getting the public address", () => sys.exec("railway", ["domain"], { cwd: d.root }));
+    const r = await ui.task("Getting a public address", () => sys.exec("railway", ["domain", ...svc], { cwd: d.root }));
     url = `${r.stdout}\n${r.stderr}`.match(/https?:\/\/[a-z0-9.-]+\.up\.railway\.app/i)?.[0] ?? null;
   }
   if (url) ui.ok("Public address", url);
   else url = await askUrl(d.io, "Railway didn't report the address. Public URL of the service");
-  return setPublicUrl(d, url, [
-    { label: "Telling the server its address", done: "PUBLIC_URL set", retries: 3, run: hostCommand(d, "railway", ["variables", "--set", `PUBLIC_URL=${url}`]) },
-    { label: "Redeploying with it", done: "Redeployed", retries: 3, slow: true, run: hostCommand(d, "railway", ["up", "--detach"]) },
-  ]);
+
+  const build = (label: string, done: string): HostStep => ({ label, done, slow: true, retries: 2, run: (set) => railwayBuild(d, set) });
+  const rest: HostStep[] = [
+    {
+      label: "Telling the server its address", done: "PUBLIC_URL set", retries: 3,
+      run: hostCommand(d, "railway", ["variable", "set", `PUBLIC_URL=${url}`, ...svc, "--skip-deploys"]),
+      optional: `Sign-in from claude.ai and other clients won't work until PUBLIC_URL=${url} is set on the server.`,
+    },
+    build("Building and deploying on Railway", "Deployed"),
+  ];
+  for (const step of rest) {
+    const r = await runStep(d, step);
+    if (r === "cancelled") return null;
+  }
+  // Railway volumes mount root-owned; the image's entrypoint hands /data to the
+  // unprivileged user before starting the server.
+  const volume = await runStep(d, {
+    label: "Adding the volume for the login", done: "Volume added at /data", retries: 1,
+    run: () => addRailwayVolume(d),
+    optional: "Without a volume every restart or redeploy needs totem auth again.",
+  });
+  if (volume === "cancelled") return null;
+  // Adding a volume restarts the service on Railway's own schedule. Deploy
+  // once more and wait for it, so the login goes to the server that has it.
+  if (volume === "ok" && (await runStep(d, build("Restarting with the volume", "Running with the volume"))) === "cancelled") return null;
+  return url;
+}
+
+/** The deployment id in the build-logs link \`railway up --detach\` prints. */
+export function railwayDeploymentId(output: string): string | null {
+  return output.match(/[?&]id=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1] ?? null;
+}
+
+const RAILWAY_DONE = new Set(["SUCCESS", "FAILED", "CRASHED", "REMOVED", "SKIPPED"]);
+
+/**
+ * Upload and build, then wait for Railway to report how the deployment ended.
+ * \`railway up --ci\` can keep streaming long after Railway calls the
+ * deployment a success (seen for 10 minutes on CLI 4.65), so the build starts
+ * detached and its status is read from \`railway deployment list\`.
+ */
+async function railwayBuild(d: Deploy, set: (line: string) => void): Promise<ExecResult> {
+  const { sys } = d.io;
+  const svc = ["--service", RAILWAY_SERVICE];
+  const up = await sys.exec("railway", ["up", "--detach", ...svc], { cwd: d.root, onLine: set });
+  if (up.code !== 0) return up;
+  const id = railwayDeploymentId(`${up.stdout}\n${up.stderr}`);
+  const started = sys.now();
+  let status = "QUEUED";
+  while (sys.now() - started < 15 * 60_000) {
+    await sys.sleep(5000);
+    const list = await sys.exec("railway", ["deployment", "list", ...svc, "--json"], { cwd: d.root });
+    try {
+      const all = JSON.parse(list.stdout) as Array<{ id: string; status: string }>;
+      const mine = (id ? all.find((x) => x.id === id) : all[0]) ?? all[0];
+      if (mine) status = mine.status;
+    } catch { continue; }
+    set(`Railway: ${status.toLowerCase().replace(/_/g, " ")}`);
+    if (RAILWAY_DONE.has(status)) break;
+  }
+  const ok = status === "SUCCESS";
+  return { code: ok ? 0 : 1, stdout: up.stdout, stderr: ok ? up.stderr : `${up.stderr}\nThe deployment ended as ${status}. Its build log: railway logs --build ${id ?? ""}`.trim() };
+}
+
+/** The project, environment and service ids `railway status --json` reports for the linked project. */
+export function railwayIds(statusJson: string, service: string): { projectId: string; environmentId: string; serviceId: string } | null {
+  try {
+    const d = JSON.parse(statusJson) as {
+      id?: string;
+      environments?: { edges?: Array<{ node: { id: string; name: string; serviceInstances?: { edges?: Array<{ node: { serviceId: string; serviceName: string } }> } } }> };
+    };
+    for (const { node: env } of d.environments?.edges ?? []) {
+      const inst = (env.serviceInstances?.edges ?? []).find((e) => e.node.serviceName === service);
+      if (d.id && inst) return { projectId: d.id, environmentId: env.id, serviceId: inst.node.serviceId };
+    }
+  } catch { /* not JSON */ }
+  return null;
+}
+
+/**
+ * A volume at /data on the totem service. \`railway volume add\` crashes on a
+ * fresh service in Railway CLI 4.x and 5.x alike (it reads the service's region,
+ * which Railway doesn't report yet), so on failure the same thing goes through
+ * Railway's API: \`railway api\` from CLI 5, through npx when the installed one
+ * is older.
+ */
+async function addRailwayVolume(d: Deploy): Promise<ExecResult | boolean> {
+  const { sys } = d.io;
+  const direct = await sys.exec("railway", ["volume", "--service", RAILWAY_SERVICE, "add", "--mount-path", "/data"], { cwd: d.root });
+  if (direct.code === 0 && !/panicked/.test(`${direct.stdout}${direct.stderr}`)) return direct;
+  const status = await sys.exec("railway", ["status", "--json"], { cwd: d.root });
+  const ids = railwayIds(status.stdout, RAILWAY_SERVICE);
+  if (!ids) return direct;
+  const mutation = "mutation($input: VolumeCreateInput!) { volumeCreate(input: $input) { id } }";
+  const variables = JSON.stringify({ input: { ...ids, mountPath: "/data" } });
+  const viaApi = await sys.exec("npx", ["--yes", "@railway/cli@5", "api", mutation, "--variables", variables], { cwd: d.root });
+  return { ...viaApi, code: viaApi.code === 0 && /"volumeCreate"\s*:\s*\{\s*"id"/.test(viaApi.stdout) ? 0 : viaApi.code || 1 };
 }
 
 /**
@@ -968,7 +1076,11 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   // Record the deployment before anything else can stop the flow, so auth,
   // status and logs know where it is. d.appName, not the first suggestion: a
   // name conflict may have changed it.
-  writeDeployRecord(root, { platform, app: d.appName, url, ...(platform === "fly" ? { region: FLY_REGION } : {}), mcp_auth_token: mcpToken });
+  writeDeployRecord(root, {
+    platform, app: d.appName, url,
+    ...(platform === "fly" ? { region: FLY_REGION } : platform === "railway" ? { service: RAILWAY_SERVICE } : {}),
+    mcp_auth_token: mcpToken,
+  });
   const mcpUrl = `${url.replace(/\/+$/, "")}/mcp`;
   // The server has had the connector password since the deploy finished, and
   // this run is the only time totem can show it. A flow that stops before the

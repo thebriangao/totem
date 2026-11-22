@@ -61,8 +61,9 @@ const fly = (over: (args: string, world: FakeWorld) => ExecResult | undefined = 
 const railway: Handler = (cmd, args, _input, world) => {
   const a = args.join(" ");
   if (a === "whoami") return out("Logged in as you@example.com 👋\n");
-  if (a.startsWith("up")) { world.clock.t += 9_000; return out("Build Logs: https://railway.com/project/x\n"); }
-  if (a === "domain") return out("🚀 https://totem-c0ffee2-production.up.railway.app\n");
+  if (a.startsWith("up")) { world.clock.t += 9_000; return out("Build Logs: https://railway.com/project/x/service/y?id=0b5c2f9e-1d2a-4c3b-9e8f-7a6b5c4d3e2f&\n"); }
+  if (a.startsWith("deployment list")) { world.clock.t += 40_000; return out('[{"id":"0b5c2f9e-1d2a-4c3b-9e8f-7a6b5c4d3e2f","status":"SUCCESS"}]'); }
+  if (a.startsWith("domain")) return out("🚀 https://totem-c0ffee2-production.up.railway.app\n");
   return undefined;
 };
 

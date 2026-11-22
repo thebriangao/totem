@@ -68,6 +68,9 @@ COPY --chown=node:node assets/fonts/Manrope-OFL.txt ./assets/fonts/Manrope-OFL.t
 # writes the token file. (Or just run `totem cloud`: it does all of this.)
 #
 # This image forces HTTP transport.
+# The release tag, shown by /health and totem status (set by .github/workflows/image.yml).
+ARG TOTEM_BUILD_ID=
+ENV TOTEM_BUILD_ID=${TOTEM_BUILD_ID}
 ENV MCP_TRANSPORT=http
 ENV TOTEM_TOKEN_FILE=/data/tokens.json
 ENV NODE_ENV=production
