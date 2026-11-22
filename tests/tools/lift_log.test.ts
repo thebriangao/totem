@@ -32,9 +32,15 @@ function whoop(overrides: Record<string, unknown> = {}) {
   return routes({
     "/weightlifting-service/v2/exercise": fixture("catalog"),
     "/users-service/v2/bootstrap": IMPERIAL,
+    "/home-service/v1/home": {}, // the overlap pre-check: no activities that day
     [HISTORY]: fixture("history_bench"),
     ...overrides,
   });
+}
+
+/** A home screen listing one activity tile. */
+function homeWith(tile: { id: string; internal_name: string; start: string; end: string }) {
+  return { pillars: [{ content: { activity_v2_id: tile.id, internal_name: tile.internal_name, type: "CARDIO", status: "COMPLETE", during: { lower_endpoint: tile.start, upper_endpoint: tile.end } } }] };
 }
 
 describe("whoop_lift_log", () => {
@@ -226,14 +232,49 @@ describe("whoop_lift_log", () => {
     expect(out.sent_unit ?? null).toBeNull();
   });
 
-  it("maps a 409 to an overlap error naming whoop_activity_delete; nothing is deleted", async () => {
+  it("a 409 is reported truthfully: no activity, but WHOOP keeps the sets; nothing is retried or deleted", async () => {
     const post = vi.fn().mockRejectedValue(new WhoopConflictError(LIFT_PATH, "Client exception, status code: 409", []));
     const del = vi.fn();
     const client = await connect(registerLiftLog, { get: whoop(), post, delete: del });
     const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, confirm: true } });
     expect(result.isError).toBe(true);
+    expect(body(result).error).toMatch(/409/);
+    expect(body(result).error).toMatch(/keeps the sets/);
+    expect(body(result).error).not.toMatch(/Nothing was logged/);
     expect(body(result).fix).toMatch(/whoop_activity_delete/);
+    expect(post).toHaveBeenCalledTimes(1);
     expect(del).not.toHaveBeenCalled();
+  });
+
+  it("never sends a lift into an occupied window: WHOOP would 409 it and still keep its sets, undeletable", async () => {
+    // a walk 09:10–09:40 PT; the lift asks for 09:00–09:20 PT
+    const walk = { id: "0652e874-0000-4000-8000-000000000001", internal_name: "walking", start: "2026-11-21T17:10:00.000+0000", end: "2026-11-21T17:40:00.000+0000" };
+    const post = vi.fn();
+    const get = whoop({ "/home-service/v1/home": (q: Record<string, unknown>) => (q.date === "2026-11-21" ? homeWith(walk) : {}) });
+    const client = await connect(registerLiftLog, { get, post });
+    for (const confirm of [false, true]) {
+      const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, confirm } });
+      expect(result.isError).toBe(true);
+      expect(body(result).overlaps).toEqual([{ activity_id: walk.id, type: "walking", start: "2026-11-21T09:10:00-08:00", end: "2026-11-21T09:40:00-08:00" }]);
+      expect(body(result).fix).toMatch(/whoop_activity_delete/);
+    }
+    expect(post).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledWith("/home-service/v1/home", { date: "2026-11-21" }, { fresh: true });
+
+    // back-to-back is fine: the lift may start exactly when the walk ends
+    const after = await connect(registerLiftLog, { get, post: vi.fn().mockResolvedValue(fixture("lift_receipt")) });
+    const ok = await after.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, start: "2026-11-21T09:40:00.000-08:00", end: "2026-11-21T10:00:00.000-08:00" } });
+    expect(body(ok).preview).toBe(true);
+  });
+
+  it("refuses when the day's activities can't be read: an unchecked overlap can't be undone", async () => {
+    const post = vi.fn();
+    const get = whoop({ "/home-service/v1/home": new WhoopApiError(500, "/home-service/v1/home", "") });
+    const client = await connect(registerLiftLog, { get, post });
+    const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, confirm: true } });
+    expect(result.isError).toBe(true);
+    expect(body(result).error).toMatch(/overlap/);
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("refuses 0-rep weighted sets and future ends before any network call", async () => {

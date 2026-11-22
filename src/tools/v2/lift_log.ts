@@ -29,6 +29,7 @@ import {
 import { errorMessage, liftError } from "../../lib/lift_tool.js";
 import { findHistoryCard, weightMismatch } from "../../lib/lift_history.js";
 import { readActivityAs } from "../../lib/activity_records.js";
+import { overlappingTiles } from "../../lib/activity_list.js";
 import { setScheme } from "../../projections/lift_sessions.js";
 
 const TOOL = "whoop_lift_log";
@@ -112,7 +113,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: TOOL,
     description:
-      "Log a finished strength workout as a new Strength Trainer activity, or attach the sets to an existing activity (attach_to_activity_id; permanent: WHOOP has no unlink). Weights are converted from `unit` to the account's display unit. Sets are spread across start–end. A 409 means the window overlaps another activity: nothing is logged (delete it with whoop_activity_delete or pick another window). Refuses 0-rep weighted sets (WHOOP would award a permanent PR). Preview unless confirm:true.",
+      "Log a finished strength workout as a new Strength Trainer activity, or attach the sets to an existing activity (attach_to_activity_id; permanent: WHOOP has no unlink). Weights are converted from `unit` to the account's display unit. Sets are spread across start–end. Refuses a window that overlaps another activity (WHOOP 409s such a lift yet keeps its sets, undeletable): pick another window or delete that activity with whoop_activity_delete. Refuses 0-rep weighted sets (WHOOP would award a permanent PR). Preview unless confirm:true.",
     input: {
       exercises: z.array(ExerciseIn).min(1).max(30),
       unit: z.enum(["kg", "lb"]).optional().describe("Unit of the weights you give; required when any set has weight."),
@@ -168,6 +169,25 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     if (zeroRepResolved.length > 0) return refuseZeroRep(zeroRepResolved);
     const problems = setShapeProblems(items);
     if (problems.length > 0) return liftError({ error: "Some sets don't fit their exercise.", problems });
+    // A new lift must not be sent into an occupied window. WHOOP answers 409 and creates
+    // no activity, but it keeps the workout: live 2026-11-21, all seven 409'd lifts left
+    // their sets in exercise history with no activity to delete them through, where they
+    // win medals, set the PR tile and feed e1RM. This is a refusal, not PR #40's
+    // replace_overlapping (D6): nothing is deleted.
+    if (window) {
+      const clash = await overlappingTiles(client, new Date(window.startMs).toISOString(), new Date(window.endMs).toISOString());
+      if (clash.tiles.length > 0) {
+        return liftError({
+          error: "The window overlaps an existing activity, so nothing was sent. (WHOOP refuses an overlapping lift with a 409 yet keeps its sets in exercise history, where they can't be deleted.)",
+          overlaps: clash.tiles.map((t) => ({ activity_id: t.activity_id, type: t.internal_name, start: t.start, end: t.end })),
+          fix: "Pick a window that doesn't overlap, or delete the other activity with whoop_activity_delete first.",
+        });
+      }
+      if (!clash.complete) {
+        return liftError({ error: "Couldn't read the day's activities to rule out an overlap, so nothing was sent: WHOOP keeps an overlapping lift's sets with no way to delete them. Try again." });
+      }
+    }
+
     // The attach target: the raw record answers in every state; cardio-details (the
     // fallback) 400s for the first seconds after a create, and the link still works then.
     let target: Awaited<ReturnType<typeof readActivityAs>> = null;
@@ -275,9 +295,9 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     } catch (e) {
       if (e instanceof WhoopConflictError) {
         return liftError({
-          error: "WHOOP refused: the window overlaps an existing activity (409). Nothing was logged.",
+          error: "WHOOP refused the lift (409): the window overlaps an activity the pre-check didn't see. No activity was created, but WHOOP keeps the sets: they now show in each exercise's history without an activity, count toward PRs and e1RM, and can't be deleted. Don't send these sets again unless you mean to log them twice.",
           during: requested,
-          fix: "Pick a window that doesn't overlap, or delete the other activity with whoop_activity_delete first.",
+          fix: "Find the overlapping activity (whoop_workouts for that day), then pick a clear window or delete it with whoop_activity_delete.",
         });
       }
       if (e instanceof WhoopApiError && e.status === 422) {
