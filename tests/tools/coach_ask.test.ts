@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { WhoopClient } from "../../src/whoop/client.js";
+import { WhoopClient } from "../../src/whoop/client.js";
 import { WhoopConflictError } from "../../src/whoop/errors.js";
 import { askCoach, type CoachTiming } from "../../src/lib/coach_session.js";
 import { planAsk, registerCoachAsk } from "../../src/tools/v2/coach_ask.js";
@@ -40,7 +40,8 @@ function mockClient(routes: {
   });
   const del = vi.fn(async (path: string) => (routes.del ? routes.del(path) : undefined));
   const put = vi.fn(async () => { throw new Error("unexpected PUT"); });
-  return { client: { get, post, put, delete: del } as unknown as WhoopClient, get, post, del, put };
+  const invalidateAll = vi.fn();
+  return { client: { get, post, put, delete: del, invalidateAll } as unknown as WhoopClient, get, post, del, put, invalidateAll };
 }
 
 const completeChart = load("coach/turn_chart.json") as Record<string, unknown>;
@@ -211,6 +212,45 @@ describe("askCoach send path", () => {
     expect(out.text).toBe("I'll pull your data…");
     expect(out.warnings.join(" ")).toMatch(/whoop_coach_history \{view:"transcript"/);
     expect(out.suggestions).toEqual([]);
+  });
+
+  it("drops cached reads again once the coach's write has landed", async () => {
+    // The turn POST drops the cache when the message is SENT; the coach writes
+    // the activity seconds later. A read by another tool call in between was
+    // cached with the pre-write day and then served after the receipt said
+    // "The coach changed your data … check whoop_day".
+    let walkLogged = false;
+    let polls = 0;
+    const json = (v: unknown) => new Response(JSON.stringify(v), { status: 200 });
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === "/home-service/v1/home") return json({ walks: walkLogged ? 1 : 0 });
+      if (path === `${AI}/conversation`) return json({ turns: [] });
+      if (path.endsWith("/turn") && init?.method === "POST") return json({ id: "turn-1", turn_status: "ACTIVE", messages: [] });
+      if (path.endsWith("/turn/turn-1")) {
+        if (++polls === 1) return json({ id: "turn-1", turn_status: "ACTIVE", messages: [] });
+        walkLogged = true;
+        return json(load("coach/turn_logged_walk.json"));
+      }
+      if (path.endsWith("/suggestions")) return json({ suggestions: [] });
+      throw new Error(`unexpected ${init?.method ?? "GET"} ${path}`);
+    }));
+    try {
+      const client = new WhoopClient({ getToken: async () => "t" });
+      const timing = fakeTiming();
+      const sleep = timing.sleep;
+      let sleeps = 0;
+      timing.sleep = async (ms) => {
+        await sleep(ms);
+        // Another tool call reads the day after the turn POST, before the coach's write.
+        if (++sleeps === 1) expect(await client.get("/home-service/v1/home", { date: DAY })).toEqual({ walks: 0 });
+      };
+      const out = await askCoach(client, planAsk({ ...base, message: "Yes, log the walk" }, DAY), timing);
+      expect(out.actions).toEqual(["Logged Walk"]);
+      expect(await client.get("/home-service/v1/home", { date: DAY })).toEqual({ walks: 1 });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("a memory-saving reply has no badge, so actions stays empty", async () => {

@@ -361,6 +361,9 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
     const polled = await waitForTurn(client, fingerprint, posted.id, timing.replyTimeoutMs, timing);
     status = polled.status;
     describeTurn(receipt, polled.turn);
+    // The client dropped its cache when the turn was POSTed, but the coach wrote
+    // the data afterwards: anything read (by another call) in between is stale.
+    if (receipt.actions.length) client.invalidateAll();
   } finally {
     if (fileId) {
       receipt.image_deleted = await client.delete(`${AI}/files/${encodeURIComponent(fileId)}`).then(() => true, () => false);
