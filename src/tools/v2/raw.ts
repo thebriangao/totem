@@ -61,7 +61,7 @@ export function registerRaw(server: McpServer, client: WhoopClient): void {
       const q = query ?? {};
       if (method === "GET") {
         const response = await client.get(safePath, q);
-        return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response });
+        return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response }, { compact: false });
       }
       if (!allow_write) throw new Error("whoop_raw writes need allow_write:true (and confirm:true). Prefer a specific whoop_* tool if one fits.");
       const refusal = rawWriteRefusal(safePath, body);
@@ -72,7 +72,7 @@ export function registerRaw(server: McpServer, client: WhoopClient): void {
         method === "POST" ? await client.post(safePath, body, q)
         : method === "PUT" ? await client.put(safePath, body, q)
         : await client.delete(safePath, q);
-      return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response });
+      return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response }, { compact: false });
     },
   );
 }

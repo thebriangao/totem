@@ -30,10 +30,15 @@ export function defineTool<Shape extends z.ZodRawShape>(
 }
 
 /** Validate a projection against its output schema and wrap it as tool output. */
-export function respond<S extends z.ZodTypeAny>(tool: string, schema: S, value: unknown): ToolResult {
+export function respond<S extends z.ZodTypeAny>(
+  tool: string,
+  schema: S,
+  value: unknown,
+  options: { compact?: boolean } = {},
+): ToolResult {
   try {
     const out = schema.parse(value);
-    return { content: [{ type: "text", text: jsonOut(out) }] };
+    return { content: [{ type: "text", text: jsonOut(out, options) }] };
   } catch (e) {
     if (e instanceof z.ZodError) throw new WhoopProjectionError(tool, e);
     throw e;
