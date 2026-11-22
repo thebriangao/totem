@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   TokenManager, WhoopLoginHandedOffError, WhoopNotLoggedInError, WhoopRefreshUnavailableError, WhoopTokenPersistError,
-  keepAliveMsFromEnv, type TokenManagerConfig,
+  WhoopTokenUnwritableError, keepAliveMsFromEnv, type TokenManagerConfig,
 } from "../../src/whoop/token_manager.js";
 import { FileTokenStore, MemoryTokenStore, type TokenRecord, type TokenStore } from "../../src/whoop/token_store.js";
 import { TokenLock, WhoopTokenOwnedError } from "../../src/whoop/token_lock.js";
@@ -293,6 +293,73 @@ describe("TokenManager: one owner per login (G8)", () => {
     expect(cognito.refresh).toHaveBeenCalledTimes(1);
     follower.manager.stop();
   });
+
+  it("a follower can't take the login over while the owner is spending the refresh token (after a laptop sleep)", async () => {
+    alive.clear(); alive.add(1).add(2);
+    const file = join(dir, "tokens.json");
+    let clock = Date.now();
+    const now = (): number => clock;
+    new FileTokenStore(file).save(login(clock, { access_token: jwtExpiring(clock, HOUR) }));
+    // The owner's refresh is on the wire until we let it finish.
+    let finish!: () => void;
+    const onTheWire = new Promise<void>((r) => { finish = r; });
+    const spent: string[] = [];
+    const refresh = vi.fn(async (refreshToken: string): Promise<CognitoTokens> => {
+      spent.push(refreshToken);
+      await onTheWire;
+      return { accessToken: jwtExpiring(clock, 24 * HOUR, { n: spent.length }), refreshToken: `rt-${spent.length}`, idToken: "", expiresAt: 0 };
+    });
+    const proc = (pid: number) => {
+      const lock = new TokenLock({ path: `${file}.lock`, pid, host: "laptop", now, isAlive: (p) => alive.has(p) });
+      return { lock, manager: new TokenManager({ store: new FileTokenStore(file), lock, now, refresh, ...quiet }) };
+    };
+    const owner = proc(1);
+    const follower = proc(2);
+    owner.manager.start();
+    follower.manager.start();
+    owner.lock.stopHeartbeat();
+
+    clock += 8 * HOUR; // lid closed: the access token expired and no heartbeat ran
+    const ownerCall = owner.manager.getToken();
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    // The follower wakes beside it and needs a token too. The owner's pid is
+    // alive; only its heartbeat could look stale.
+    await expect(follower.manager.getToken()).rejects.toBeInstanceOf(WhoopTokenOwnedError);
+    expect(spent).toEqual(["rt-0"]); // never presented twice
+    expect(follower.manager.status().role).toBe("follower");
+
+    finish();
+    const fresh = await ownerCall;
+    await expect(follower.manager.getToken()).resolves.toBe(fresh);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    owner.manager.stop();
+    follower.manager.stop();
+  });
+
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "doesn't spend the refresh token when the token directory has become unwritable",
+    async () => {
+      alive.clear(); alive.add(1);
+      const file = join(dir, "tokens.json");
+      const now = Date.now();
+      new FileTokenStore(file).save(login(now, { access_token: jwtExpiring(now, 0) }));
+      const cognito = fakeCognito(() => Date.now());
+      const owner = processOn(1, file, { refresh: cognito.refresh });
+      owner.manager.start();
+      owner.lock.stopHeartbeat();
+      chmodSync(dir, 0o500); // the volume went read-only
+      try {
+        await expect(owner.manager.getToken()).rejects.toBeInstanceOf(WhoopTokenUnwritableError);
+        expect(cognito.refresh).not.toHaveBeenCalled(); // rt-0 is still good
+        expect(owner.manager.status().state).toBe("ok"); // not fatal, not expired
+      } finally {
+        chmodSync(dir, 0o700);
+      }
+      await expect(owner.manager.getToken()).resolves.toBeTypeOf("string"); // and it recovers
+      expect((new FileTokenStore(file).load() as TokenRecord).refresh_token).toBe("rt-1");
+      owner.manager.stop();
+    },
+  );
 });
 
 describe("TokenManager: the token file is the source of truth", () => {

@@ -19,7 +19,7 @@
 
 import { CognitoError, decodeJwtExp, refreshCognitoSession, type CognitoTokens } from "./cognito.js";
 import { WhoopAuthExpiredError } from "./errors.js";
-import { WhoopTokenOwnedError, type LockHolder, type TokenLock } from "./token_lock.js";
+import { WhoopTokenOwnedError, type LockHolder, type LockState, type TokenLock } from "./token_lock.js";
 import { isHandoff, type HandoffRecord, type TokenRecord, type TokenSource, type TokenStore } from "./token_store.js";
 
 const MINUTE = 60_000;
@@ -61,6 +61,21 @@ export class WhoopTokenPersistError extends Error {
         "The previous refresh token is already spent, so this login can't survive a restart. Fix the disk, then run `totem auth`.",
     );
     this.name = "WhoopTokenPersistError";
+  }
+}
+
+/**
+ * The token directory can't be written right now, found out BEFORE spending the
+ * refresh token. Nothing is lost: the login is still valid and refreshes again
+ * once the disk is writable.
+ */
+export class WhoopTokenUnwritableError extends Error {
+  constructor(where: string, cause: unknown) {
+    super(
+      `Can't write next to the WHOOP token file ${where} (${cause instanceof Error ? cause.message : String(cause)}), ` +
+        "so the token wasn't refreshed (a rotated refresh token that can't be saved would end the login). Fix the disk or its permissions.",
+    );
+    this.name = "WhoopTokenUnwritableError";
   }
 }
 
@@ -348,7 +363,25 @@ export class TokenManager {
   /** Make sure we own the login (or may take it over). */
   private claim(): boolean {
     if (!this.lock) return true;
-    if (this.lock.held && this.lock.verify()) return true;
+    if (this.lock.held) {
+      // Prove ownership and stamp a fresh heartbeat in one step. Re-reading the
+      // lock isn't enough: after a laptop sleep our heartbeat is hours old, and
+      // a follower waking beside us would take the "stale" lock over while our
+      // refresh is on the wire, spending the same refresh token twice.
+      let state: LockState;
+      try {
+        state = this.lock.confirm();
+      } catch (error) {
+        // The lock sits next to the token file. If it can't be written, the
+        // rotated refresh token couldn't be saved either: don't spend this one.
+        throw new WhoopTokenUnwritableError(this.store.description, error);
+      }
+      if (state === "held") return true;
+      if (state === "busy") {
+        this.ownerHint = this.lock.readHolder();
+        return false;
+      }
+    }
     const result = this.lock.tryAcquire();
     if (result.acquired) {
       this.log(`took over the WHOOP login${this.ownerHint ? ` from pid ${this.ownerHint.pid}, which stopped` : ""}`);
