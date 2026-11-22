@@ -293,8 +293,14 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     }
   };
 
+  // GET /mcp is the long-lived server→client event stream; tracked so shutdown can end it.
+  const eventStreams = new Set<Response>();
   app.post("/mcp", bearer, express.json(), (req, res) => void mcpHandler(req, res));
-  app.get("/mcp", bearer, (req, res) => void mcpHandler(req, res));
+  app.get("/mcp", bearer, (req, res) => {
+    eventStreams.add(res);
+    res.on("close", () => eventStreams.delete(res));
+    void mcpHandler(req, res);
+  });
   app.delete("/mcp", bearer, (req, res) => void mcpHandler(req, res));
 
   // Express 5 hands a failed listen (EADDRINUSE, EACCES) to this same callback as
@@ -324,6 +330,10 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       process.off("SIGINT", onSignal);
       process.off("SIGTERM", onSignal);
       httpServer.close(() => resolve());
+      // close() waits for every connection, and each connected client holds an
+      // event stream open for good — so a SIGTERM with anyone connected sat out
+      // the 5s grace and exited 1. End the streams; requests in flight finish.
+      for (const stream of eventStreams) stream.destroy();
     });
     return closing;
   };

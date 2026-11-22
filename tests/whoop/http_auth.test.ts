@@ -161,6 +161,30 @@ describe("HTTP transport: startup", () => {
     const again = await startHttpServer(stubClient, { authToken: TOKEN, port: server.port, host: "127.0.0.1" });
     await again.close();
   });
+
+  // Every connected client holds GET /mcp open. server.close() waits for all
+  // connections, so shutdown used to sit out the 5s grace and exit 1.
+  it("close() finishes promptly while a client holds its event stream open", async () => {
+    const server = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    const url = `http://127.0.0.1:${server.port}/mcp`;
+    const headers = { authorization: `Bearer ${TOKEN}`, "content-type": "application/json", accept: "application/json, text/event-stream" };
+    const init = await fetch(url, {
+      method: "POST", headers,
+      body: JSON.stringify({ jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: "t", version: "0" } } }),
+    });
+    const sid = init.headers.get("mcp-session-id")!;
+    await init.text();
+    const stream = await fetch(url, { headers: { authorization: `Bearer ${TOKEN}`, accept: "text/event-stream", "mcp-session-id": sid } });
+    expect(stream.status).toBe(200);
+    expect(stream.headers.get("content-type")).toMatch(/text\/event-stream/);
+
+    const closed = await Promise.race([
+      server.close().then(() => "closed"),
+      new Promise((resolve) => setTimeout(() => resolve("still open after 2s"), 2000)),
+    ]);
+    expect(closed).toBe("closed");
+    await stream.body?.cancel().catch(() => {});
+  });
 });
 
 describe("HTTP transport: misconfiguration", () => {
