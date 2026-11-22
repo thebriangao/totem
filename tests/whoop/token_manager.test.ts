@@ -226,6 +226,69 @@ describe("TokenManager keep-alive (G7)", () => {
   });
 });
 
+describe("TokenManager: no refresh storms", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  /** WHOOP's tokens as seen from a machine whose clock runs two days fast: expired on arrival. */
+  function skewedCognito() {
+    let n = 0;
+    return vi.fn(async (): Promise<CognitoTokens> => {
+      n++;
+      return { accessToken: jwtExpiring(Date.now() - 48 * HOUR, 24 * HOUR, { n }), refreshToken: `rt-${n}`, idToken: "", expiresAt: 0 };
+    });
+  }
+
+  it("a clock far ahead of WHOOP's doesn't turn every call into a refresh", async () => {
+    const t0 = Date.now();
+    const store = new MemoryTokenStore(login(t0, { access_token: jwtExpiring(t0 - 48 * HOUR, 24 * HOUR) }));
+    const refresh = skewedCognito();
+    const manager = new TokenManager({ store, refresh, keepAliveMs: 0, ...quiet });
+    const first = await manager.getToken();
+    expect(refresh).toHaveBeenCalledTimes(1); // the saved token looked expired: refresh once
+    for (let i = 0; i < 5; i++) expect(await manager.getToken()).toBe(first); // then use what WHOOP just issued
+    expect(refresh).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(6 * MIN);
+    await manager.getToken();
+    expect(refresh).toHaveBeenCalledTimes(2); // not stuck on it forever either
+  });
+
+  it("...and the keep-alive doesn't refresh every second", async () => {
+    const t0 = Date.now();
+    const store = new MemoryTokenStore(login(t0, { access_token: jwtExpiring(t0 - 48 * HOUR, 24 * HOUR) }));
+    const refresh = skewedCognito();
+    const manager = new TokenManager({ store, refresh, ...quiet });
+    manager.start();
+    await vi.advanceTimersByTimeAsync(30 * MIN);
+    expect(refresh.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(refresh.mock.calls.length).toBeLessThanOrEqual(8); // was ~1,800: one per second
+    manager.stop();
+  });
+
+  it("a 401 still forces a refresh right after one", async () => {
+    const t0 = Date.now();
+    const store = new MemoryTokenStore(login(t0, { access_token: jwtExpiring(t0, 0) }));
+    const { refresh } = fakeCognito(() => Date.now());
+    const manager = new TokenManager({ store, refresh, keepAliveMs: 0, ...quiet });
+    const first = await manager.getToken();
+    await vi.advanceTimersByTimeAsync(61_000); // past the 60 s guard, inside the 5-minute one
+    manager.invalidate(first);
+    expect(await manager.getToken()).not.toBe(first);
+    expect(refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("a tiny TOTEM_KEEPALIVE_HOURS can't hammer the login service", async () => {
+    const t0 = Date.now();
+    const store = new MemoryTokenStore(login(t0));
+    const { refresh } = fakeCognito(() => Date.now());
+    const manager = new TokenManager({ store, refresh, keepAliveMs: keepAliveMsFromEnv("0.0001"), ...quiet });
+    manager.start();
+    await vi.advanceTimersByTimeAsync(30 * MIN);
+    expect(refresh.mock.calls.length).toBeLessThanOrEqual(7);
+    manager.stop();
+  });
+});
+
 describe("TokenManager: one owner per login (G8)", () => {
   let dir: string;
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "totem-tm-")); });

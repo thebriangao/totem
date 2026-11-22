@@ -26,6 +26,14 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 /** setTimeout's ceiling (~24.8 days). */
 const MAX_TIMER_MS = 2 ** 31 - 1;
+/**
+ * A token we refreshed less than this long ago is used as it is, whatever its
+ * `exp` says. Without it a clock running far ahead (every new token looks
+ * expired on arrival), an undecodable token or a tiny TOTEM_KEEPALIVE_HOURS
+ * turns every call or every second into a refresh, and each refresh rotates
+ * the refresh token. A 401 still forces a refresh (see invalidate()).
+ */
+const MIN_REFRESH_GAP_MS = 5 * MINUTE;
 /** A follower lets the owner go first, then checks. */
 const FOLLOWER_GRACE_MS = 2 * MINUTE;
 /** A follower re-checks this often while a live owner hasn't refreshed yet. */
@@ -200,8 +208,8 @@ export class TokenManager {
   async getToken(): Promise<string> {
     this.sync();
     const record = this.usable();
-    if (!this.forceRefresh && this.timeLeft(record) > this.skewMs) return record.access_token;
-    await this.ensureFresh("on demand", (r) => this.forceRefresh || this.timeLeft(r) <= this.skewMs);
+    if (!this.needsRefresh(record)) return record.access_token;
+    await this.ensureFresh("on demand", (r) => this.needsRefresh(r));
     return this.usable().access_token;
   }
 
@@ -311,11 +319,30 @@ export class TokenManager {
     return Number.isFinite(t) ? t : 0;
   }
 
+  /**
+   * Whether this record came out of a refresh less than MIN_REFRESH_GAP_MS ago
+   * (by `refreshed_at`, which only a refresh writes; a timestamp in the future
+   * means the clock was changed, and counts as "no").
+   */
+  private justRefreshed(record: TokenRecord): boolean {
+    const at = Date.parse(record.refreshed_at ?? "");
+    if (!Number.isFinite(at)) return false;
+    const since = this.now() - at;
+    return since >= 0 && since < MIN_REFRESH_GAP_MS;
+  }
+
+  /** Whether a call must refresh before it gets a token. */
+  private needsRefresh(record: TokenRecord): boolean {
+    if (this.forceRefresh) return true;
+    return this.timeLeft(record) <= this.skewMs && !this.justRefreshed(record);
+  }
+
   /** When the keep-alive should next refresh this record. */
   private dueAt(record: TokenRecord): number {
     const byExpiry = decodeJwtExp(record.access_token) * 1000 - this.skewMs;
     const byPeriod = this.keepAliveMs > 0 ? this.refreshedAt(record) + this.keepAliveMs : Infinity;
-    return Math.min(byExpiry, byPeriod);
+    const due = Math.min(byExpiry, byPeriod);
+    return this.justRefreshed(record) ? Math.max(due, Date.parse(record.refreshed_at!) + MIN_REFRESH_GAP_MS) : due;
   }
 
   /** dueAt, plus a grace period for a follower so the owner goes first. */
@@ -407,7 +434,7 @@ export class TokenManager {
       this.sync(true);
       const record = this.usable();
       this.forceRefresh = false;
-      if (this.timeLeft(record) > FOLLOWER_MIN_LIFE_MS) return;
+      if (this.timeLeft(record) > FOLLOWER_MIN_LIFE_MS || this.justRefreshed(record)) return;
       throw new WhoopTokenOwnedError(this.ownerHint, this.lock!.path);
     }
 
