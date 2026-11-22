@@ -1,0 +1,353 @@
+{
+ "type": "SECTION",
+ "content": {
+  "id": "recommendation-widget-daily-outlook___cycle___1974049188-cdfcf662-0548-473f-aca5-b79f735cce1a",
+  "title": null,
+  "subtitle": null,
+  "items": [
+   {
+    "type": "HORIZONTAL_SCROLL_CONTAINER",
+    "content": {
+     "id": "recommendation-widget-carousel-daily-outlook___cycle___1974049188-cdfcf662-0548-473f-aca5-b79f735cce1a",
+     "title": null,
+     "items": [
+      {
+       "type": "RECOMMENDATION_TILE",
+       "content": {
+        "recommendation_id": "70ca30fe-6274-4804-a0b2-8db8f96b77ee",
+        "status": "COMPLETED",
+        "header": {
+         "type": "RECOMMENDATION_TILE_HEADER",
+         "content": {
+          "id": "70ca30fe-6274-4804-a0b2-8db8f96b77ee",
+          "leading": null,
+          "icon": "https://s3-us-west-2.amazonaws.com/icons.whoop.com/mobile/activities/weightlifting.png",
+          "emoji": null,
+          "title": "STRENGTH TRAINER",
+          "title_typography": null,
+          "description": [],
+          "trailing": null,
+          "status": null,
+          "icon_background_enabled": null,
+          "bindings": null,
+          "aggregate_bindings": null,
+          "interaction": null
+         }
+        },
+        "body": [
+         {
+          "type": "SECTION",
+          "content": {
+           "id": "recommendation-widget-content-70ca30fe-6274-4804-a0b2-8db8f96b77ee",
+           "title": null,
+           "subtitle": null,
+           "items": [
+            {
+             "type": "MARKDOWN_TEXT",
+             "content": {
+              "text": "Your Saturday strength sessions are a regular habit; focus on explosive leg work to build power.",
+              "style": "B1",
+              "color": "WHITE_70",
+              "alignment": "LEADING",
+              "icon": null,
+              "icon_position": null,
+              "max_lines": 3,
+              "min_lines": 3,
+              "fill_width": true,
+              "accessibility_label": null,
+              "bindings": null,
+              "aggregate_bindings": null
+             }
+            }
+           ],
+           "section_top_padding": 8,
+           "section_bottom_padding": 0,
+           "section_leading_padding": 0,
+           "section_trailing_padding": 0,
+           "inter_item_padding": 12,
+           "alignment": "CENTER",
+           "is_visible": null,
+           "bindings": null,
+           "aggregate_bindings": null
+          }
+         }
+        ],
+        "cta": {
+         "type": "RECOMMENDATION_TILE_BUTTON",
+         "content": {
+          "icon": "CHECKMARK",
+          "title": "Completed",
+          "status": "COMPLETED",
+          "is_enabled": false,
+          "is_loading": false,
+          "style": null,
+          "interaction": {
+           "modal": null,
+           "action": null,
+           "navigation": null,
+           "dismiss_event": null
+          },
+          "bindings": null,
+          "aggregate_bindings": null
+         }
+        },
+        "is_selected": null,
+        "is_expanded": null,
+        "style": null,
+        "density": null,
+        "interaction": null,
+        "bindings": null,
+        "aggregate_bindings": null
+       }
+      },
+      {
+       "type": "RECOMMENDATION_TILE",
+       "content": {
+        "recommendation_id": "47efd00e-72d0-4510-b519-0c89d57917d6",
+        "status": "UNCOMMITTED",
+        "header": {
+         "type": "RECOMMENDATION_TILE_HEADER",
+         "content": {
+          "id": "47efd00e-72d0-4510-b519-0c89d57917d6",
+          "leading": null,
+          "icon": "https://s3-us-west-2.amazonaws.com/icons.whoop.com/mobile/activities/walking.png",
+          "emoji": null,
+          "title": "WALKING",
+          "title_typography": null,
+          "description": [],
+          "trailing": null,
+          "status": null,
+          "icon_background_enabled": null,
+          "bindings": null,
+          "aggregate_bindings": null,
+          "interaction": null
+         }
+        },
+        "body": [
+         {
+          "type": "SECTION",
+          "content": {
+           "id": "recommendation-widget-content-47efd00e-72d0-4510-b519-0c89d57917d6",
+           "title": null,
+           "subtitle": null,
+           "items": [
+            {
+             "type": "MARKDOWN_TEXT",
+             "content": {
+              "text": "An easy indoor walk keeps your Saturday movement going.",
+              "style": "B1",
+              "color": "WHITE_70",
+              "alignment": "LEADING",
+              "icon": null,
+              "icon_position": null,
+              "max_lines": 3,
+              "min_lines": 3,
+              "fill_width": true,
+              "accessibility_label": null,
+              "bindings": null,
+              "aggregate_bindings": null
+             }
+            }
+           ],
+           "section_top_padding": 8,
+           "section_bottom_padding": 0,
+           "section_leading_padding": 0,
+           "section_trailing_padding": 0,
+           "inter_item_padding": 12,
+           "alignment": "CENTER",
+           "is_visible": null,
+           "bindings": null,
+           "aggregate_bindings": null
+          }
+         }
+        ],
+        "cta": {
+         "type": "RECOMMENDATION_TILE_BUTTON",
+         "content": {
+          "icon": "ADD",
+          "title": "Commit",
+          "status": "UNCOMMITTED",
+          "is_enabled": true,
+          "is_loading": false,
+          "style": null,
+          "interaction": {
+           "modal": null,
+           "action": {
+            "parameters": {
+             "request": {
+              "path": "ai-conversation-bff/v1/recommendations/47efd00e-72d0-4510-b519-0c89d57917d6/commit?conversationFingerprint=daily-outlook___cycle___1974049188",
+              "method": "POST",
+              "content_type": null,
+              "body": null,
+              "timeout_millis": null
+             },
+             "completion_destination": null,
+             "dismiss_event": null,
+             "loading_treatment": null,
+             "refresh_scopes": "<redacted>",
+             "bindings": null,
+             "aggregate_bindings": null
+            },
+            "type": "UPDATE"
+           },
+           "navigation": null,
+           "dismiss_event": null
+          },
+          "bindings": null,
+          "aggregate_bindings": null
+         }
+        },
+        "is_selected": null,
+        "is_expanded": null,
+        "style": null,
+        "density": null,
+        "interaction": null,
+        "bindings": null,
+        "aggregate_bindings": null
+       }
+      },
+      {
+       "type": "RECOMMENDATION_TILE",
+       "content": {
+        "recommendation_id": "3f829425-7b14-4b39-9e6e-55f07fce0cc4",
+        "status": "UNCOMMITTED",
+        "header": {
+         "type": "RECOMMENDATION_TILE_HEADER",
+         "content": {
+          "id": "3f829425-7b14-4b39-9e6e-55f07fce0cc4",
+          "leading": null,
+          "icon": "https://s3-us-west-2.amazonaws.com/icons.whoop.com/mobile/activities/yoga.png",
+          "emoji": null,
+          "title": "YOGA",
+          "title_typography": null,
+          "description": [],
+          "trailing": null,
+          "status": null,
+          "icon_background_enabled": null,
+          "bindings": null,
+          "aggregate_bindings": null,
+          "interaction": null
+         }
+        },
+        "body": [
+         {
+          "type": "SECTION",
+          "content": {
+           "id": "recommendation-widget-content-3f829425-7b14-4b39-9e6e-55f07fce0cc4",
+           "title": null,
+           "subtitle": null,
+           "items": [
+            {
+             "type": "MARKDOWN_TEXT",
+             "content": {
+              "text": "Your strength-training goal is building power; gentle yoga adds a different way to move today.",
+              "style": "B1",
+              "color": "WHITE_70",
+              "alignment": "LEADING",
+              "icon": null,
+              "icon_position": null,
+              "max_lines": 3,
+              "min_lines": 3,
+              "fill_width": true,
+              "accessibility_label": null,
+              "bindings": null,
+              "aggregate_bindings": null
+             }
+            }
+           ],
+           "section_top_padding": 8,
+           "section_bottom_padding": 0,
+           "section_leading_padding": 0,
+           "section_trailing_padding": 0,
+           "inter_item_padding": 12,
+           "alignment": "CENTER",
+           "is_visible": null,
+           "bindings": null,
+           "aggregate_bindings": null
+          }
+         }
+        ],
+        "cta": {
+         "type": "RECOMMENDATION_TILE_BUTTON",
+         "content": {
+          "icon": "ADD",
+          "title": "Commit",
+          "status": "UNCOMMITTED",
+          "is_enabled": true,
+          "is_loading": false,
+          "style": null,
+          "interaction": {
+           "modal": null,
+           "action": {
+            "parameters": {
+             "request": {
+              "path": "ai-conversation-bff/v1/recommendations/3f829425-7b14-4b39-9e6e-55f07fce0cc4/commit?conversationFingerprint=daily-outlook___cycle___1974049188",
+              "method": "POST",
+              "content_type": null,
+              "body": null,
+              "timeout_millis": null
+             },
+             "completion_destination": null,
+             "dismiss_event": null,
+             "loading_treatment": null,
+             "refresh_scopes": "<redacted>",
+             "bindings": null,
+             "aggregate_bindings": null
+            },
+            "type": "UPDATE"
+           },
+           "navigation": null,
+           "dismiss_event": null
+          },
+          "bindings": null,
+          "aggregate_bindings": null
+         }
+        },
+        "is_selected": null,
+        "is_expanded": null,
+        "style": null,
+        "density": null,
+        "interaction": null,
+        "bindings": null,
+        "aggregate_bindings": null
+       }
+      }
+     ],
+     "vertical_alignment": "CENTER",
+     "scroll_behavior": "SNAP",
+     "paging_indicator_enabled": true,
+     "accessibility_label": "Recommendations"
+    }
+   },
+   {
+    "type": "START_TURN_BUTTON",
+    "content": {
+     "title": "Generate alternatives",
+     "icon": "AI_SPARKLE",
+     "style": {
+      "button_type": "SECONDARY",
+      "foreground_color": "BRAND_WHITE",
+      "icon_color": "BRAND_WHITE",
+      "background_color": "BACKGROUND_DARK_ALT"
+     },
+     "request": {
+      "path": "ai-conversation-bff/v1/recommendations/generate-alternatives?conversationFingerprint=daily-outlook___cycle___1974049188&turnId=cdfcf662-0548-473f-aca5-b79f735cce1a",
+      "method": "POST",
+      "content_type": null,
+      "body": null,
+      "timeout_millis": null
+     }
+    }
+   }
+  ],
+  "section_top_padding": 8,
+  "section_bottom_padding": 8,
+  "section_leading_padding": 0,
+  "section_trailing_padding": 0,
+  "inter_item_padding": 8,
+  "alignment": "TRAILING",
+  "is_visible": null,
+  "bindings": null,
+  "aggregate_bindings": null
+ }
+}

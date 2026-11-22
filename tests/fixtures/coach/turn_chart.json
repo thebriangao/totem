@@ -1,0 +1,193 @@
+{
+ "id": "0d694902-3720-4b31-b717-cd60b519f924",
+ "turn_status": "COMPLETE",
+ "messages": [
+  {
+   "id": "4aa44949-1c20-4202-a665-3a09cc47c59e",
+   "role": "user",
+   "items": [
+    {
+     "content": {
+      "text": "Show me a chart of my strain this week, then give 3 short bullet tips.",
+      "text_hash": -1243402747
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "4aa44949-1c20-4202-a665-3a09cc47c59e_0"
+    }
+   ]
+  },
+  {
+   "id": "9210f500-6cdf-4c3d-b84a-d08328cf6c9e",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "I’ll pull your daily Strain for this week and chart it, then give you three short tips.",
+      "text_hash": 1128880406
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "9210f500-6cdf-4c3d-b84a-d08328cf6c9e_0"
+    }
+   ]
+  },
+  {
+   "id": "57a7deed-22b5-4768-b1af-4a95393daedd",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "**Today’s Strain is 20.9—the top of the scale.** The chart covers Nov 16–21, but only today has recorded data; missing days aren’t zero.\n",
+      "text_hash": -1095609535
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_0"
+    },
+    {
+     "content": {
+      "text": "\n",
+      "text_hash": 10
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_1"
+    },
+    {
+     "content": {
+      "text": "- Keep the rest of tonight restful—no additional hard training.\n",
+      "text_hash": 765659631
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_2"
+    },
+    {
+     "content": {
+      "text": "- Eat a balanced dinner and drink fluids steadily to support recovery.\n",
+      "text_hash": -2052510420
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_3"
+    },
+    {
+     "content": {
+      "text": "- Allow 8–9 hours for sleep tonight after this high-load day.\n",
+      "text_hash": 1153498795
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_4"
+    },
+    {
+     "content": {
+      "text": "\n",
+      "text_hash": 10
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_5"
+    },
+    {
+     "content": {
+      "text": "Does today’s reading match how active you’ve been?",
+      "text_hash": 789309099
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "57a7deed-22b5-4768-b1af-4a95393daedd_6"
+    }
+   ]
+  },
+  {
+   "id": "0d694902-3720-4b31-b717-cd60b519f924",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "icon": null,
+      "graph_legends": [],
+      "theme": null,
+      "title": "Strain — Nov 16–21, 2026",
+      "graph": {
+       "id": null,
+       "plane": {
+        "accessibility_info": {
+         "label": "Strain — Nov 16–21, 2026 chart"
+        }
+       },
+       "plots": [
+        {
+         "plot": {
+          "bar_groups": [
+           {
+            "position_x": 0.5,
+            "width": 0.05,
+            "bars": [
+             {
+              "position_y": 0,
+              "height": 0.9975067487853986,
+              "style": "STRAIN",
+              "data_scrubber_details": null,
+              "theme": {
+               "bar_color": "STRAIN",
+               "bar_width": null
+              }
+             }
+            ],
+            "accessibility_label": "2026-11-21 - Strain",
+            "details": null,
+            "data_scrubber_details": null,
+            "top_label": {
+             "label": "20.9",
+             "label_style": "STRAIN",
+             "rendered_below": false,
+             "show_background_gradient": false
+            },
+            "bottom_label": null
+           }
+          ],
+          "id": "d6b2e7f9-b08b-4c56-b5dc-45e6caee025b",
+          "hide_while_scrubbing": false,
+          "skip_scrubbing": null
+         },
+         "type": "BAR_PLOT"
+        }
+       ],
+       "graph_title_display": null,
+       "graph_buttons": null,
+       "layout_direction": "LEFT_TO_RIGHT",
+       "spotlight_target_id": null
+      },
+      "sub_items": [],
+      "accessibility_label": "Strain — Nov 16–21, 2026 chart"
+     },
+     "type": "GRAPHING_CARD",
+     "id": "0d694902-3720-4b31-b717-cd60b519f924_0"
+    },
+    {
+     "content": {
+      "text": "GO TO DAY STRAIN TRENDS",
+      "action": {
+       "screen": "TRENDS",
+       "parameters": {
+        "trend_key": "DAY_STRAIN",
+        "duration": 0,
+        "date": "2026-11-21T00:00:00.000-0800"
+       }
+      }
+     },
+     "type": "SECONDARY_BUTTON",
+     "id": "0d694902-3720-4b31-b717-cd60b519f924_1"
+    }
+   ]
+  },
+  {
+   "id": "6108969d-b51e-4d1a-8302-1886e40919cc",
+   "role": "assistant",
+   "items": []
+  },
+  {
+   "id": "18adfbc9-41ca-406a-b16c-a48989a7dffc",
+   "role": "assistant",
+   "items": []
+  }
+ ],
+ "turn_number": 1,
+ "feedback": null,
+ "should_show_suggested_chips": true,
+ "should_show_feedback_actions": true
+}

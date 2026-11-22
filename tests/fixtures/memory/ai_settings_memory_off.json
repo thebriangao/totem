@@ -1,0 +1,44 @@
+{
+ "title": "AI SETTINGS",
+ "settings": [
+  {
+   "title": "AI SETTINGS",
+   "tag": "BETA",
+   "body": "Enable AI powered WHOOP Coach to get per",
+   "primary": true,
+   "disabled": true,
+   "setting_key": "WHOOP_COACH",
+   "active": true
+  },
+  {
+   "title": "INCORPORATE WHOOP METRICS",
+   "tag": null,
+   "body": "Allow WHOOP Coach to use your WHOOP metr",
+   "primary": false,
+   "disabled": true,
+   "setting_key": "WHOOP_COACH_DATA",
+   "active": true
+  },
+  {
+   "title": "RESPONSE LENGTH",
+   "tag": null,
+   "body": "Response length determines how detailed ",
+   "primary": false,
+   "disabled": false,
+   "setting_key": "WHOOP_COACH_CONCISE",
+   "active": false
+  },
+  {
+   "title": "MEMORY",
+   "tag": null,
+   "body": "Allow WHOOP to remember details from pas",
+   "primary": false,
+   "disabled": false,
+   "setting_key": "WHOOP_COACH_MEMORY",
+   "active": false
+  }
+ ],
+ "footer": {
+  "title": "Data privacy"
+ }
+}
