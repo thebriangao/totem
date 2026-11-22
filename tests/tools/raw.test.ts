@@ -9,9 +9,8 @@ import type { WhoopClient } from "../../src/whoop/client.js";
 async function setup() {
   const whoop = {
     get: vi.fn().mockResolvedValue({ ok: true }),
-    post: vi.fn().mockResolvedValue({ created: true }),
-    put: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
+    // The one write entry point: POST answers 201 with a body, PUT and DELETE 204 with none.
+    write: vi.fn(async (method: string) => (method === "POST" ? { status: 201, body: { created: true } } : { status: 204, body: undefined })),
   };
   const server = new McpServer({ name: "t", version: "0" });
   registerRaw(server, whoop as unknown as WhoopClient);
@@ -44,16 +43,20 @@ describe("whoop_raw", () => {
     const out = await call({ path: "/x", method: "POST", body: {}, confirm: true });
     expect(out.isError).toBe(true);
     expect(out.text).toMatch(/allow_write/);
-    expect(whoop.post).not.toHaveBeenCalled();
+    expect(whoop.write).not.toHaveBeenCalled();
   });
   it("previews a write until confirm is true, then sends it", async () => {
     const { whoop, call } = await setup();
     const preview = await call({ path: "/followers-service/v1/following/1", method: "POST", body: { source: "x" }, allow_write: true });
     expect(JSON.parse(preview.text).preview).toBe(true);
-    expect(whoop.post).not.toHaveBeenCalled();
+    expect(whoop.write).not.toHaveBeenCalled();
     const sent = await call({ path: "/followers-service/v1/following/1", method: "POST", body: { source: "x" }, allow_write: true, confirm: true });
     expect(sent.isError).toBe(false);
-    expect(whoop.post).toHaveBeenCalledWith("/followers-service/v1/following/1", { source: "x" }, {});
+    expect(whoop.write).toHaveBeenCalledWith("POST", "/followers-service/v1/following/1", { source: "x" }, {});
+    // The status shown is the one WHOOP answered with, not an assumed 200.
+    expect(JSON.parse(sent.text)).toMatchObject({ status: 201, response: { created: true } });
+    const deleted = await call({ path: "/ai-conversation-service/v1/conversation/abc", method: "DELETE", allow_write: true, confirm: true });
+    expect(JSON.parse(deleted.text)).toMatchObject({ method: "DELETE", status: 204 });
   });
   it("refuses denylisted writes even with allow_write + confirm", async () => {
     const { whoop, call } = await setup();
@@ -68,7 +71,7 @@ describe("whoop_raw", () => {
       const out = await call({ path, method: "PUT", body: {}, allow_write: true, confirm: true });
       expect(out.isError, path).toBe(true);
     }
-    expect(whoop.put).not.toHaveBeenCalled();
+    expect(whoop.write).not.toHaveBeenCalled();
   });
   it("refuses a denylisted write spelled so the literal path dodges the denylist", async () => {
     // Each of these is sent by `new URL()` (or routed by WHOOP) as a denylisted
@@ -94,14 +97,13 @@ describe("whoop_raw", () => {
         expect(out.isError, `${method} ${JSON.stringify(path)}`).toBe(true);
       }
     }
-    expect(whoop.put).not.toHaveBeenCalled();
-    expect(whoop.delete).not.toHaveBeenCalled();
+    expect(whoop.write).not.toHaveBeenCalled();
   });
   it("still sends an allowed write whose path carries a query string", async () => {
     const { whoop, call } = await setup();
     const out = await call({ path: "/followers-service/v1/following/1?source=x", method: "POST", body: {}, allow_write: true, confirm: true });
     expect(out.isError).toBe(false);
-    expect(whoop.post).toHaveBeenCalledWith("/followers-service/v1/following/1?source=x", {}, {});
+    expect(whoop.write).toHaveBeenCalledWith("POST", "/followers-service/v1/following/1?source=x", {}, {});
   });
 });
 

@@ -109,6 +109,25 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("write() reports the status WHOOP answered with, across a 412 retry", async () => {
+    const client = new WhoopClient({ getToken: async () => "test-bearer", sleep: async () => {} });
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    expect(await client.write("DELETE", "/x/1", undefined)).toEqual({ status: 204, body: undefined });
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).body).toBeUndefined();
+
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: 7 }), { status: 201 }));
+    expect(await client.write("POST", "/x", { a: 1 })).toEqual({ status: 201, body: { id: 7 } });
+
+    // "cycle concurrently being updated" is retried; the status is the final answer's.
+    fetchMock
+      .mockResolvedValueOnce(new Response("busy", { status: 412 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(true), { status: 200 }));
+    expect(await client.write("PUT", "/x/1", { a: 2 })).toEqual({ status: 200, body: true });
+
+    fetchMock.mockResolvedValueOnce(new Response("nope", { status: 400 }));
+    await expect(client.write("PUT", "/x/1", {})).rejects.toBeInstanceOf(WhoopApiError);
+  });
+
   it("keeps date-bearing historical paths longer than current-day paths", async () => {
     let now = Date.parse("2026-08-24T12:00:00.000Z");
     fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));

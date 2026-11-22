@@ -387,6 +387,21 @@ export class WhoopClient {
     return this.request<T>("DELETE", path, query, undefined);
   }
 
+  /**
+   * A write that also says which status WHOOP answered with (200, 201, 204…).
+   * For whoop_raw, which shows a response as it was instead of assuming 200.
+   */
+  async write<T = unknown>(
+    method: "POST" | "PUT" | "DELETE",
+    path: string,
+    body: unknown,
+    query: Record<string, QueryValue> = {},
+  ): Promise<{ status: number; body: T }> {
+    const seen: { status?: number } = {};
+    const result = await this.request<T>(method, path, query, method === "DELETE" ? undefined : body, seen);
+    return { status: seen.status ?? 200, body: result };
+  }
+
   /** Raw writes can target unknown resources, so callers may flush all state. */
   invalidateAll(): void {
     this.cache.invalidate(["all"]);
@@ -397,12 +412,13 @@ export class WhoopClient {
     path: string,
     query: Record<string, QueryValue>,
     body: unknown,
+    seen?: { status?: number },
   ): Promise<T> {
     if (method === "GET") return this.send<T>(method, path, query, body);
     // A failed or timed-out write may still have been applied server-side, so
     // drop dependent reads whatever the outcome.
     try {
-      return await this.send<T>(method, path, query, body);
+      return await this.send<T>(method, path, query, body, false, 0, seen);
     } finally {
       const tags = writeInvalidationTags(path);
       this.cache.invalidate(tags);
@@ -419,6 +435,7 @@ export class WhoopClient {
     body: unknown,
     retried = false,
     attempt412 = 0,
+    seen?: { status?: number },
   ): Promise<T> {
     assertVerbatimPath(path);
     // No `apiVersion` param: the app sent it on 0 of 5,813 requests (2026-11
@@ -477,7 +494,7 @@ export class WhoopClient {
       // skew, a birthday/country profile edit). Force one refresh and retry.
       if (!retried && this.config.onUnauthorized) {
         this.config.onUnauthorized(token);
-        return this.send<T>(method, path, query, body, true, attempt412);
+        return this.send<T>(method, path, query, body, true, attempt412, seen);
       }
       // A 401 that survives a fresh token is path-specific (WHOOP refuses some
       // endpoints for user tokens), not an expired login. Login expiry surfaces
@@ -488,7 +505,7 @@ export class WhoopClient {
       // "User's cycle is concurrently being updated": WHOOP is recomputing the
       // day (often right after another write). It succeeds on retry.
       await (this.config.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(RETRY_412_DELAYS_MS[attempt412]!);
-      return this.send<T>(method, path, query, body, retried, attempt412 + 1);
+      return this.send<T>(method, path, query, body, retried, attempt412 + 1, seen);
     }
     if (response.status >= 500) {
       const text = bodyText;
@@ -507,6 +524,7 @@ export class WhoopClient {
       throw new WhoopApiError(response.status, path, text, description);
     }
 
+    if (seen) seen.status = response.status;
     if (response.status === 204) return undefined as T;
     // Some endpoints answer 200 with an empty body, or a bare JSON literal
     // (profile PUT returns `false` when it refused the values).

@@ -95,11 +95,9 @@ export function registerRaw(server: McpServer, client: WhoopClient): void {
       if (refusal) throw new Error(refusal);
       if (!confirm) return respond("whoop_raw", RawOut, preview(method, safePath, { query: q, body }));
       // The client invalidates dependent cache tags itself (everything for unknown paths).
-      const response =
-        method === "POST" ? await client.post(safePath, body, q)
-        : method === "PUT" ? await client.put(safePath, body, q)
-        : await client.delete(safePath, q);
-      return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response }, { compact: false });
+      // The status is WHOOP's own (a delete usually answers 204 with no body), not an assumed 200.
+      const { status, body: response } = await client.write(method, safePath, body, q);
+      return respond("whoop_raw", RawOut, { path: safePath, method, status, response }, { compact: false });
     },
   );
 }
