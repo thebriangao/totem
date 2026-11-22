@@ -1,0 +1,73 @@
+{
+ "id": "719956d7-95db-4187-b174-b40fac5f0bee",
+ "turn_status": "COMPLETE",
+ "messages": [
+  {
+   "id": "7bcea9f6-5f3c-487d-9f1b-3090c4e83a71",
+   "role": "user",
+   "items": [
+    {
+     "content": {
+      "text": "Yes, log the walk",
+      "text_hash": -406523025
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "7bcea9f6-5f3c-487d-9f1b-3090c4e83a71_0"
+    }
+   ]
+  },
+  {
+   "id": "719956d7-95db-4187-b174-b40fac5f0bee",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "id": "cedf961b-bda9-47ea-82e8-1c97da73184d",
+      "body_icon": "AI_SPARKLE",
+      "body_text": "Logged Walk",
+      "style": "COMPACT"
+     },
+     "type": "ICON_MARKDOWN_CALLOUT",
+     "id": "719956d7-95db-4187-b174-b40fac5f0bee_0"
+    }
+   ]
+  },
+  {
+   "id": "72bd828d-7eaf-44a3-8a7b-4fb0ad0791ae",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "I’ll log the confirmed 20-minute walk now.",
+      "text_hash": -164095114
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "72bd828d-7eaf-44a3-8a7b-4fb0ad0791ae_0"
+    }
+   ]
+  },
+  {
+   "id": "071b092f-8d2b-4b02-a2e0-7a8672b50124",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "Your 20-minute walk is logged for **12:30–12:50 PM Pacific today**. Its Strain score is still processing; keep the rest of tonight restful.",
+      "text_hash": -169082596
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "071b092f-8d2b-4b02-a2e0-7a8672b50124_0"
+    }
+   ]
+  },
+  {
+   "id": "bb020423-edcd-48c2-8ac3-f33157a003aa",
+   "role": "assistant",
+   "items": []
+  }
+ ],
+ "turn_number": 4,
+ "feedback": null,
+ "should_show_suggested_chips": true,
+ "should_show_feedback_actions": true
+}

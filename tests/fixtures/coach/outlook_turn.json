@@ -1,0 +1,54 @@
+{
+ "id": "cdfcf662-0548-473f-aca5-b79f735cce1a",
+ "turn_status": "COMPLETE",
+ "messages": [
+  {
+   "id": "6a1b8231-11f1-4bcb-a41a-6c69e0247b4f",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "## Steady start  \n",
+      "text_hash": 1
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "a_0"
+    },
+    {
+     "content": {
+      "text": "**Strength Trainer** – focus on explosive leg work. **Walking** – an easy indoor walk keeps you moving.  \n",
+      "text_hash": 2
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "a_1"
+    },
+    {
+     "content": {
+      "text": "Tell me how the day unfolds.",
+      "text_hash": 3
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "a_2"
+    }
+   ]
+  },
+  {
+   "id": "cdfcf662-0548-473f-aca5-b79f735cce1a",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "should_show_loading_ui": true,
+      "path": "/ai-conversation-bff/v1/recommendation-widget?cycleId=1974268448&turnId=cdfcf662-0548-473f-aca5-b79f735cce1a&conversationFingerprint=daily-outlook___cycle___1974049188"
+     },
+     "type": "MINI_ARCH_WIDGET",
+     "id": "cdfcf662-0548-473f-aca5-b79f735cce1a_0"
+    }
+   ]
+  }
+ ],
+ "turn_number": 0,
+ "feedback": null,
+ "should_show_suggested_chips": false,
+ "should_show_feedback_actions": true
+}

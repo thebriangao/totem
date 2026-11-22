@@ -1,0 +1,14 @@
+{
+ "average": 8.788268725396975,
+ "last_updated_at": "2026-11-21T20:00:00.000+0000",
+ "name": "Day Strain",
+ "offset": 2,
+ "total_count": 2,
+ "total_compliant": 2,
+ "total_empty": 0,
+ "total_non_compliant": 0,
+ "records": [
+  {"avatar_url": "https://example.com/a.png", "calories": 2529.0717465607454, "compliant": true, "created_at": "2026-11-21T12:00:00.000+0000", "cycle_day_joined": "2025-02-01", "day_strain": 18.695377796407854, "deleted": false, "during": "['2026-11-15','2026-11-22')", "first_name": "Avery", "has_data": null, "last_name": "Example", "name": "Avery Example", "peak_activity": {"activity_id": 1, "activity_internal_name": "running", "activity_v2_id": "00000000-0000-4000-8000-000000000001", "cycle_day": "2026-11-18", "raw_strain": 0.0195, "sport_id": 0, "sport_name": "running", "strain": 17.88774971255635}, "period": "week", "rank": 1, "updated_at": "2026-11-21T12:00:00.000+0000", "user_id": 700001, "waiting_for_data": null, "workout_aggregate_activities": [{"avg_strain": 15.7, "count": 9, "sport_id": 0, "sport_name": "running"}]},
+  {"avatar_url": "https://example.com/me.png", "calories": 11.119778814497066, "compliant": true, "created_at": "2026-11-21T12:00:00.000+0000", "cycle_day_joined": "2026-11-21", "day_strain": 0.005551161427415272, "deleted": false, "during": "['2026-11-15','2026-11-22')", "first_name": "Test", "has_data": null, "last_name": "User", "name": "Test User", "peak_activity": null, "period": "week", "rank": 2, "updated_at": "2026-11-21T12:00:00.000+0000", "user_id": 200001, "waiting_for_data": null, "workout_aggregate_activities": []}
+ ]
+}

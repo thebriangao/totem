@@ -286,8 +286,12 @@ function writeInvalidationTags(path: string): readonly string[] {
     path.includes("recovery-details") || path.startsWith("/activities-service/v2/activities")
   ) return ACTIVITY;
   // The coach can create, edit and delete activities, journal answers and
-  // templates server-side in a chat turn.
-  if (path.startsWith("/ai-conversation-")) return [...ACTIVITY, "journal", "settings"];
+  // templates server-side, but only in a chat turn. Opening a conversation
+  // (whoop_coach_history does it just to read), image files and AI settings
+  // change nothing that is cached.
+  if (path.startsWith("/ai-conversation-")) {
+    return /\/conversation\/[^/]+\/turn$/.test(path) ? [...ACTIVITY, "journal", "settings"] : [];
+  }
   if (path.startsWith("/progression-service/v3/trends/WEIGHT/readings")) {
     // The latest reading also rewrites the profile weight (bootstrap).
     return ["trend", "weight", "profile", "settings", "daily"];

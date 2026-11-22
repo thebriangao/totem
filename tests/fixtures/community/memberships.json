@@ -1,0 +1,31 @@
+{
+ "offset": 1,
+ "total_count": 1,
+ "records": [
+  {
+   "about": "A synthetic test community.",
+   "avatar": "https://example.com/avatar.png",
+   "banner": "https://example.com/banner.png",
+   "chat_channels": [{"cid": "team:synthetic", "id": "synthetic", "name": "General", "type": "team"}],
+   "chat_enabled": false,
+   "chatbot_enabled": false,
+   "created_at": "2025-01-01T00:00:00.000+0000",
+   "deleted": false,
+   "general_chat_channel": {"cid": "team:synthetic", "id": "synthetic", "name": "General", "type": "team"},
+   "id": 900001,
+   "invite_code": {"code": "COMM-000000", "created_at": "2025-01-01T00:00:00.000+0000", "deleted": false, "expires_at": null, "id": 1, "updated_at": "2025-01-01T00:00:00.000+0000"},
+   "metadata": {"community_id": 900001, "compliance_monthly_cutoff": 15, "compliance_weekly_cutoff": 3, "created_at": "2025-01-01T00:00:00.000+0000", "deleted": false, "language": "en", "member_count": 455, "updated_at": "2026-11-21T00:00:00.000+0000"},
+   "name": "Synthetic Runners",
+   "owner": {"avatar_url": "https://example.com/owner.png", "can_upload_data": true, "created_at": null, "disabled": false, "email": "", "first_name": "Owner", "last_name": "", "member_type": "owner", "name": "Owner Example", "updated_at": null, "user_id": 800001, "username": "owner_example"},
+   "owner_id": 800001,
+   "private": true,
+   "share_recovery": true,
+   "share_sleep": true,
+   "share_strain": true,
+   "team_type": "COMMUNITY",
+   "unread_count": 0,
+   "updated_at": "2026-11-21T00:00:00.000+0000",
+   "user_rank": 518
+  }
+ ]
+}

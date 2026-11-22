@@ -1,0 +1,17 @@
+{
+ "expand_analytic_event": null,
+ "input": {
+  "bindings": {"submit_action.action.parameters.request.body.text": "comment_input"},
+  "placeholder": "Add a comment",
+  "state_update_value_key": "comment_input",
+  "submit_action": {"action": {"type": "UPDATE", "parameters": {"request": {"body": {}, "method": "POST", "path": "followers-service/v1/snapshots/33c44c51-1111-4222-9b29-9e4fdfbc870b/comments"}}}}
+ },
+ "items": [],
+ "preview_rotation_seconds": 3,
+ "preview_summary_label": null,
+ "quick_reactions": [
+  {"action": {"action": {"type": "UPDATE", "parameters": {"request": {"body": {"text": "👏"}, "method": "POST", "path": "followers-service/v1/snapshots/33c44c51-1111-4222-9b29-9e4fdfbc870b/comments"}}}}, "emoji": "👏"},
+  {"action": {"action": {"type": "UPDATE", "parameters": {"request": {"body": {"text": "🆗"}, "method": "POST", "path": "followers-service/v1/snapshots/33c44c51-1111-4222-9b29-9e4fdfbc870b/comments"}}}}, "emoji": "🆗"},
+  {"action": {"action": {"type": "UPDATE", "parameters": {"request": {"body": {"text": "❤️"}, "method": "POST", "path": "followers-service/v1/snapshots/33c44c51-1111-4222-9b29-9e4fdfbc870b/comments"}}}}, "emoji": "❤️"}
+ ]
+}
