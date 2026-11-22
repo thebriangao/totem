@@ -100,7 +100,7 @@ export function connectCards(mcpUrl: string): Card[] {
     },
     {
       logo: "openai", name: "ChatGPT", where: "chatgpt.com, the ChatGPT desktop app and Codex",
-      body: `<p class="step">On chatgpt.com: <b>Plugins</b> → <b>+</b> → <b>Add custom MCP server</b>, then paste the address above.</p><p class="step">For the desktop app and Codex, run this in a terminal (it opens the sign-in itself):</p>${copyRow(cmd.codex, "the Codex command")}`,
+      body: `<p class="step">On chatgpt.com: <b>Plugins</b> → <b>Add</b> (top right) → <b>Add custom MCP server</b>. Paste the address above, tick the box, then <b>Create as a plugin</b> and <b>Continue</b>.</p><p class="step">For the desktop app and Codex, run this in a terminal (it opens the sign-in itself):</p>${copyRow(cmd.codex, "the Codex command")}`,
     },
     {
       logo: "claude", name: "Claude Code", where: "in a terminal",

@@ -126,7 +126,8 @@ export const CLIENTS: Client[] = [
     id: "chatgpt", name: "ChatGPT", featured: true,
     detect: (sys) => sys.has("codex") || exists(sys.home, ".codex"),
     recipe: (t, sys) => {
-      const web = `On chatgpt.com: ${menu("Plugins", "+", "Add custom MCP server")}. Paste the URL.`;
+      // Seen on chatgpt.com 2026-11-22: the Add menu at the top right of Plugins.
+      const web = `On chatgpt.com: ${menu("Plugins", "Add", "Add custom MCP server")}. Paste the URL, then Create as a plugin and Continue.`;
       if (!sys.has("codex")) {
         // The desktop app without the codex command: its own settings screen.
         const add = menu("Settings", "MCP servers", "Add server");
