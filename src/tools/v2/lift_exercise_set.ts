@@ -33,8 +33,8 @@ const CustomIn = z.object({
   muscle_groups: z.array(z.enum(EXERCISE_FILTER_OPTIONS.muscle_groups)).min(1).max(8).optional(),
   equipment: z.enum(EXERCISE_FILTER_OPTIONS.equipment).optional(),
   movement_pattern: z.enum(EXERCISE_FILTER_OPTIONS.movement_patterns).optional(),
-  volume_input_format: z.enum(VOLUME_FORMATS).optional().describe("How sets are measured."),
-  linked_exercise: z.string().optional().describe("Catalog id or name it counts as (tracking, e1RM, muscle load)."),
+  volume_input_format: z.enum(VOLUME_FORMATS).optional(),
+  linked_exercise: z.string().optional().describe("Catalog id or name it counts as"),
   instructions: z.array(z.string().max(500)).max(20).optional(),
 });
 
@@ -57,16 +57,18 @@ export function registerLiftExerciseSet(server: McpServer, client: WhoopClient):
   defineTool(server, {
     name: TOOL,
     description:
-      "Custom exercises and 1RM entries. create_custom/edit_custom: `custom` fields; link a catalog exercise or it stays untracked (no e1RM, no muscle load). delete_custom is soft: its PR tile stays. set_1rm: value in `unit` (1–999 in the display unit), date today or up to 6 months back; entry_id edits a manual entry (ids from whoop_lift_exercise history). delete_1rm: entry_id or date. Preview unless confirm:true.",
+      "Custom exercises and manual 1RM entries. create_custom / edit_custom take custom; without a linked_exercise it stays untracked " +
+      "(no e1RM, no muscle load). delete_custom is soft: its PR tile stays. set_1rm: value with unit, dated today or up to 6 months " +
+      "back; entry_id (from whoop_lift_exercise) edits an entry. delete_1rm: entry_id or date. Previews unless confirm:true.",
     input: {
       action: z.enum(["create_custom", "edit_custom", "delete_custom", "set_1rm", "delete_1rm"]),
-      exercise_id: z.string().optional().describe("Target exercise (custom UUID for edit/delete)."),
-      exercise: z.string().optional().describe("Target by exact name, instead of exercise_id."),
-      custom: CustomIn.optional().describe("create_custom/edit_custom fields; edit keeps omitted ones."),
-      value: z.number().positive().optional().describe("1RM in `unit`."),
-      date: z.iso.date().optional().describe("1RM date; default today."),
-      entry_id: z.string().optional().describe("Manual 1RM entry to edit or delete."),
-      unit: z.enum(["kg", "lb"]).optional().describe("Unit of `value`; required for set_1rm."),
+      exercise_id: z.string().optional(),
+      exercise: z.string().optional().describe("Or the exact name"),
+      custom: CustomIn.optional().describe("edit_custom keeps omitted fields"),
+      value: z.number().positive().optional(),
+      date: z.iso.date().optional(),
+      entry_id: z.string().optional(),
+      unit: z.enum(["kg", "lb"]).optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

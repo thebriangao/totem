@@ -70,14 +70,16 @@ export function registerRaw(server: McpServer, client: WhoopClient): void {
     {
       name: "whoop_raw",
       description:
-        "Escape hatch: call any WHOOP endpoint when no tool fits (see the whoop://catalog/endpoints resource for verified paths). GET by default. Writes need allow_write:true and confirm:true, and some paths are refused outright (auth, account, purchases, consents, strap, telemetry). Social writes (follow, comment) are only available here.",
+        "Escape hatch: call any WHOOP endpoint when no tool fits (the whoop://catalog/endpoints resource lists verified paths). GET by " +
+        "default. Writes need allow_write:true and confirm:true; some paths are refused outright (auth, account, purchases, consents, " +
+        "strap, telemetry). Social writes (follow, comment) are only available here.",
       input: {
-        path: z.string().describe("Path starting with /, e.g. /home-service/v1/home"),
+        path: z.string().describe("e.g. /home-service/v1/home"),
         method: z.enum(["GET", "POST", "PUT", "DELETE"]).default("GET"),
         query: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
         body: z.unknown().optional(),
-        allow_write: z.boolean().default(false).describe("Required for POST/PUT/DELETE."),
-        confirm: z.boolean().default(false).describe("false returns a preview of the write."),
+        allow_write: z.boolean().default(false),
+        confirm: z.boolean().default(false),
       },
       annotations: openWorld(WRITE_DESTRUCTIVE),
     },

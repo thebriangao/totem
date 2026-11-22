@@ -35,12 +35,11 @@ export function registerWeight(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: "whoop_weight",
     description:
-      "Weight / body-composition readings, newest first, as columnar rows (weight in kg; display_unit is the account's unit). " +
-      "The newest reading is what WHOOP uses as the profile weight. Integration readings (e.g. Apple Health) can be deleted but not edited. " +
-      "Pass next_cursor back as cursor for older readings. Use ids with whoop_weight_log.",
+      "Weight and body-composition readings, newest first, in kg (display_unit is the account's unit). The newest reading is the " +
+      "profile weight. cursor takes a returned next_cursor. Ids feed whoop_weight_log.",
     input: {
-      limit: z.number().int().min(1).max(100).default(10).describe("Readings per call."),
-      cursor: z.string().min(1).optional().describe("next_cursor from a previous call."),
+      limit: z.number().int().min(1).max(100).default(10),
+      cursor: z.string().min(1).optional(),
     },
     annotations: READ_ONLY,
   }, async ({ limit, cursor }) => {

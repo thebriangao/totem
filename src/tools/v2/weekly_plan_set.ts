@@ -46,12 +46,13 @@ export function registerWeeklyPlanSet(server: McpServer, client: WhoopClient): v
   defineTool(server, {
     name: "whoop_weekly_plan_set",
     description:
-      "WRITE: change the Weekly Plan goals. set_goal adds or edits a goal (creates a Custom plan if none): STEPS target in steps/day, STRENGTH_TRAINING_TIME in minutes/week; " +
-      "targets must fit WHOOP's slider. remove_goal drops one; end_plan removes every goal (removing the last one ends the plan). Other goal types are managed in the app. Preview unless confirm:true.",
+      "Change Weekly Plan goals. set_goal adds or edits a goal (starting a Custom plan if there is none): STEPS target in steps/day, " +
+      "STRENGTH_TRAINING_TIME in minutes/week, within WHOOP's slider. remove_goal drops one, and removing the last ends the plan. " +
+      "end_plan removes every goal. Previews unless confirm:true.",
     input: {
       action: z.enum(["set_goal", "remove_goal", "end_plan"]),
-      type: z.enum(PLAN_GOAL_TYPES).optional().describe("Goal type for set_goal / remove_goal."),
-      target: z.number().int().positive().optional().describe("set_goal: steps/day or minutes/week."),
+      type: z.enum(PLAN_GOAL_TYPES).optional(),
+      target: z.number().int().positive().optional(),
       confirm: z.boolean().default(false),
     },
     annotations: idempotent(WRITE_DESTRUCTIVE),

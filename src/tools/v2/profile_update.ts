@@ -36,21 +36,23 @@ export function registerProfileUpdate(server: McpServer, client: WhoopClient): v
   defineTool(server, {
     name: NAME,
     description:
-      "WRITE: change profile fields; pass only what changes. Totem reads your current profile fresh and sends the full body WHOOP requires, keeping everything else (city included; physiological baseline only changes if you pass it). Weight is kg or lb (24–272 kg), height m, cm or in (0.91–2.72 m). Changing birthday or country makes WHOOP end the session; totem refreshes the token on the next call. Email can't be changed here. Read back after writing; preview unless confirm:true.",
+      "Change profile fields; pass only what changes and the rest is kept. Weight is kg or lb (24–272 kg), height m, cm or in " +
+      "(0.91–2.72 m). Changing birthday or country makes WHOOP end the session; totem refreshes the token on the next call. Email " +
+      "can't be changed here. Previews unless confirm:true.",
     input: {
       first_name: z.string().trim().min(1).optional(),
       last_name: z.string().trim().min(1).optional(),
-      birthday: z.iso.date().optional().describe("YYYY-MM-DD."),
+      birthday: z.iso.date().optional(),
       gender: z.enum(GENDERS).optional(),
-      physiological_baseline: z.enum(BASELINES).optional().describe("Sex used for physiology baselines. Unchanged unless passed."),
+      physiological_baseline: z.enum(BASELINES).optional().describe("Sex used for physiology baselines"),
       weight: z.number().positive().optional(),
-      weight_unit: z.enum(["kg", "lb"]).optional().describe("Default kg."),
+      weight_unit: z.enum(["kg", "lb"]).optional().describe("Default kg"),
       height: z.number().positive().optional(),
-      height_unit: z.enum(["m", "cm", "in"]).optional().describe("Default m."),
+      height_unit: z.enum(["m", "cm", "in"]).optional().describe("Default m"),
       city: z.string().trim().optional(),
-      state: z.string().trim().min(1).optional().describe("Region code, e.g. CA. Required for US."),
-      country: z.string().regex(/^[A-Za-z]{2}$/).optional().describe("ISO 3166 alpha-2."),
-      unit_system: z.enum(UNIT_SYSTEMS).optional().describe("Display units; also how WHOOP reads lift weights."),
+      state: z.string().trim().min(1).optional().describe("Region code, e.g. CA; required for US"),
+      country: z.string().regex(/^[A-Za-z]{2}$/).optional(),
+      unit_system: z.enum(UNIT_SYSTEMS).optional().describe("Display units; also how WHOOP reads lift weights"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

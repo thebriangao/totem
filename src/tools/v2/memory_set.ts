@@ -15,8 +15,8 @@ const MEMORY_OFF_WARNING =
 
 export const memorySetInput = {
   action: z.enum(["activate", "deactivate", "delete", "enable_memory", "disable_memory"]),
-  memory_id: z.uuid().optional().describe("The memory (from whoop_memory) for activate, deactivate, delete"),
-  confirm: z.boolean().default(false).describe("true applies; default returns a preview"),
+  memory_id: z.uuid().optional().describe("From whoop_memory"),
+  confirm: z.boolean().default(false),
 };
 
 /** Find a card without opening its detail (a read receipt): timeline first, then each category. */
@@ -92,7 +92,9 @@ export function registerMemorySet(server: McpServer, client: WhoopClient): void 
     {
       name: TOOL,
       description:
-        "Change what WHOOP Coach remembers: activate or deactivate a memory (inactive ones stop shaping coaching), delete one permanently (the preview shows the card), or enable_memory / disable_memory for the whole account. With memory off the coach may still claim it saved something, but nothing is stored. Reads the result back from the memory list. Preview unless confirm:true.",
+        "Change what WHOOP Coach remembers: activate or deactivate a memory (inactive ones stop shaping coaching), delete one " +
+        "permanently, or enable_memory / disable_memory for the whole account. With memory off nothing is stored, whatever the coach " +
+        "says. Previews unless confirm:true.",
       input: memorySetInput,
       annotations: WRITE_DESTRUCTIVE,
     },

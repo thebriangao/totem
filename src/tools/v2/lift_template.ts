@@ -24,12 +24,12 @@ const prebuiltPath = (id: string) => `/weightlifting-service/v2/prebuilt-workout
 
 const SetIn = z.object({
   reps: z.number().int().min(0).max(1000).optional(),
-  weight: z.number().min(0).max(2000).optional().describe("In `unit`."),
+  weight: z.number().min(0).max(2000).optional(),
   time_seconds: z.number().int().min(1).max(86_400).optional(),
 });
 const ExerciseIn = z.object({
-  exercise_id: z.string().optional().describe("Catalog id or custom UUID."),
-  name: z.string().optional().describe("Exact exercise name, instead of exercise_id."),
+  exercise_id: z.string().optional(),
+  name: z.string().optional().describe("Or the exact name"),
   sets: z.array(SetIn).min(1).max(50),
 });
 
@@ -73,14 +73,16 @@ export function registerLiftTemplate(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: TOOL,
     description:
-      "Manage your Strength Trainer templates (My Workouts). create: name + exercises. edit: template_key; rename and/or replace the whole exercise list (omit exercises to keep them). copy: copy_from (your template_key or a WHOOP prebuilt_id) into a new template. delete: template_key. Weights convert from `unit` to the account's display unit. Keys come from whoop_lift_library. Preview unless confirm:true.",
+      "Manage your Strength Trainer templates. create: name and exercises. edit: template_key with a new name and/or exercises (the " +
+      "whole list is replaced). copy: copy_from (your template_key or a WHOOP prebuilt_id) into a new template. delete: template_key. " +
+      "Weights need unit. Keys: whoop_lift_library. Previews unless confirm:true.",
     input: {
       action: z.enum(["create", "edit", "copy", "delete"]),
-      template_key: z.number().int().optional().describe("Template to edit or delete."),
-      copy_from: z.union([z.number().int(), z.string()]).optional().describe("Template key or WHOOP prebuilt_id to copy."),
+      template_key: z.number().int().optional(),
+      copy_from: z.union([z.number().int(), z.string()]).optional(),
       name: z.string().min(1).max(100).optional(),
-      exercises: z.array(ExerciseIn).min(1).max(30).optional().describe("Full list; replaces the current one on edit."),
-      unit: z.enum(["kg", "lb"]).optional().describe("Unit of the weights you give; required when any set has weight."),
+      exercises: z.array(ExerciseIn).min(1).max(30).optional(),
+      unit: z.enum(["kg", "lb"]).optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

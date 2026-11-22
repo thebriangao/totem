@@ -51,12 +51,12 @@ export function registerCycle(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: "whoop_cycle",
     description:
-      "Menstrual cycle / Hormonal Insights for a date: status (cycle or period day), phase, next-period window, the date's calendar state, cycle-journal tags and typical cycle stats. " +
-      "include adds: calendar (the month as runs [from_day, to_day, state, phase]; PERIOD = logged, PREDICTED_PERIOD), settings (mode, contraception, goals), cycles (past cycles), symptoms (symptom patterns), day_log (the date's flow, mucus, symptoms with ids). " +
-      "available:false with a reason when Hormonal Insights isn't set up.",
+      "Menstrual cycle / Hormonal Insights for a date (default today): cycle or period day, phase and next-period window. include adds " +
+      "calendar (the date's month), settings, cycles (past cycles), symptoms (patterns) and day_log (the date's flow, mucus and " +
+      "symptoms, with ids). available:false when Hormonal Insights isn't set up.",
     input: {
-      date: z.iso.date().optional().describe("YYYY-MM-DD (default today); also picks the calendar month."),
-      include: z.array(z.enum(INCLUDE)).default([]).describe("Extra sections."),
+      date: z.iso.date().optional(),
+      include: z.array(z.enum(INCLUDE)).default([]),
     },
     annotations: READ_ONLY,
   }, async ({ date, include }) => {

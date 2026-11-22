@@ -27,11 +27,11 @@ const TOOL = "whoop_coach_history";
 
 export const coachHistoryInput = {
   view: z.enum(["list", "transcript", "outlook"]).default("list"),
-  limit: z.number().int().min(1).max(50).optional().describe("list page size (default 10); transcript: newest turns kept (default 5)"),
-  cursor: z.string().min(1).max(500).optional().describe("list: next_cursor from the previous page"),
-  fingerprint: z.string().min(1).max(200).optional().describe("transcript: a fingerprint from view list"),
-  kind: z.enum(["daily_outlook", "day_in_review"]).default("daily_outlook").describe("outlook: which report"),
-  date: z.iso.date().optional().describe("outlook: the day (default today)"),
+  limit: z.number().int().min(1).max(50).optional().describe("Default 10 rows, or the 5 newest turns"),
+  cursor: z.string().min(1).max(500).optional(),
+  fingerprint: z.string().min(1).max(200).optional().describe("transcript: from view list"),
+  kind: z.enum(["daily_outlook", "day_in_review"]).default("daily_outlook"),
+  date: z.iso.date().optional().describe("outlook only"),
 };
 
 type Input = z.infer<z.ZodObject<typeof coachHistoryInput>>;
@@ -120,7 +120,9 @@ export function registerCoachHistory(server: McpServer, client: WhoopClient): vo
     {
       name: TOOL,
       description:
-        "Read WHOOP Coach history without changing it. list: one row per conversation (fingerprint, AI title, agent, day), newest first, paged by cursor. transcript: a listed thread's turns (user text, coach reply, actions the coach took, cards); only listed fingerprints are opened. outlook: today's (or date's) Daily Outlook or Day in Review with its recommendations, only if it already exists; whoop_coach_ask generates one. Pass a fingerprint as whoop_coach_ask thread to reply.",
+        "Read WHOOP Coach history. list: conversations (fingerprint, title, agent, day), newest first. transcript: a listed thread's " +
+        "turns, with the actions the coach took. outlook: a day's Daily Outlook or Day in Review, only if it already exists " +
+        "(whoop_coach_ask generates one). To reply, pass a fingerprint to whoop_coach_ask as thread.",
       input: coachHistoryInput,
       annotations: READ_ONLY,
     },

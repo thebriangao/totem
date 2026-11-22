@@ -20,15 +20,13 @@ export function registerDay(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "One cycle day at a glance (default today): cycle (its id is informational; it changes when sleeps are edited, never reuse it), " +
-        "scores, main sleep summary, strain with calories and steps, the day's activities grouped CARDIO/RECOVERY/SLEEP with status, " +
-        "workouts_count (CARDIO only), WHOOP coach activity recommendations, and the live state today. " +
-        "Opt-in sections: key_stats (dashboard stats by trend key) and sleep_plan (tonight's sleep need; today only, null when WHOOP's sleep coach errors). " +
-        "Scores are null while WHOOP is calibrating. Durations are minutes.",
+        "One cycle day at a glance (default today): scores, main sleep, strain, calories, steps, activities and, today, the live state. " +
+        "sleep_plan (tonight's sleep need) is today only. Scores are null while WHOOP is calibrating. Never reuse the cycle id: it " +
+        "changes when sleeps are edited.",
       input: {
-        date: z.iso.date().optional().describe("Cycle day YYYY-MM-DD; defaults to today"),
+        date: z.iso.date().optional(),
         include: z.array(z.enum(DAY_SECTIONS)).min(1).optional()
-          .describe("Sections to return; default scores, sleep, strain, activities"),
+          .describe("Default scores, sleep, strain, activities"),
       },
       annotations: READ_ONLY,
     },

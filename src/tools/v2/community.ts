@@ -25,14 +25,14 @@ const LIVE = { fresh: true } as const;
 
 export const communityInput = {
   view: z.enum(["communities", "leaderboard", "following", "snapshot", "comments"]).default("communities"),
-  community_id: z.number().int().positive().optional().describe("leaderboard: which community (default your first)"),
-  metric: z.enum(["recovery", "sleep", "strain"]).default("recovery").describe("leaderboard metric"),
-  window: z.enum(["day", "week", "month"]).default("day").describe("leaderboard: one day, or a 7/30-day average"),
-  date: z.iso.date().optional().describe("leaderboard: the day, or the window's last day (default today)"),
-  limit: z.number().int().min(1).max(50).default(10).describe("leaderboard rows per page"),
-  offset: z.number().int().min(0).default(0).describe("leaderboard: next_offset from the previous page"),
-  user_id: z.number().int().positive().optional().describe("snapshot: whose daily stats, from view following (default you)"),
-  snapshot_id: z.uuid().optional().describe("comments: a snapshot_id from view snapshot"),
+  community_id: z.number().int().positive().optional().describe("leaderboard; default your first"),
+  metric: z.enum(["recovery", "sleep", "strain"]).default("recovery"),
+  window: z.enum(["day", "week", "month"]).default("day"),
+  date: z.iso.date().optional().describe("leaderboard: the window's last day"),
+  limit: z.number().int().min(1).max(50).default(10),
+  offset: z.number().int().min(0).default(0),
+  user_id: z.number().int().positive().optional().describe("snapshot: from view following; default you"),
+  snapshot_id: z.uuid().optional().describe("comments: from view snapshot"),
 };
 
 type Input = z.infer<z.ZodObject<typeof communityInput>>;
@@ -112,7 +112,9 @@ export function registerCommunity(server: McpServer, client: WhoopClient): void 
     {
       name: TOOL,
       description:
-        "WHOOP community and friends data. Returns OTHER PEOPLE'S names and scores, read live (never cached). communities: your teams and your rank. leaderboard: a community's ranking as [rank, name, value] rows plus your row, for a day or a 7/30-day average, paged by offset. following: people you follow with the recovery, sleep and strain they share (user_id for snapshot). snapshot: one person's (or your) daily scores and contributors. comments: a snapshot's comments. Social writes aren't available here.",
+        "Community and friends. Returns OTHER PEOPLE'S names and scores, read live (never cached). Views: communities (your teams and " +
+        "rank), leaderboard (a community's ranking plus your row, for a day or a 7/30-day average), following (people you follow and " +
+        "their shared scores), snapshot (one person's daily scores), comments (on a snapshot). No social writes.",
       input: communityInput,
       annotations: READ_ONLY,
     },

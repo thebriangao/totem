@@ -49,13 +49,14 @@ export function registerLiftExercise(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: TOOL,
     description:
-      "One exercise: metadata (format, e1rm eligibility, custom/linked), workout history (sets as [weight, reps], or [weight, seconds] if timed), medal records, 1RM (value, estimated/manual, history rows [date, value, source, entry_id] — entry_id feeds whoop_lift_exercise_set). Without an exercise: your PR list (deleted customs dropped; no dates; a tile can outlive the deleted activity that set it). Weights in `unit`. cursor = a returned next.",
+      "One exercise by exercise_id or name: metadata, workout history, medal records and 1RM (manual entries carry the entry_id " +
+      "whoop_lift_exercise_set takes). With neither: your PR list. Weights are in unit. cursor takes a returned next.",
     input: {
-      exercise_id: z.string().optional().describe("Catalog id (e.g. BENCHPRESS_BARBELL) or custom UUID."),
-      name: z.string().optional().describe("Exact exercise name; a miss returns suggestions."),
-      include: z.array(z.enum(INCLUDES)).optional().describe("Default history, records, one_rep_max."),
-      cursor: z.string().optional().describe("A returned next (history or PR page)."),
-      end_date: z.iso.date().optional().describe("Progression end date; default today."),
+      exercise_id: z.string().optional().describe("e.g. BENCHPRESS_BARBELL"),
+      name: z.string().optional().describe("Exact name"),
+      include: z.array(z.enum(INCLUDES)).optional().describe("Default history, records, one_rep_max"),
+      cursor: z.string().optional(),
+      end_date: z.iso.date().optional().describe("For progression"),
     },
     annotations: READ_ONLY,
   }, async ({ exercise_id, name, include, cursor, end_date }) => {

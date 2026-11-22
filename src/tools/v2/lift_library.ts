@@ -18,11 +18,13 @@ export function registerLiftLibrary(server: McpServer, client: WhoopClient): voi
   defineTool(server, {
     name: TOOL,
     description:
-      "Strength Trainer workouts and exercises. No args: your templates `my` [template_key, name] and WHOOP workouts `whoop` [prebuilt_id, title, minutes]. template_key: one template, sets as [weight, reps] ([weight, seconds] if timed) in `unit`. prebuilt_id: one WHOOP workout. search: up to 10 exercises {id, name} by name words, muscle or equipment (your custom exercises included) — the ids whoop_lift_log and whoop_lift_exercise take.",
+      "Strength Trainer library. No arguments: your templates (template_key) and WHOOP's workouts (prebuilt_id). With one of those ids: " +
+      "that workout's exercises and sets. search: up to 10 exercises by name, muscle or equipment (custom ones included), with the ids " +
+      "whoop_lift_log and whoop_lift_exercise take.",
     input: {
-      template_key: z.number().int().optional().describe("One of your templates."),
-      prebuilt_id: z.string().optional().describe("One WHOOP workout (id from the list)."),
-      search: z.string().optional().describe("Exercise search, e.g. \"bench barbell\" or \"legs kettlebell\"."),
+      template_key: z.number().int().optional(),
+      prebuilt_id: z.string().optional(),
+      search: z.string().optional().describe("e.g. \"bench barbell\""),
     },
     annotations: READ_ONLY,
   }, async ({ template_key, prebuilt_id, search }) => {

@@ -16,11 +16,10 @@ export function registerCalendar(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Month grid for one pillar. days is one character per day of the month (days[0] = the 1st): " +
-        "H/M/L = high/medium/low, '-' = data but no score, '.' = no data; key gives WHOOP's thresholds. " +
-        "States only, no numbers: use whoop_day for a day's scores. Days after today can show data.",
+        "Month grid for one pillar. days has one character per day of the month (days[0] = the 1st): H/M/L = high/medium/low, '-' = data " +
+        "but no score, '.' = no data. States only, no numbers; use whoop_day for a day's scores.",
       input: {
-        date: z.iso.date().optional().describe("Any day in the month; defaults to today"),
+        date: z.iso.date().optional().describe("Any day in the month"),
         pillar: z.enum(CALENDAR_PILLARS).default("recovery"),
       },
       annotations: READ_ONLY,

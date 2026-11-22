@@ -19,13 +19,15 @@ export function registerJournal(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: NAME,
     description:
-      "Your journal for a date (default today): answered behaviours only (yes/no, value+unit, time, src:AI when the AI logged it) and the day's notes. include: unanswered; catalog (your live behaviour list incl. custom ones as {id, name, type}; narrow with search or category); magnitudes (adds ranges, step choices and time questions to catalog rows); impact (how behaviours move recovery; new accounts only get member-average rows, rec:true, with no detail). impact_id: detail for one of your personal impacts.",
+      "Journal for a date (default today): answered behaviours (yes/no, value, time) and notes. include: unanswered; catalog (your " +
+      "behaviour ids and names, custom ones too; filter with search or category); magnitudes (ranges and step choices on catalog rows); " +
+      "impact (how behaviours move your recovery). impact_id: one personal impact's detail.",
     input: {
-      date: z.iso.date().optional().describe("YYYY-MM-DD, default today."),
+      date: z.iso.date().optional(),
       include: z.array(z.enum(["unanswered", "catalog", "magnitudes", "impact"])).optional(),
-      search: z.string().optional().describe("Filter the catalog by name (implies catalog)."),
-      category: z.string().optional().describe("Filter the catalog by category, e.g. Supplements (implies catalog)."),
-      impact_id: z.string().optional().describe("id of a personal impact row (implies impact)."),
+      search: z.string().optional(),
+      category: z.string().optional().describe("e.g. Supplements"),
+      impact_id: z.string().optional(),
     },
     annotations: READ_ONLY,
   }, async ({ date, include, search, category, impact_id }) => {

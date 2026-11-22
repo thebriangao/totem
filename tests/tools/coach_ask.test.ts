@@ -85,7 +85,7 @@ describe("whoop_coach_ask through MCP", () => {
     const client = await connect((server) => registerCoachAsk(server, mockClient({}).client));
     const { tools } = await client.listTools();
     expect(tools[0]!.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true, openWorldHint: true });
-    expect(tools[0]!.description!.length).toBeLessThanOrEqual(600);
+    expect(tools[0]!.description!.length).toBeLessThanOrEqual(450);
   });
 
   it("doesn't promise that every coach write shows up in actions", async () => {

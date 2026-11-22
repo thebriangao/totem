@@ -20,15 +20,13 @@ export function registerSleep(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Sleep for a cycle day (default today = last night's main sleep), or any sleep or nap by activity_id. Returns window, type " +
-        "(sleep/nap), scored, minutes asleep and in bed, efficiency, latency, respiratory rate, wake events (disturbances = total), " +
-        "restorative time, stage minutes and %, sleep HR, performance and consistency; the day's naps (ids for activity_id); and " +
-        "tonight's sleep need in minutes (today only, null when WHOOP's sleep coach errors). include hypnogram adds the stage " +
-        "sequence as [stage, minutes] runs. Unscored sleeps have no metrics.",
+        "Sleep for a cycle day (default today = last night's main sleep) or one sleep or nap by activity_id: window, minutes asleep and " +
+        "in bed, efficiency, stages, disturbances, HR and performance, plus the day's naps (with ids) and tonight's sleep need (today " +
+        "only). Unscored sleeps have no metrics.",
       input: {
-        date: z.iso.date().optional().describe("Cycle day YYYY-MM-DD; defaults to today"),
-        activity_id: z.string().uuid().optional().describe("A sleep or nap id; overrides date"),
-        include: z.array(z.enum(INCLUDES)).optional().describe("Default naps and need; add hypnogram for the stage sequence"),
+        date: z.iso.date().optional(),
+        activity_id: z.string().uuid().optional(),
+        include: z.array(z.enum(INCLUDES)).optional().describe("Default naps, need"),
       },
       annotations: READ_ONLY,
     },

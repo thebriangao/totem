@@ -16,12 +16,11 @@ export function registerStress(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Stress Monitor for a day (default today): state, current level (0–3 scale) and label, min and peak over the day's graph " +
-        "(up to 24 h; today's ends now and starts yesterday), minutes in low/medium/high stress, and calibration progress. " +
-        "include timeline adds the mean level per 30 minutes from its start time.",
+        "Stress Monitor for a day (default today): state, current level (0–3) and label, min and peak, and minutes in low/medium/high " +
+        "stress. Today's graph covers the last 24 hours. include timeline adds the mean level per 30 minutes.",
       input: {
-        date: z.iso.date().optional().describe("YYYY-MM-DD; defaults to today"),
-        include: z.array(z.enum(["timeline"])).optional().describe("Extra sections"),
+        date: z.iso.date().optional(),
+        include: z.array(z.enum(["timeline"])).optional(),
       },
       annotations: READ_ONLY,
     },

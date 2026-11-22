@@ -44,12 +44,12 @@ function fail(error: string, extra: Record<string, unknown> = {}): ToolResult {
 }
 
 const BehaviorInput = z.object({
-  id: z.number().int().optional().describe("behavior_tracker_id (see whoop_journal include:[catalog])."),
-  name: z.string().optional().describe("Exact behaviour title or internal name, e.g. Caffeine."),
-  answered_yes: z.boolean().optional().describe("Default true: unanswered rows are invisible in the app."),
-  magnitude: z.number().nullable().optional().describe("Range: a number in range. Step: the choice value. null clears it."),
-  magnitude_label: z.string().optional().describe("Step behaviours: the choice label (e.g. Moderate) instead of the value."),
-  time: z.union([z.string(), z.number()]).nullable().optional().describe("ISO datetime with an offset, or epoch seconds. null clears it."),
+  id: z.number().int().optional().describe("From whoop_journal include catalog"),
+  name: z.string().optional().describe("Exact title, e.g. Caffeine"),
+  answered_yes: z.boolean().optional().describe("Default true"),
+  magnitude: z.number().nullable().optional().describe("A number in range, or the step choice value; null clears"),
+  magnitude_label: z.string().optional().describe("Step choice label (e.g. Moderate) instead of magnitude"),
+  time: z.union([z.string(), z.number()]).nullable().optional().describe("ISO datetime with offset or epoch seconds; null clears"),
 });
 
 interface PlannedRow {
@@ -71,14 +71,16 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
   defineTool(server, {
     name: NAME,
     description:
-      "WRITE: log journal answers. Default is a merge (partial PUT): only the listed behaviours change; notes and other answers stay. WHOOP replaces a row whole, so a yes row keeps its stored magnitude/time unless you pass new ones (null clears). behaviors[]: id or name (custom ones too), answered_yes (default true), magnitude (range number, or step value/label), time. unset[] clears answers. notes or replace_day:true rewrite the whole day (one date), keeping current notes/answers unless replaced. Read back after writing; preview unless confirm:true.",
+      "Log journal answers. Default is a merge: only the listed behaviours change, and a yes row keeps its stored magnitude and time " +
+      "unless you pass new ones (null clears). notes or replace_day:true rewrite the whole day (one date only), keeping current notes " +
+      "and answers unless replaced. Behaviours go by id or name, custom ones included. Previews unless confirm:true.",
     input: {
-      date: z.iso.date().optional().describe("YYYY-MM-DD, default today. Past or today only."),
-      dates: z.array(z.iso.date()).min(1).max(7).optional().describe("Several dates at once (merge writes only)."),
+      date: z.iso.date().optional().describe("Default today"),
+      dates: z.array(z.iso.date()).min(1).max(7).optional().describe("Several dates; merge writes only"),
       behaviors: z.array(BehaviorInput).default([]),
-      unset: z.array(z.union([z.number().int(), z.string()])).optional().describe("Ids or names whose answer to clear."),
-      notes: z.string().optional().describe("Replaces the day's notes (\"\" clears them). Uses the full-day PUT."),
-      replace_day: z.boolean().optional().describe("Drop every answer not listed here. Notes are kept unless passed."),
+      unset: z.array(z.union([z.number().int(), z.string()])).optional().describe("Ids or names whose answer to clear"),
+      notes: z.string().optional().describe("Replaces the day's notes; \"\" clears them"),
+      replace_day: z.boolean().optional().describe("Drops every answer not listed here"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

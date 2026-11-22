@@ -81,8 +81,8 @@ describe("whoop_profile tool", () => {
   it("stays inside the description budgets", async () => {
     const client = await connect(registerProfile, mockWhoop({}));
     for (const t of await toolBudget(client)) {
-      expect(t.description).toBeLessThanOrEqual(600);
-      expect(t.longestDescribe).toBeLessThanOrEqual(80);
+      expect(t.description).toBeLessThanOrEqual(450);
+      expect(t.longestDescribe).toBeLessThanOrEqual(60);
     }
   });
 });
