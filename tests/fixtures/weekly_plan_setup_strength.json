@@ -1,0 +1,38 @@
+{
+ "plan_id": "5a082cd3-41b8-42bc-9516-6c6b11c6ca4d",
+ "screens": [
+  {
+   "goal": "STRENGTH_TRAINING_TIME",
+   "slider_content": {
+    "range": {
+     "lower_endpoint": 10,
+     "lower_bound_type": "CLOSED",
+     "upper_endpoint": 720,
+     "upper_bound_type": "CLOSED"
+    },
+    "increment": 15,
+    "usable_range": {
+     "lower_endpoint": 10,
+     "lower_bound_type": "CLOSED",
+     "upper_endpoint": 720,
+     "upper_bound_type": "CLOSED"
+    },
+    "value": 0.11,
+    "value_units": "hrs",
+    "value_label": "YOUR GOAL",
+    "recommended_range": null,
+    "top_text": "12:00 hrs",
+    "bottom_text": "10 min"
+   },
+   "navigation_title_display": "SET YOUR TARGET",
+   "navigation_subtitle_display": "",
+   "title": "Set your weekly Strength Activity Time target",
+   "description": "",
+   "subtitle_display": null,
+   "continue_button_display": "Save Target",
+   "skip_button_display": "Remove",
+   "button_description_display": null,
+   "smart_alarm_override": null
+  }
+ ]
+}

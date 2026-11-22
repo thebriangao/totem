@@ -146,24 +146,23 @@ describe("write-tool validation through MCP", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  // v2 smart alarm (SPEC.md D11): the v1 schedule/preferences shapes were replaced; these keep
+  // the original intents (bad clock rejected, human time normalized, no-op skipped).
+  const alarmRows = [
+    { schedule_id: "11111111-aaaa", day_of_week: "MONDAY", upper_time_bound: "07:05:00", goal: "EXACT_TIME_PERFORM", enabled: true, deleted: false },
+  ];
+  const alarmGet = () => vi.fn(async (path: string) => {
+    if (path === "/smart-alarm-service/v1/alarm-schedule") return alarmRows;
+    throw new WhoopApiError(500, path, "");
+  });
+
   it("rejects impossible Smart Alarm clock values before mutation", async () => {
     const put = vi.fn();
-    const whoop = { put } as unknown as WhoopClient;
+    const whoop = { put, get: alarmGet() } as unknown as WhoopClient;
     const client = await connect((server) => registerSmartAlarmSet(server, whoop));
     const result = await client.callTool({
       name: "whoop_smart_alarm_set",
-      arguments: {
-        mode: "schedule",
-        schedule_id: "schedule-1",
-        schedule: {
-          enabled: true,
-          days_of_week: ["MONDAY"],
-          latest_wake_time: "29:99:00",
-          alarm_mode: "EXACT_TIME_PEAK",
-          timezone_offset: "-0400",
-        },
-        confirm: true,
-      },
+      arguments: { action: "edit", schedule_id: "11111111-aaaa", wake_time: "29:99:00", confirm: true },
     });
     expect(result.isError).toBe(true);
     expect(put).not.toHaveBeenCalled();
@@ -171,41 +170,28 @@ describe("write-tool validation through MCP", () => {
 
   it("normalizes a human-friendly Smart Alarm time before writing", async () => {
     const put = vi.fn().mockResolvedValue(undefined);
-    const get = vi.fn().mockResolvedValue({ alarm_schedule_list: [] });
-    const whoop = { get, put } as unknown as WhoopClient;
+    const whoop = { get: alarmGet(), put } as unknown as WhoopClient;
     const client = await connect((server) => registerSmartAlarmSet(server, whoop));
     const result = await client.callTool({
       name: "whoop_smart_alarm_set",
-      arguments: {
-        mode: "schedule", schedule_id: "schedule-1",
-        schedule: { enabled: true, days_of_week: ["MONDAY"], latest_wake_time: "7:05 AM", alarm_mode: "EXACT_TIME_PEAK", timezone_offset: "-0400" },
-        confirm: true,
-      },
+      arguments: { action: "edit", schedule_id: "11111111-aaaa", wake_time: "7:35 AM", confirm: true },
     });
     expect(result.isError).not.toBe(true);
-    expect(put.mock.calls[0]?.[1]).toMatchObject({ latest_wake_time: "07:05:00" });
+    expect(put.mock.calls[0]?.[1]).toMatchObject({ latest_wake_time: "07:35:00" });
   });
 
-  it("recognizes unchanged Smart Alarm preferences without a PUT", async () => {
-    const get = vi.fn().mockResolvedValue({
-      lower_time_bound: "05:25:00", upper_time_bound: "06:25:00",
-      goal: "IN_THE_GREEN", enabled: true, schedule_enabled: true,
-      time_zone_offset: "-0400", weekly_plan_goal: 0,
-    });
+  it("recognizes an unchanged Smart Alarm schedule without a PUT", async () => {
     const put = vi.fn();
-    const whoop = { get, put } as unknown as WhoopClient;
+    const whoop = { get: alarmGet(), put } as unknown as WhoopClient;
     const client = await connect((server) => registerSmartAlarmSet(server, whoop));
     const result = await client.callTool({
       name: "whoop_smart_alarm_set",
-      arguments: { mode: "preferences", preferences: {
-        lower_time_bound: "05:25", upper_time_bound: "06:25", goal: "IN_THE_GREEN",
-        enabled: true, schedule_enabled: true, timezone_offset: "-0400", weekly_plan_goal: 0,
-      }, confirm: true },
+      arguments: { action: "edit", schedule_id: "11111111-aaaa", wake_time: "7:05 AM", days: ["MON"], mode: "EXACT_TIME", confirm: true },
     });
     expect(result.isError).not.toBe(true);
     expect(put).not.toHaveBeenCalled();
     const output = JSON.parse((result.content as Array<{ text: string }>)[0]!.text);
-    expect(output).toMatchObject({ updated: false, no_change: true, mode: "preferences" });
+    expect(output).toMatchObject({ no_change: true, verified: true, action: "edit" });
   });
 
   it("rejects an empty profile update without even fetching the profile", async () => {

@@ -1,0 +1,84 @@
+{
+ "all_alarm_schedule_label_display": "MY SCHEDULE",
+ "alarm_schedule_list": [
+  {
+   "alarm_mode": "IN_THE_GREEN",
+   "days_scheduled_label_display": [
+    "MON",
+    "TUE"
+   ],
+   "alarm_mode_label_display": "IN THE GREEN",
+   "edit_label_display": "EDIT",
+   "delete_label_display": "DELETE",
+   "latest_wake_time": "7:35 AM",
+   "alarm_on": true,
+   "scheduled_days": [
+    "MONDAY",
+    "TUESDAY"
+   ],
+   "schedule_id": "876be9f6-c413-4ea5-9fcf-b45ffc073baa"
+  },
+  {
+   "alarm_mode": "NO_ALARM",
+   "days_scheduled_label_display": [
+    "WED",
+    "FRI"
+   ],
+   "alarm_mode_label_display": "ALARM OFF",
+   "edit_label_display": "EDIT",
+   "delete_label_display": "DELETE",
+   "latest_wake_time": "9:00 AM",
+   "alarm_on": false,
+   "scheduled_days": [
+    "WEDNESDAY",
+    "FRIDAY"
+   ],
+   "schedule_id": "d3939952-0ddf-4551-8ea8-1f2f0cf338ae"
+  },
+  {
+   "alarm_mode": "SLEEP_GOAL",
+   "days_scheduled_label_display": [
+    "SAT",
+    "SUN"
+   ],
+   "alarm_mode_label_display": "SLEEP GOAL",
+   "edit_label_display": "EDIT",
+   "delete_label_display": "DELETE",
+   "latest_wake_time": "8:10 AM",
+   "alarm_on": true,
+   "scheduled_days": [
+    "SATURDAY",
+    "SUNDAY"
+   ],
+   "schedule_id": "9badafaf-af9d-4f93-9aa7-4f14ee8210cc"
+  }
+ ],
+ "alarm_schedule_footer": {
+  "description_text_display": "On unscheduled days, Sleep Planner will default to your most recent wake time and set your alarm to off",
+  "callout_text_header_display": "You have unscheduled days",
+  "schedule_complete": false,
+  "should_show_callout_text": true,
+  "should_show_description_text": true
+ },
+ "schedule_button_component": {
+  "should_show_add_schedule_button": true,
+  "add_schedule_button_label_display": "CREATE SCHEDULE"
+ },
+ "schedule_enabled": true,
+ "should_show_overlay": false,
+ "schedule_disabled_text": "Your schedule is off and will not be used by Sleep Planner for alarms.",
+ "deleting_in_progress_modal": {
+  "modal_title_display": "DELETING...",
+  "modal_subtext_display": "Keep your WHOOP close by and connected."
+ },
+ "deleting_success_modal": {
+  "modal_title_display": "SUCCESS!",
+  "modal_subtext_display": "Your schedule has been deleted"
+ },
+ "delete_error_modal": {
+  "button_action_display_text": "TRY AGAIN",
+  "dismiss_action_display_text": "CANCEL",
+  "modal_title_display": "UNABLE TO DELETE SCHEDULE",
+  "modal_subtext_display": "An error occurred while deleting your schedule. Please try again."
+ }
+}

@@ -1,0 +1,538 @@
+{
+ "plan": {
+  "date_picker": {
+   "current_date_range_display": "NOV 16 - NOV 22, 26",
+   "next_date_time": null,
+   "previous_date_time": null,
+   "previous_interaction": null,
+   "next_interaction": null
+  },
+  "title_display": {
+   "display": "My Progress",
+   "style": "NONE"
+  },
+  "subtitle_display": null,
+  "description_display": null,
+  "header_items": [
+   {
+    "type": "CURRENT_PLAN_TILE",
+    "content": {
+     "title_display": "Custom",
+     "subtitle_display": "CURRENT PLAN",
+     "leading_icon": "JOURNAL",
+     "trailing_icon": "PENCIL",
+     "destination": {
+      "screen": "WEEKLY_PLAN_PRESET_LANDING",
+      "parameters": {
+       "plan_id": "d027813c-507a-48d3-b06e-3d71a8f098c0"
+      }
+     }
+    }
+   }
+  ],
+  "current_plan_tile": null,
+  "banner_tile": null,
+  "progress_bar": {
+   "percent_string": "5%",
+   "percent_subtitle": "GOALS ACCOMPLISHED",
+   "percent_value": 5,
+   "percent_symbol": "%"
+  },
+  "goal_section": [
+   {
+    "action": {
+     "screen": "WEEKLY_PLAN_EDIT",
+     "parameters": {
+      "plan_edit_screens": [
+       "STEPS"
+      ],
+      "analytics_source": "EDIT_PLAN"
+     }
+    },
+    "title_display": "Steps",
+    "title_image": null,
+    "title_style": "LEFT",
+    "subtitle_display": null,
+    "action_display": "EDIT",
+    "icon": "PENCIL",
+    "goal_cards": [
+     {
+      "type": "GOAL_GRAPHING_CARD",
+      "content": {
+       "seven_day_vow": "Get 8,000 steps each day to complete your goal. Your current average for this week is 399.",
+       "progress_display": "399",
+       "checkmark_style": "DISABLED",
+       "destination": {
+        "screen": "TRENDS",
+        "parameters": {
+         "trend_key": "STEPS",
+         "duration": 0,
+         "date": "2026-11-21"
+        }
+       },
+       "graph_legends": [],
+       "plan_progress_status": {
+        "title": "Steps Taken This Week: 1,197",
+        "subtitle": "You are approaching a 5k, which is about 7,900 steps. Every step brings you closer to a healthier you.",
+        "progress_breakdown": {
+         "total_progress_steps": 100,
+         "current_progress_steps": 15,
+         "progress_style": "STEPS",
+         "upper_left_display": "",
+         "upper_right_display": "5k",
+         "lower_left_display": null,
+         "progress_metadata": null
+        }
+       },
+       "circular_progress_indicator": {
+        "id": null,
+        "current_progress_steps": {
+         "text_display": "0/7",
+         "current_step": 0,
+         "total_steps": 7,
+         "style": "WEEKLY_PLAN_IN_PROGRESS",
+         "text_display_options": []
+        },
+        "current_progress_percentage": null
+       },
+       "title": "8,000+ Steps",
+       "graph": {
+        "id": null,
+        "plane": {
+         "lines": [
+          {
+           "position": 0.0,
+           "axis": "X_AXIS",
+           "type": "STANDARD",
+           "style": "STANDARD",
+           "label": null,
+           "label_style": null,
+           "theme": null
+          },
+          {
+           "position": 0.1875,
+           "axis": "X_AXIS",
+           "type": "STANDARD",
+           "style": "STANDARD",
+           "label": null,
+           "label_style": null,
+           "theme": null
+          },
+          {
+           "position": 0.375,
+           "axis": "X_AXIS",
+           "type": "STANDARD",
+           "style": "STANDARD",
+           "label": null,
+           "label_style": null,
+           "theme": null
+          },
+          {
+           "position": 0.5625,
+           "axis": "X_AXIS",
+           "type": "STANDARD",
+           "style": "STANDARD",
+           "label": null,
+           "label_style": null,
+           "theme": null
+          },
+          {
+           "position": 0.75,
+           "axis": "X_AXIS",
+           "type": "STANDARD",
+           "style": "STANDARD",
+           "label": null,
+           "label_style": null,
+           "theme": null
+          }
+         ],
+         "annotations": [
+          {
+           "width": 0.0,
+           "height": 0.0,
+           "type": "AVERAGE_MARKER",
+           "dimension": "Y_AXIS",
+           "style": "STANDARD",
+           "label": "GOAL",
+           "sub_label": null,
+           "label_style": null,
+           "alignment": "RIGHT",
+           "xposition": 0.0,
+           "yposition": 0.7
+          },
+          {
+           "width": 0.1,
+           "height": 1.0,
+           "type": "REGION_HIGHLIGHT",
+           "dimension": "X_AXIS",
+           "style": "STANDARD",
+           "label": null,
+           "sub_label": null,
+           "label_style": null,
+           "alignment": "LEFT",
+           "xposition": 0.78571,
+           "yposition": 0.0
+          }
+         ],
+         "accessibility_info": {
+          "label": "null"
+         },
+         "start_yaxis": null,
+         "end_yaxis": null,
+         "bottom_xaxis": null,
+         "enable_advanced_haptics": null,
+         "top_xaxis": {
+          "type": "STANDARD",
+          "style": null,
+          "labels": [
+           {
+            "label": "Mon",
+            "position": 0.07143,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           },
+           {
+            "label": "Tue",
+            "position": 0.21429,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           },
+           {
+            "label": "Wed",
+            "position": 0.35714,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           },
+           {
+            "label": "Thu",
+            "position": 0.5,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           },
+           {
+            "label": "Fri",
+            "position": 0.64286,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           },
+           {
+            "label": "Sat",
+            "position": 0.78571,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           },
+           {
+            "label": "Sun",
+            "position": 0.92857,
+            "style": "STANDARD",
+            "sub_label": null,
+            "id": null,
+            "icon": null
+           }
+          ],
+          "offset": 0.0,
+          "axis_description": null,
+          "scrim_present": false,
+          "theme": null
+         }
+        },
+        "plots": [
+         {
+          "plot": {
+           "bar_groups": [
+            {
+             "position_x": 0.64286,
+             "width": 0.05,
+             "bars": [
+              {
+               "position_y": 0.0,
+               "height": 0.0225,
+               "style": "STRAIN_FAILED",
+               "data_scrubber_details": {
+                "primary_contextual_display": "FRI, NOV 20",
+                "value": null,
+                "value_display": "597",
+                "unit_display": null,
+                "secondary_contextual_display": null,
+                "scrubber_style": "RESTORATIVE_HR_ZONE",
+                "data_context": null,
+                "advanced_haptic": null,
+                "phase_label": null,
+                "supplemental_data_scrubber_details": null,
+                "graph_legends": null,
+                "callout": null
+               },
+               "theme": null
+              }
+             ],
+             "accessibility_label": "todo",
+             "details": null,
+             "data_scrubber_details": null,
+             "top_label": {
+              "label": "597",
+              "label_style": "STRAIN",
+              "rendered_below": false,
+              "show_background_gradient": false
+             },
+             "bottom_label": null
+            },
+            {
+             "position_x": 0.78571,
+             "width": 0.05,
+             "bars": [
+              {
+               "position_y": 0.0,
+               "height": 0.0225,
+               "style": "STRAIN_FAILED",
+               "data_scrubber_details": {
+                "primary_contextual_display": "SAT, NOV 21",
+                "value": null,
+                "value_display": "597",
+                "unit_display": null,
+                "secondary_contextual_display": null,
+                "scrubber_style": "RESTORATIVE_HR_ZONE",
+                "data_context": null,
+                "advanced_haptic": null,
+                "phase_label": null,
+                "supplemental_data_scrubber_details": null,
+                "graph_legends": null,
+                "callout": null
+               },
+               "theme": null
+              }
+             ],
+             "accessibility_label": "todo",
+             "details": null,
+             "data_scrubber_details": null,
+             "top_label": {
+              "label": "597",
+              "label_style": "STRAIN",
+              "rendered_below": false,
+              "show_background_gradient": false
+             },
+             "bottom_label": null
+            },
+            {
+             "position_x": 0.92857,
+             "width": 0.05,
+             "bars": [
+              {
+               "position_y": 0.0,
+               "height": 0.0,
+               "style": "STRAIN_FAILED",
+               "data_scrubber_details": {
+                "primary_contextual_display": "SUN, NOV 22",
+                "value": null,
+                "value_display": "3",
+                "unit_display": null,
+                "secondary_contextual_display": null,
+                "scrubber_style": "RESTORATIVE_HR_ZONE",
+                "data_context": null,
+                "advanced_haptic": null,
+                "phase_label": null,
+                "supplemental_data_scrubber_details": null,
+                "graph_legends": null,
+                "callout": null
+               },
+               "theme": null
+              }
+             ],
+             "accessibility_label": "todo",
+             "details": null,
+             "data_scrubber_details": null,
+             "top_label": {
+              "label": "3",
+              "label_style": "STRAIN",
+              "rendered_below": false,
+              "show_background_gradient": false
+             },
+             "bottom_label": null
+            }
+           ],
+           "id": "484730082",
+           "hide_while_scrubbing": false,
+           "skip_scrubbing": null
+          },
+          "type": "BAR_PLOT"
+         },
+         {
+          "plot": {
+           "points": [
+            {
+             "x": 0.07143,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": null,
+             "style": "EMPTY"
+            },
+            {
+             "x": 0.21429,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": null,
+             "style": "EMPTY"
+            },
+            {
+             "x": 0.35714,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": null,
+             "style": "EMPTY"
+            },
+            {
+             "x": 0.5,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": null,
+             "style": "EMPTY"
+            },
+            {
+             "x": 0.64286,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": "TINY_CROSS",
+             "style": "FAILED"
+            },
+            {
+             "x": 0.78571,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": "TINY_CROSS",
+             "style": "FAILED"
+            },
+            {
+             "x": 0.92857,
+             "y": 0.93,
+             "width": 0.08,
+             "icon": "TINY_CROSS",
+             "style": "FAILED"
+            }
+           ],
+           "id": "ICON_PLOT_ID",
+           "hide_while_scrubbing": false,
+           "skip_scrubbing": null
+          },
+          "type": "ICON_PLOT"
+         }
+        ],
+        "graph_title_display": null,
+        "graph_buttons": null,
+        "layout_direction": "LEFT_TO_RIGHT",
+        "spotlight_target_id": null
+       },
+       "sub_items": [],
+       "accessibility_label": "Graph that displays progress against the steps goal"
+      }
+     }
+    ],
+    "callout_display": null,
+    "callout_cta_display": null,
+    "id": "STEPS",
+    "secondary_button": null
+   },
+   {
+    "action": {
+     "screen": "WEEKLY_PLAN_EDIT",
+     "parameters": {
+      "plan_edit_screens": [
+       "STRENGTH_TRAINING_TIME"
+      ],
+      "analytics_source": "EDIT_PLAN"
+     }
+    },
+    "title_display": "Strength Training",
+    "title_image": null,
+    "title_style": "LEFT",
+    "subtitle_display": null,
+    "action_display": "EDIT",
+    "icon": "PENCIL",
+    "goal_cards": [
+     {
+      "type": "GOAL_PROGRESS_CARD",
+      "content": {
+       "title": "Strength Activity Time",
+       "progress_display": "10%",
+       "seven_day_vow": "Get 1 hr 48 min more of Strength Activity Time this week to hit your goal.",
+       "checkmark_style": "DISABLED",
+       "destination": {
+        "screen": "TRENDS",
+        "parameters": {
+         "trend_key": "STRENGTH_TRAINING_TIME",
+         "duration": 0,
+         "date": "2026-11-21"
+        }
+       },
+       "cta_text": null,
+       "progress_breakdown": {
+        "total_progress_steps": 7200000,
+        "current_progress_steps": 772000,
+        "progress_style": "STRENGTH_TRAINING_TIME",
+        "upper_left_display": "0:12:52",
+        "upper_right_display": "2:00:00",
+        "lower_left_display": null,
+        "progress_metadata": {
+         "progress_subtasks": [
+          {
+           "task_value": "0:12:52",
+           "task_icon": "https://s3-us-west-2.amazonaws.com/icons.whoop.com/mobile/activities/weightlifting.png",
+           "task_name": "STRENGTH TRAINER"
+          }
+         ]
+        }
+       },
+       "circular_progress_indicator": {
+        "id": null,
+        "current_progress_steps": null,
+        "current_progress_percentage": {
+         "text_display": "0:12",
+         "percentage": 10.722222222222221,
+         "style": "WEEKLY_PLAN_IN_PROGRESS"
+        }
+       }
+      }
+     }
+    ],
+    "callout_display": null,
+    "callout_cta_display": null,
+    "id": "STRENGTH_TRAINING_TIME",
+    "secondary_button": {
+     "text": "ADD ACTIVITY",
+     "action": {
+      "screen": "ADD_ACTIVITY",
+      "parameters": {
+       "start_time": "2026-11-21T19:49:27.613-08",
+       "end_time": "2026-11-21T20:49:27.613-08",
+       "activity_type": null
+      }
+     },
+     "icon": null,
+     "icon_position": null,
+     "dialog": null,
+     "modal": null,
+     "alignment": null,
+     "analytic_event": null,
+     "dismiss_event": null,
+     "style": "DEFAULT",
+     "is_enabled": null,
+     "interaction": null,
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   }
+  ],
+  "gradient_style": "DEFAULT"
+ },
+ "summary": null
+}
