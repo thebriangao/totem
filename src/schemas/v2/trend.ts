@@ -21,6 +21,7 @@ const Row = z.object({
   change_pct: NumOrNull,
   direction: StrOrNull,
   unit: StrOrNull,
+  per: z.literal("week").optional(),
 });
 
 const Window = z.object({

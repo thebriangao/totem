@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { registerTrend } from "../../src/tools/v2/trend.js";
-import { compareRows, pointDate, projectTrendWindow, windowBounds } from "../../src/projections/v2/trend.js";
+import { compareRows, pointDate, projectTrendWindow, rangeLabelStart, windowBounds } from "../../src/projections/v2/trend.js";
 import { call, closeAll, connect, err500, fx, oldFx, pinToday, routedGet, unpinToday } from "./reads_core_harness.js";
 
 describe("whoop_trend projection", () => {
@@ -11,6 +11,28 @@ describe("whoop_trend projection", () => {
     // Matches WHOOP's own labels: "NOV 15 - NOV 21", "OCT 23 - NOV 21", "MAY 26 - NOV 21".
     const prev = projectTrendWindow(fx("trend_day_strain_prev"), "2026-11-14", "week", false)!;
     expect([prev.start, prev.end]).toEqual(["2026-11-08", "2026-11-14"]);
+  });
+
+  // Live 2026-11-21: HR_ZONES_1_3 / 4_5 / ALL and STRENGTH_ACTIVITY_TIME label their month
+  // "OCT 25 - NOV 21" (28 days) and six months "MAY 31 - NOV 21" (175), and name the figure
+  // "WEEKLY TOTAL" / "AVG. WEEKLY TOTAL". With endDate 2026-11-18 the month is "OCT 22 - NOV 18".
+  it("takes the window start from WHOOP's range label: weekly-total metrics span 28 and 175 days", () => {
+    const month = projectTrendWindow(fx("trend_hr_zones_all"), "2026-11-21", "month", false)!;
+    expect([month.start, month.end]).toEqual(["2026-10-25", "2026-11-21"]);
+    expect(projectTrendWindow(fx("trend_hr_zones_all"), "2026-11-21", "six_month", false)!.start).toBe("2026-05-31");
+    expect(month.rows[0]).toEqual({ key: "HR_ZONES_ALL", avg: 17, prev_avg: 0, change_pct: null, direction: null, unit: "min", per: "week" });
+    const strain = projectTrendWindow(fx("trend_day_strain"), "2026-11-21", "month", false)!;
+    expect(strain.start).toBe("2026-10-23");
+    expect(strain.rows[0]!.per).toBeUndefined();
+  });
+
+  it("parses range labels across a year boundary and ignores one that does not end on endDate", () => {
+    expect(rangeLabelStart("OCT 22 - NOV 18, 26", "2026-11-18")).toBe("2026-10-22");
+    expect(rangeLabelStart("DEC 28, 26 - JAN 3, 27", "2027-01-03")).toBe("2026-12-28");
+    expect(rangeLabelStart("JUL 8, 26 - JAN 3, 27", "2027-01-03")).toBe("2026-07-08");
+    expect(rangeLabelStart("NOV 15 - NOV 21, 26", "2026-11-14")).toBeNull();
+    expect(rangeLabelStart("LAST 30 DAYS", "2026-11-21")).toBeNull();
+    expect(rangeLabelStart(null, "2026-11-21")).toBeNull();
   });
 
   it("reads WHOOP's averages and change, with compact daily points", () => {

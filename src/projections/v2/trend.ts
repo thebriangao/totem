@@ -1,8 +1,10 @@
 // whoop_trend: GET /progression-service/v3/trends/{metric}?endDate= (SPEC.md §4.7).
 // Every response carries exactly three windows (week, month, six_month; no year).
-// Window bounds are derived from endDate: WHOOP's date_picker.next_date_time is
-// the NEXT window's start and the range is only a display string. Windows are
-// inclusive: week = 7 days, month = 30, six_month = 180, all ending on endDate.
+// Windows are inclusive and end on endDate. Daily metrics span 7 / 30 / 180 days;
+// WHOOP's weekly-total metrics (HR zones, strength time) span 7 / 28 / 175 days.
+// The window start therefore comes from WHOOP's own range label when that label
+// ends on endDate, and from the day counts otherwise (date_picker.next_date_time
+// is not the window's start).
 // Duration metrics (unit "hr", "h:mm" displays, ms on the wire) come out in minutes.
 import { addDays, displayMinutes, displayNumber, get, isNode, msToMin, nodes, str, type Node } from "./core_common.js";
 
@@ -27,6 +29,8 @@ export interface TrendRow {
   change_pct: number | null;
   direction: string | null;
   unit: string | null;
+  /** Set when WHOOP's figure is a weekly total ("WEEKLY TOTAL" / "AVG. WEEKLY TOTAL"), not a daily average. */
+  per?: "week";
 }
 
 export interface TrendWindowOut {
@@ -42,12 +46,14 @@ export interface TrendWindowOut {
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const isClock = (s: unknown): boolean => typeof s === "string" && /^\d+:\d{2}$/.test(s.trim());
+const DAY_MS = 86_400_000;
+const dayNumber = (isoDate: string): number => Math.round(Date.parse(`${isoDate}T00:00:00Z`) / DAY_MS);
 
 function row(m: Node): TrendRow {
   const unit = str(m.metric_units_display);
   const duration = unit === "hr" || isClock(m.metric_value_display);
   const conv = (v: unknown): number | null => (duration ? msToMin(num(v)) : num(v));
-  return {
+  const out: TrendRow = {
     key: str(m.trend_key),
     avg: conv(m.current_metric_value),
     prev_avg: conv(m.previous_metric_value),
@@ -55,22 +61,48 @@ function row(m: Node): TrendRow {
     direction: m.trend_direction === "NONE" ? null : str(m.trend_direction),
     unit: duration ? "min" : unit,
   };
+  if (/WEEKLY/i.test(str(m.metric_name_display) ?? "")) out.per = "week";
+  return out;
 }
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const DATE_TOKEN = /([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}|\d{2})\b)?/g;
+
+/**
+ * The dates in a WHOOP label, in order: "SUN, MAY 17", "TUE, NOV 25, 2025", a range's
+ * "OCT 25 - NOV 21, 26" or "DEC 28, 26 - JAN 3, 27". A date without a year takes the
+ * latest year that does not put its month after the window's end.
+ */
+function labelDates(label: string | null, endDate: string): string[] {
+  if (!label) return [];
+  const endYear = Number(endDate.slice(0, 4));
+  const endMonth = Number(endDate.slice(5, 7)) - 1;
+  const out: string[] = [];
+  for (const m of label.toUpperCase().matchAll(DATE_TOKEN)) {
+    const month = MONTHS.indexOf(m[1]!);
+    if (month < 0) continue;
+    const explicit = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : null;
+    const year = explicit ?? (month > endMonth ? endYear - 1 : endYear);
+    out.push(`${year}-${String(month + 1).padStart(2, "0")}-${m[2]!.padStart(2, "0")}`);
+  }
+  return out;
+}
 
 /** "SUN, MAY 17" / "TUE, NOV 25, 2025" → ISO date, taking the year from the window's end. */
 export function pointDate(label: string | null, endDate: string): string | null {
-  if (!label) return null;
-  const all = label.toUpperCase().match(/([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}))?/g);
-  const last = all?.[all.length - 1]?.match(/([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}))?/);
-  if (!last) return null;
-  const month = MONTHS.indexOf(last[1]!);
-  if (month < 0) return null;
-  const endYear = Number(endDate.slice(0, 4));
-  const endMonth = Number(endDate.slice(5, 7)) - 1;
-  const year = last[3] ? Number(last[3]) : month > endMonth ? endYear - 1 : endYear;
-  return `${year}-${String(month + 1).padStart(2, "0")}-${last[2]!.padStart(2, "0")}`;
+  const all = labelDates(label, endDate);
+  return all[all.length - 1] ?? null;
+}
+
+/**
+ * The window start from WHOOP's own range label ("OCT 25 - NOV 21, 26"), or null when the
+ * label is missing, does not end on endDate, or gives an implausible span.
+ */
+export function rangeLabelStart(label: unknown, endDate: string): string | null {
+  const dates = labelDates(str(label), endDate);
+  if (dates.length !== 2 || dates[1] !== endDate) return null;
+  const days = dayNumber(endDate) - dayNumber(dates[0]!) + 1;
+  return days >= 1 && days <= 190 ? dates[0]! : null;
 }
 
 const parseDisplay = (d: string | null): number | null => (isClock(d) ? displayMinutes(d) : displayNumber(d));
@@ -101,14 +133,13 @@ function rawPoints(segment: Node, endDate: string): Array<{ date: string | null;
   return out;
 }
 
-/** Daily values aligned to the window (index 0 = window start). */
-export function dailyValues(segment: Node, endDate: string, window: TrendWindow): Array<number | null> {
-  const { start } = windowBounds(endDate, window);
-  const values: Array<number | null> = new Array(WINDOW_DAYS[window]).fill(null);
-  const startMs = Date.parse(`${start}T00:00:00Z`);
+/** Daily values aligned to the window (index 0 = `start`). */
+export function dailyValues(segment: Node, start: string, endDate: string): Array<number | null> {
+  const startDay = dayNumber(start);
+  const values: Array<number | null> = new Array(Math.max(1, dayNumber(endDate) - startDay + 1)).fill(null);
   for (const p of rawPoints(segment, endDate)) {
     if (!p.date || p.value === null) continue;
-    const i = Math.round((Date.parse(`${p.date}T00:00:00Z`) - startMs) / 86_400_000);
+    const i = dayNumber(p.date) - startDay;
     if (i >= 0 && i < values.length) values[i] = p.value;
   }
   return values;
@@ -124,14 +155,16 @@ function breakdown(segment: Node): TrendWindowOut["breakdown"] {
 export function projectTrendWindow(raw: unknown, endDate: string, window: TrendWindow, withPoints: boolean): TrendWindowOut | null {
   const segment = get(raw, SEGMENT_KEY[window]);
   if (!isNode(segment)) return null;
-  const bounds = windowBounds(endDate, window);
+  const start = rangeLabelStart(get(segment, "date_picker", "current_date_range_display"), endDate)
+    ?? windowBounds(endDate, window).start;
   const out: TrendWindowOut = {
-    ...bounds,
+    start,
+    end: endDate,
     hidden: segment.is_hidden === true,
     rows: nodes(segment.metrics).map(row),
     breakdown: breakdown(segment),
   };
-  if (withPoints) out.points = { start: bounds.start, step: "day", values: dailyValues(segment, endDate, window) };
+  if (withPoints) out.points = { start, step: "day", values: dailyValues(segment, start, endDate) };
   return out;
 }
 

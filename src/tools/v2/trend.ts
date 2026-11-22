@@ -20,7 +20,8 @@ export function registerTrend(server: McpServer, client: WhoopClient): void {
       description:
         "Trends for 1–5 metrics over one window ending end_date (default today; windows are inclusive: week 7 days, month 30, " +
         "six_month 180). Per metric: window dates, WHOOP's average, previous-window average, change %, direction, every row " +
-        "(HOURS_V_NEED has SLEEP_NEED and SLEEP_HOURS) and breakdown day counts. compare_end_date adds window b and the a−b " +
+        "(HOURS_V_NEED has SLEEP_NEED and SLEEP_HOURS) and breakdown day counts. Rows marked per:week (HR zones, strength time) " +
+        "are weekly totals over 7/28/175 days. compare_end_date adds window b and the a−b " +
         "deltas (e.g. this week vs last). include_points adds daily values. Durations are minutes. Averages are null when " +
         "WHOOP has too little data.",
       input: {
