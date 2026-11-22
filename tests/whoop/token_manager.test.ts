@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -491,6 +491,26 @@ describe("TokenManager: the token file is the source of truth", () => {
     const manager = new TokenManager({ store: new FileTokenStore(file), refresh, ...quiet });
     await expect(manager.getToken()).resolves.toBe(replacement.access_token);
     expect((new FileTokenStore(file).load() as TokenRecord).refresh_token).toBe("rt-auth");
+  });
+
+  it("a corrupt token file doesn't wipe the login in memory, is reported once, and is healed by the next refresh", async () => {
+    const file = join(dir, "tokens.json");
+    let clock = Date.now();
+    new FileTokenStore(file).save(login(clock, { access_token: jwtExpiring(clock, HOUR) }));
+    const cognito = fakeCognito(() => clock);
+    const logs: string[] = [];
+    const manager = new TokenManager({ store: new FileTokenStore(file), refresh: cognito.refresh, now: () => clock, log: (m) => logs.push(m) });
+    const token = await manager.getToken();
+
+    writeFileSync(file, '{"version": 1, "access_token": "half a fi'); // a bad edit, a full disk
+    for (let i = 0; i < 4; i++) await expect(manager.getToken()).resolves.toBe(token);
+    expect(manager.status().state).toBe("ok");
+    expect(logs.filter((l) => /unreadable/.test(l))).toHaveLength(1);
+
+    clock += 55 * MIN; // due: the refresh writes a whole file again
+    const next = await manager.getToken();
+    expect(next).not.toBe(token);
+    expect(new FileTokenStore(file).load()).toMatchObject({ refresh_token: "rt-1", access_token: next });
   });
 
   it("a refresh that lands after the login was handed off or removed doesn't write the tokens back", async () => {

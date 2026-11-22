@@ -86,6 +86,16 @@ describe("FileTokenStore", () => {
     expect(() => new FileTokenStore(path).load()).toThrow(/tokens\.json is unreadable/);
   });
 
+  it("an unreadable file's error never quotes the file (it holds the tokens)", () => {
+    const path = join(dir, "tokens.json");
+    // A hand-edit that dropped a quote: JSON.parse's own message quotes the text around it.
+    writeFileSync(path, `{"refresh_token": "TOPSECRETREFRESH", "access_token": TOPSECRETACCESS.abc.def}`);
+    let message = "";
+    try { new FileTokenStore(path).load(); } catch (error) { message = (error as Error).message; }
+    expect(message).toMatch(/tokens\.json is unreadable/);
+    expect(message).not.toMatch(/TOPSECRET/);
+  });
+
   // SIGKILL between the temp file's write and its rename leaves `.<hex>.<pid>.tmp`
   // behind with a full token record in it (21 of 40 kills of a writer did).
   it("clears temp files an interrupted write left behind, once they are old", () => {

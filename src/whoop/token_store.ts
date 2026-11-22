@@ -194,7 +194,10 @@ export class FileTokenStore implements TokenStore {
     try {
       return parseTokenFile(text);
     } catch (error) {
-      throw new Error(`token file ${this.path} is unreadable (${(error as Error).message}); run \`totem auth\` to replace it`);
+      // Never pass on JSON.parse's own message: it quotes the text around the
+      // error, and in this file that text is the tokens.
+      const why = error instanceof SyntaxError ? "it isn't valid JSON" : (error as Error).message;
+      throw new Error(`token file ${this.path} is unreadable (${why}); run \`totem auth\` to replace it`);
     }
   }
 

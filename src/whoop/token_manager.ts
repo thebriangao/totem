@@ -160,6 +160,8 @@ export class TokenManager {
   private forceRefresh = false;
   private lastRefreshAt = 0;
   private seenVersion: string | null = null;
+  /** Version of a token file that failed to load (reported once). */
+  private unreadableVersion: string | null | undefined = undefined;
   private loaded = false;
   private refreshing: Promise<void> | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -362,9 +364,13 @@ export class TokenManager {
     try {
       content = this.store.load();
     } catch (error) {
-      this.log((error as Error).message);
-      return; // keep what we have; retry on the next change
+      // Keep what we have and look again on the next call. Say so once per
+      // bad file, not on every call.
+      if (version !== this.unreadableVersion) this.log((error as Error).message);
+      this.unreadableVersion = version;
+      return;
     }
+    this.unreadableVersion = undefined;
     this.loaded = true;
     this.seenVersion = version;
     if (!content) this.setRecord(null, null);
