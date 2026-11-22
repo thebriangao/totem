@@ -312,6 +312,47 @@ describe("WhoopClient", () => {
     ]);
   });
 
+  describe("a response that sends headers and then stalls", () => {
+    // Headers arrive at once; the body only ever ends when the request's abort
+    // signal fires (which is what undici does to a real stalled body).
+    const stalledBody = (status: number) => (_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"partial":'));
+          init.signal!.addEventListener("abort", () => controller.error(new DOMException("This operation was aborted", "AbortError")));
+        },
+      });
+      return Promise.resolve(new Response(body, { status }));
+    };
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it("times out instead of hanging, and does not poison later identical GETs", async () => {
+      fetchMock.mockImplementationOnce(stalledBody(200));
+      const client = makeClient();
+      const first = client.get("/home-service/v1/home", { date: "2026-05-23" });
+      const settled = vi.fn();
+      first.then(settled, settled);
+      await vi.advanceTimersByTimeAsync(29_000);
+      expect(settled).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2_000); // past REQUEST_TIMEOUT_MS (30s)
+      expect(settled).toHaveBeenCalledTimes(1);
+      await expect(first).rejects.toMatchObject({ name: "AbortError" });
+
+      // The hung load used to stay in-flight forever, so this joined it and hung too.
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      await expect(client.get("/home-service/v1/home", { date: "2026-05-23" })).resolves.toEqual({ ok: true });
+    });
+
+    it("still reports an error status whose body never arrives", async () => {
+      fetchMock.mockImplementationOnce(stalledBody(503));
+      const failed = makeClient().get("/x");
+      const assertion = expect(failed).rejects.toBeInstanceOf(WhoopServerError);
+      await vi.advanceTimersByTimeAsync(31_000);
+      await assertion;
+    });
+  });
+
   it("treats a 401 that survives a refresh as endpoint-specific, not an expired login", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(new Response("unauthorized", { status: 401 })));
     const client = new WhoopClient({ getToken: async () => "t", onUnauthorized: () => {} });

@@ -410,8 +410,18 @@ export class WhoopClient {
     if (bodyString !== undefined) init.body = bodyString;
 
     let response: Response;
+    let bodyText: string;
     try {
       response = await fetch(url.toString(), init);
+      // fetch() resolves on the headers, so the body is read under the same
+      // timer: a response that stalled mid-body used to hang forever, and every
+      // identical GET joined the hung in-flight load. An error status is still
+      // reported when its body can't be read.
+      const { ok } = response;
+      bodyText = await response.text().catch((error: unknown) => {
+        if (ok) throw error;
+        return "";
+      });
     } finally {
       clearTimeout(timeout);
     }
@@ -420,29 +430,26 @@ export class WhoopClient {
       // Whoop can reject a token before its local expiry (revocation, clock
       // skew, a birthday/country profile edit). Force one refresh and retry.
       if (!retried && this.config.onUnauthorized) {
-        await response.body?.cancel().catch(() => {});
         this.config.onUnauthorized(token);
         return this.send<T>(method, path, query, body, true, attempt412);
       }
       // A 401 that survives a fresh token is path-specific (WHOOP refuses some
       // endpoints for user tokens), not an expired login. Login expiry surfaces
       // from the refresh itself (WhoopAuthExpiredError in the token manager).
-      await response.body?.cancel().catch(() => {});
       throw new WhoopEndpointUnauthorizedError(path);
     }
     if (response.status === 412 && method !== "GET" && attempt412 < RETRY_412_DELAYS_MS.length) {
       // "User's cycle is concurrently being updated": WHOOP is recomputing the
       // day (often right after another write). It succeeds on retry.
-      await response.body?.cancel().catch(() => {});
       await (this.config.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(RETRY_412_DELAYS_MS[attempt412]!);
       return this.send<T>(method, path, query, body, retried, attempt412 + 1);
     }
     if (response.status >= 500) {
-      const text = await response.text().catch(() => "");
+      const text = bodyText;
       throw new WhoopServerError(response.status, path, htmlTitle(text) ?? apiErrorDetail(text));
     }
     if (!response.ok) {
-      const text = await response.text().catch(() => "");
+      const text = bodyText;
       if (response.status === 412) {
         throw new WhoopApiError(412, path, text, "WHOOP is updating this day; try again in a minute");
       }
@@ -457,7 +464,7 @@ export class WhoopClient {
     if (response.status === 204) return undefined as T;
     // Some endpoints answer 200 with an empty body, or a bare JSON literal
     // (profile PUT returns `false` when it refused the values).
-    const text = await response.text();
+    const text = bodyText;
     if (!text.trim()) return undefined as T;
     try {
       return JSON.parse(text) as T;
