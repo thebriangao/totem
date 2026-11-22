@@ -134,6 +134,15 @@ describe("writeFileAtomic", () => {
     writeFileAtomic(path, "two");
     expect(readFileSync(path, "utf8")).toBe("two");
   });
+
+  it("without the fsyncs (the lock's heartbeat) it is still a 0600 replace that leaves no temp file", () => {
+    const path = join(dir, "tokens.json.lock");
+    writeFileAtomic(path, "one", 0o600, false);
+    writeFileAtomic(path, "two", 0o600, false);
+    expect(readFileSync(path, "utf8")).toBe("two");
+    expect(readdirSync(dir)).toEqual(["tokens.json.lock"]);
+    if (process.platform !== "win32") expect(statSync(path).mode & 0o777).toBe(0o600);
+  });
 });
 
 describe("parseTokenFile", () => {

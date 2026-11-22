@@ -119,8 +119,12 @@ export function inferClientId(accessToken: string): string {
  * Write `content` to `path` atomically: a sibling temp file opened O_EXCL with
  * mode 0600, fsync'd, then renamed over the target. Readers see the old file or
  * the new one, never a torn write. Throws on any failure (and removes the temp).
+ *
+ * `durable: false` skips the fsyncs (the write is still atomic). For content
+ * that needn't survive a power cut, like the lock's heartbeat: two fsyncs take
+ * milliseconds, and the lock is rewritten inside a critical section.
  */
-export function writeFileAtomic(path: string, content: string, mode = 0o600): void {
+export function writeFileAtomic(path: string, content: string, mode = 0o600, durable = true): void {
   const dir = dirname(path);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const tmp = join(dir, `.${randomBytes(6).toString("hex")}.${process.pid}.tmp`);
@@ -128,7 +132,7 @@ export function writeFileAtomic(path: string, content: string, mode = 0o600): vo
   try {
     fd = openSync(tmp, "wx", mode);
     writeSync(fd, content);
-    fsyncSync(fd);
+    if (durable) fsyncSync(fd);
     closeSync(fd);
     fd = null;
     chmodSync(tmp, mode); // umask can only remove bits; make it exact
@@ -140,6 +144,7 @@ export function writeFileAtomic(path: string, content: string, mode = 0o600): vo
     try { rmSync(tmp, { force: true }); } catch { /* best-effort */ }
     throw error;
   }
+  if (!durable) return;
   // Make the rename itself durable. Not possible on Windows (can't open a dir).
   try {
     const dfd = openSync(dir, "r");

@@ -172,7 +172,9 @@ export class TokenLock {
   confirm(): LockState {
     const result = this.exclusive((): LockState => {
       if (!this.verify()) return "lost";
-      writeFileAtomic(this.path, JSON.stringify(this.info()));
+      // No fsync: a heartbeat needn't survive a power cut, and the guard should
+      // be held for microseconds, not for two disk flushes.
+      writeFileAtomic(this.path, JSON.stringify(this.info()), 0o600, false);
       return "held";
     });
     return result.ran ? result.value : "busy";
