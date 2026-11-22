@@ -791,7 +791,7 @@ async function deployCustom(d: Deploy): Promise<string | null> {
 // ── verification ─────────────────────────────────────────────────────────────
 
 /** Is the server up, does it advertise sign-in, and does /mcp refuse strangers? */
-async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boolean; ok: boolean }> {
+async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boolean; locked: boolean }> {
   const { ui, sys } = io;
   const root = baseUrl.replace(/\/(mcp)?$/, "");
   // Poll with a short per-request timeout: an address that hasn't propagated
@@ -810,7 +810,7 @@ async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boo
   }, { slow: true });
   if (!healthy) {
     ui.fail("The server didn't answer", `${lastError || "no answer"} after ${duration(sys.now() - started)}`);
-    return { healthy, ok: false };
+    return { healthy, locked: false };
   }
   ui.ok("The server is up", `/health answered in ${duration(sys.now() - started) || "under a second"}`);
   const prm = await ui.task("Checking sign-in", () => sys.httpGet(`${root}/.well-known/oauth-protected-resource/mcp`, 5000));
@@ -821,8 +821,8 @@ async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boo
   const gate = await ui.task("Checking the lock on /mcp", () => sys.httpGet(`${root}/mcp`, 5000));
   const gated = gate.status === 401;
   if (gated) ui.ok("/mcp is locked", "401 without a token");
-  else ui.fail("/mcp answered without a token", gate.status ? `HTTP ${gate.status}, expected 401` : gate.error ?? "no answer");
-  return { healthy, ok: prmOk && gated };
+  else ui.fail(gate.status ? "/mcp answered without a token" : "/mcp didn't answer", gate.status ? `HTTP ${gate.status}, expected 401` : gate.error ?? "no answer");
+  return { healthy, locked: gated };
 }
 
 // ── the flow ─────────────────────────────────────────────────────────────────
@@ -1024,6 +1024,18 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
     ui.problem("The deploy finished, but the server isn't answering.", {
       detail: "It may still be starting. Its logs say what it is doing.",
       fix: [["Read its logs", "totem logs"], ["Check it again", "totem ping"], ["Then log in", "totem auth"]],
+    });
+    handOverPassword();
+    return 1;
+  }
+  // A totem server refuses /mcp without its token. Whatever answered some other
+  // way is not one with its lock on (a mistyped address, a proxy's or a host's
+  // own page that says 200 to everything): the WHOOP login, and the server's
+  // token that goes with it, are not sent there.
+  if (!check.locked) {
+    ui.problem("totem didn't send a WHOOP login: this address isn't refusing /mcp without a token.", {
+      detail: `A totem server answers 401 there. Check that ${url} is this server and nothing else, then log in.`,
+      fix: [["Check the server", "totem status"], ["Then log in", "totem auth"]],
     });
     handOverPassword();
     return 1;

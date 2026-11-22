@@ -57,3 +57,43 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
     expect(text).not.toContain(PASSWORD);
   });
 });
+
+// /health can say 200 at an address that is not this server (a mistyped URL, a
+// host's own page). What tells a totem server apart is that /mcp refuses a
+// request without the token. The WHOOP login and the server's token must not
+// be sent to an address that failed that check.
+describe("totem cloud: /mcp is not locked at the address", () => {
+  /** Count what the login step would do: open a browser, send the login. */
+  const watchLogin = (w: FakeWorld): { browser: number; pushed: number } => {
+    const seen = { browser: 0, pushed: 0 };
+    const auth = w.io.auth!;
+    const { captureBrowserLogin, pushLogin } = auth;
+    auth.captureBrowserLogin = (...args) => { seen.browser++; return captureBrowserLogin(...args); };
+    auth.pushLogin = (...args) => { seen.pushed++; return pushLogin(...args); };
+    return seen;
+  };
+  const mcpAnswers = (status: number): WorldOptions => ({
+    exec: fly,
+    http: (url) => (url.endsWith("/mcp") && !url.includes(".well-known") ? { status, body: "<html>hello</html>" } : undefined),
+  });
+
+  it.each([200, 404, 0])("stops before the WHOOP login when /mcp answers %i without a token", async (status) => {
+    let seen = { browser: 0, pushed: 0 };
+    const { code, text } = await cloud(mcpAnswers(status), (w) => { seen = watchLogin(w); });
+    expect(code).toBe(1);
+    expect(seen).toEqual({ browser: 0, pushed: 0 });
+    expect(text).toContain("totem didn't send a WHOOP login");
+    expect(text).not.toContain("5/6  WHOOP login");
+    // The server may well be the right one behind a misconfigured front: the
+    // deployment is recorded and the password handed over, as for any stop here.
+    expect(text.split(PASSWORD)).toHaveLength(2);
+  });
+
+  it("goes on to the login when /mcp answers 401", async () => {
+    let seen = { browser: 0, pushed: 0 };
+    const { code, text } = await cloud({ exec: fly }, (w) => { seen = watchLogin(w); });
+    expect(code).toBe(0);
+    expect(seen).toEqual({ browser: 1, pushed: 1 });
+    expect(text).toContain("/mcp is locked");
+  });
+});
