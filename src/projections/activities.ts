@@ -7,7 +7,7 @@ import { typeForInternalName } from "../lib/activity_types.js";
 import { toUtc } from "../lib/activity_records.js";
 import type { ActivityTile } from "../lib/activity_list.js";
 import { projectWorkout } from "./workout.js";
-import type { ActivityDetailOutT, ActivityListItemT } from "../schemas/activities.js";
+import { WORKOUT_COLUMNS, type ActivityDetailOutT, type ActivityListItemT, type WorkoutRowT } from "../schemas/activities.js";
 
 const norm = (s: string | null | undefined): string => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
@@ -61,6 +61,22 @@ export function projectDeveloperWorkout(raw: unknown): ActivityListItemT | null 
     status: str(raw.score_state),
     ...(typeof strain === "number" ? { strain: Math.round(strain * 10) / 10 } : {}),
   };
+}
+
+/**
+ * List items as columnar rows (WORKOUT_COLUMNS order): about 110 characters an
+ * activity instead of 200. Display names that add something are stated once in
+ * `names`, keyed by internal_name; an activity with no internal name shows its
+ * display name in that column.
+ */
+export function workoutRows(items: ActivityListItemT[]): { columns: Array<(typeof WORKOUT_COLUMNS)[number]>; rows: WorkoutRowT[]; names: Record<string, string> } {
+  const names: Record<string, string> = {};
+  const rows = items.map((a): WorkoutRowT => {
+    if (a.name && a.internal_name) names[a.internal_name] = a.name;
+    const min = a.start && a.end ? Math.round((Date.parse(a.end) - Date.parse(a.start)) / 60_000) : null;
+    return [a.activity_id, a.type, a.internal_name ?? a.name ?? null, a.start, min, a.status, a.strain ?? null];
+  });
+  return { columns: rows.length > 0 ? [...WORKOUT_COLUMNS] : [], rows, names };
 }
 
 const DISTANCE_TO_M: Record<string, number> = { mi: 1609.344, km: 1000, m: 1, yd: 0.9144, ft: 0.3048 };

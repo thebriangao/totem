@@ -80,20 +80,24 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
   defineTool(server, {
     name: NAME,
     description:
-      "WRITE: change one account setting. hidden_metric (metric, hidden), stealth (enabled), dashboard (gauges: exactly 2 focus metrics; pinned: the full ordered list; omitted ones are kept), notification (namespace, enabled), journal_prefs (any of the three flags), tracked_behaviors (track/untrack ids or names; untracking only hides a behaviour, its answers stay), clock_format. Reads the setting back; preview unless confirm:true.",
+      "Change one account setting, picked by setting: hidden_metric (metric, hidden), stealth (enabled), dashboard (gauges and/or " +
+      "pinned; an omitted one is kept), notification (namespace, enabled), journal_prefs (its three flags), tracked_behaviors (track, " +
+      "untrack; untracking only hides a behaviour, its answers stay), clock_format. Previews unless confirm:true.",
     input: {
       setting: z.enum(SETTINGS),
       metric: z.enum(HIDDEN_METRICS).optional(),
-      hidden: z.boolean().optional().describe("hidden_metric: true hides it in the app."),
-      enabled: z.boolean().optional().describe("stealth on/off; notification on (false blocks the namespace)."),
+      hidden: z.boolean().optional(),
+      enabled: z.boolean().optional().describe("notification: false blocks the namespace"),
       namespace: z.enum(NOTIFICATION_NAMESPACES).optional(),
-      gauges: z.array(z.enum(GAUGE_METRICS)).length(2).optional().describe("The two focus gauges beside Recovery and Strain."),
-      pinned: z.array(z.enum(KEY_METRICS)).optional().describe("Dashboard metrics, in order (replaces the list)."),
+      // Plain strings in the listed schema (pinned already spells the metric names out);
+      // planDashboard checks them against GAUGE_METRICS and lists the valid ones on a miss.
+      gauges: z.array(z.string()).length(2).optional().describe("2 of pinned's values; not RECOVERY or DAY_STRAIN"),
+      pinned: z.array(z.enum(KEY_METRICS)).optional().describe("In order; replaces the whole list"),
       journal_enabled: z.boolean().optional(),
       journal_autopop_enabled: z.boolean().optional(),
       ai_autopop_enabled: z.boolean().optional(),
-      track: z.array(z.union([z.number().int(), z.string()])).optional().describe("Behaviour ids or names to start tracking."),
-      untrack: z.array(z.union([z.number().int(), z.string()])).optional().describe("Behaviour ids or names to stop tracking."),
+      track: z.array(z.union([z.number().int(), z.string()])).optional().describe("Behaviour ids or names"),
+      untrack: z.array(z.union([z.number().int(), z.string()])).optional(),
       clock_format: z.enum(CLOCK_FORMATS).optional(),
       confirm: z.boolean().default(false),
     },
@@ -203,6 +207,10 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
     gauges: readonly string[] | undefined,
     pinned: readonly string[] | undefined,
   ): Promise<Plan | ToolResult> {
+    const notMetric = (gauges ?? []).filter((m) => !GAUGE_METRICS.includes(m));
+    if (notMetric.length > 0) {
+      return fail(`${notMetric.join(", ")} can't be a focus gauge.`, { gauge_options: GAUGE_METRICS });
+    }
     if (gauges && dupes(gauges).length > 0) return fail("The two gauges must differ.");
     if (pinned && dupes(pinned).length > 0) return fail(`Pinned twice: ${dupes(pinned).join(", ")}.`);
     // Omitting gauge_metrics resets the gauges to HRV + SLEEP_PERFORMANCE, so

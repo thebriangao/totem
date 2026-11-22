@@ -21,6 +21,16 @@ const WRITE_DESTRUCTIVE = [
   "whoop_profile_update", "whoop_raw", "whoop_smart_alarm_set", "whoop_weekly_plan_set", "whoop_weight_log",
 ];
 
+/** Every `description` under a schema's properties, with its path. */
+function describes(node: unknown, path = "", out: Array<[string, string]> = []): Array<[string, string]> {
+  if (node && typeof node === "object") {
+    const d = (node as { description?: unknown }).description;
+    if (path && typeof d === "string") out.push([path, d]);
+    for (const [k, v] of Object.entries(node)) describes(v, `${path}.${k}`, out);
+  }
+  return out;
+}
+
 async function connect() {
   const server = new McpServer({ name: "t", version: "0" });
   registerTools(server, {} as WhoopClient);
@@ -52,13 +62,24 @@ describe("v2 tool registry", () => {
   it("keeps every tool definition within the token budget", async () => {
     const { tools } = await (await connect()).listTools();
     for (const t of tools) {
-      expect((t.description ?? "").length, `${t.name} description`).toBeLessThanOrEqual(600);
-      const props = (t.inputSchema as { properties?: Record<string, { description?: string }> }).properties ?? {};
-      for (const [key, prop] of Object.entries(props)) {
-        expect((prop.description ?? "").length, `${t.name}.${key} describe`).toBeLessThanOrEqual(80);
-      }
+      expect((t.description ?? "").length, `${t.name} description`).toBeLessThanOrEqual(450);
+      // Every describe, nested ones included (exercises[].sets[].performed, custom.linked_exercise…).
+      for (const [path, text] of describes(t.inputSchema)) expect(text.length, `${t.name}${path} describe`).toBeLessThanOrEqual(60);
       expect(t.outputSchema, `${t.name} must not declare an outputSchema`).toBeUndefined();
     }
+  });
+
+  it("keeps the whole tools/list payload within its budget", async () => {
+    // Every MCP client sends this to the model on every turn. v1 was 45,283
+    // characters for 55 tools and v2 started at 50,318 for 40; the budget is 20%
+    // under v1. Measured now: 35,726.
+    const { tools } = await (await connect()).listTools();
+    expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_000);
+    // Write tools say once, the same way, that they preview by default.
+    for (const t of tools.filter((x) => x.annotations?.readOnlyHint === false && x.name !== "whoop_raw")) {
+      expect(t.description, t.name).toMatch(/Previews unless confirm:true\.$/);
+    }
+    for (const t of tools) expect(t.description, t.name).not.toMatch(/^WRITE|DESTRUCTIVE:/);
   });
 
   it("lists slim schemas: no date regexes, safe-integer bounds or $schema URLs", async () => {
@@ -73,9 +94,65 @@ describe("v2 tool registry", () => {
     expect(text).toContain('"enum"');
   });
 
+  it("lists nothing that only restates a default or an obvious bound", async () => {
+    const { tools } = await (await connect()).listTools();
+    const text = JSON.stringify(tools);
+    expect(text).not.toMatch(/"format":"uuid","pattern"/);
+    expect(text).not.toContain("[0-9a-fA-F]{8}-"); // zod's uuid regex
+    expect(text).not.toContain('"default":false');
+    expect(text).not.toContain('"default":[]');
+    expect(text).not.toContain('"minLength":1');
+    expect(text).not.toContain('"minItems":1');
+    expect(text).not.toContain('"exclusiveMinimum":0');
+    expect(text).not.toContain('"propertyNames"');
+    expect(text).not.toContain('"const"');
+    expect(text).not.toContain("taskSupport"); // "forbidden" is the MCP default when absent
+    // What a model does choose from stays: informative defaults, numeric ranges, enums, required lists.
+    const by = Object.fromEntries(tools.map((t) => [t.name, t.inputSchema as { properties: Record<string, any>; required?: string[] }]));
+    expect(by.whoop_trend!.properties.window).toMatchObject({ default: "month", enum: ["week", "month", "six_month"] });
+    expect(by.whoop_trend!.required).toEqual(["metrics"]);
+    expect(by.whoop_lift_sessions!.properties.limit).toMatchObject({ default: 3, minimum: 1, maximum: 20 });
+    expect(by.whoop_cycle_log!.properties.period.properties.flow).toEqual({ type: "number", enum: [0, 1, 2] });
+    expect(by.whoop_cycle_log!.properties.symptoms.items.properties.yes.default).toBe(true);
+    expect(by.whoop_hr_zones_set!.properties.max_heart_rate).toMatchObject({ minimum: 101, maximum: 220 });
+    expect(by.whoop_memory!.properties.memory_id).toEqual({ type: "string", format: "uuid" });
+    expect(by.whoop_smart_alarm_set!.properties.goal.enum).toHaveLength(7); // the safe goals only
+    // A field's name is never mistaken for a schema keyword.
+    expect(Object.keys(by.whoop_preferences_set!.properties)).toContain("enabled");
+    expect(Object.keys(by.whoop_raw!.properties)).toEqual(["path", "method", "query", "body", "allow_write", "confirm"]);
+  });
+
   it("still validates input the slim schema no longer spells out", async () => {
-    const res = await (await connect()).callTool({ name: "whoop_day", arguments: { date: "2026-02-30" } });
+    const client = await connect();
+    const rejected = async (name: string, args: Record<string, unknown>): Promise<string> => {
+      const res = await client.callTool({ name, arguments: args });
+      expect(res.isError, `${name} ${JSON.stringify(args)}`).toBe(true);
+      return (res.content as Array<{ text: string }>)[0]!.text;
+    };
+    await rejected("whoop_day", { date: "2026-02-30" }); // date regex
+    await rejected("whoop_day", { include: [] }); // minItems 1
+    await rejected("whoop_memory", { memory_id: "not-a-uuid" }); // uuid regex
+    await rejected("whoop_activity_delete", { activity_id: "" }); // minLength 1
+    await rejected("whoop_cycle_log", { date: "2026-11-01", period: { yes: true, flow: 3 } }); // literal union
+    await rejected("whoop_weight_log", { action: "add", weight: 0, unit: "kg" }); // exclusiveMinimum 0
+    await rejected("whoop_raw", { path: "/x", query: { a: { nested: true } } }); // record value types
+  });
+
+  it("validates the dashboard gauges it no longer lists as an enum, and names the valid ones", async () => {
+    const client = await connect();
+    const gauges = (client: { listTools: () => Promise<{ tools: Array<{ name: string; inputSchema: unknown }> }> }) =>
+      client.listTools().then(({ tools }) => (tools.find((t) => t.name === "whoop_preferences_set")!.inputSchema as { properties: Record<string, any> }).properties);
+    const props = await gauges(client);
+    // pinned keeps the metric names; gauges takes two of them as plain strings.
+    expect(props.pinned.items.enum).toContain("HRV");
+    expect(props.gauges).toMatchObject({ type: "array", minItems: 2, maxItems: 2, items: { type: "string" } });
+    expect(props.gauges.items.enum).toBeUndefined();
+    const res = await client.callTool({ name: "whoop_preferences_set", arguments: { setting: "dashboard", gauges: ["HRV", "NOT_A_METRIC"] } });
     expect(res.isError).toBe(true);
+    const out = JSON.parse((res.content as Array<{ text: string }>)[0]!.text) as { error: string; gauge_options: string[] };
+    expect(out.error).toMatch(/NOT_A_METRIC can't be a focus gauge/);
+    expect(out.gauge_options).toContain("SLEEP_PERFORMANCE");
+    expect(out.gauge_options).not.toContain("RECOVERY"); // the fixed gauges are never offered
   });
 
   it("serves the five catalogs as resources", async () => {

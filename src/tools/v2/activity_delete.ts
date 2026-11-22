@@ -20,9 +20,8 @@ export function registerActivityDelete(server: McpServer, client: WhoopClient): 
   defineTool(server, {
     name: "whoop_activity_delete",
     description:
-      "WRITE / DESTRUCTIVE: delete one activity, nap or sleep by activity_id (from whoop_workouts or whoop_sleep). Reads it first to " +
-      "pick the right endpoint, then confirms it's gone (WHOOP answers 204 even for missing ids). Deleting a main sleep does not " +
-      "restore the day's cycles. Preview unless confirm:true.",
+      "Delete one activity, nap or sleep by activity_id (from whoop_workouts or whoop_sleep) and confirm it's gone. Deleting a main " +
+      "sleep doesn't restore the day's cycles. Previews unless confirm:true.",
     input: {
       activity_id: z.string().min(1),
       confirm: z.boolean().default(false),

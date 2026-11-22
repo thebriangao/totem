@@ -63,17 +63,17 @@ export function registerWeightLog(server: McpServer, client: WhoopClient): void 
   defineTool(server, {
     name: "whoop_weight_log",
     description:
-      "WRITE: add, edit or delete a weight / body-composition reading. weight and lean_mass take unit kg or lb (stored as kg); body_fat_pct is a percent. " +
-      "add ALWAYS creates a new reading, even on a day that has one; to replace, edit by reading_id (from whoop_weight). " +
-      "The latest-timestamp reading becomes the profile weight, and deleting a reading never reverts it. No future times. Preview unless confirm:true.",
+      "Add, edit or delete a weight or body-composition reading. weight and lean_mass need unit. add ALWAYS creates a new reading, even " +
+      "on a day that has one; to replace, edit by reading_id (from whoop_weight). The latest reading becomes the profile weight, and " +
+      "deleting a reading never reverts it. No future times. Previews unless confirm:true.",
     input: {
       action: z.enum(["add", "edit", "delete"]),
-      reading_id: z.string().min(1).optional().describe("Required for edit/delete."),
-      weight: z.number().positive().optional().describe("Required for add."),
-      unit: z.enum(["kg", "lb"]).optional().describe("Unit of weight and lean_mass; required with either."),
-      body_fat_pct: z.number().gt(0).lt(100).nullable().optional().describe("Percent, e.g. 18.5. On edit, null clears body composition."),
-      lean_mass: z.number().positive().optional().describe("Lean body mass, in `unit`."),
-      at: z.iso.datetime({ offset: true }).optional().describe("When measured, ISO with offset. add: now; edit: unchanged."),
+      reading_id: z.string().min(1).optional().describe("For edit and delete"),
+      weight: z.number().positive().optional().describe("Required for add"),
+      unit: z.enum(["kg", "lb"]).optional(),
+      body_fat_pct: z.number().gt(0).lt(100).nullable().optional().describe("Percent, e.g. 18.5; on edit null clears body composition"),
+      lean_mass: z.number().positive().optional(),
+      at: z.iso.datetime({ offset: true }).optional().describe("Default now; edit keeps it"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

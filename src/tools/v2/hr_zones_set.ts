@@ -44,11 +44,13 @@ export function registerHrZonesSet(server: McpServer, client: WhoopClient): void
   defineTool(server, {
     name: NAME,
     description:
-      "WRITE: set heart-rate zones. max_hr: set max HR (WHOOP recomputes default zones; custom zones stay in force). custom: 5 zones Z1..Z5 as [min, max] bpm, contiguous (each min = previous max + 1), Z5 max at most your max HR. reset: back to WHOOP's default zones. Reads the zones back; preview unless confirm:true.",
+      "Set heart-rate zones. max_hr: set max_heart_rate (WHOOP recomputes its default zones; custom zones stay in force). custom: zones " +
+      "as 5 [min, max] bpm pairs Z1..Z5, contiguous (each min = previous max + 1), Z5 max at most your max HR. reset: back to WHOOP's " +
+      "defaults. Previews unless confirm:true.",
     input: {
       action: z.enum(["max_hr", "custom", "reset"]),
-      max_heart_rate: z.number().int().min(101).max(220).optional().describe("bpm, for action max_hr."),
-      zones: z.array(z.tuple([z.number().int().min(0), z.number().int().min(1)])).optional().describe("Z1..Z5 as [min, max] bpm, for action custom."),
+      max_heart_rate: z.number().int().min(101).max(220).optional(),
+      zones: z.array(z.tuple([z.number().int().min(0), z.number().int().min(1)])).optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

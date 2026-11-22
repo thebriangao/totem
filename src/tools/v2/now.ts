@@ -16,9 +16,8 @@ export function registerNow(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Live snapshot right now: activity state (idle, workout, sleep…) with sport, start and minutes so far when active; " +
-        "tracked_sleep; when WHOOP last processed strap data and how many minutes ago; current stress level and label; and " +
-        "today's recovery %, sleep %, strain, calories and HRV. Never cached. There is no live heart-rate (BPM) source.",
+        "Live snapshot: activity state (idle, workout, sleep…) with sport and minutes so far, when WHOOP last processed strap data, " +
+        "current stress, and today's recovery, sleep, strain, calories and HRV. Never cached. There is no live heart-rate (BPM) source.",
       input: {},
       annotations: READ_ONLY,
     },

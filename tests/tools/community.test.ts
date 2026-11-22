@@ -37,7 +37,7 @@ describe("whoop_community", () => {
     const { tools } = await client.listTools();
     expect(tools[0]!.description).toMatch(/OTHER PEOPLE'S names and scores/);
     expect(tools[0]!.description).toMatch(/never cached/);
-    expect(tools[0]!.description!.length).toBeLessThanOrEqual(600);
+    expect(tools[0]!.description!.length).toBeLessThanOrEqual(450);
     expect(tools[0]!.annotations).toMatchObject({ readOnlyHint: true });
   });
 

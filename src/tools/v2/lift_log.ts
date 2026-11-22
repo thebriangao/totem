@@ -40,13 +40,13 @@ const MAX_HOURS = 12;
 
 const SetIn = z.object({
   reps: z.number().int().min(0).max(1000).optional(),
-  weight: z.number().min(0).max(2000).optional().describe("In `unit`."),
-  time_seconds: z.number().int().min(1).max(86_400).optional().describe("Timed exercises."),
-  performed: z.boolean().optional().describe("false = planned but skipped: no volume, not in history."),
+  weight: z.number().min(0).max(2000).optional(),
+  time_seconds: z.number().int().min(1).max(86_400).optional(),
+  performed: z.boolean().optional().describe("false = planned but skipped"),
 });
 const ExerciseIn = z.object({
-  exercise_id: z.string().optional().describe("Catalog id or custom UUID (whoop_lift_library search)."),
-  name: z.string().optional().describe("Exact exercise name, instead of exercise_id."),
+  exercise_id: z.string().optional().describe("From whoop_lift_library search"),
+  name: z.string().optional().describe("Or the exact name"),
   sets: z.array(SetIn).min(1).max(50),
 });
 
@@ -113,15 +113,17 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: TOOL,
     description:
-      "Log a finished strength workout as a new Strength Trainer activity, or attach the sets to an existing activity (attach_to_activity_id; permanent: WHOOP has no unlink). Weights are converted from `unit` to the account's display unit. Sets are spread across start–end. Refuses a window that overlaps another activity (WHOOP 409s such a lift yet keeps its sets, undeletable): pick another window or delete that activity with whoop_activity_delete. Refuses 0-rep weighted sets (WHOOP would award a permanent PR). Preview unless confirm:true.",
+      "Log a finished strength workout as a new Strength Trainer activity, or attach the sets to an existing activity " +
+      "(attach_to_activity_id; permanent, WHOOP has no unlink). Weights need unit. Refused: a window overlapping another activity, and " +
+      "weighted sets with 0 reps (WHOOP would award a permanent PR). Previews unless confirm:true.",
     input: {
       exercises: z.array(ExerciseIn).min(1).max(30),
-      unit: z.enum(["kg", "lb"]).optional().describe("Unit of the weights you give; required when any set has weight."),
-      start: z.iso.datetime({ offset: true }).optional().describe("Default end minus 30 min."),
-      end: z.iso.datetime({ offset: true }).optional().describe("Default now; never in the future."),
-      name: z.string().min(1).max(100).optional().describe("Default: the local date."),
+      unit: z.enum(["kg", "lb"]).optional(),
+      start: z.iso.datetime({ offset: true }).optional().describe("Default end minus 30 min"),
+      end: z.iso.datetime({ offset: true }).optional().describe("Default now"),
+      name: z.string().min(1).max(100).optional(),
       rpe: z.number().int().min(0).max(10).optional(),
-      attach_to_activity_id: z.string().optional().describe("Add the sets to this activity instead (start/end unused)."),
+      attach_to_activity_id: z.string().optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_ADDITIVE,

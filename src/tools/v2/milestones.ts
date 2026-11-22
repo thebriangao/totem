@@ -21,11 +21,12 @@ export function registerMilestones(server: McpServer, client: WhoopClient): void
   defineTool(server, {
     name: "whoop_milestones",
     description:
-      "Milestone badges and the wear streak. Default: totals (total / unique / rare), the data streak (days, started, max, this week), top earned badges and the closest unearned ones. " +
-      "include:[\"badges\"] adds every badge as rows (sleep, recovery, strain, healthspan, other, activities). milestone_type returns one badge's detail: count, progress to the next level, levels earned with dates.",
+      "Milestone badges and the wear streak: totals, the data streak, top earned badges and the closest unearned ones. include badges " +
+      "lists every badge with its type. milestone_type returns one badge's detail: count, progress to the next level and levels earned " +
+      "with dates.",
     input: {
-      milestone_type: z.string().regex(/^[A-Z0-9_]+$/).optional().describe("e.g. HIGH_STRAIN (types come from the badge list)."),
-      include: z.array(z.enum(["badges"])).default([]).describe("badges: the full badge list."),
+      milestone_type: z.string().regex(/^[A-Z0-9_]+$/).optional().describe("e.g. HIGH_STRAIN"),
+      include: z.array(z.enum(["badges"])).default([]),
     },
     annotations: READ_ONLY,
   }, async ({ milestone_type, include }) => {

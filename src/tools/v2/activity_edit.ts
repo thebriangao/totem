@@ -46,19 +46,19 @@ export function registerActivityEdit(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: "whoop_activity_edit",
     description:
-      "WRITE / DESTRUCTIVE: change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or a sleep/nap's window " +
-      "(`activity_id`, or `sleep_date` for that day's main sleep). Omitted bounds keep their value. A sleep window that overlaps " +
-      "others needs `delete_overlapping` = exactly the ids the preview lists, and WHOOP then DELETES them. The type is read " +
-      "back; a main sleep demoted to a nap is repaired. Preview unless confirm:true.",
+      "Change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or a sleep or nap's window, by activity_id or " +
+      "sleep_date (that day's main sleep). Omitted bounds keep their value. A sleep window that overlaps others needs " +
+      "delete_overlapping = exactly the ids the preview lists; WHOOP then DELETES them. Nap→main sleep permanently re-cuts the day's " +
+      "cycles. Previews unless confirm:true.",
     input: {
       activity_id: z.string().min(1).optional(),
-      sleep_date: z.iso.date().optional().describe("Instead of activity_id: the cycle day whose main sleep to edit."),
-      start: z.iso.datetime({ offset: true }).optional().describe("New start, ISO-8601 with offset."),
-      end: z.iso.datetime({ offset: true }).optional().describe("New end, ISO-8601 with offset; not in the future."),
-      type: z.string().optional().describe("New type: internal_name, display name or sport_id."),
-      garment_id: z.number().int().optional().describe("Strap location (activities only)."),
+      sleep_date: z.iso.date().optional(),
+      start: z.iso.datetime({ offset: true }).optional(),
+      end: z.iso.datetime({ offset: true }).optional(),
+      type: z.string().optional().describe("internal_name, display name or sport_id"),
+      garment_id: z.number().int().optional().describe("Activities only"),
       delete_overlapping: z.array(z.string().min(1)).optional()
-        .describe("Sleep/nap edits: the preview's overlapping ids, which WHOOP will delete."),
+        .describe("Overlapping ids from the preview; WHOOP deletes them"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

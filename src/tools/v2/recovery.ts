@@ -25,13 +25,12 @@ export function registerRecovery(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Recovery for a cycle day (default today): score, state, calibration progress, and contributors (HRV, RHR, respiratory rate, " +
-        "sleep performance) vs your baseline with WHOOP's trend verdict. For today only, the Health Monitor: SpO2 %, skin temperature as a " +
-        "°F deviation from baseline (not absolute), RR, RHR, HRV and range statuses. include assessment adds WHOOP's weekly and monthly " +
-        "performance assessment: recoveries counted vs required and the assessment windows.",
+        "Recovery for a cycle day (default today): score, state and contributors (HRV, RHR, respiratory rate, sleep performance) vs " +
+        "baseline. Today only: Health Monitor (SpO2, skin temperature as a °F deviation from baseline, RR, RHR, HRV). include assessment " +
+        "adds the weekly and monthly performance assessment.",
       input: {
-        date: z.iso.date().optional().describe("Cycle day YYYY-MM-DD; defaults to today"),
-        include: z.array(z.enum(["assessment"])).optional().describe("Extra sections"),
+        date: z.iso.date().optional(),
+        include: z.array(z.enum(["assessment"])).optional(),
       },
       annotations: READ_ONLY,
     },

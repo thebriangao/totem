@@ -16,7 +16,7 @@ import { defineTool, respond } from "../define.js";
 import { READ_ONLY } from "../annotations.js";
 import { WhoopApiError } from "../../whoop/errors.js";
 import { ActivityDetailOut, WorkoutsListOut, type ActivityListItemT } from "../../schemas/activities.js";
-import { projectActivityDetail, projectDeveloperWorkout, projectTile } from "../../projections/activities.js";
+import { projectActivityDetail, projectDeveloperWorkout, projectTile, workoutRows } from "../../projections/activities.js";
 import { daySpan, listTiles } from "../../lib/activity_list.js";
 import { CARDIO_DETAILS_V1, RECOVERY_DETAILS_V2 } from "../../lib/activity_records.js";
 import { errorResult } from "../../lib/activity_results.js";
@@ -60,18 +60,17 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: "whoop_workouts",
     description:
-      "Activities as the WHOOP app lists them. List: one cycle day (`date`) or `start_date`–`end_date` (≤31 days; default the last 7), " +
-      "CARDIO and RECOVERY unless `types` says otherwise, pending and unscored included: one row each with activity_id, internal_name, " +
-      "start/end, status and CARDIO strain. Detail: `activity_id` gives strain, calories, avg/max HR, zone minutes, distance and MSK " +
-      "summary; include [\"hr\"] adds the HR series. Unscored activities have no strain yet. Sleeps and naps: whoop_sleep.",
+      "Activities as the app lists them. List: one cycle day (date) or start_date–end_date (≤31 days; default the last 7), pending and " +
+      "unscored included, as rows of id, type, sport, start, minutes, status and CARDIO strain. With activity_id: strain, calories, HR, " +
+      "zones, distance and MSK summary. Sleeps and naps: whoop_sleep.",
     input: {
-      date: z.iso.date().optional().describe("One cycle day, YYYY-MM-DD."),
-      start_date: z.iso.date().optional().describe("Range start, YYYY-MM-DD (inclusive)."),
-      end_date: z.iso.date().optional().describe("Range end, YYYY-MM-DD (inclusive). Default today."),
-      activity_id: z.string().min(1).optional().describe("Return this activity's detail instead of a list."),
-      include: z.array(z.enum(["hr"])).optional().describe("Detail extras: the HR series."),
-      types: z.array(z.enum(["CARDIO", "RECOVERY", "SLEEP"])).min(1).optional().describe("Default [CARDIO, RECOVERY]."),
-      sport: z.string().optional().describe("Filter: substring of internal_name or name."),
+      date: z.iso.date().optional(),
+      start_date: z.iso.date().optional(),
+      end_date: z.iso.date().optional(),
+      activity_id: z.string().min(1).optional(),
+      include: z.array(z.enum(["hr"])).optional().describe("Detail only"),
+      types: z.array(z.enum(["CARDIO", "RECOVERY", "SLEEP"])).min(1).optional().describe("Default CARDIO, RECOVERY"),
+      sport: z.string().optional().describe("Substring of the sport's name"),
       limit: z.number().int().min(1).max(200).default(50),
     },
     annotations: READ_ONLY,
@@ -125,7 +124,7 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
       warnings.push("Ranges over 31 days come from WHOOP's developer list (WHOOP_DEV_V2_LISTS): scored workouts only; pending and incomplete ones are missing.");
       return respond("whoop_workouts", WorkoutsListOut, {
         source: "developer", start_date: startDate, end_date: endDate, count: Math.min(kept.length, limit),
-        ...(more || kept.length > limit ? { truncated: true } : {}), activities: kept.slice(0, limit), warnings,
+        ...(more || kept.length > limit ? { truncated: true } : {}), ...workoutRows(kept.slice(0, limit)), warnings,
       });
     }
 
@@ -135,7 +134,7 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
     const kept = listing.tiles.map(projectTile).filter(matches).sort(newestFirst);
     return respond("whoop_workouts", WorkoutsListOut, {
       start_date: startDate, end_date: endDate, count: Math.min(kept.length, limit),
-      ...(kept.length > limit ? { truncated: true } : {}), activities: kept.slice(0, limit), warnings,
+      ...(kept.length > limit ? { truncated: true } : {}), ...workoutRows(kept.slice(0, limit)), warnings,
     });
   });
 }

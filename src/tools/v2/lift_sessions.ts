@@ -10,6 +10,7 @@ import { LiftSessionsOut, type LiftSessionOutT } from "../../schemas/strength_v2
 import {
   activityFromDetail,
   buildSession,
+  exerciseCols,
   hasLiftData,
   hoistUnit,
   homeActivities,
@@ -138,13 +139,15 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: TOOL,
     description:
-      "Strength sessions, newest first (default last 14 days, max 60; 3 per call): any activity with Strength Trainer sets, any sport. Each exercise: id, sets (\"3x5\"; timed in s), top [weight, reps], volume, best medal. include sets adds rows [weight, reps] (or [weight, reps, pct_1rm, avg_hr] when scored). An unscored session lists as src unscored with no exercises: include unscored, or activity_id, reads its sets from exercise history (slow: a request per exercise you have a PR in; no HR/%1RM). Weights in `unit`. Names: whoop_lift_library search.",
+      "Strength sessions, newest first (default last 14 days, max 60): any activity with Strength Trainer sets. Exercises are rows in " +
+      "exercise_cols order: id, set scheme, top set [weight, reps], volume, medal. Unscored sessions list without exercises: include " +
+      "unscored (or activity_id) reads their sets from exercise history, which is slow. Weights are in unit.",
     input: {
-      start_date: z.iso.date().optional().describe("Default end_date minus 13 days."),
-      end_date: z.iso.date().optional().describe("Default today."),
-      activity_id: z.string().optional().describe("Read one activity instead of a range."),
+      start_date: z.iso.date().optional(),
+      end_date: z.iso.date().optional(),
+      activity_id: z.string().optional(),
       limit: z.number().int().min(1).max(20).default(3),
-      include: z.array(z.enum(["sets", "unscored"])).optional().describe("sets = per-set rows; unscored = read unscored sessions' sets."),
+      include: z.array(z.enum(["sets", "unscored"])).optional(),
     },
     annotations: READ_ONLY,
   }, async ({ start_date, end_date, activity_id, limit, include }) => {
@@ -176,7 +179,9 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
       }
       if (!session) warnings.push("This activity has no Strength Trainer sets.");
       const hoisted = hoistUnit(session ? [session] : []);
-      return respond(TOOL, LiftSessionsOut, { from: activity.date, to: activity.date, ...hoisted, more: false, warnings });
+      return respond(TOOL, LiftSessionsOut, {
+        from: activity.date, to: activity.date, ...hoisted, exercise_cols: exerciseCols(hoisted.sessions, withRows), more: false, warnings,
+      });
     }
 
     const end = !end_date || end_date > today ? today : end_date;
@@ -239,6 +244,7 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
       from: start,
       to: end,
       ...hoisted,
+      exercise_cols: exerciseCols(hoisted.sessions, withRows),
       more: sessions.length > limit || scanned < days.length,
       warnings,
     });

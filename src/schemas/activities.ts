@@ -22,6 +22,17 @@ export const ActivityListItem = z.object({
 });
 export type ActivityListItemT = z.infer<typeof ActivityListItem>;
 
+/**
+ * The list goes out as columnar rows in this order, so no key is repeated per
+ * activity: `min` is the duration in whole minutes, `strain` is CARDIO only.
+ */
+export const WORKOUT_COLUMNS = ["activity_id", "type", "internal_name", "start", "min", "status", "strain"] as const;
+export const WorkoutRow = z.tuple([
+  z.string(), z.string().nullable(), z.string().nullable(), IsoDateTime.nullable(), z.number().int().nullable(), z.string().nullable(),
+  z.number().nullable(),
+]);
+export type WorkoutRowT = z.infer<typeof WorkoutRow>;
+
 export const WorkoutsListOut = z.object({
   /** Only present for the opt-in developer list. */
   source: z.literal("developer").optional(),
@@ -29,7 +40,11 @@ export const WorkoutsListOut = z.object({
   end_date: z.string(),
   count: z.number().int(),
   truncated: z.literal(true).optional(),
-  activities: z.array(ActivityListItem),
+  /** Empty (so dropped) when there are no rows. */
+  columns: z.array(z.enum(WORKOUT_COLUMNS)),
+  rows: z.array(WorkoutRow),
+  /** Display names that say more than the internal_name, stated once: {weightlifting_msk: "Strength Trainer"}. */
+  names: z.record(z.string(), z.string()),
   warnings: z.array(z.string()),
 });
 export type WorkoutsListOutT = z.infer<typeof WorkoutsListOut>;

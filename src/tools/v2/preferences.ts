@@ -37,9 +37,10 @@ export function registerPreferences(server: McpServer, client: WhoopClient): voi
   defineTool(server, {
     name: NAME,
     description:
-      "Account preferences in one read: journal flags, notification namespaces (false = blocked), AI coach settings, the home dashboard (your 2 focus gauges and pinned metrics) and how many journal behaviours you track. include narrows the sections. Change them with whoop_preferences_set.",
+      "Account preferences: journal flags, notification namespaces (false = blocked), AI coach settings, the home dashboard (2 focus " +
+      "gauges and pinned metrics) and how many journal behaviours you track. Change them with whoop_preferences_set.",
     input: {
-      include: z.array(z.enum(ALL)).min(1).optional().describe("Sections to read; default all."),
+      include: z.array(z.enum(ALL)).min(1).optional().describe("Default all"),
     },
     annotations: READ_ONLY,
   }, async ({ include }) => {

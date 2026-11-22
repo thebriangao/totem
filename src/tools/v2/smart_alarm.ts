@@ -38,9 +38,8 @@ export function registerSmartAlarm(server: McpServer, client: WhoopClient): void
   defineTool(server, {
     name: "whoop_smart_alarm",
     description:
-      "Smart Alarm: the recurring schedules (id, days, mode, sleep_goal, latest wake time 24h, enabled; enabled:false shows as ALARM OFF in the app), unscheduled days, " +
-      "the recurring-schedule master switch, and the next alarm WHOOP will set (date, window, goal). Fields WHOOP fails to return come back as \"unavailable\". " +
-      "Server state only: it doesn't prove the strap has synced.",
+      "Smart Alarm: recurring schedules (id, days, mode, sleep goal, latest wake time, enabled), unscheduled days, the master switch " +
+      "and the next alarm WHOOP will set. Server state only: it doesn't prove the strap has synced.",
     input: {},
     annotations: READ_ONLY,
   }, async () => respond("whoop_smart_alarm", SmartAlarmOut, await readSmartAlarm(client)));

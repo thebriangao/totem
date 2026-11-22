@@ -5,7 +5,7 @@
 // hasLiftData, @chaotix345: lifts can sit on any sport). Unscored sessions have
 // `weightlifting_cardio_details: null`; their sets come from exercise_history.
 import { get, parseNumber, str, walk, type Node } from "../whoop/bff.js";
-import type { LiftSessionOutT, SessionExerciseOutT } from "../schemas/strength_v2.js";
+import { SESSION_EXERCISE_COLS, type LiftSessionOutT, type SessionExerciseOutT, type SessionExerciseRowT } from "../schemas/strength_v2.js";
 import { clockSeconds, medal, weightUnit, type LiftCard, type MedalT } from "./lift_cards.js";
 
 export interface HomeActivity {
@@ -187,6 +187,19 @@ export function compactExercise(ex: ParsedExercise, withRows: boolean): SessionE
   return out;
 }
 
+/** One exercise as a wire row, in SESSION_EXERCISE_COLS order (+ the per-set rows when present). */
+export function exerciseRow(e: SessionExerciseOutT): SessionExerciseRowT {
+  const row: SessionExerciseRowT = [e.id, e.sets, e.top, e.volume, e.medal];
+  if (e.rows) row.push(e.rows);
+  return row;
+}
+
+/** The column names for a response's exercise rows; none when no session lists exercises. */
+export function exerciseCols(sessions: Array<{ exercises: unknown[] }>, withRows: boolean): string[] {
+  if (!sessions.some((s) => s.exercises.length > 0)) return [];
+  return withRows ? [...SESSION_EXERCISE_COLS, "rows"] : [...SESSION_EXERCISE_COLS];
+}
+
 function strainOf(activity: HomeActivity, detail: unknown): number | null {
   const shown = get(detail, "horizontal_stat", "stat_main_value_display");
   const fromDetail = parseNumber(shown);
@@ -222,7 +235,7 @@ export function buildSession(activity: HomeActivity, detail: unknown, parsed: Pa
     volume: parsed.volume,
     msk_pct: parseNumber(get(detail, "strain_breakdown", "msk_percent_display")),
     unit: null,
-    exercises: parsed.exercises.map((e) => compactExercise(e, withRows)),
+    exercises: parsed.exercises.map((e) => exerciseRow(compactExercise(e, withRows))),
     _unit: parsed.unit,
   };
 }

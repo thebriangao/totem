@@ -21,10 +21,10 @@ const LOG_PATH = `${WH}/menstrual-cycle-insights/log`;
 const SYMPTOM_POST_PATH = `${WH}/symptom-insights/log/symptoms`;
 
 const SymptomArg = z.object({
-  id: z.number().int().optional().describe("Symptom id (whoop_cycle include day_log)."),
-  name: z.string().min(1).optional().describe("Or the symptom's name, e.g. Headache."),
-  yes: z.boolean().default(true).describe("false removes the symptom."),
-  magnitude: z.number().optional().describe("Graded symptoms only: a step choice (e.g. 0/1/2) or in range."),
+  id: z.number().int().optional().describe("From whoop_cycle include day_log"),
+  name: z.string().min(1).optional().describe("Or the name, e.g. Headache"),
+  yes: z.boolean().default(true).describe("false removes it"),
+  magnitude: z.number().optional().describe("Graded symptoms only"),
 });
 type SymptomArgT = z.infer<typeof SymptomArg>;
 
@@ -60,14 +60,16 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: "whoop_cycle_log",
     description:
-      "WRITE: log or undo a date's period (flow 0 light, 1 medium, 2 heavy) or ovulation, and/or flow (menstruation), cervical mucus and symptoms. yes:false undoes. Not both period and ovulation on one date; no future dates. " +
-      "Current flow and mucus are re-sent so symptom edits don't clear them; null clears one. Any flow except none also logs a period day (to remove a period fully, also pass menstruation:null), and a period on a fresh date creates a cycle that undo won't remove. Also writes journal rows. Preview unless confirm:true.",
+      "Log or undo (yes:false) a date's period (flow 0 light, 1 medium, 2 heavy) or ovulation, and/or its menstruation flow, cervical " +
+      "mucus and symptoms. Not period and ovulation on one date; no future dates. Any menstruation but none also logs a period day; to " +
+      "remove a period fully, also pass menstruation:null. A period on a fresh date creates a cycle that undo won't remove. Previews " +
+      "unless confirm:true.",
     input: {
       date: z.iso.date(),
       period: z.object({ yes: z.boolean(), flow: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional() }).optional(),
       ovulation: z.object({ yes: z.boolean() }).optional(),
-      menstruation: z.enum(MENSTRUATION).nullable().optional().describe("Flow chip; null clears it."),
-      cervical_mucus: z.enum(CERVICAL_MUCUS).nullable().optional().describe("null clears it."),
+      menstruation: z.enum(MENSTRUATION).nullable().optional().describe("null clears it"),
+      cervical_mucus: z.enum(CERVICAL_MUCUS).nullable().optional().describe("null clears it"),
       symptoms: z.array(SymptomArg).optional(),
       confirm: z.boolean().default(false),
     },

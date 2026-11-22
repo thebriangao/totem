@@ -63,18 +63,19 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
   defineTool(server, {
     name: "whoop_smart_alarm_set",
     description:
-      "WRITE Smart Alarm. create/edit a recurring schedule (days, mode, sleep_goal only for SLEEP_GOAL, wake_time 24h, enabled; NO_ALARM means off); edit merges onto the current schedule; " +
-      "a day belongs to one schedule, so claiming it moves it off another. delete removes a schedule. enable/disable flip the recurring master switch; disable also turns the next alarm off. " +
-      "single_alarm sets just the next alarm (on) and turns the recurring schedules off. Changes reach the strap only after the WHOOP app syncs. Preview unless confirm:true.",
+      "Change Smart Alarm. create/edit a recurring schedule (edit merges; mode NO_ALARM is off); a day belongs to one schedule, so " +
+      "claiming it moves it off another. enable/disable flip the master switch; disable also turns the next alarm off. single_alarm " +
+      "sets only the next alarm and turns recurring schedules off. Changes reach the strap only after the WHOOP app syncs. Previews " +
+      "unless confirm:true.",
     input: {
       action: z.enum(["create", "edit", "delete", "enable", "disable", "single_alarm"]),
-      schedule_id: z.string().regex(/^[0-9a-fA-F-]{8,64}$/).optional().describe("edit/delete: from whoop_smart_alarm."),
-      days: z.array(z.enum(DAYS)).min(1).optional().describe("create/edit: the schedule's days."),
+      schedule_id: z.string().regex(/^[0-9a-fA-F-]{8,64}$/).optional().describe("For edit and delete"),
+      days: z.array(z.enum(DAYS)).min(1).optional(),
       mode: z.enum(ALARM_MODES).optional(),
-      sleep_goal: z.enum(SLEEP_GOALS).optional().describe("Only with mode SLEEP_GOAL."),
-      wake_time: z.string().optional().describe("Latest wake time, e.g. 06:45."),
-      enabled: z.boolean().optional().describe("create/edit: the schedule's own on/off flag."),
-      goal: z.enum(SAFE_ALARM_GOALS).optional().describe("single_alarm goal (default EXACT_TIME_PERFORM)."),
+      sleep_goal: z.enum(SLEEP_GOALS).optional().describe("Only with mode SLEEP_GOAL"),
+      wake_time: z.string().optional().describe("Latest wake time, 24h, e.g. 06:45"),
+      enabled: z.boolean().optional().describe("The schedule's own on/off flag"),
+      goal: z.enum(SAFE_ALARM_GOALS).optional().describe("single_alarm only; default EXACT_TIME_PERFORM"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,

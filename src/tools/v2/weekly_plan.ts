@@ -28,10 +28,10 @@ export function registerWeeklyPlan(server: McpServer, client: WhoopClient): void
   defineTool(server, {
     name: "whoop_weekly_plan",
     description:
-      "The Weekly Plan for the Monday–Sunday week containing a date: has_plan, plan name, days left, overall % accomplished, and goals " +
-      "(type, target: steps/day or minutes/week, days_met [met, of], pct, this_week running total). Change goals with whoop_weekly_plan_set.",
+      "The Weekly Plan for the Monday–Sunday week containing a date (default today): plan name, days left, % accomplished and each " +
+      "goal's target (steps/day or minutes/week), days met and running total. Change goals with whoop_weekly_plan_set.",
     input: {
-      date: z.iso.date().optional().describe("Any date in the week (default today)."),
+      date: z.iso.date().optional(),
     },
     annotations: READ_ONLY,
   }, async ({ date }) => respond("whoop_weekly_plan", WeeklyPlanOut, await readWeeklyPlan(client, date ?? todayIso())));

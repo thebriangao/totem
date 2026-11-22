@@ -18,7 +18,9 @@ export function registerProfile(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: NAME,
     description:
-      "Your profile: name, email, birthday, gender and physiological baseline (as whoop_profile_update takes them), height (m), weight (kg), unit system, location, max/resting HR, membership, hidden metrics and stealth mode. include: hr_zones (zones in bpm, is_custom), entitlements (features that are off, and why), integrations (connected apps), privacy (community sharing, decoded).",
+      "Your profile: name, email, birthday, gender, physiological baseline, height (m), weight (kg), unit system, location, max and " +
+      "resting HR, membership, hidden metrics and stealth mode. include adds hr_zones (bpm), entitlements (features that are off, and " +
+      "why), integrations and community privacy.",
     input: {
       include: z.array(z.enum(INCLUDES)).optional(),
     },

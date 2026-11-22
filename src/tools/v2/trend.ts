@@ -18,19 +18,16 @@ export function registerTrend(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Trends for 1–5 metrics over one window ending end_date (default today; windows are inclusive: week 7 days, month 30, " +
-        "six_month 180). Per metric: window dates, WHOOP's average, previous-window average, change %, direction, every row " +
-        "(HOURS_V_NEED has SLEEP_NEED and SLEEP_HOURS) and breakdown day counts. Rows marked per:week (HR zones, strength time) " +
-        "are weekly totals over 7/28/175 days. compare_end_date adds window b and the a−b " +
-        "deltas (e.g. this week vs last). include_points adds values from points.start, one per points.step (day, or week for weekly totals). " +
-        "Durations are minutes.",
+        "Trends for 1–5 metrics over a window ending end_date (default today; week = 7 days, month 30, six_month 180): average, " +
+        "previous-window average, change % and direction. HR-zone and strength-time rows are weekly totals. compare_end_date adds a " +
+        "second window and the deltas.",
       input: {
         metrics: z.array(z.enum(TREND_METRICS)).min(1).max(5)
           .refine((v) => new Set(v).size === v.length, "metrics must not repeat"),
         window: z.enum(TREND_WINDOWS).default("month"),
-        end_date: z.iso.date().optional().describe("Last day of the window; defaults to today"),
-        compare_end_date: z.iso.date().optional().describe("Last day of a second window to compare against"),
-        include_points: z.boolean().default(false).describe("Add the window's values, one per day or week"),
+        end_date: z.iso.date().optional(),
+        compare_end_date: z.iso.date().optional(),
+        include_points: z.boolean().default(false).describe("One value per day or week"),
       },
       annotations: READ_ONLY,
     },

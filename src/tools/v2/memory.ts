@@ -12,9 +12,9 @@ export const CONTEXT_HUB = "/context-hub-bff/v1/context-hub";
 
 export const memoryInput = {
   category: z.string().regex(/^[a-z][a-z_]{0,39}$/, "lower_snake_case category").default("timeline")
-    .describe("timeline (all), goals, training, … any key from categories"),
-  limit: z.number().int().min(1).max(100).default(10).describe("Max rows returned"),
-  memory_id: z.uuid().optional().describe("Open one memory's detail (marks it seen in the app)"),
+    .describe("timeline = all, or a key from categories"),
+  limit: z.number().int().min(1).max(100).default(10),
+  memory_id: z.uuid().optional(),
 };
 
 /** Fresh read of one category's raw items (the context hub is never cached). */
@@ -32,7 +32,9 @@ export function registerMemory(server: McpServer, client: WhoopClient): void {
     {
       name: TOOL,
       description:
-        "What WHOOP Coach remembers about you (its memory): rows of id, title, summary, ACTIVE/INACTIVE status and category (timeline only), with total; categories lists the keys that have items. memory_id opens one memory's detail (dates and related conversations), which marks it seen in the app, so only open it when asked. Memories can't be created here: the coach saves them from chats.",
+        "What WHOOP Coach remembers about you: memories with id, title, summary and ACTIVE/INACTIVE status, plus the categories that have " +
+        "items. memory_id opens one memory's detail and marks it seen in the app, so only open it when asked. Memories can't be created " +
+        "here; the coach saves them from chats.",
       input: memoryInput,
       annotations: READ_ONLY,
     },

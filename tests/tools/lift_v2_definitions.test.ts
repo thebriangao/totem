@@ -25,8 +25,8 @@ describe("v2 strength tool definitions", () => {
       "whoop_lift_exercise", "whoop_lift_exercise_set", "whoop_lift_library", "whoop_lift_log", "whoop_lift_sessions", "whoop_lift_template",
     ]);
     for (const t of tools) {
-      expect(t.description!.length, t.name).toBeLessThanOrEqual(600);
-      for (const [path, d] of describes(t.inputSchema, "", [])) expect(d.length, `${t.name}${path}`).toBeLessThanOrEqual(80);
+      expect(t.description!.length, t.name).toBeLessThanOrEqual(450);
+      for (const [path, d] of describes(t.inputSchema, "", [])) expect(d.length, `${t.name}${path}`).toBeLessThanOrEqual(60);
     }
     for (const name of ["whoop_lift_sessions", "whoop_lift_exercise", "whoop_lift_library"]) expect(byName.get(name)!.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("whoop_lift_log")!.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });

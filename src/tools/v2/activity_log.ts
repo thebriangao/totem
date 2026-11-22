@@ -35,17 +35,16 @@ export function registerActivityLog(server: McpServer, client: WhoopClient, opts
   defineTool(server, {
     name: "whoop_activity_log",
     description:
-      "WRITE: log a past activity, nap or main sleep over start–end (≥1 min, not in the future). `type` takes an internal_name " +
-      "(\"ski-erg\", \"sauna\", \"nap\", \"sleep\"), a display name or a sport_id; unknown names return the 5 closest. WHOOP scores it " +
-      "from strap data in that window. Overlaps are refused (409, listed) and nothing is merged. A main sleep permanently re-cuts the " +
-      "day's cycles. Preview unless confirm:true.",
+      "Log a past activity, nap or main sleep over start–end (≥1 min, not in the future); WHOOP scores it from strap data. type is an " +
+      "internal_name (\"sauna\", \"nap\", \"sleep\"), display name or sport_id; a miss returns the closest. Overlaps are refused. A main " +
+      "sleep permanently re-cuts the day's cycles. Previews unless confirm:true.",
     input: {
-      type: z.string().optional().describe("internal_name, display name, or sport_id as text."),
-      sport_id: z.number().int().optional().describe("Current WHOOP sport id (instead of type)."),
-      start: z.iso.datetime({ offset: true }).describe("ISO-8601 with offset."),
-      end: z.iso.datetime({ offset: true }).describe("ISO-8601 with offset; not in the future."),
+      type: z.string().optional(),
+      sport_id: z.number().int().optional().describe("Instead of type"),
+      start: z.iso.datetime({ offset: true }),
+      end: z.iso.datetime({ offset: true }),
       gps_enabled: z.boolean().default(false),
-      garment_id: z.number().int().optional().describe("Strap location: 1 wrist, 2 bicep, 3 sleeve, 6 top, 7 shorts, 9 leggings."),
+      garment_id: z.number().int().optional().describe("Strap location id; a miss lists them"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_ADDITIVE,

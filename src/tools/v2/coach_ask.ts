@@ -21,15 +21,14 @@ const TOOL = "whoop_coach_ask";
 const REPORTS = new Set<CoachAgent>(["daily_outlook", "day_in_review"]);
 
 export const coachAskInput = {
-  message: z.string().trim().min(1).max(4000).optional()
-    .describe("What to ask (not used by the report agents)"),
-  agent: z.enum(COACH_AGENTS).default("coach").describe("Which coach agent; activity needs activity_id"),
-  activity_id: z.uuid().optional().describe("The activity to discuss (agent activity)"),
+  message: z.string().trim().min(1).max(4000).optional(),
+  agent: z.enum(COACH_AGENTS).default("coach").describe("activity needs activity_id"),
+  activity_id: z.uuid().optional(),
   thread: z.string().min(1).max(200).optional()
-    .describe("Continue a conversation: a fingerprint from whoop_coach_history"),
-  new_thread: z.boolean().default(false).describe("Start a fresh thread instead of today's"),
-  image_base64: z.string().max(7_200_000).optional().describe("PNG or JPEG to attach, base64, ≤5 MB"),
-  confirm: z.boolean().default(false).describe("true sends; default returns a preview"),
+    .describe("From whoop_coach_history"),
+  new_thread: z.boolean().default(false),
+  image_base64: z.string().max(7_200_000).optional().describe("PNG or JPEG, ≤5 MB"),
+  confirm: z.boolean().default(false),
 };
 
 type Input = z.infer<z.ZodObject<typeof coachAskInput>>;
@@ -80,7 +79,10 @@ export function registerCoachAsk(server: McpServer, client: WhoopClient, timing:
     {
       name: TOOL,
       description:
-        "Ask WHOOP Coach (AI) and wait for the full reply (up to ~60 s). One thread per agent per local day; thread continues a fingerprint from whoop_coach_history, new_thread starts fresh. agent daily_outlook / day_in_review generates (or opens) the current cycle's report. The coach really creates, edits and deletes activities, saves memories and builds draft templates when asked (it usually asks for an in-chat yes first). Activity and journal writes are listed in actions and draft templates in cards; a saved memory shows only in the reply text. Optional image. Preview unless confirm:true.",
+        "Ask WHOOP Coach (AI) and wait for the reply (up to ~50 s). One thread per agent per day; thread continues one from " +
+        "whoop_coach_history. Agents daily_outlook and day_in_review generate or open the current cycle's report and take no message. The " +
+        "coach can really create, edit and delete activities when asked (listed in actions); a saved memory shows only in the reply text. " +
+        "Previews unless confirm:true.",
       input: coachAskInput,
       annotations: openWorld(WRITE_DESTRUCTIVE),
     },
