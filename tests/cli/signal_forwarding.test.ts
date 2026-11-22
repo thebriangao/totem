@@ -31,12 +31,21 @@ describe.skipIf(process.platform === "win32")("the subprocess runner passes term
   let wrapper: ChildProcess | undefined;
   let childPid = 0;
 
-  beforeEach(async () => {
+  /** Start the wrapper and wait for its child. `cli`: with the real entry point's SIGINT handler. */
+  async function start(cli = false): Promise<void> {
+    wrapper?.kill("SIGKILL");
+    if (dir) rmSync(dir, { recursive: true, force: true });
     dir = mkdtempSync(join(tmpdir(), "totem-signal-"));
-    wrapper = spawn(process.execPath, ["--import", "tsx", WRAPPER, CHILD, dir], { cwd: ROOT, stdio: "ignore" });
+    wrapper = spawn(process.execPath, ["--import", "tsx", WRAPPER, CHILD, dir, ...(cli ? ["cli"] : [])], { cwd: ROOT, stdio: "ignore" });
     expect(await until(() => existsSync(join(dir, "child.pid")))).toBe(true);
     childPid = Number(readFileSync(join(dir, "child.pid"), "utf8"));
     expect(alive(childPid)).toBe(true);
+  }
+
+  beforeEach(async () => {
+    dir = "";
+    wrapper = undefined;
+    await start();
   });
 
   afterEach(() => {
@@ -52,6 +61,20 @@ describe.skipIf(process.platform === "win32")("the subprocess runner passes term
     expect(readFileSync(join(dir, "signal"), "utf8")).toBe(signal);
     // The wrapper waits for the child and reports the child's own exit code.
     expect(await exited).toBe(0);
+    expect(await until(() => !alive(childPid))).toBe(true);
+  });
+
+  // pm2 stops a process with SIGINT by default, and so can `docker stop`. The
+  // real entry point ends the CLI on SIGINT (that is what Ctrl-C does), which
+  // left the server behind unless the runner told it first. Not from a
+  // terminal here (stdin is not one), so the child has not had the signal yet.
+  it("SIGINT to the wrapper alone reaches the child before the CLI exits", async () => {
+    await start(true);
+    const exited = new Promise<number | null>((resolve) => wrapper!.once("exit", (code) => resolve(code)));
+    wrapper!.kill("SIGINT");
+    expect(await exited).toBe(130);
+    expect(await until(() => existsSync(join(dir, "signal")), 5_000)).toBe(true);
+    expect(readFileSync(join(dir, "signal"), "utf8")).toBe("SIGINT");
     expect(await until(() => !alive(childPid))).toBe(true);
   });
 });

@@ -74,22 +74,31 @@ function has(cmd: string): boolean {
 
 // Spawn a command with the terminal attached. Resolves with the exit code.
 //
-// SIGTERM and SIGHUP are passed on to the child. A supervisor (systemd, a
-// container runtime, a closed terminal) signals this process, not the one it
-// started: without the hand-off this wrapper died and `totem start` left the
-// server running, orphaned, still holding its port. The wrapper then waits for
-// the child and exits with its result.
+// SIGTERM, SIGHUP and SIGINT are passed on to the child. A supervisor (systemd,
+// a container runtime, pm2, a closed terminal) signals this process, not the
+// one it started: without the hand-off this wrapper died and `totem start` left
+// the server running, orphaned, still holding its port. After SIGTERM or SIGHUP
+// the wrapper waits for the child and exits with its result.
 export function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
   return new Promise((res) => {
     const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", ...opts }));
     let forwarded = false;
     const onTerm = (): void => { forwarded = true; child.kill("SIGTERM"); };
     const onHup = (): void => { forwarded = true; child.kill("SIGHUP"); };
+    // SIGINT as well, when it didn't come from the keyboard. Ctrl-C in a
+    // terminal reaches the child by itself (same foreground process group), so
+    // it isn't sent a second time. A supervisor that stops with SIGINT (pm2 by
+    // default, `docker stop --signal INT`) signals this process alone, and the
+    // CLI's own SIGINT handler then exits: the server lived on. Registered
+    // ahead of that handler, so the child is told before the process ends.
+    const onInt = (): void => { forwarded = true; if (!process.stdin.isTTY) child.kill("SIGINT"); };
     process.on("SIGTERM", onTerm);
     process.on("SIGHUP", onHup);
+    process.prependListener("SIGINT", onInt);
     const done = (code: number): void => {
       process.off("SIGTERM", onTerm);
       process.off("SIGHUP", onHup);
+      process.off("SIGINT", onInt);
       res(code);
     };
     child.on("exit", (code, signal) => {

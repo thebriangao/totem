@@ -6,7 +6,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const dir = process.argv[2];
-for (const signal of ["SIGTERM", "SIGHUP"]) {
+for (const signal of ["SIGTERM", "SIGHUP", "SIGINT"]) {
   process.on(signal, () => {
     writeFileSync(join(dir, "signal"), signal);
     process.exit(0);
