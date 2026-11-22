@@ -13,6 +13,7 @@ import {
   turnStatus,
 } from "../../projections/coach.js";
 import {
+  FAILED,
   fetchRecommendations,
   findListed,
   listConversations,
@@ -94,7 +95,8 @@ async function outlook(client: WhoopClient, input: Input): Promise<CoachHistoryO
   const first = turns[0] ?? null;
   const status = turnStatus(first);
   const done = status === "COMPLETE";
-  if (!done) warnings.push("The report is still being generated; try again shortly.");
+  if (status === FAILED) warnings.push("WHOOP failed to generate this report (turn FAILED); it won't complete.");
+  else if (!done) warnings.push("The report is still being generated; try again shortly.");
   return {
     view: "outlook",
     available: true,

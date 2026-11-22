@@ -201,6 +201,33 @@ describe("askCoach send path", () => {
     expect(out.suggestions).toEqual([]);
   });
 
+  it("stops at WHOOP's FAILED status instead of polling out the timeouts", async () => {
+    // Shapes from the live run (2026-11-21): the activity agent's greeting and the
+    // turn posted after it both came back FAILED with no messages, and stayed so.
+    const timing = fakeTiming();
+    const failed = (id: string, n: number) => ({ id, turn_status: "FAILED", messages: [], turn_number: n, feedback: null });
+    const m = mockClient({
+      post: (path) => (path === `${AI}/conversation`
+        ? { turns: [{ id: "greet", turn_status: "ACTIVE", messages: [], turn_number: 0 }] }
+        : { id: "turn-1", turn_status: "ACTIVE", messages: [], turn_number: 1 }),
+      get: (path) => {
+        if (path.endsWith("/turn/greet")) return failed("greet", 0);
+        if (path.endsWith("/turn/turn-1")) return failed("turn-1", 1);
+        throw new Error(`unexpected GET ${path}`);
+      },
+    });
+    const plan = planAsk({ ...base, agent: "activity", activity_id: "70ad76a1-1e3c-4c8e-a026-903ff3175783", message: "How hard was it?" }, DAY);
+    const out = await askCoach(m.client, plan, timing);
+    // One poll of the failed greeting and one of the failed reply (it was 9 + 18
+    // polls over 90 s), and no suggestions read.
+    expect(m.get).toHaveBeenCalledTimes(2);
+    expect(timing.clock.t).toBeLessThan(10_000);
+    expect(out.verified).toBe(false);
+    expect(out.text).toBeNull();
+    expect(out.warnings.join(" ")).toMatch(/FAILED/);
+    expect(out.warnings.join(" ")).not.toMatch(/read it later/);
+  });
+
   it("uploads, attaches and then deletes an image", async () => {
     const m = mockClient({
       post: (path, b) => {

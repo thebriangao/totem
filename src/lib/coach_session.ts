@@ -49,7 +49,14 @@ export const DEFAULT_TIMING: CoachTiming = {
 
 type Turn = Record<string, unknown>;
 
-/** Poll GET …/conversation/{fingerprint}/turn/{id} until COMPLETE or the deadline. */
+/**
+ * WHOOP's terminal failure: the turn comes back `turn_status:"FAILED"` with no
+ * messages and never changes again (seen live 2026-11-21 on an activity-agent
+ * greeting and on the user turn posted after it).
+ */
+export const FAILED = "FAILED";
+
+/** Poll GET …/conversation/{fingerprint}/turn/{id} until COMPLETE, FAILED or the deadline. */
 export async function waitForTurn(
   client: WhoopClient,
   fingerprint: string,
@@ -62,13 +69,14 @@ export async function waitForTurn(
   let status = "ACTIVE";
   let polls = 0;
   // No "text stable for N polls" shortcut: text can sit unchanged for several
-  // polls while tools run (ai §2.3). COMPLETE is the only done signal.
+  // polls while tools run (ai §2.3). COMPLETE is the only done signal; FAILED
+  // is the only other state that ends the wait.
   while (timing.now() < deadline) {
     await timing.sleep(Math.min(timing.pollDelayMs(), Math.max(0, deadline - timing.now())));
     turn = await client.get<Turn>(`${conversationPath(fingerprint)}/turn/${encodeURIComponent(turnId)}`, {}, { fresh: true });
     polls++;
     status = turnStatus(turn) ?? status;
-    if (status === "COMPLETE") return { turn, status, timedOut: false, polls };
+    if (status === "COMPLETE" || status === FAILED) return { turn, status, timedOut: false, polls };
   }
   return { turn, status, timedOut: true, polls };
 }
@@ -287,14 +295,15 @@ async function openReport(
   const receipt = emptyReceipt(fingerprint);
   const conversation = await openConversation(client, { fingerprint, source_id: AGENT_SOURCES[kind]!.source_id, source_type: "UNKNOWN" });
   let turn = lastTurn(conversation);
-  if (turn && turnStatus(turn) !== "COMPLETE" && typeof turn.id === "string") {
+  if (turn && turnStatus(turn) !== "COMPLETE" && turnStatus(turn) !== FAILED && typeof turn.id === "string") {
     turn = (await waitForTurn(client, fingerprint, turn.id, timing.replyTimeoutMs, timing)).turn ?? turn;
   }
   describeTurn(receipt, turn);
   receipt.verified = turnStatus(turn) === "COMPLETE";
   const recommendations = receipt.verified ? await fetchRecommendations(client, recommendationPath(turn)) : null;
   receipt.report = { kind, generated: !existed, recommendations };
-  if (!receipt.verified) receipt.warnings.push(notDone(Math.round(timing.replyTimeoutMs / 1000), "report", '{view:"outlook"}'));
+  if (turnStatus(turn) === FAILED) receipt.warnings.push("WHOOP failed to generate the report (turn FAILED); nothing more will arrive.");
+  else if (!receipt.verified) receipt.warnings.push(notDone(Math.round(timing.replyTimeoutMs / 1000), "report", '{view:"outlook"}'));
   return receipt;
 }
 
@@ -360,6 +369,10 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
   if (status === "COMPLETE") {
     receipt.suggestions = await fetchSuggestions(client, fingerprint);
     receipt.verified = true;
+  } else if (status === FAILED) {
+    receipt.warnings.push(
+      "WHOOP reports this turn FAILED: the coach produced no reply and none will arrive. Ask again, or use new_thread:true if this thread keeps failing.",
+    );
   } else {
     receipt.warnings.push(notDone(Math.round(timing.replyTimeoutMs / 1000), "reply", `{view:"transcript", fingerprint:"${fingerprint}"}`));
   }

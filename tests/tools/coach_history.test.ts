@@ -98,6 +98,22 @@ describe("whoop_coach_history", () => {
     expect((out.warnings as string[]).join(" ")).toContain("older cycle id");
   });
 
+  it("outlook: a report whose generation FAILED says so, not 'still being generated'", async () => {
+    const w = whoop(
+      (path) => {
+        if (path === "/home-service/v1/home") return { metadata: { cycle_metadata: { cycle_id: 1974049188 } } };
+        if (path === `${AI}/conversations`) return load("coach/conversations.json");
+        throw new Error(`unexpected GET ${path}`);
+      },
+      () => ({ turns: [{ id: "t0", turn_status: "FAILED", messages: [], turn_number: 0 }] }),
+    );
+    const client = await connect((s) => registerCoachHistory(s, w.client));
+    const out = body(await client.callTool({ name: "whoop_coach_history", arguments: { view: "outlook" } }));
+    expect(out).toMatchObject({ view: "outlook", available: true, status: "FAILED" });
+    expect((out.warnings as string[]).join(" ")).toMatch(/failed to generate/);
+    expect((out.warnings as string[]).join(" ")).not.toMatch(/still being generated/);
+  });
+
   it("outlook: looks the day's cycle up from home?date and refuses future dates", async () => {
     const w = whoop((path, query) => {
       if (path === "/home-service/v1/home") {
