@@ -25,6 +25,17 @@ describe("whoop_sleep projection", () => {
     expect(r.hypnogram).toBeUndefined();
   });
 
+  // A real COMPLETE_NAP's HR line ran 6:17–8:34 PM around a 6:28–8:24 PM nap: 21 of its 138
+  // points were awake padding, which lifted the average from 73 to 76 bpm.
+  it("keeps the sleep HR to the sleep itself, without the graph's awake padding on either side", () => {
+    const r = projectSleepDetails(fx("sleep_details_complete"), MAIN, false)!;
+    // In the fixture: 88 before and 96 after the sleep; 58, 52, 49, 55 inside it.
+    expect(r.hr).toEqual({ avg: 54, min: 49 });
+    const noStages = fx("sleep_details_complete") as Record<string, any>;
+    noStages.graph.plots = noStages.graph.plots.filter((p: any) => p.plot.id === "SLEEP_HEART_RATE");
+    expect(projectSleepDetails(noStages, MAIN, false)!.hr).toEqual({ avg: 66, min: 49 });
+  });
+
   it("encodes the hypnogram as [stage, minutes] runs from the start (opt-in)", () => {
     const r = projectSleepDetails(fx("sleep_details_complete"), MAIN, true)!;
     expect(r.hypnogram!.start).toBe("2026-11-18T07:10:00.000Z");

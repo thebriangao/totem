@@ -30,12 +30,15 @@
   "graph_title_display": "HEART RATE",
   "plots": [
    { "type": "LINE_PLOT", "plot": { "id": "SLEEP_HEART_RATE", "segments": [ { "points": [
-    { "position_x": 0.0, "data_scrubber_details": { "secondary_contextual_display": "11:05 PM", "unit_display": "bpm", "value_display": "58" } },
+    { "position_x": 0.0, "data_scrubber_details": { "secondary_contextual_display": "11:00 PM", "unit_display": "bpm", "value_display": "88" } },
+    { "position_x": 0.075, "data_scrubber_details": { "secondary_contextual_display": "11:10 PM", "unit_display": "bpm", "value_display": "58" } },
     { "position_x": 0.3, "data_scrubber_details": { "secondary_contextual_display": "1:30 AM", "unit_display": "bpm", "value_display": "52" } },
     { "position_x": 0.6, "data_scrubber_details": { "secondary_contextual_display": "4:00 AM", "unit_display": "bpm", "value_display": "49" } },
-    { "position_x": 1.0, "data_scrubber_details": { "secondary_contextual_display": "7:05 AM", "unit_display": "bpm", "value_display": "55" } }
+    { "position_x": 0.925, "data_scrubber_details": { "secondary_contextual_display": "7:05 AM", "unit_display": "bpm", "value_display": "55" } },
+    { "position_x": 1.0, "data_scrubber_details": { "secondary_contextual_display": "7:15 AM", "unit_display": "bpm", "value_display": "96" } }
    ] } ] } },
-   { "type": "LINE_PLOT", "plot": { "id": "LIGHT_SLEEP", "segments": [ { "points": [ { "position_x": 0.05, "data_scrubber_details": null } ] } ] } }
+   { "type": "LINE_PLOT", "plot": { "id": "LIGHT_SLEEP", "segments": [ { "points": [ { "position_x": 0.075, "data_scrubber_details": null }, { "position_x": 0.3, "data_scrubber_details": null } ] } ] } },
+   { "type": "LINE_PLOT", "plot": { "id": "REM_SLEEP", "segments": [ { "points": [ { "position_x": 0.6, "data_scrubber_details": null }, { "position_x": 0.925, "data_scrubber_details": null } ] } ] } }
   ]
  },
  "whoop_coach_vow": { "vow": "You got 92% of the sleep you needed." }

@@ -7,6 +7,7 @@ import {
   arr, byType, displayMinutes, displayNumber, findFirst, get, intOrNull, isNode, isoInstant, nodes, parseNumber,
   str, type Node,
 } from "./core_common.js";
+import { findAll } from "../../whoop/bff.js";
 import { activityTiles, stickyGauge, type ActivityTile } from "./core_home.js";
 import type { SleepNeed } from "./core_sleep_need.js";
 
@@ -126,10 +127,27 @@ export function hypnogramRuns(zones: Node[], start: string, end: string): Array<
 }
 
 function sleepHr(raw: unknown): { avg: number | null; min: number | null } {
-  const plot = findFirst(get(raw, "graph"), (n) => n.id === "SLEEP_HEART_RATE" && Array.isArray(n.segments));
+  const graph = get(raw, "graph");
+  const plot = findFirst(graph, (n) => n.id === "SLEEP_HEART_RATE" && Array.isArray(n.segments));
+  // The HR line is padded with about ten minutes of awake heart rate before and after the
+  // sleep. The stage lines (LIGHT_SLEEP, REM_SLEEP…) cover only the sleep itself, so their
+  // x-range bounds the HR points that count.
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const stage of findAll(graph, (n) => typeof n.id === "string" && n.id in STAGE_IDS && Array.isArray(n.segments))) {
+    for (const seg of nodes(stage.segments)) {
+      for (const p of nodes(seg.points)) {
+        if (typeof p.position_x !== "number") continue;
+        lo = Math.min(lo, p.position_x);
+        hi = Math.max(hi, p.position_x);
+      }
+    }
+  }
+  const bounded = hi > lo;
   const bpms: number[] = [];
   for (const seg of nodes(plot?.segments)) {
     for (const p of nodes(seg.points)) {
+      if (bounded && typeof p.position_x === "number" && (p.position_x < lo || p.position_x > hi)) continue;
       const v = parseNumber(get(p, "data_scrubber_details", "value_display"));
       if (v !== null && v > 0) bpms.push(v);
     }
