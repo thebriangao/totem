@@ -19,7 +19,7 @@
 // volume on Fly and Railway.
 
 import {
-  chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync,
+  chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync,
   renameSync, rmSync, statSync, writeSync, accessSync, constants as fsConstants,
 } from "node:fs";
 import { dirname, join, resolve, win32 } from "node:path";
@@ -147,6 +147,32 @@ export function writeFileAtomic(path: string, content: string, mode = 0o600): vo
   } catch { /* best-effort */ }
 }
 
+/** writeFileAtomic's temp files: `.<12 hex>.<pid>.tmp`. */
+const TEMP_FILE = /^\.[0-9a-f]{12}\.\d+\.tmp$/;
+const STALE_TEMP_MS = 60_000;
+
+/**
+ * Remove temp files an interrupted writeFileAtomic left in `dir`: a process
+ * killed between the write and the rename leaves one behind, holding a full
+ * copy of what it was writing (the tokens). Only ones older than a minute; a
+ * younger one may be another process's write in progress. Best-effort.
+ */
+export function sweepStaleTemps(dir: string, now: number = Date.now()): void {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (!TEMP_FILE.test(name)) continue;
+    const path = join(dir, name);
+    try {
+      if (now - statSync(path).mtimeMs > STALE_TEMP_MS) rmSync(path, { force: true });
+    } catch { /* its owner finished or removed it */ }
+  }
+}
+
 export class FileTokenStore implements TokenStore {
   readonly path: string;
   readonly description: string;
@@ -173,6 +199,7 @@ export class FileTokenStore implements TokenStore {
 
   save(content: TokenFileContent): void {
     writeFileAtomic(this.path, serializeTokenFile(content));
+    sweepStaleTemps(dirname(this.path));
   }
 
   version(): string | null {

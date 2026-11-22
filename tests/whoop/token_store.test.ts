@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, win32 } from "node:path";
 import {
@@ -84,6 +84,21 @@ describe("FileTokenStore", () => {
     const path = join(dir, "tokens.json");
     writeFileSync(path, "{not json");
     expect(() => new FileTokenStore(path).load()).toThrow(/tokens\.json is unreadable/);
+  });
+
+  // SIGKILL between the temp file's write and its rename leaves `.<hex>.<pid>.tmp`
+  // behind with a full token record in it (21 of 40 kills of a writer did).
+  it("clears temp files an interrupted write left behind, once they are old", () => {
+    const store = new FileTokenStore(join(dir, "tokens.json"));
+    const stale = join(dir, ".0123456789ab.4242.tmp");
+    const inFlight = join(dir, ".ba9876543210.4343.tmp"); // another process, writing right now
+    writeFileSync(stale, serializeTokenFile(record()));
+    writeFileSync(inFlight, "{");
+    writeFileSync(join(dir, "notes.tmp"), "not ours");
+    const old = (Date.now() - 10 * 60_000) / 1000;
+    utimesSync(stale, old, old);
+    store.save(record());
+    expect(readdirSync(dir).sort()).toEqual([".ba9876543210.4343.tmp", "notes.tmp", "tokens.json"]);
   });
 
   unixNonRoot("assertWritable fails fast on a read-only directory", () => {
