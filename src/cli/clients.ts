@@ -18,11 +18,11 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { appConfigDir } from "./spawn.js";
+import { SERVER_NAME, claudeConnectorLink } from "../lib/install_links.js";
 import type { Io, Sys } from "./sys.js";
 import { shellLines, type Kit } from "./ui.js";
 
-/** The name totem registers itself under in every client. */
-export const SERVER_NAME = "whoop";
+export { SERVER_NAME };
 export const FIRST_QUESTION = '"How did I sleep last night?"';
 
 export type Target =
@@ -30,13 +30,27 @@ export type Target =
   | { kind: "remote"; mcpUrl: string };
 
 export type Recipe =
-  /** Merge `entry` under `key` in a JSON config file. A dotted key ("mcp.servers") names a nested object. */
-  | { kind: "file"; path: string; key: string; entry: Record<string, unknown>; after: string }
+  /**
+   * Merge `entry` under `key` in a JSON config file. A dotted key ("mcp.servers") names a nested object.
+   * `twin`: another place an older version of the client keeps the same server; updated only if it is there.
+   * `fallback`: the client's own command, for a file totem won't rewrite (comments, trailing commas).
+   */
+  | {
+    kind: "file"; path: string; key: string; entry: Record<string, unknown>; after: string;
+    twin?: { key: string; entry: Record<string, unknown> };
+    fallback?: Extract<Recipe, { kind: "command" }>;
+  }
   /**
    * Run the client's own command; `then` are follow-up commands or steps.
    * `remove` un-registers an earlier entry, so a re-run replaces it.
    */
-  | { kind: "command"; argv: string[]; remove: string[]; then: string[]; after: string; /** Said before the command runs, when it needs the person (a sign-in page opens). */ before?: string }
+  | {
+    kind: "command"; argv: string[]; remove: string[]; then: string[]; after: string;
+    /** Said before the command runs, when it needs the person (a sign-in page opens). */ before?: string;
+    /** Where to run it, when that matters (OpenCode writes the config of the folder it runs in). */ cwd?: string;
+  }
+  /** A link that opens the client with everything filled in; the person confirms there. */
+  | { kind: "link"; url: string; label: string; after: string }
   /** Nothing to write: steps in the client's own settings. */
   | { kind: "steps"; steps: string[] }
   /** This client can't use this kind of install. */
@@ -53,6 +67,11 @@ export interface Client {
 }
 
 const stdio = (t: Extract<Target, { kind: "local" }>): Record<string, unknown> => ({ command: t.node, args: [t.serverJs] });
+/** claude.ai's own "Add custom connector" dialog, filled in. The connector also reaches Claude Desktop and the phone apps. */
+const claudeLink = (mcpUrl: string): Recipe => ({
+  kind: "link", url: claudeConnectorLink(mcpUrl), label: "claude.ai",
+  after: "In claude.ai, press Add, then Connect, and enter the connector password. Claude Desktop and the phone apps get it too.",
+});
 const needsUrl = (name: string): Recipe => ({ kind: "unavailable", why: `${name} connects over the internet, so it needs a deployed server: totem cloud` });
 const exists = (...parts: string[]): boolean => existsSync(join(...parts));
 
@@ -85,15 +104,15 @@ export const CLIENTS: Client[] = [
   {
     id: "claude", name: "claude.ai", featured: true,
     detect: () => false,
-    recipe: (t) => t.kind === "local" ? needsUrl("claude.ai")
-      : { kind: "steps", steps: [`${menu("Settings", "Connectors", "Add custom connector")}. Paste the URL.`] },
+    recipe: (t) => t.kind === "local" ? needsUrl("claude.ai") : claudeLink(t.mcpUrl),
   },
   {
+    // A server reaches Claude Desktop through the same claude.ai connector.
     id: "claude-desktop", name: "Claude Desktop", featured: true,
     detect: (sys) => exists(appConfigDir(sys.platform, sys.home, sys.env), "Claude"),
     recipe: (t, sys) => t.kind === "local"
       ? { kind: "file", path: join(appConfigDir(sys.platform, sys.home, sys.env), "Claude", "claude_desktop_config.json"), key: "mcpServers", entry: stdio(t), after: "Quit and reopen Claude Desktop." }
-      : { kind: "steps", steps: ["Uses the claude.ai connector: add it there once and it shows up here and in the mobile app."] },
+      : claudeLink(t.mcpUrl),
   },
   {
     id: "claude-code", name: "Claude Code", featured: true,
@@ -130,11 +149,25 @@ export const CLIENTS: Client[] = [
   {
     id: "opencode", name: "OpenCode", featured: true,
     detect: (sys) => sys.has("opencode") || exists(sys.env.XDG_CONFIG_HOME || join(sys.home, ".config"), "opencode"),
-    recipe: (t, sys) => ({
-      kind: "file", path: opencodeConfig(sys), key: "mcp.servers",
-      entry: t.kind === "local" ? { type: "local", command: [t.node, t.serverJs] } : { type: "remote", url: t.mcpUrl },
-      after: t.kind === "local" ? "Start a new OpenCode session." : `In OpenCode, run /mcps and sign in to ${SERVER_NAME} (or run: opencode mcp auth ${SERVER_NAME}).`,
-    }),
+    recipe: (t, sys) => {
+      const entry = t.kind === "local" ? { type: "local", command: [t.node, t.serverJs] } : { type: "remote", url: t.mcpUrl };
+      const after = t.kind === "local" ? "Start a new OpenCode session." : `In OpenCode, run /mcps and sign in to ${SERVER_NAME} (or run: opencode mcp auth ${SERVER_NAME}).`;
+      return {
+        // OpenCode 2 keeps servers under mcp.servers, and 1.18.24+ reads that too.
+        kind: "file", path: opencodeConfig(sys), key: "mcp.servers", entry, after,
+        // OpenCode 1's own `mcp add` writes mcp.whoop, and 1.x prefers that entry
+        // when both exist: keep it pointing at the same place.
+        twin: { key: "mcp", entry: { ...entry, enabled: true } },
+        // OpenCode allows comments and trailing commas, which totem won't
+        // rewrite; OpenCode's own command keeps them. Run from the global config
+        // folder, both generations write the global file.
+        fallback: {
+          kind: "command", cwd: dirname(opencodeConfig(sys)),
+          argv: t.kind === "local" ? ["opencode", "mcp", "add", SERVER_NAME, "--", t.node, t.serverJs] : ["opencode", "mcp", "add", SERVER_NAME, "--url", t.mcpUrl],
+          remove: [], then: [], after,
+        },
+      };
+    },
   },
   {
     id: "cursor", name: "Cursor", featured: true,
@@ -198,6 +231,8 @@ export function recipeLines(recipe: Recipe, k: Kit, sys: Pick<Sys, "home" | "pla
   switch (recipe.kind) {
     case "steps":
       return recipe.steps.flatMap((s) => k.para(withSep(s, k), 4));
+    case "link":
+      return [...k.code([recipe.url], 4), ...k.para(withSep(recipe.after, k), 4)];
     case "unavailable":
       return k.hint(recipe.why, 4);
     case "command":
@@ -287,7 +322,10 @@ export class ConfigNotMergeableError extends Error {
 // treat that as an empty config and write one back holding only its own entry,
 // deleting every other server. Before a file is changed, the previous contents
 // are copied to `<file>.totem-backup`.
-export function mergeJsonConfig(cfgPath: string, key: string, name: string, entry: Record<string, unknown>): { changed: boolean; backup?: string } {
+export function mergeJsonConfig(
+  cfgPath: string, key: string, name: string, entry: Record<string, unknown>,
+  twin?: { key: string; entry: Record<string, unknown> },
+): { changed: boolean; backup?: string } {
   let merged: Record<string, unknown> = {};
   let previous: string | null = null;
   if (existsSync(cfgPath)) {
@@ -319,6 +357,13 @@ export function mergeJsonConfig(cfgPath: string, key: string, name: string, entr
     holder = next;
   });
   holder[name] = entry;
+  // The same server where an older version of the client looks, if it is there.
+  if (twin) {
+    let at: unknown = merged;
+    for (const part of twin.key.split(".")) at = at && typeof at === "object" && !Array.isArray(at) ? (at as Record<string, unknown>)[part] : undefined;
+    const old = at && typeof at === "object" && !Array.isArray(at) ? (at as Record<string, unknown>)[name] : undefined;
+    if (old && typeof old === "object" && !Array.isArray(old)) (at as Record<string, unknown>)[name] = twin.entry;
+  }
   const next = JSON.stringify(merged, null, 2) + "\n";
   if (previous !== null && previous.trim() === next.trim()) return { changed: false };
   mkdirSync(dirname(cfgPath), { recursive: true });
@@ -351,18 +396,28 @@ export async function applyRecipe(io: Io, client: Client, recipe: Recipe): Promi
     case "steps":
       ui.lines(recipeLines(recipe, k, sys));
       return { done: false, steps: [`Add the connector in ${client.name}.`] };
+    case "link":
+      sys.openUrl(recipe.url);
+      ui.ok(`Opened ${recipe.label} with the server filled in`, "in your browser");
+      ui.hint(`If nothing opened: ${recipe.url}`);
+      return { done: true, steps: [withSep(recipe.after, k)] };
     case "unavailable":
       ui.warn(recipe.why);
       return { done: false, steps: [] };
     case "file": {
       const shown = tildify(recipe.path, sys.home);
       try {
-        const { changed, backup } = mergeJsonConfig(recipe.path, recipe.key, SERVER_NAME, recipe.entry);
+        const { changed, backup } = mergeJsonConfig(recipe.path, recipe.key, SERVER_NAME, recipe.entry, recipe.twin);
         ui.ok(changed ? `Added the ${SERVER_NAME} server to ${client.name}` : `${client.name} already has the ${SERVER_NAME} server`, shown);
         if (backup) ui.hint(`The previous file is kept as ${basename(backup)}.`);
         return { done: true, steps: [withSep(recipe.after, k)] };
       } catch (error) {
         if (!(error instanceof ConfigNotMergeableError)) throw error;
+        // The client's own command edits the file and keeps what totem can't.
+        if (recipe.fallback && sys.has(recipe.fallback.argv[0]!)) {
+          ui.hint(`${shown} has comments or trailing commas; letting ${client.name} add the server itself.`);
+          return applyRecipe(io, client, recipe.fallback);
+        }
         ui.warn(error.message.split(recipe.path).join(shown));
         ui.para(`Add this under "${recipe.key}" in that file yourself:`, 4);
         ui.code(JSON.stringify({ [SERVER_NAME]: recipe.entry }, null, 2).split("\n"));
@@ -380,15 +435,16 @@ export async function applyRecipe(io: Io, client: Client, recipe: Recipe): Promi
         return { done: false, steps: [`Install ${client.name}, then run the command above.`, withSep(recipe.after, k)] };
       }
       if (recipe.before) ui.hint(recipe.before);
-      let r = await ui.task(`Adding ${SERVER_NAME} to ${client.name}`, () => sys.exec(cmd, args));
+      const at = recipe.cwd ? { cwd: recipe.cwd } : undefined;
+      let r = await ui.task(`Adding ${SERVER_NAME} to ${client.name}`, () => sys.exec(cmd, args, at));
       let replaced = false;
       // An entry from an earlier setup may point somewhere else (another path,
       // a server since replaced): put this one in its place.
       if (r.code !== 0 && /already exists/i.test(`${r.stderr}\n${r.stdout}`) && recipe.remove.length) {
         const [rm, ...rmArgs] = recipe.remove as [string, ...string[]];
         r = await ui.task(`Replacing ${SERVER_NAME} in ${client.name}`, async () => {
-          await sys.exec(rm, rmArgs);
-          return sys.exec(cmd, args);
+          await sys.exec(rm, rmArgs, at);
+          return sys.exec(cmd, args, at);
         });
         replaced = true;
       }

@@ -51,49 +51,31 @@ Deploy your own totem server and connect your AI clients to it.
   ✓ Login sent to the server  https://totem-c0ffee.fly.dev
     The server keeps it fresh from now on. No copy stays on this computer.
 
-6/6  Connect a client
+6/6  Connect your apps
   URL        https://totem-c0ffee.fly.dev/mcp
   Password   Kq7m-Rt2x-Vb9n-Lp4w-Hd6s (copied to the clipboard)
   totem shows the password this once. Save it in your password manager.
 
-  Every client below opens a totem page in your browser. Check where access is
-  going, then enter the password.
+  ✓ Opened your server's Connect page  https://totem-c0ffee.fly.dev/connect
+    It has a button for claude.ai, Cursor and VS Code, and the steps for every
+    other app.
+  Found on this computer: Claude Code, ChatGPT, OpenCode and Antigravity.
+? Add totem to all 4? (Y/n)
+  ✓ Added the whoop server to Claude Code  claude mcp add
+    Codex opens the sign-in page in your browser and waits for you there.
+  ✓ Added the whoop server to ChatGPT  codex mcp add
+  ✓ Added the whoop server to OpenCode  ~/.config/opencode/opencode.json
+  ✓ Added the whoop server to Antigravity  ~/.gemini/config/mcp_config.json
 
-  claude.ai
-    Settings → Connectors → Add custom connector. Paste the URL.
-
-  Claude Desktop
-    Uses the claude.ai connector: add it there once and it shows up here and in
-    the mobile app.
-
-  Claude Code
-    claude mcp add --transport http --scope user whoop \
-      https://totem-c0ffee.fly.dev/mcp
-    In Claude Code: /mcp → whoop → Authenticate
-
-  ChatGPT
-    codex mcp add whoop --url https://totem-c0ffee.fly.dev/mcp
-    On chatgpt.com: Plugins → + → Add custom MCP server. Paste the URL.
-
-  OpenCode
-    totem connect opencode
-    In OpenCode, run /mcps and sign in to whoop (or run: opencode mcp auth
-    whoop).
-
-  Cursor
-    totem connect cursor
-    In Cursor: Settings → MCP → whoop, then log in.
-
-  Another client
-    Give it the URL. If it can't sign in through a browser, send the server's
-    token as a bearer header instead:
-    Authorization: Bearer $(totem token)
-
-╭─ Next ──────────────────────────────────────────────────────────────╮
-│ 1. Add the connector in claude.ai (its settings are opening in your │
-│    browser).                                                        │
-│ 2. Ask it: "How did I sleep last night?"                            │
-│                                                                     │
-│ See this again: totem connect                                       │
-│ Check the server: totem status                                      │
-╰─────────────────────────────────────────────────────────────────────╯
+╭─ Next ───────────────────────────────────────────────────────────────────────╮
+│ 1. In Claude Code, run /mcp and authenticate whoop.                          │
+│ 2. If ChatGPT or Codex asks you to sign in again, run: codex mcp login whoop │
+│ 3. In OpenCode, run /mcps and sign in to whoop (or run: opencode mcp auth    │
+│    whoop).                                                                   │
+│ 4. In Antigravity, type /mcp and check whoop is connected (sign in when it   │
+│    asks).                                                                    │
+│ 5. Ask it: "How did I sleep last night?"                                     │
+│                                                                              │
+│ Every app: https://totem-c0ffee.fly.dev/connect                              │
+│ Check the server: totem status                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯

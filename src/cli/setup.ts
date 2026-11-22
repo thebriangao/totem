@@ -176,9 +176,53 @@ async function chooseAndConnect(io: Io, target: Target): Promise<{ client: Clien
   return { client, ...applied };
 }
 
+/**
+ * Set totem up in every app found on this computer, after one question. Each
+ * app gets its own best way in: its config file, its own command, or a link
+ * that opens it filled in. Apps that share one connection (claude.ai and
+ * Claude Desktop, for a server) are set up once. With nothing found, or a no,
+ * the person picks one app instead.
+ */
+export async function connectInstalled(io: Io, target: Target): Promise<{ done: string[]; steps: string[] }> {
+  const { ui, sys } = io;
+  const found = CLIENTS.filter((cl) => cl.detect(sys) && cl.recipe(target, sys).kind !== "unavailable");
+  if (found.length === 0 || !ui.canAsk) {
+    if (found.length === 0) ui.hint("No AI app found on this computer that totem knows how to set up.");
+    const picked = await chooseAndConnect(io, target);
+    return { done: picked.done && picked.client ? [picked.client.name] : [], steps: picked.steps };
+  }
+  ui.para(`Found on this computer: ${listOf(found.map((cl) => cl.name))}.`);
+  const all = await ui.confirm(found.length === 1 ? `Add totem to ${found[0]!.name}?` : `Add totem to all ${found.length}?`, true);
+  if (!all) {
+    const picked = await chooseAndConnect(io, target);
+    return { done: picked.done && picked.client ? [picked.client.name] : [], steps: picked.steps };
+  }
+  const done: string[] = [];
+  const steps: string[] = [];
+  const opened = new Set<string>();
+  for (const client of found) {
+    const recipe = client.recipe(target, sys);
+    if (recipe.kind === "link" && opened.has(recipe.url)) { done.push(client.name); continue; }
+    if (recipe.kind === "link") opened.add(recipe.url);
+    const applied = await applyRecipe(io, client, recipe);
+    if (applied.done) done.push(client.name);
+    for (const step of applied.steps) if (!steps.includes(step)) steps.push(step);
+  }
+  return { done, steps };
+}
+
 function nextAfterConnect(io: Io, steps: string[]): void {
   const all = [...steps, `Ask it: ${FIRST_QUESTION}`];
   io.ui.next([...all.map((s, i) => `${i + 1}. ${s}`), "", "Connect another client: totem connect"]);
+}
+
+/** The server's Connect page (a button or a step for every app), opened in the browser. */
+function showConnectPage(io: Io, mcpUrl: string): string {
+  const page = `${mcpUrl.replace(/\/mcp$/, "")}/connect`;
+  io.sys.openUrl(page);
+  io.ui.ok("Opened your server's Connect page", page);
+  io.ui.hint("It has a button for claude.ai, Cursor and VS Code, and the steps for every other app.");
+  return page;
 }
 
 /**
@@ -232,9 +276,10 @@ export async function runConnect(root: string, args: string[], io: Io = realIo()
     return 0;
   }
 
-  ui.header("totem connect", `Connect a client to ${where}.`);
-  if (target.kind === "local" && ui.canAsk && !print) {
-    const { steps } = await chooseAndConnect(io, target);
+  ui.header("totem connect", `Connect your apps to ${where}.`);
+  if (ui.canAsk && !print) {
+    if (target.kind === "remote") showConnectPage(io, target.mcpUrl);
+    const { steps } = await connectInstalled(io, target);
     nextAfterConnect(io, steps);
     return 0;
   }
@@ -287,8 +332,8 @@ export async function runLocalSetup(root: string, io: Io = realIo()): Promise<nu
   if (!(await ensureLocalLogin(root, io))) return 1;
   writeDeployRecord(root, { platform: "local" });
 
-  ui.step(3, TOTAL, "Connect a client");
-  const { steps } = await chooseAndConnect(io, localTarget(root, io));
+  ui.step(3, TOTAL, "Connect your apps");
+  const { steps } = await connectInstalled(io, localTarget(root, io));
   nextAfterConnect(io, steps);
   return 0;
 }
@@ -1121,16 +1166,21 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   const loggedIn = (await runAuth(root, [], { target: { kind: "remote", url, adminToken: mcpToken, platform }, embedded: true }, io)) === 0;
   if (!loggedIn) ui.warn("The server is up but has no WHOOP login yet.");
 
-  ui.step(6, TOTAL, "Connect a client");
+  ui.step(6, TOTAL, "Connect your apps");
   const copied = !ownPassword && sys.copy(password);
-  ui.lines(connectCard(ui.kit, sys, { target: { kind: "remote", mcpUrl }, password: ownPassword ? null : password, copied }));
-  sys.openUrl("https://claude.ai/settings/connectors");
+  ui.rows([
+    ["URL", ui.kit.c.accent(mcpUrl)],
+    ["Password", ownPassword ? "the one you chose" : `${ui.kit.c.bold(password)}${copied ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
+  ]);
+  if (!ownPassword) ui.hint("totem shows the password this once. Save it in your password manager.", 2);
+  ui.line();
+  const page = showConnectPage(io, mcpUrl);
+  const { steps } = await connectInstalled(io, { kind: "remote", mcpUrl });
   ui.next([
     ...(loggedIn ? [] : ["First, finish the WHOOP login: totem auth", ""]),
-    "1. Add the connector in claude.ai (its settings are opening in your browser).",
-    `2. Ask it: ${FIRST_QUESTION}`,
+    ...[...steps, `Ask it: ${FIRST_QUESTION}`].map((s, i) => `${i + 1}. ${s}`),
     "",
-    "See this again: totem connect",
+    `Every app: ${page}`,
     "Check the server: totem status",
   ]);
   return loggedIn ? 0 : 1;

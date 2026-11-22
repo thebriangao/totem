@@ -29,6 +29,7 @@ import { registerTools } from "./tools/register.js";
 import { WhoopOAuthProvider } from "./whoop/oauth_provider.js";
 import { CONSENT_FONT_PATH, renderConsentClosed, renderConsentForm, setConsentSecurityHeaders } from "./whoop/consent_page.js";
 import { consentFont } from "./whoop/consent_font.js";
+import { renderConnectPage, setConnectSecurityHeaders } from "./whoop/connect_page.js";
 import { timezoneSettled } from "./whoop/init_timezone.js";
 import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
@@ -218,6 +219,16 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     res.setHeader("x-totem-build", BUILD_ID);
     res.json({ status: "ok", build: BUILD_ID });
   });
+
+  // The Connect page: a button or a copy-ready step for every app, filled in
+  // with this server's address. Public, like /health: it shows nothing a
+  // visitor doesn't already have. The bare address sends people there.
+  app.get("/connect", (_req, res) => {
+    setConnectSecurityHeaders(res);
+    res.setHeader("Cache-Control", "no-store");
+    res.type("html").send(renderConnectPage({ mcpUrl: resourceUrl }));
+  });
+  app.get("/", (_req, res) => { res.redirect(302, "/connect"); });
 
   // Login push from `totem auth` (static bearer only; see server-admin.ts).
   if (opts.tokens) {

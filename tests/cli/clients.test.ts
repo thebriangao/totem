@@ -169,9 +169,10 @@ describe("Antigravity (in Gemini CLI's place)", () => {
 describe("totem connect <client> against a deployed server", () => {
   let world: FakeWorld | undefined;
   afterEach(() => { world?.cleanup(); world = undefined; });
-  const totem = async (argv: string[], opts: WorldOptions = {}): Promise<{ code: number; text: string; w: FakeWorld }> => {
-    const w = fakeWorld(opts);
+  const totem = async (argv: string[], opts: WorldOptions | ((w: FakeWorld) => void) = {}): Promise<{ code: number; text: string; w: FakeWorld }> => {
+    const w = fakeWorld(typeof opts === "function" ? {} : opts);
     world = w;
+    if (typeof opts === "function") opts(w);
     writeDeployRecord(w.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN });
     const app: AppCtx = { root: w.root, version: "1.5.1", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
     return { code: await runCli(argv, app, w.io), text: w.transcript(), w };
@@ -205,9 +206,57 @@ describe("totem connect <client> against a deployed server", () => {
     expect(text).toContain('"url": "https://totem-a1b2c3.fly.dev/mcp"');
   });
 
-  it("shows steps for a client that is set up in its own settings", async () => {
+  it("opens claude.ai's Add custom connector dialog with the server filled in", async () => {
     const { code, text } = await totem(["connect", "claude"]);
     expect(code).toBe(0);
-    expect(text).toMatch(/Add custom connector/);
+    expect(text).toContain("Opened claude.ai with the server filled in");
+    expect(text.replace(/\s+/g, "")).toContain("https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=WHOOP&connectorUrl=https%3A%2F%2Ftotem-a1b2c3.fly.dev%2Fmcp");
+  });
+
+  it("sets up claude.ai once when Claude Desktop is also there (one connector serves both)", async () => {
+    const { text } = await totem(["connect"], (w) => mkdirSync(join(w.home, "Library", "Application Support", "Claude"), { recursive: true }));
+    expect(text.match(/Opened claude\.ai with the server filled in/g) ?? []).toHaveLength(1);
+    expect(text).toContain("Opened your server's Connect page");
+  });
+});
+
+describe("OpenCode: the older entry and commented config files", () => {
+  let dir = "";
+  afterEach(() => { if (dir) rmSync(dir, { recursive: true, force: true }); dir = ""; });
+  const entry = { type: "remote", url: "https://totem-a1b2c3.fly.dev/mcp" };
+
+  it("updates OpenCode 1's flat mcp.whoop when it is there, so both generations agree", () => {
+    dir = mkdtempSync(join(tmpdir(), "totem-oc-"));
+    const path = join(dir, "opencode.json");
+    writeFileSync(path, JSON.stringify({ mcp: { whoop: { type: "local", command: ["node", "/old/server.js"], enabled: true }, other: { type: "remote", url: "https://x" } } }));
+    mergeJsonConfig(path, "mcp.servers", "whoop", entry, { key: "mcp", entry: { ...entry, enabled: true } });
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
+      mcp: { whoop: { ...entry, enabled: true }, other: { type: "remote", url: "https://x" }, servers: { whoop: entry } },
+    });
+  });
+
+  it("doesn't create the flat entry when it isn't there", () => {
+    dir = mkdtempSync(join(tmpdir(), "totem-oc-"));
+    const path = join(dir, "opencode.json");
+    mergeJsonConfig(path, "mcp.servers", "whoop", entry, { key: "mcp", entry: { ...entry, enabled: true } });
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ mcp: { servers: { whoop: entry } } });
+  });
+
+  it("hands a file with comments to OpenCode's own command, run in the config folder", async () => {
+    const w = fakeWorld({});
+    try {
+      const cfg = join(w.home, ".config", "opencode");
+      mkdirSync(cfg, { recursive: true });
+      writeFileSync(join(cfg, "opencode.json"), '{\n  // mine\n  "theme": "dark",\n}\n');
+      writeDeployRecord(w.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN });
+      const app: AppCtx = { root: w.root, version: "1.5.1", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
+      const code = await runCli(["connect", "opencode"], app, w.io);
+      expect(code).toBe(0);
+      expect(w.commands.some((c) => c.includes("opencode mcp add whoop --url https://totem-a1b2c3.fly.dev/mcp"))).toBe(true);
+      expect(readFileSync(join(cfg, "opencode.json"), "utf8")).toContain("// mine");
+      expect(w.transcript().replace(/\s+/g, " ")).toContain("letting OpenCode add the server itself");
+    } finally {
+      w.cleanup();
+    }
   });
 });

@@ -15,22 +15,24 @@ Run totem on this computer and connect an AI client to it.
   ✓ Logged in to WHOOP  user 1234567
   ✓ Login saved  ~/.config/totem/tokens.json
 
-3/3  Connect a client
-? Which client?
-  › Claude Desktop   installed
-    Claude Code      installed
-    ChatGPT          installed
-    OpenCode         installed
-    Cursor
-    VS Code
-    Antigravity      installed
-    Another client   show what to paste
+3/3  Connect your apps
+  Found on this computer: Claude Desktop, Claude Code, ChatGPT, OpenCode and
+  Antigravity.
+? Add totem to all 5? (Y/n)
   ✓ Added the whoop server to Claude Desktop
     ~/Library/Application Support/Claude/claude_desktop_config.json
+  ✓ Added the whoop server to Claude Code  claude mcp add
+  ✓ Added the whoop server to ChatGPT  codex mcp add
+  ✓ Added the whoop server to OpenCode  ~/.config/opencode/opencode.json
+  ✓ Added the whoop server to Antigravity  ~/.gemini/config/mcp_config.json
 
-╭─ Next ───────────────────────────────────╮
-│ 1. Quit and reopen Claude Desktop.       │
-│ 2. Ask it: "How did I sleep last night?" │
-│                                          │
-│ Connect another client: totem connect    │
-╰──────────────────────────────────────────╯
+╭─ Next ─────────────────────────────────────────────────────╮
+│ 1. Quit and reopen Claude Desktop.                         │
+│ 2. Start a new Claude Code session.                        │
+│ 3. Restart ChatGPT, or start a new Codex session.          │
+│ 4. Start a new OpenCode session.                           │
+│ 5. In Antigravity, type /mcp and check whoop is connected. │
+│ 6. Ask it: "How did I sleep last night?"                   │
+│                                                            │
+│ Connect another client: totem connect                      │
+╰────────────────────────────────────────────────────────────╯
