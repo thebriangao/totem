@@ -96,20 +96,13 @@ function lastTurn(conversation: Turn): Turn | null {
 /**
  * Wait for the conversation's last turn when it is still ACTIVE: an agent's
  * turn-0 greeting (posting before it completes gets the greeting back as the
- * "reply", ai §2.2) or a previous user turn (a new post would 409).
- * coach-chat's own turn 0 never fills, so it is not waited on.
+ * "reply", ai §2.2) or a previous user turn (a new post would 409). coach-chat's
+ * empty turn 0 counts too: posting while it is ACTIVE got a 409 live
+ * (coach-build smoke test, 2026-11-21).
  */
-async function settle(
-  client: WhoopClient,
-  fingerprint: string,
-  conversation: Turn,
-  sourceId: string | null,
-  timing: CoachTiming,
-): Promise<void> {
-  const turns = Array.isArray(conversation.turns) ? conversation.turns : [];
+async function settle(client: WhoopClient, fingerprint: string, conversation: Turn, timing: CoachTiming): Promise<void> {
   const last = lastTurn(conversation);
   if (!last || turnStatus(last) !== "ACTIVE" || typeof last.id !== "string") return;
-  if (sourceId === "coach-chat" && turns.length <= 1) return;
   await waitForTurn(client, fingerprint, last.id, timing.settleTimeoutMs, timing);
 }
 
@@ -312,7 +305,6 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
 
   let fingerprint: string;
   let open: OpenBody;
-  let sourceId: string | null;
   if (plan.thread) {
     const listed = await findListed(client, (c) => c.fingerprint === plan.thread);
     if (!listed) {
@@ -321,12 +313,10 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
       );
     }
     fingerprint = listed.fingerprint;
-    sourceId = listed.source_id;
-    open = { fingerprint, source_type: "UNKNOWN", ...(sourceId ? { source_id: sourceId } : {}) };
+    open = { fingerprint, source_type: "UNKNOWN", ...(listed.source_id ? { source_id: listed.source_id } : {}) };
   } else {
     const def = AGENT_SOURCES[plan.agent]!;
     fingerprint = plan.newThread ? freshFingerprint(plan.agent, plan.localDate) : dailyFingerprint(plan.agent, plan.localDate, plan.activityId);
-    sourceId = def.source_id;
     const args: Record<string, unknown> = def.context ? { context: def.context } : {};
     if (plan.agent === "activity" && plan.activityId) args.activity_id = plan.activityId;
     open = { fingerprint, source_type: "CHAT_WITH_AGENT", source_id: def.source_id, args, chat_entrypoint_experience: "STANDARD" };
@@ -334,7 +324,7 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
 
   const receipt = emptyReceipt(fingerprint);
   const conversation = await openConversation(client, open);
-  await settle(client, fingerprint, conversation, sourceId, timing);
+  await settle(client, fingerprint, conversation, timing);
 
   let fileId: string | null = null;
   let status = "ACTIVE";

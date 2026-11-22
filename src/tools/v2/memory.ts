@@ -13,7 +13,7 @@ export const CONTEXT_HUB = "/context-hub-bff/v1/context-hub";
 export const memoryInput = {
   category: z.string().regex(/^[a-z][a-z_]{0,39}$/, "lower_snake_case category").default("timeline")
     .describe("timeline (all), goals, training, … any key from categories"),
-  limit: z.number().int().min(1).max(100).default(25).describe("Max rows returned"),
+  limit: z.number().int().min(1).max(100).default(10).describe("Max rows returned"),
   memory_id: z.uuid().optional().describe("Open one memory's detail (marks it seen in the app)"),
 };
 

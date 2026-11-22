@@ -65,12 +65,13 @@ async function outlook(client: WhoopClient, input: Input): Promise<CoachHistoryO
   const warnings: string[] = [];
   // The cycle id is resolved from home right before use and never kept (S19).
   const fingerprint = reportFingerprint(kind, await resolveCycleId(client, input.date));
-  let listed = await findListed(client, (c) => c.fingerprint === fingerprint);
-  if (!listed && !input.date) {
-    // Sleep edits re-cut cycles, so today's report can sit under an older cycle
-    // id (ai §4.5). Fall back to a same-kind report in the TODAY group.
-    listed = await findListed(client, (c) => c.fingerprint.startsWith(REPORT_PREFIX[kind]) && c.day?.toUpperCase() === "TODAY", 1);
-    if (listed) warnings.push("Today's report is listed under an older cycle id (the cycle was re-cut after it was generated).");
+  // Sleep edits re-cut cycles, so today's report can sit under an older cycle id
+  // (ai §4.5): for today, a same-kind report in the TODAY group also counts.
+  const listed = await findListed(client, (c) =>
+    c.fingerprint === fingerprint ||
+    (!input.date && c.fingerprint.startsWith(REPORT_PREFIX[kind]) && c.day?.toUpperCase() === "TODAY"));
+  if (listed && listed.fingerprint !== fingerprint) {
+    warnings.push("Today's report is listed under an older cycle id (the cycle was re-cut after it was generated).");
   }
   if (!listed) {
     return {

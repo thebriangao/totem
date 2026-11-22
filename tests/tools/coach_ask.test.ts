@@ -107,6 +107,8 @@ describe("askCoach send path", () => {
         throw new Error(`unexpected POST ${path}`);
       },
       get: (path) => {
+        // coach-chat's empty turn 0 must finish before posting (a post while it is ACTIVE 409'd live).
+        if (path === `${AI}/conversation/totem-HOME-${DAY}/turn/t0`) return { id: "t0", turn_status: "COMPLETE", messages: [{ role: "assistant", items: [] }] };
         if (path === `${AI}/conversation/totem-HOME-${DAY}/turn/turn-1`) {
           polls++;
           return polls < 3 ? { id: "turn-1", turn_status: "ACTIVE", messages: completeChart.messages } : completeChart;
@@ -120,7 +122,8 @@ describe("askCoach send path", () => {
       fingerprint: `totem-HOME-${DAY}`, source_type: "CHAT_WITH_AGENT", source_id: "coach-chat", args: {}, chat_entrypoint_experience: "STANDARD",
     }]);
     expect(m.post.mock.calls[1]).toEqual([`${AI}/conversation/totem-HOME-${DAY}/turn`, { role: "user", content: "Chart my strain", is_suggestion: false }]);
-    // coach-chat's own turn 0 is never waited on; 3 polls; no read receipts.
+    // Turn 0 settled first, then 3 polls of the reply; no read receipts.
+    expect(m.get.mock.calls[0]![0]).toBe(`${AI}/conversation/totem-HOME-${DAY}/turn/t0`);
     expect(polls).toBe(3);
     const paths = [...m.get.mock.calls, ...m.post.mock.calls].map((c) => String(c[0]));
     expect(paths.some((p) => /\/(seen|end-seen|last-viewed-turn)$/.test(p))).toBe(false);
