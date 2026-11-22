@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { registerTrend } from "../../src/tools/v2/trend.js";
-import { compareRows, pointDate, projectTrendWindow, rangeLabelStart, windowBounds } from "../../src/projections/v2/trend.js";
+import { compactWindow, compareRows, pointDate, projectTrendWindow, rangeLabelStart, windowBounds } from "../../src/projections/v2/trend.js";
 import { call, closeAll, connect, err500, fx, oldFx, pinToday, routedGet, unpinToday } from "./reads_core_harness.js";
 
 describe("whoop_trend projection", () => {
@@ -135,6 +135,20 @@ describe("whoop_trend projection", () => {
     expect(pointDate("SUN, MAY 17", "2026-05-23")).toBe("2026-05-17");
     expect(pointDate("TUE, NOV 25, 2025", "2026-05-23")).toBe("2025-11-25");
     expect(pointDate("WED, DEC 31", "2026-01-04")).toBe("2025-12-31");
+  });
+
+  it("sends points without the empty slots around the data, and hidden only when true", () => {
+    const six = compactWindow(projectTrendWindow(fx("trend_stress"), "2026-11-21", "six_month", true)!);
+    expect(six.points).toEqual({ start: "2026-11-21", step: "day", values: [10] }); // was 179 nulls and a value
+    expect("hidden" in six).toBe(false);
+    const weekly = compactWindow(projectTrendWindow(fx("trend_strength_time"), "2026-11-21", "six_month", true)!);
+    expect(weekly.points).toEqual({ start: "2026-11-15", step: "week", values: [2] });
+    // Gaps inside the data stay, so positions keep their meaning.
+    const gap = compactWindow({ start: "2026-11-15", end: "2026-11-21", hidden: true, rows: [], breakdown: null, points: { start: "2026-11-15", step: "day", values: [null, 4, null, 6, null, null, null] } });
+    expect(gap.points).toEqual({ start: "2026-11-16", step: "day", values: [4, null, 6] });
+    expect(gap.hidden).toBe(true);
+    // No values at all: no points block.
+    expect(compactWindow(projectTrendWindow(fx("trend_vo2"), "2026-11-21", "month", true)!).points).toBeUndefined();
   });
 
   it("computes a−b deltas per trend key", () => {

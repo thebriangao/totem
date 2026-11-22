@@ -7,7 +7,7 @@ import { READ_ONLY } from "../annotations.js";
 import { todayIso } from "../../lib/dates.js";
 import { runPaced } from "../../lib/concurrency.js";
 import { TREND_METRICS, TrendV2Out } from "../../schemas/v2/trend.js";
-import { TREND_WINDOWS, compareRows, projectTrendWindow, type TrendWindow, type TrendWindowOut } from "../../projections/v2/trend.js";
+import { TREND_WINDOWS, compactWindow, compareRows, projectTrendWindow, type TrendWindow, type TrendWindowOut } from "../../projections/v2/trend.js";
 
 const NAME = "whoop_trend";
 type Metric = (typeof TREND_METRICS)[number];
@@ -22,7 +22,7 @@ export function registerTrend(server: McpServer, client: WhoopClient): void {
         "six_month 180). Per metric: window dates, WHOOP's average, previous-window average, change %, direction, every row " +
         "(HOURS_V_NEED has SLEEP_NEED and SLEEP_HOURS) and breakdown day counts. Rows marked per:week (HR zones, strength time) " +
         "are weekly totals over 7/28/175 days. compare_end_date adds window b and the a−b " +
-        "deltas (e.g. this week vs last). include_points adds values per points.step (day, or week for weekly totals). " +
+        "deltas (e.g. this week vs last). include_points adds values from points.start, one per points.step (day, or week for weekly totals). " +
         "Durations are minutes.",
       input: {
         metrics: z.array(z.enum(TREND_METRICS)).min(1).max(5)
@@ -55,11 +55,11 @@ export function registerTrend(server: McpServer, client: WhoopClient): void {
         window,
         metrics: metrics.map((m: Metric) => {
           const ra = pick(m, a);
-          const row: Record<string, unknown> = { metric: m, a: ra.w };
+          const row: Record<string, unknown> = { metric: m, a: ra.w && compactWindow(ra.w) };
           if (ra.error) row.error = ra.error;
           if (compare_end_date) {
             const rb = pick(m, compare_end_date);
-            row.b = rb.w;
+            row.b = rb.w && compactWindow(rb.w);
             if (rb.error) row.error = row.error ?? rb.error;
             if (ra.w && rb.w) row.delta = compareRows(ra.w.rows, rb.w.rows);
           }

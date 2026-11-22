@@ -202,6 +202,33 @@ export function projectTrendWindow(raw: unknown, endDate: string, window: TrendW
   return out;
 }
 
+export type TrendWindowWire = Omit<TrendWindowOut, "hidden" | "points"> & {
+  /** Only present (true) when WHOOP hides this window in the app (VO2_MAX's week). */
+  hidden?: true;
+  /** `start` is the first slot that has a value; slots after the last value are left off. */
+  points?: NonNullable<TrendWindowOut["points"]>;
+};
+
+/**
+ * The window as sent to the model: no `hidden: false`, and points without the empty
+ * slots before the first value and after the last (a new member's six months is one
+ * value, not 180 slots; sparse metrics like WEIGHT shrink the same way).
+ */
+export function compactWindow(w: TrendWindowOut): TrendWindowWire {
+  const { hidden, points, ...rest } = w;
+  const out: TrendWindowWire = { ...rest };
+  if (hidden) out.hidden = true;
+  if (points) {
+    const first = points.values.findIndex((v) => v !== null);
+    if (first >= 0) {
+      const last = points.values.findLastIndex((v) => v !== null);
+      const size = points.step === "week" ? 7 : 1;
+      out.points = { start: addDays(points.start, first * size), step: points.step, values: points.values.slice(first, last + 1) };
+    }
+  }
+  return out;
+}
+
 export interface TrendDelta { key: string | null; diff: number | null; diff_pct: number | null }
 
 /** Per trend key: window A's average minus window B's (A = end_date, B = compare_end_date). */

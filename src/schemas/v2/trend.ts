@@ -27,7 +27,7 @@ const Row = z.object({
 const Window = z.object({
   start: IsoDate,
   end: IsoDate,
-  hidden: z.boolean(),
+  hidden: z.literal(true).optional(),
   rows: z.array(Row),
   breakdown: z.array(z.tuple([z.string(), NumOrNull])).nullable(),
   points: z.object({ start: IsoDate, step: z.enum(["day", "week"]), values: z.array(NumOrNull) }).optional(),
