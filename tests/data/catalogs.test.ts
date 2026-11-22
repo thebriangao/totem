@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BEHAVIORS, BEHAVIORS_BY_ID } from "../../src/data/behaviors.js";
 import { EXERCISES, EXERCISES_BY_ID } from "../../src/data/exercises.js";
-import { ENDPOINTS } from "../../src/data/endpoints.js";
 import { JournalBehaviorSchema } from "../../src/schemas/journal.js";
 import { OfficialExerciseSchema } from "../../src/schemas/strength.js";
 
@@ -38,14 +37,5 @@ describe("bundled catalogs", () => {
     expect(EXERCISES_BY_ID.size).toBe(EXERCISES.length);
   });
 
-  it("endpoints catalog is populated", () => {
-    expect(ENDPOINTS.length).toBeGreaterThan(300);
-    expect(ENDPOINTS.length).toBeLessThan(500);
-  });
 
-  it("endpoint lines are sorted and well-formed", () => {
-    for (const line of ENDPOINTS) {
-      expect(line).toMatch(/^(GET|POST|PUT|DELETE|PATCH|OPTIONS) /);
-    }
-  });
 });

@@ -1,14 +1,14 @@
-// whoop_activity_delete (v2): route by the pre-read's kind, verify gone with a
+// whoop_activity_delete: route by the pre-read's kind, verify gone with a
 // fresh read (WHOOP answers 204 even for ids that don't exist).
 import { describe, expect, it } from "vitest";
-import { registerActivityDeleteV2 } from "../../src/tools/v2/activity_delete_v2.js";
+import { registerActivityDelete } from "../../src/tools/v2/activity_delete.js";
 import { activityRecord, badRequest, cardioDetails, connect, fakeWhoop, notFound, sleepDetails, textOf, unrouted, type Call } from "./activity_test_utils.js";
 
 const CARDIO_V1 = "/core-details-bff/v1/cardio-details";
 
 async function deleteTool(route: (c: Call) => unknown) {
   const fake = fakeWhoop(route);
-  const client = await connect((s) => registerActivityDeleteV2(s, fake.whoop));
+  const client = await connect((s) => registerActivityDelete(s, fake.whoop));
   return { ...fake, call: (args: Record<string, unknown>) => client.callTool({ name: "whoop_activity_delete", arguments: args }) };
 }
 

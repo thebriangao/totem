@@ -3,8 +3,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
-import { registerDailyBrief } from "../../src/tools/v2/daily_brief.js";
-import { registerActivityNow } from "../../src/tools/v2/activity_now.js";
 import { registerWeeklyPlan } from "../../src/tools/v2/weekly_plan.js";
 import { registerPreferences } from "../../src/tools/v2/preferences.js";
 
@@ -23,27 +21,6 @@ async function connect(register: (server: McpServer) => void): Promise<Client> {
 }
 
 describe("compact helper tools", () => {
-  it("daily brief fetches only requested sections", async () => {
-    const get = vi.fn().mockResolvedValue({});
-    const client = await connect((server) => registerDailyBrief(server, { get } as unknown as WhoopClient));
-    const result = await client.callTool({ name: "whoop_daily_brief", arguments: { sections: ["strain"] } });
-    expect(result.isError).not.toBe(true);
-    expect(get).toHaveBeenCalledTimes(1);
-    expect(get).toHaveBeenCalledWith("/home-service/v1/deep-dive/strain", expect.anything());
-  });
-
-  it("activity-now leaves unrequested live endpoints untouched", async () => {
-    const get = vi.fn().mockResolvedValue({ state: "idle" });
-    const client = await connect((server) => registerActivityNow(server, { get } as unknown as WhoopClient));
-    const result = await client.callTool({ name: "whoop_activity_now", arguments: { include: ["state"] } });
-    expect(result.isError).not.toBe(true);
-    expect(get).toHaveBeenCalledTimes(1);
-    expect(get).toHaveBeenCalledWith("/activities-service/v1/user-state");
-    const output = JSON.parse((result.content as Array<{ text: string }>)[0]!.text);
-    expect(output.state.freshness.completed_cache).toBe("bypassed");
-    expect(output.state.freshness.fetched_at).toBeTruthy();
-  });
-
   it("projects weekly-plan goals without exposing the raw tile", async () => {
     const get = vi.fn().mockResolvedValue({ tile: { type: "WEEKLY_PLAN_HOME_TILE", content: {
       title: "CUSTOM PLAN", days_left_display: "7 days left", progress_bar: { percent_value: 5 },

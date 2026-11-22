@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { registerActivityEdit } from "../../src/tools/v2/activity_edit.js";
-import { registerActivityDeleteV2 } from "../../src/tools/v2/activity_delete_v2.js";
+import { registerActivityDelete } from "../../src/tools/v2/activity_delete.js";
 import { WhoopServerError } from "../../src/whoop/errors.js";
 import { sleepDetails } from "./activity_test_utils.js";
 import { projectActivityDetail } from "../../src/projections/activities.js";
@@ -57,7 +57,7 @@ describe("pre-read when the activity's kind can't be established", () => {
       if (c.method === "GET" && c.path === "/core-details-bff/v2/sleep-details/a1") return sleepDetails(false, "2026-11-21T14:10:00.000Z", "2026-11-21T14:30:00.000Z");
       return unrouted(c);
     });
-    const client = await connect((s) => registerActivityDeleteV2(s, fake.whoop));
+    const client = await connect((s) => registerActivityDelete(s, fake.whoop));
     const res = await client.callTool({ name: "whoop_activity_delete", arguments: { activity_id: "a1", confirm: true } });
     expect(res.isError).toBe(true);
     expect(JSON.stringify(res.content)).toMatch(/couldn't say what kind of activity/);

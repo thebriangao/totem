@@ -1,7 +1,7 @@
-// whoop_workouts (v2): app-native list from home?date=, detail from cardio-details
+// whoop_workouts: app-native list from home?date=, detail from cardio-details
 // (+ recovery-details), developer list only behind WHOOP_DEV_V2_LISTS.
 import { afterEach, describe, expect, it } from "vitest";
-import { registerWorkoutsV2 } from "../../src/tools/v2/workouts_v2.js";
+import { registerWorkouts } from "../../src/tools/v2/workouts.js";
 import { badRequest, connect, fakeWhoop, homeWith, loadFixture, notFound, textOf, unrouted, type Call } from "./activity_test_utils.js";
 
 const CAL = "/home-service/v1/calendar/overview";
@@ -20,7 +20,7 @@ describe("whoop_workouts list", () => {
       if (c.path === HOME) return loadFixture("activities/home_2026-11-21.json");
       return unrouted(c);
     });
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const out = textOf(await client.callTool({ name: "whoop_workouts", arguments: { start_date: "2026-11-18", end_date: "2026-11-21" } }));
     const homeDays = calls.filter((c) => c.path === HOME).map((c) => c.query.date).sort();
     expect(homeDays).toEqual(["2026-11-20", "2026-11-21"]); // 18 and 19 have no data
@@ -40,7 +40,7 @@ describe("whoop_workouts list", () => {
       if (c.path === HOME) return loadFixture("activities/home_2026-11-21.json");
       return unrouted(c);
     });
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const sleeps = textOf(await client.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21", types: ["SLEEP"] } }));
     expect(sleeps.activities).toEqual([expect.objectContaining({ activity_id: "addd5396-b934-4ae8-ba4e-a511762a0d53", type: "SLEEP" })]);
     const golf = await client.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21", sport: "golf" } });
@@ -56,7 +56,7 @@ describe("whoop_workouts list", () => {
       if (c.path === HOME) return homeWith([]);
       return unrouted(c);
     });
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const out = textOf(await client.callTool({ name: "whoop_workouts", arguments: { start_date: "2026-11-01", end_date: "2026-11-03" } }));
     expect(calls.filter((c) => c.path === HOME)).toHaveLength(3);
     expect(String(out.warnings)).toContain("calendar");
@@ -64,7 +64,7 @@ describe("whoop_workouts list", () => {
 
   it("refuses ranges over 31 days without touching WHOOP", async () => {
     const { whoop, calls } = fakeWhoop(unrouted);
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const r = await client.callTool({ name: "whoop_workouts", arguments: { start_date: "2026-09-01", end_date: "2026-11-01" } });
     expect(r.isError).toBe(true);
     expect(calls).toHaveLength(0);
@@ -76,7 +76,7 @@ describe("whoop_workouts list", () => {
       if (c.path === "/developer/v2/activity/workout") return loadFixture("activities/developer_workouts.json");
       return unrouted(c);
     });
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const out = textOf(await client.callTool({ name: "whoop_workouts", arguments: { start_date: "2026-09-01", end_date: "2026-11-21" } }));
     expect(out.source).toBe("developer");
     expect(calls[0]!.query).toMatchObject({ limit: 25 });
@@ -87,7 +87,7 @@ describe("whoop_workouts list", () => {
       if (c.path === HOME) return homeWith([]);
       return unrouted(c);
     });
-    const client2 = await connect((s) => registerWorkoutsV2(s, w2));
+    const client2 = await connect((s) => registerWorkouts(s, w2));
     await client2.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21" } });
     expect(c2.some((c) => c.path.startsWith("/developer/"))).toBe(false);
   });
@@ -96,7 +96,7 @@ describe("whoop_workouts list", () => {
 describe("whoop_workouts detail", () => {
   it("reads cardio-details only for a CARDIO activity, HR series opt-in", async () => {
     const { whoop, calls } = fakeWhoop((c: Call) => (c.path === CARDIO ? loadFixture("cardio_details.json") : unrouted(c)));
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const summary = await client.callTool({ name: "whoop_workouts", arguments: { activity_id: "5364dc07" } });
     expect(calls).toEqual([expect.objectContaining({ path: CARDIO, query: { activityId: "5364dc07" } })]);
     expect(textOf(summary)).toMatchObject({ type: "CARDIO", strain: 17.7, avg_hr_bpm: 123 });
@@ -112,7 +112,7 @@ describe("whoop_workouts detail", () => {
       if (c.path === RECOVERY) return loadFixture("activities/recovery_details_sauna.json");
       return unrouted(c);
     });
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const out = textOf(await client.callTool({ name: "whoop_workouts", arguments: { activity_id: "6db1e439" } }));
     expect(calls.map((c) => c.path)).toEqual([CARDIO, RECOVERY]);
     expect(out).toMatchObject({ type: "RECOVERY", internal_name: "sauna", min_hr_bpm: 58, avg_hr_bpm: 71 });
@@ -120,7 +120,7 @@ describe("whoop_workouts detail", () => {
 
   it("returns a pending activity (strain ---) instead of erroring", async () => {
     const { whoop } = fakeWhoop((c: Call) => (c.path === CARDIO ? loadFixture("activities/cardio_details_pending_boxing.json") : unrouted(c)));
-    const client = await connect((s) => registerWorkoutsV2(s, whoop));
+    const client = await connect((s) => registerWorkouts(s, whoop));
     const r = await client.callTool({ name: "whoop_workouts", arguments: { activity_id: "29792beb" } });
     expect(r.isError).not.toBe(true);
     expect(String(textOf(r).warnings)).toContain("Not scored yet");
@@ -128,12 +128,12 @@ describe("whoop_workouts detail", () => {
 
   it("points sleeps to whoop_sleep and maps a missing id", async () => {
     const pendingSleep = fakeWhoop((c: Call) => { throw badRequest(c.path, "Cannot view activity details for a pending activity"); });
-    const c1 = await connect((s) => registerWorkoutsV2(s, pendingSleep.whoop));
+    const c1 = await connect((s) => registerWorkouts(s, pendingSleep.whoop));
     const r1 = await c1.callTool({ name: "whoop_workouts", arguments: { activity_id: "sleep-1" } });
     expect(r1.isError).toBe(true);
     expect(JSON.stringify(r1.content)).toContain("whoop_sleep");
     const missing = fakeWhoop((c: Call) => { throw notFound(c.path); });
-    const c2 = await connect((s) => registerWorkoutsV2(s, missing.whoop));
+    const c2 = await connect((s) => registerWorkouts(s, missing.whoop));
     const r2 = await c2.callTool({ name: "whoop_workouts", arguments: { activity_id: "gone" } });
     expect(r2.isError).toBe(true);
     expect(JSON.stringify(r2.content)).toContain("No activity gone");

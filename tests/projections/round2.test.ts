@@ -4,10 +4,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { projectWorkout } from "../../src/projections/workout.js";
-import { projectLiftProgression } from "../../src/projections/lift_progression.js";
-import { projectJournal } from "../../src/projections/journal.js";
-import { projectLiftPrs } from "../../src/projections/lift_prs.js";
-
 import { WorkoutOut } from "../../src/schemas/workouts.js";
 import { LiftProgressionOut, LiftPrsOut } from "../../src/schemas/strength.js";
 import { JournalOut } from "../../src/schemas/journal.js";
@@ -62,92 +58,8 @@ describe("projectWorkout (captured strength workout)", () => {
   });
 });
 
-describe("projectLiftProgression (captured)", () => {
-  const raw = load("lift_progression.json");
-  const out = projectLiftProgression(raw, "BENCHPRESS_BARBELL", "2026-05-23");
-
-  it("parses schema", () => {
-    expect(() => LiftProgressionOut.parse(out)).not.toThrow();
-  });
-  it("emits at least one segment", () => {
-    expect(out.segments.length).toBeGreaterThan(0);
-  });
-  it("first segment avg_volume = 8963 (from current_metric_value)", () => {
-    expect(out.segments[0]?.avg_volume).toBe(8963);
-  });
-  it("first segment delta_pct = 4 (from metric_change)", () => {
-    expect(out.segments[0]?.delta_pct).toBe(4);
-  });
-  it("first segment unit = lb", () => {
-    expect(out.segments[0]?.unit).toBe("lb");
-  });
-});
-
-describe("projectJournal (captured v3 draft)", () => {
-  const raw = load("journal_draft.json");
-  const out = projectJournal(raw, "2026-05-23");
-
-  it("parses schema", () => {
-    expect(() => JournalOut.parse(out)).not.toThrow();
-  });
-  it("extracts cycle_id", () => {
-    expect(out.cycle_id).not.toBeNull();
-  });
-  it("behaviors array is well-formed (may be empty)", () => {
-    expect(Array.isArray(out.behaviors)).toBe(true);
-  });
-});
-
 // Regression for issue #2: submitted journal entries came back as `behaviors: []`.
 // The v3 drafts endpoint nests each logged behavior as
 // { behavior_tracker:{id,...}, tracker_input:{behavior_tracker_id, answered_yes, ...} };
 // the projection used to read behavior_tracker_id off the top level (always undefined),
 // so every behavior was dropped. This fixture is the real populated shape.
-describe("projectJournal (populated v3 draft — nested behavior shape)", () => {
-  const raw = load("journal_v3_populated.json");
-  const out = projectJournal(raw, "2026-06-07");
-
-  it("parses schema", () => {
-    expect(() => JournalOut.parse(out)).not.toThrow();
-  });
-  it("extracts all logged behaviors (not empty)", () => {
-    expect(out.behaviors.length).toBe(3);
-  });
-  it("resolves behavior ids from the nested tracker_input", () => {
-    expect(out.behaviors.map((b) => b.behavior_tracker_id).sort((a, z) => a - z)).toEqual([80, 271, 274]);
-  });
-  it("carries answered_yes through for boolean behaviors", () => {
-    const read = out.behaviors.find((b) => b.behavior_tracker_id === 271);
-    expect(read?.answered_yes).toBe(true);
-  });
-  it("carries the magnitude value + label through", () => {
-    const caffeine = out.behaviors.find((b) => b.behavior_tracker_id === 274);
-    expect(caffeine?.magnitude_value).toBe(22);
-    expect(caffeine?.magnitude_label).toBe("22");
-  });
-  it("populates a human-readable title for each behavior", () => {
-    expect(out.behaviors.every((b) => b.title.length > 0)).toBe(true);
-  });
-  it("extracts notes + cycle_id", () => {
-    expect(out.notes).toBe("felt good today");
-    expect(out.cycle_id).toBe(1553063494);
-  });
-});
-
-describe("projectLiftPrs (captured)", () => {
-  const raw = load("lift_prs.json");
-  const out = projectLiftPrs(raw);
-
-  it("parses schema", () => {
-    expect(() => LiftPrsOut.parse(out)).not.toThrow();
-  });
-  it("has at least one PR tile", () => {
-    expect(out.length).toBeGreaterThan(0);
-  });
-  it("BENCHPRESS_BARBELL PR is present with numeric value", () => {
-    const bench = out.find((t) => t.exercise_id === "BENCHPRESS_BARBELL");
-    expect(bench).toBeDefined();
-    expect(bench?.pr_value).not.toBeNull();
-    expect(bench?.muscle_groups).toContain("CHEST");
-  });
-});

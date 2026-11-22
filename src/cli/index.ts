@@ -94,7 +94,7 @@ function printBanner(): void {
     "",
     w(ANSI.brandDim, "   ▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁▁▁▁▁▁▂▂▆▂▁▁▁"),
     "",
-    `   ${w(ANSI.bold, "v" + VERSION)}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "55 tools")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "47 microservices")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "311 endpoints")}`,
+    `   ${w(ANSI.bold, "v" + VERSION)}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "40 tools")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "47 microservices")}  ${w(ANSI.gray, "·")}  ${w(ANSI.white, "311 endpoints")}`,
     "",
   ];
   for (const line of lines) console.error(line);
@@ -329,7 +329,7 @@ const commands: Record<string, Cmd> = {
   },
   tools: {
     group: "Inspect",
-    desc: "List the MCP tools the server exposes (55 total)",
+    desc: "List the MCP tools the server exposes (40 total)",
     run: async () => {
       const reads = [
         "whoop_today", "whoop_day", "whoop_daily_brief", "whoop_weekly_plan", "whoop_profile",
