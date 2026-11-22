@@ -30,6 +30,26 @@ describe("whoop_stress projection", () => {
   });
 });
 
+describe("whoop_stress on a day without data", () => {
+  // Live shape of stress-bff/2026-11-20 on the calibrating throwaway account.
+  const noData = {
+    stress_state: "NO_DATA",
+    gauge: { gauge_score_display: "--", gauge_subtext_display: "NO DATA", gauge_fill_percentage: null },
+    progress_stepper: { title: "Wear WHOOP to sleep for 4 nights to unlock", progress_bar: { type: "DISCRETE", discrete_step_total: 4, discrete_filled_total: 0 } },
+    stress_graph: { graph: { plots: [{ type: "EMPTY_PLOT", plot: { id: "empty" } }] } },
+    extended24_hour_graph: { graph: { plots: [{ type: "EMPTY_PLOT", plot: { id: "empty" } }] } },
+    trend_list: null,
+  };
+
+  it("has no level, min, peak or timeline, and still says the account is calibrating", () => {
+    const out = projectStressV2(noData, "2026-11-20", true);
+    expect(out).toMatchObject({ state: "NO_DATA", level: null, min: null, peak: null, band_min: null });
+    expect(out.timeline).toBeUndefined();
+    // calibrating used to be false here next to calibration {filled: 0, total: 4}.
+    expect(out).toMatchObject({ calibrating: true, calibration: { filled: 0, total: 4 } });
+  });
+});
+
 describe("whoop_stress graph window and timeline dates", () => {
   beforeAll(pinToday); // America/Los_Angeles
   afterAll(unpinToday);

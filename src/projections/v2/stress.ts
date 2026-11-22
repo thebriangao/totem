@@ -88,7 +88,9 @@ export function projectStressV2(raw: unknown, date: string, withTimeline: boolea
     label: str(get(root, "gauge", "gauge_subtext_display")),
     min: levels.length ? Math.min(...levels) : null,
     peak: levels.length ? Math.max(...levels) : null,
-    calibrating: root.stress_state === "CALIBRATING" || str(root.calibration_text_display) !== null,
+    // A no-data day on an account that is still calibrating has state NO_DATA and an unfinished stepper.
+    calibrating: root.stress_state === "CALIBRATING" || str(root.calibration_text_display) !== null ||
+      (calibration !== null && calibration.filled < calibration.total),
     calibration,
     band_min: total ? { low: band("low"), medium: band("medium"), high: band("high") } : null,
   };
