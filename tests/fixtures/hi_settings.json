@@ -1,0 +1,298 @@
+{
+ "navigation_bar_title": "HORMONAL INSIGHTS",
+ "tiles": [
+  {
+   "type": "UPSELL_TILE",
+   "content": {
+    "description_display": "You may have data in Apple Health that can be imported into the journal.",
+    "icon": "TINY_INFORMATION",
+    "cta_text_display": "ENABLE",
+    "cta_icon": "ARROW_RIGHT",
+    "cta_destination": {
+     "screen": "HEALTH_KIT_INTEGRATION",
+     "parameters": {}
+    },
+    "dismissable": true
+   }
+  },
+  {
+   "type": "SETTINGS_TOGGLE",
+   "content": {
+    "title_display": "HORMONAL INSIGHTS",
+    "description_display": "Learn how your body is impacted by your hormonal cycles with Hormonal Insights. Enable to receive tailored coaching based on your current life stage.",
+    "enabled": true,
+    "type": "HORMONAL_INSIGHTS",
+    "interaction": null
+   }
+  },
+  {
+   "type": "DIVIDER",
+   "content": {
+    "id": null,
+    "title": "MODE",
+    "header_position": null,
+    "style": null,
+    "divider_type": null
+   }
+  },
+  {
+   "type": "MENU_ITEM",
+   "content": {
+    "title": "MENSTRUATING",
+    "subtitle": null,
+    "suffix_title": null,
+    "suffix_subtitle": null,
+    "suffix_type": null,
+    "left_icon": "MENSTRUAL_CYCLE",
+    "right_icon": "CARET_RIGHT",
+    "right_image_url": null,
+    "menu_item_state": null,
+    "style": null,
+    "destination": null,
+    "type": "HORMONAL_INSIGHTS_MODE",
+    "generic_interaction": null
+   }
+  },
+  {
+   "type": "DIVIDER",
+   "content": {
+    "id": null,
+    "title": "GOAL",
+    "header_position": null,
+    "style": null,
+    "divider_type": null
+   }
+  },
+  {
+   "type": "MENU_ITEM",
+   "content": {
+    "title": "Cycle & Symptom Tracking",
+    "subtitle": null,
+    "suffix_title": null,
+    "suffix_subtitle": null,
+    "suffix_type": null,
+    "left_icon": null,
+    "right_icon": "CARET_RIGHT",
+    "right_image_url": null,
+    "menu_item_state": null,
+    "style": null,
+    "destination": null,
+    "type": "HORMONAL_GOALS",
+    "generic_interaction": null
+   }
+  },
+  {
+   "type": "DIVIDER",
+   "content": {
+    "id": null,
+    "title": "CONTRACEPTION TYPE",
+    "header_position": null,
+    "style": null,
+    "divider_type": null
+   }
+  },
+  {
+   "type": "MENU_ITEM",
+   "content": {
+    "title": "BIRTH CONTROL PILLS",
+    "subtitle": null,
+    "suffix_title": null,
+    "suffix_subtitle": null,
+    "suffix_type": null,
+    "left_icon": null,
+    "right_icon": "CARET_RIGHT",
+    "right_image_url": null,
+    "menu_item_state": null,
+    "style": null,
+    "destination": null,
+    "type": "MCI_CONTRACEPTION_TYPE",
+    "generic_interaction": null
+   }
+  },
+  {
+   "type": "SETTINGS_TOGGLE",
+   "content": {
+    "title_display": "SHOW CYCLE OVERLAY ON TRENDS",
+    "description_display": "See how your WHOOP data is impacted by your menstrual cycle phase. Disable to remove cycle data from trend graphs.",
+    "enabled": true,
+    "type": "MENSTRUAL_CYCLE_TRENDS_OVERLAY",
+    "interaction": null
+   }
+  },
+  {
+   "type": "PRIVACY_TILE",
+   "content": {
+    "title_display": "Privacy",
+    "description_display": "We deeply care about your health\u2014and that includes your privacy. You can access or erase your data anytime, ensuring you have control over your information.",
+    "cta_text_display": "LEARN MORE",
+    "cta_icon": "ARROW_RIGHT",
+    "cta_url": "https://www.whoop.com/privacy/"
+   }
+  },
+  {
+   "type": "MENU_ITEM",
+   "content": {
+    "title": "PREVIOUS PREGNANCIES",
+    "subtitle": null,
+    "suffix_title": null,
+    "suffix_subtitle": null,
+    "suffix_type": null,
+    "left_icon": null,
+    "right_icon": "CARET_RIGHT",
+    "right_image_url": null,
+    "menu_item_state": null,
+    "style": null,
+    "destination": null,
+    "type": "PREVIOUS_PREGNANCIES",
+    "generic_interaction": null
+   }
+  }
+ ],
+ "hormonal_insights_mode_drawer": {
+  "title_display": "MODE",
+  "save_button_display": "SAVE",
+  "options": [
+   {
+    "title_display": "MENSTRUATING",
+    "description_display": null,
+    "icon": "MENSTRUAL_CYCLE",
+    "value": "MENSTRUATING",
+    "selected": true
+   },
+   {
+    "title_display": "PREGNANT",
+    "description_display": null,
+    "icon": "PREGNANCY_SECOND_TRIMESTER",
+    "value": "PREGNANCY",
+    "selected": false
+   }
+  ]
+ },
+ "contraception_type_drawer": {
+  "title_display": "CONTRACEPTION TYPE",
+  "save_button_display": "SAVE",
+  "options": [
+   {
+    "title_display": "BIRTH CONTROL PILLS",
+    "description_display": null,
+    "icon": null,
+    "value": "PILL",
+    "selected": true
+   },
+   {
+    "title_display": "HORMONAL IUD",
+    "description_display": null,
+    "icon": null,
+    "value": "HORMONAL_IUD",
+    "selected": false
+   },
+   {
+    "title_display": "COPPER IUD",
+    "description_display": null,
+    "icon": null,
+    "value": "NON_HORMONAL_IUD",
+    "selected": false
+   },
+   {
+    "title_display": "PATCHES",
+    "description_display": null,
+    "icon": null,
+    "value": "PATCH",
+    "selected": false
+   },
+   {
+    "title_display": "ARM IMPLANT",
+    "description_display": null,
+    "icon": null,
+    "value": "ARM_IMPLANT",
+    "selected": false
+   },
+   {
+    "title_display": "VAGINAL RING",
+    "description_display": null,
+    "icon": null,
+    "value": "VAGINAL_RING",
+    "selected": false
+   },
+   {
+    "title_display": "INJECTIONS",
+    "description_display": null,
+    "icon": null,
+    "value": "INJECTION",
+    "selected": false
+   },
+   {
+    "title_display": "NONE OF THE ABOVE",
+    "description_display": null,
+    "icon": null,
+    "value": "NONE",
+    "selected": false
+   }
+  ]
+ },
+ "previous_pregnancies": {
+  "navigation_title": "PREVIOUS PREGNANCIES",
+  "items": [
+   {
+    "type": "MENU_ITEM",
+    "content": {
+     "title": "Delivery date November 21, 2026",
+     "subtitle": null,
+     "suffix_title": null,
+     "suffix_subtitle": null,
+     "suffix_type": null,
+     "left_icon": "PREGNANCY",
+     "right_icon": null,
+     "right_image_url": null,
+     "menu_item_state": null,
+     "style": null,
+     "destination": {
+      "screen": "PREVIOUS_PREGNANCY",
+      "parameters": {
+       "id": "6c3acf88-cd89-4f50-9f69-d2a43b092e8e"
+      }
+     },
+     "type": null,
+     "generic_interaction": null
+    }
+   }
+  ]
+ },
+ "goals_drawer": {
+  "title": "What are your current goals around hormonal health?",
+  "description": "Select all that apply to help personalize your experience.",
+  "options": [
+   {
+    "value": "TRACK_CYCLE",
+    "title": "Track my cycle",
+    "is_selected": false
+   },
+   {
+    "value": "TRACK_HORMONAL_SYMPTOMS",
+    "title": "Track my hormonal symptoms",
+    "is_selected": false
+   },
+   {
+    "value": "TRY_TO_CONCEIVE",
+    "title": "Try to conceive",
+    "is_selected": true
+   },
+   {
+    "value": "MONITOR_PERIMENOPAUSE",
+    "title": "Monitor perimenopause",
+    "is_selected": true
+   },
+   {
+    "value": "MANAGE_HORMONAL_CONDITION",
+    "title": "Manage a hormonal condition",
+    "is_selected": true
+   },
+   {
+    "value": "OPTIMIZE_TRAINING",
+    "title": "Optimize my training",
+    "is_selected": false
+   }
+  ],
+  "button_text": "SAVE"
+ }
+}
