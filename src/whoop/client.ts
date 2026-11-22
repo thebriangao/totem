@@ -269,7 +269,10 @@ function writeInvalidationTags(path: string): readonly string[] {
   ) {
     return ["journal", "daily", "recovery", "sleep", "trend", "settings"];
   }
-  if (path.includes("weightlifting-service")) return ["lift", "activity", "daily", "trend", "milestones"];
+  if (path.includes("weightlifting-service")) {
+    // A custom exercise is a row of the 24 h exercise catalog, which lifts send verbatim.
+    return path.includes("/custom-exercise") ? ["lift", "activity", "daily", "trend", "milestones", "catalog"] : ["lift", "activity", "daily", "trend", "milestones"];
+  }
   if (
     path.includes("profile-service") || path.includes("hr-zones") || path.includes("smart-alarm") ||
     path.includes("hidden-metrics") || path.includes("stealth-mode") || path.startsWith("/users-service/") ||

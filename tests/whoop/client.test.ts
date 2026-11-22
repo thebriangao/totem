@@ -269,6 +269,27 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("drops the 24 h exercise catalog after a custom-exercise write, but not after a lift", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ exercises: [] }), { status: 200 })));
+    const client = makeClient();
+    const CATALOG = "/weightlifting-service/v2/exercise";
+    await client.get(CATALOG);
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // create/edit: the catalog gains or changes a row that lifts send verbatim
+    await client.post("/weightlifting-service/v2/custom-exercise", {});
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // delete: the row must stop resolving
+    await client.delete("/weightlifting-service/v2/custom-exercise/2F6E0C1B-0000-4000-8000-000000000000");
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // other lift writes leave the catalog alone
+    await client.post("/weightlifting-service/v2/weightlifting-workout/activity", {});
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
   it("refreshes the token once and retries after a 401", async () => {
     let token = "old";
     const onUnauthorized = vi.fn(() => { token = "new"; });
