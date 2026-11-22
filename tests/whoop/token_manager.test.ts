@@ -91,6 +91,77 @@ describe("TokenManager: durable refresh (G6)", () => {
     expect(new Set(tokens).size).toBe(1);
     expect(refresh).toHaveBeenCalledOnce();
   });
+
+  describe("with a real file", () => {
+    let dir: string;
+    beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "totem-tm-")); });
+    afterEach(() => rmSync(dir, { recursive: true, force: true }));
+    const onDisk = (file: string): string => (new FileTokenStore(file).load() as TokenRecord).refresh_token;
+
+    it("no caller sees the new access token until the rotated refresh token is in the file", async () => {
+      const file = join(dir, "tokens.json");
+      const now = Date.now();
+      const old = jwtExpiring(now, 0);
+      new FileTokenStore(file).save(login(now, { access_token: old }));
+      const store = new FileTokenStore(file);
+      const { refresh } = fakeCognito(() => now);
+      const events: string[] = [];
+      const save = store.save.bind(store);
+      const held: { manager?: TokenManager } = {};
+      store.save = (content) => {
+        // WHOOP has answered and rt-0 is spent. Nothing new may be visible yet.
+        events.push(`save starts: file=${onDisk(file)} manager=${held.manager?.current()?.access_token === old ? "old token" : "NEW TOKEN"}`);
+        save(content);
+        events.push(`save done: file=${onDisk(file)}`);
+      };
+      const manager = (held.manager = new TokenManager({ store, refresh, ...quiet }));
+      const calls = [1, 2, 3].map((n) => manager.getToken().then((token) => {
+        events.push(`caller ${n} got ${token === old ? "old token" : "new token"}: file=${onDisk(file)}`);
+        return token;
+      }));
+      const tokens = await Promise.all(calls);
+      expect(events).toEqual([
+        "save starts: file=rt-0 manager=old token",
+        "save done: file=rt-1",
+        "caller 1 got new token: file=rt-1",
+        "caller 2 got new token: file=rt-1",
+        "caller 3 got new token: file=rt-1",
+      ]);
+      expect(new Set(tokens).size).toBe(1);
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+      "a rotation that can't be written reaches no caller, waiting ones included, and the process is told to stop",
+      async () => {
+        const file = join(dir, "tokens.json");
+        const now = Date.now();
+        const old = jwtExpiring(now, 0);
+        new FileTokenStore(file).save(login(now, { access_token: old }));
+        const onFatal = vi.fn();
+        // The disk goes read-only while the refresh is on the wire.
+        const refresh = vi.fn(async (): Promise<CognitoTokens> => {
+          chmodSync(dir, 0o500);
+          return { accessToken: jwtExpiring(now, 24 * HOUR, { n: "new" }), refreshToken: "rt-1", idToken: "", expiresAt: 0 };
+        });
+        const manager = new TokenManager({ store: new FileTokenStore(file), refresh, onFatal, ...quiet });
+        try {
+          const results = await Promise.allSettled([manager.getToken(), manager.getToken(), manager.getToken()]);
+          for (const r of results) {
+            expect(r.status).toBe("rejected");
+            expect(r.status === "rejected" && r.reason).toBeInstanceOf(WhoopTokenPersistError);
+          }
+          expect(onFatal).toHaveBeenCalledOnce();
+          expect(manager.current()?.access_token).toBe(old); // the unsaved token never became current
+          await expect(manager.getToken()).rejects.toBeInstanceOf(WhoopTokenPersistError);
+          expect(refresh).toHaveBeenCalledOnce(); // and it is not tried again
+        } finally {
+          chmodSync(dir, 0o700);
+        }
+        expect(onDisk(file)).toBe("rt-0");
+      },
+    );
+  });
 });
 
 describe("TokenManager: errors (G9)", () => {
