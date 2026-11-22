@@ -20,7 +20,7 @@ export function registerJournal(server: McpServer, client: WhoopClient): void {
     name: NAME,
     description:
       "Journal for a date (default today): answered behaviours (yes/no, value, time) and notes. include: unanswered; catalog (your " +
-      "behaviour ids and names, custom ones too; filter with search or category); magnitudes (ranges and step choices on catalog rows); " +
+      "behaviour ids and names, custom too; filter with search or category); magnitudes (ranges and step choices on catalog rows); " +
       "impact (how behaviours move your recovery). impact_id: one personal impact's detail.",
     input: {
       date: z.iso.date().optional(),

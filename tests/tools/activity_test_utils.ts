@@ -56,6 +56,7 @@ export function fakeWhoop(route: Handler): { whoop: WhoopClient; calls: Call[]; 
       run({ method: "GET", path, query, fresh: options.fresh === true })),
     post: vi.fn((path: string, body: unknown, query: Record<string, unknown> = {}) => run({ method: "POST", path, query, body })),
     put: vi.fn((path: string, body: unknown, query: Record<string, unknown> = {}) => run({ method: "PUT", path, query, body })),
+    patch: vi.fn((path: string, body: unknown, query: Record<string, unknown> = {}) => run({ method: "PATCH", path, query, body })),
     delete: vi.fn((path: string, query: Record<string, unknown> = {}) => run({ method: "DELETE", path, query })),
   } as unknown as WhoopClient;
   return { whoop, calls, writes: () => calls.filter((c) => c.method !== "GET") };

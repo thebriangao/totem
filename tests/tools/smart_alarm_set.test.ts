@@ -1,6 +1,6 @@
 // Unit tests only: no live Smart Alarm writes (the test account's alarm prefs are broken).
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { registerSmartAlarm } from "../../src/tools/v2/smart_alarm.js";
+import { minusMinutes, registerSmartAlarm } from "../../src/tools/v2/smart_alarm.js";
 import { registerSmartAlarmSet } from "../../src/tools/v2/smart_alarm_set.js";
 import { WhoopApiError, WhoopServerError } from "../../src/whoop/errors.js";
 import { call, connect, fx, mockClient, routedGet, seq } from "./health_plans_helpers.js";
@@ -37,6 +37,27 @@ describe("whoop_smart_alarm", () => {
     expect(out.schedules[1]).toMatchObject({ id: SLEEP, mode: "SLEEP_GOAL", sleep_goal: "PERFORM", wake: "06:45" });
     expect(out.next_alarm).toMatchObject({ date: "2026-11-22", goal: "SLEEP_HEALTH_GET_BY" });
     expect(out.note).toBeUndefined();
+  });
+
+  it("adds the wake window and, for goal modes only, the earliest buzz", async () => {
+    const get = routedGet({ [ROWS]: baseRows(), [ALL]: fx("alarm_schedule_all.json"), [PREFS]: fx("alarm_preferences.json"), [`${SA}/user-info/default-wake-window`]: { default_wake_window_minutes: 60 } });
+    const client = await connect((s) => registerSmartAlarm(s, mockClient({ get })));
+    const { out } = await call(client, "whoop_smart_alarm", {});
+    expect(out.wake_window_min).toBe(60);
+    expect(out.schedules[1]).toMatchObject({ mode: "SLEEP_GOAL", wake: "06:45", earliest: "05:45" });
+    for (const sc of out.schedules) {
+      if (sc.mode === "IN_THE_GREEN" || sc.mode === "SLEEP_GOAL") expect(sc.earliest).toBe(minusMinutes(sc.wake, 60));
+      else expect(sc.earliest).toBeUndefined();
+    }
+    expect(minusMinutes("00:30", 60)).toBe("23:30");
+    expect(minusMinutes("07:35", 45)).toBe("06:50");
+  });
+
+  it("leaves the window out when WHOOP doesn't answer it", async () => {
+    const client = await connect((s) => registerSmartAlarm(s, mockClient({ get: healthy(baseRows()) })));
+    const { out } = await call(client, "whoop_smart_alarm", {});
+    expect(out.wake_window_min).toBeUndefined();
+    expect(out.schedules.every((sc: { earliest?: string }) => sc.earliest === undefined)).toBe(true);
   });
 
   it("returns 'unavailable' when preferences and schedule/all 500", async () => {

@@ -1,4 +1,4 @@
-// whoop_calendar (v2): GET /home-service/v1/calendar/{pillar}?date=.
+// whoop_calendar (v2): GET /home-service/v1/calendar/{pillar}?date=, or the journal calendar.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
@@ -16,8 +16,8 @@ export function registerCalendar(server: McpServer, client: WhoopClient): void {
     {
       name: NAME,
       description:
-        "Month grid for one pillar. days has one character per day of the month (days[0] = the 1st): H/M/L = high/medium/low, '-' = data " +
-        "but no score, '.' = no data. States only, no numbers; use whoop_day for a day's scores.",
+        "Month grid for one pillar: days has one character per day (days[0] = the 1st): H/M/L = high/medium/low, J = journal " +
+        "entry, '-' = data but no score, '.' = no data. No numbers; whoop_day has a day's scores.",
       input: {
         date: z.iso.date().optional().describe("Any day in the month"),
         pillar: z.enum(CALENDAR_PILLARS).default("recovery"),
@@ -26,7 +26,8 @@ export function registerCalendar(server: McpServer, client: WhoopClient): void {
     },
     async ({ date, pillar }) => {
       const d = date ?? todayIso();
-      const raw = await client.get(`/home-service/v1/calendar/${pillar}`, { date: d });
+      const path = pillar === "journal" ? `/journal-service/v2/journals/${d}/calendar` : `/home-service/v1/calendar/${pillar}`;
+      const raw = await client.get(path, pillar === "journal" ? {} : { date: d });
       return respond(NAME, CalendarV2Out, projectCalendarV2(raw, pillar, d));
     },
   );

@@ -319,6 +319,19 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("sends PATCH and treats an activity merge as an activity write", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    const home = () => client.get("/home-service/v1/home", { date: "2026-05-23" });
+    await home();
+    await client.patch("/core-details-bff/v1/activities/merge", ["a", "b"], { startTime: "s", endTime: "e" });
+    const init = fetchMock.mock.calls[1]![1] as RequestInit;
+    expect(init.method).toBe("PATCH");
+    expect(init.body).toBe(JSON.stringify(["a", "b"]));
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("drops cached reads on a coach turn, but not on a conversation open, an image file or AI settings", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
     const client = makeClient();

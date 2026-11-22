@@ -7,8 +7,9 @@ This is an unofficial description of a private API. WHOOP can change it at any t
 ## How it was mapped
 
 - **Captures.** The WHOOP iOS app (5.78.0) was run through mitmproxy on two accounts, and every request was recorded.
-- **A live probe.** Each of the 246 endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.
+- **A live probe.** Each of the 274 endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.
 - **The heart-rate series and the bulk day history** were checked live the same day, including that another person's user id is refused.
+- **Android routes.** [@Acetone1](https://github.com/Acetone1) shared the routes in WHOOP's Android app ([issue #5](https://github.com/thebriangao/totem/issues/5)). The ones that fit totem were called on the test account on 2026-11-22 and are marked "Android route" below.
 
 No real person's data appears in totem's tests or this page.
 
@@ -73,6 +74,7 @@ Don't use:
 |---|---|---|---|
 | GET | `/health-service/v2/stress-bff/{date}/calendar` | server-error-500 | 500 on test account (200 in May capture); account-specific or global unknown |
 | GET | `/home-service/v2/home` | not-found | 404; no v2 home |
+| GET | `/widget-service/v1/statistics/{statistic}` | server-error-500 | Android route (@Acetone1). 500 for RECOVERY and for composite?statistics=… on the test account. |
 
 ### Activities and cycles
 
@@ -95,6 +97,8 @@ Don't use:
 | GET | `/core-details-bff/v2/recovery-details` | verified | whoop_workouts | RECOVERY detail (MINUTES, MIN/AVG HR); CARDIO id → 400 'not a recovery activity' |
 | GET | `/strap-location-service/v1/garment` | verified | whoop://catalog/garments | garment ids 1,2,3,6,7,9,10,11,12–15 (12–15 GEN_4 only); garment_id is optional and unvalidated on writes |
 | GET | `/core-details-bff/v0/cycles/details` | verified | whoop_day | bulk history {records:[{cycle, recovery, sleeps[], workouts[], v2_activities[]}]}, newest first, every cycle overlapping the window; window ≤200 days (else 400); recovery and sleeps not seen live (account never slept): hrv_rmssd is seconds, sleep durations ms |
+| GET | `/home-service/v1/home/activities/multi-modifications` | verified | – | Android route (@Acetone1). ?date=. The Edit Activities drawer: ACTIVITY_TILE_SELECTION items (activity_v2_id, during, selectable_state), footer Delete and Merge, limit callouts. |
+| PATCH | `/core-details-bff/v1/activities/merge` | verified | whoop_activity_edit | Android route (@Acetone1). ?startTime&endTime, body [ids]. 200: the earliest activity (id, type) now spans the bounds; the others are deleted, in any id order. 422 while an activity inside the bounds is pending. |
 
 Don't use:
 
@@ -106,6 +110,7 @@ Don't use:
 | DELETE | `/activities-service/v2/activities/{id}` | service-only-401 | 401 'Authorization was not valid' even after refresh (2ebbff38); activity untouched |
 | GET | `/core-details-bff/v1/recovery-details` | not-found | 405 |
 | GET | `/core-details-bff/v2/cardio-details` | not-found | 405 |
+| DELETE | `/core-details-bff/v1/activities/merge` | not-found | Android route (@Acetone1). ?id=. 405 Method Not Allowed, so a merge can't be undone. |
 
 ### Sleep
 
@@ -125,6 +130,7 @@ Don't use:
 | PUT | `/core-details-bff/v2/sleep-details/{id}/nap-to-sleep` | not-found | 404; use cardio-details PUT with activity_internal_name 'sleep' |
 | POST | `/vow-service/v1/coaching/vows/sleepcoach` | server-error-500 | read-like; body = sleepneed object; 500 on test account; returns bedtime sentence when healthy |
 | GET | `/sleep-service/v1/sleep-events` | not-exercised | hypnogram {during, type LIGHT/REM/SWS/DISTURBANCES} per other open-source clients; not called live (no sleep on the test account); whoop_sleep reads stages from sleep-details instead |
+| PUT | `/core-details-bff/v2/sleep-details/nap-to-sleep/{activity_id}` | not-exercised | Android route (@Acetone1). Not sent: whoop_activity_edit already turns a nap into a main sleep through cardio-details. |
 
 ### Trends and heart rate
 
@@ -137,6 +143,7 @@ Don't use:
 | DELETE | `/progression-service/v3/trends/WEIGHT/readings/{id}` | verified | whoop_weight_log | 204 always (idempotent); does NOT revert profile weight |
 | PUT | `/progression-service/v3/trends/WEIGHT/readings/{id}` | verified | whoop_weight_log | Full replace (omitted optional → null; timestamp required) → 200 stored record; 404 deleted id |
 | GET | `/progression-service/v3/trends/{metric}` | verified | whoop_trend | Always week/month/six_month; no year, no range param. Add HR_ZONES_ALL, RESTORATIVE_SLEEP_PERCENT; TOTAL_VOLUME_LOAD and SAGE 500; VO2_MAX week hidden; derive window dates from endDate. |
+| GET | `/progression-service/v3/{measurement_type}/manual/readings` | verified | – | Android route (@Acetone1). measurement_type vo2max (VO2_MAX, VO2MAX, vo2_max: 404). Records list plus the Add Manual Value sheet: timestamp, vo2_max_value, mL/kg/min, sources MANUAL_LAB_TEST, MANUAL_WEARABLE, MANUAL_OTHER. |
 
 Don't use:
 
@@ -145,6 +152,7 @@ Don't use:
 | GET | `/progression-service/v3/trends/WEIGHT/readings/paginated` | exists-but-unclear | page 2+; made-up tokens 400; real token unverified (first page = 100 on main) |
 | GET | `/progression-service/v3/trends/WEIGHT/readings/{id}` | not-found | 405 |
 | GET | `/progression-service/v{2,4}/trends/{metric}` | not-found | 404 |
+| POST | `/vo2max-service/v2/{measurement_type}/manual` | exists-but-unclear | Android route (@Acetone1). vo2max: 422 with an empty body for six shapes built from the sheet's fields (VO2_MAX: 404). Body unknown; nothing was created. |
 
 ### Strength Trainer
 
@@ -180,6 +188,7 @@ Don't use:
 | GET | `/weightlifting-service/v2/exercise/{id}` | not-found | 404 |
 | GET | `/weightlifting-service/v3/workout-template/{key}` | not-found | 404 (DELETE too) |
 | POST | `/weightlifting-service/v3/workout-template/{key}/duplicate` | not-found | 404 (v2 too); copy = GET + POST without key |
+| GET | `/core-details-bff/v1/strength-workout/exercises` | not-found | Android route (@Acetone1). 404 with totem's iOS identity, as are /exercises/{id}, /history and /suggested (catalog ids like BENCHPRESS_BARBELL). |
 
 ### Journal
 
@@ -204,6 +213,8 @@ Don't use:
 | GET | `/journal-service/v3/journals/date-picker/{date}` | verified | – | per-day status + fill_ratio |
 | GET | `/journal-service/v3/journals/drafts/mobile/{date}` | verified | whoop_journal, whoop_journal_log | tracked_behaviors[{behavior_tracker, tracker_input}], notes (null when empty), cycle_id (may change), keyed by date |
 | GET | `/journal-service/v3/journals/home-tile` | verified | – | 400 without date |
+| GET | `/journal-service/v2/journals/{date}/calendar` | verified | whoop_calendar | Android route (@Acetone1). days_of_month[{date_value_display, cycle_id, day_state HAS_JOURNAL_ENTRY \| NO_DATA, has_data}] for the date's month. |
+| GET | `/journal-service/v1/journals/behaviors/user` | verified | – | Android route (@Acetone1). The v1 tracker catalog (~309 rows with title, category, question_text). totem reads v3 behaviors instead. |
 
 Don't use:
 
@@ -219,6 +230,7 @@ Don't use:
 | POST | `/journal-service/v1/journals/behaviors/{id}` | not-found | 405 (DELETE too) |
 | PUT | `/journal-service/v1/journals/behaviors/{id}` | service-only-401 | 401 even with valid session (1f70f0ff) |
 | POST | `/journal-service/{v1,v3}/journals/behaviors/custom` | not-found | custom-behavior REST create/edit/delete: 12 guesses (405/404/401); none exist. Delete = untrack. |
+| GET | `/journal-service/v1/journals/stats/user/{cycle_id}` | exists-but-unclear | Android route (@Acetone1). records[{behavior_tracker_id, yes_count, no_count, last_value}] for ~310 trackers. Counts are neither lifetime nor as-of (an older cycle gave a higher count), so unused. |
 
 ### WHOOP Coach
 
@@ -280,6 +292,7 @@ Don't use:
 | PUT | `/womens-health-service/v1/pregnancy/{id}` | verified | – | 204; NO enum validation (BOGUS accepted); not wrapped |
 | POST | `/womens-health-service/v1/symptom-insights/log/symptoms` | verified | whoop_cycle_log | tracker_inputs merge; menstruation & cervical_mucus REPLACE (omit = clear); flow logs a period day; invalid enum → 422 |
 | GET | `/womens-health-service/v1/symptom-insights/log/symptoms/screen` | verified | whoop_cycle, whoop_cycle_log | current day selections + live enums (menstruation, cervical_mucus, symptom ids) |
+| GET | `/womens-health-service/v1/menstrual-cycle-insights/deep-dives` | verified | – | Android route (@Acetone1). Static phase guidance for the four phases (45 KB). |
 
 Don't use:
 
@@ -296,7 +309,7 @@ Don't use:
 | GET | `/progression-service/v1/weekly-plan` | verified | whoop_weekly_plan | Mon–Sun; no plan → locked PLAN_TILEs; plan → CURRENT_PLAN_TILE{plan_id}, goal_section[{id TargetGoalType}] |
 | GET | `/progression-service/v1/weekly-plan/presets` | verified | whoop_weekly_plan | plan tiles + cancel copy |
 | GET | `/progression-service/v2/weekly-plan/home-tile/{date}` | verified | whoop_weekly_plan | WEEKLY_PLAN_HOME_TILE (plan) or TEXT_WITH_ILLUSTRATION (none) |
-| GET | `/progression-service/v2/weekly-plan/setup` | verified | whoop_weekly_plan_set | {plan_id, screens[]}; plan_id random per call until a plan record exists |
+| GET | `/progression-service/v2/weekly-plan/setup` | verified | whoop_weekly_plan_set | {plan_id, screens[]}; plan_id random per call until a plan record exists; ?screens= one of STRAIN, SLEEP_PERFORMANCE, SLEEP_CONSISTENCY, ACTIVITIES, BEHAVIORS, WEIGHT, STEPS, HR_ZONES_ONE_TO_THREE, HR_ZONES_FOUR_TO_FIVE, STRENGTH_TRAINING_TIME, SLEEP_HOURS |
 | PUT | `/progression-service/v2/weekly-plan/{plan_id}/goal/target` | verified | whoop_weekly_plan_set | 204. Creates Custom plan / edits / adds a goal. Verified STEPS, STRENGTH_TRAINING_TIME only. {} → 422. |
 | DELETE | `/progression-service/v2/weekly-plan/{plan_id}/goal/target/{type}` | verified | whoop_weekly_plan_set | 204; removing the last goal ends the plan in the UI (empty record persists) |
 
@@ -307,18 +320,23 @@ Don't use:
 | GET | `/progression-service/v2/weekly-plan/setup/overview/{plan}` | server-error-500 | 500 (Cloudflare HTML) on test account; 200 on main |
 | PUT | `/progression-service/v2/weekly-plan/{plan_id}` | exists-but-unclear | PutPlanRequest; every body 422. Don't call. |
 | DELETE | `/progression-service/v{1,2}/weekly-plan/{plan_id}` | server-error-500 | always 500. Don't call. |
+| PUT | `/progression-service/v2/weekly-plan/{plan_id}/goal/activity` | exists-but-unclear | Android route (@Acetone1). 204 for every body tried ({}, and goals/activities/goal_settings lists of tile ids like ANY_STRAIN), with and without a plan; nothing changed. Tiles: setup?screens=ACTIVITIES. |
+| PUT | `/progression-service/v2/weekly-plan/{plan_id}/goal/behavior` | exists-but-unclear | Android route (@Acetone1). 204 for {}; nothing changed. Tiles come from setup?screens=BEHAVIORS (behavior tracker ids, AVOID options). |
+| DELETE | `/progression-service/v2/weekly-plan/{plan_id}/goal/activity` | exists-but-unclear | Android route (@Acetone1). 204 (and the same for goal/behavior); the test plan had no such goals to remove. |
+| GET | `/progression-service/v2/weekly-plan/setup/overview` | server-error-500 | Android route (@Acetone1). 500 on the test account. |
 
 ### Smart Alarm
 
 | Method | Path | Verdict | Used by | Notes |
 |---|---|---|---|---|
 | POST | `/smart-alarm-bff/v1/schedule` | verified | whoop_smart_alarm_set | Create; steals overlapping days; turns master switch on; returns rows ([0].schedule_id) |
-| GET | `/smart-alarm-bff/v1/schedule/components` | verified | whoop_smart_alarm_set | enum source: alarm_mode_value, sleep_goal_value |
+| GET | `/smart-alarm-bff/v1/schedule/components` | verified | whoop_smart_alarm_set | enum source: alarm_mode_value, sleep_goal_value; wake_time says 'Alarm will vibrate between %s - %s' for IN_THE_GREEN and SLEEP_GOAL only |
 | GET | `/smart-alarm-bff/v1/schedule/components/populated/{id}` | verified-quirky | – | sleep_goal toggle_selected ALWAYS PEAK (PR #39 relies on it wrongly) |
 | PUT | `/smart-alarm-bff/v1/schedule/{id}` | verified | whoop_smart_alarm_set | In-place edit (upsert; [] days clears). On damaged account: saves rows then 500. |
 | GET | `/smart-alarm-service/v1/alarm-schedule` | verified | whoop_smart_alarm, whoop_smart_alarm_set | SOURCE OF TRUTH: rows {schedule_id, day_of_week, upper_time_bound HH:MM:SS, goal (incl. SLEEP_HEALTH_*), enabled, deleted}; works during damage |
 | DELETE | `/smart-alarm-service/v1/alarm-schedule/{id}` | verified | whoop_smart_alarm_set | 204 idempotent |
 | GET | `/smart-alarm-service/v1/alarm-schedule/{id}` | verified | whoop_smart_alarm_set | rows for one schedule; [] if unknown/empty |
+| GET | `/smart-alarm-service/v1/user-info/default-wake-window` | verified | whoop_smart_alarm | Android route (@Acetone1). {default_wake_window_minutes} (60). IN_THE_GREEN and SLEEP_GOAL buzz between the latest wake time minus this and the latest wake time. |
 
 Don't use:
 
@@ -335,6 +353,9 @@ Don't use:
 | POST | `/smart-alarm-service/v1/smartalarm/wbl` | exists-but-unclear | BLE alarm telemetry; only [] sent; don't wrap |
 | GET | `/smart-alarm-service/v1/strap-status` | not-found | 405 |
 | PUT | `/smart-alarm-service/v1/strap-status` | blocked-by-policy | App pushes alarm time to strap here; blocked; totem can't send it → alarms sync only via the app |
+| GET | `/smart-alarm-service/v1/smartalarm/poll` | server-error-500 | Android route (@Acetone1). 500 on the test account, whose alarm preferences 500 too. |
+| PATCH | `/smart-alarm-service/v1/smartalarm/preferences/timezone` | server-error-500 | Android route (@Acetone1). {time_zone_offset: profile offset} answered 500 on the test account (preferences already broken); stopped there. Untested on a healthy account. |
+| PUT | `/smart-alarm-service/v1/smartalarm/override` | not-exercised | Android route (@Acetone1). Not sent: the test account's alarm preferences 500, so there was no value to restore. |
 
 ### Milestones and streaks
 
@@ -422,12 +443,14 @@ Nothing here worked:
 |---|---|---|---|---|
 | GET | `/advanced-labs-service/v1/advanced-labs` | verified | – | upsell-only BFF without results; no whoop_labs in v2.0 |
 | GET | `/metrics-service/v1/metrics/user/{user_id}` | verified | whoop_day, whoop_now | continuous heart rate {values:[{time ms, data bpm}]}, sparse (holes, no padding); step must be 6, 60 or 600 (else 400); any window; another user's id → 403 |
-
-Don't use:
-
-| Method | Path | Verdict | Notes |
-|---|---|---|---|
-| GET | `(healthspan BFF / blood pressure)` | not-found | no path in any response; Healthspan locked; bp_trends entitlement off |
+| GET | `/healthspan-service/v1/healthspan/bff` | verified | whoop_profile | Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_profile passes it through marked unverified. |
+| GET | `/healthspan-service/v1/widget` | verified | – | Android route (@Acetone1). {amoeba, locked_content}; locked on the test account. |
+| GET | `/sage-service/v1/sage/bff` | verified | whoop_profile | Android route (@Acetone1). ?date=. Blood Pressure Insights, same locked/unlocked shape; locked ('UPGRADE FOR ACCESS', WHOOP Life). |
+| GET | `/sage-service/v1/sage/manual/input` | verified | – | Android route (@Acetone1). Manual blood pressure screens (guidelines, reading input). |
+| GET | `/advanced-labs-service/v1/advanced-labs/biomarkers/summary` | verified | whoop_profile | Android route (@Acetone1). Pie chart plus SEARCHABLE_BIOMARKERS_LIST biomarkers[{id, title, value, unit, status_type}]: 100 rows, all '--' and UNAVAILABLE without results (46 KB). |
+| GET | `/advanced-labs-service/v1/advanced-labs/tests/history` | verified | – | Android route (@Acetone1). Lab History; one empty-tile section without tests. |
+| GET | `/arrhythmia-service/v2/afibhistory/screen` | verified | whoop_profile | Android route (@Acetone1). 404 'No anf user found' until irregular rhythm notifications are set up (also /v2/settings). |
+| GET | `/arrhythmia-service/v1/about` | verified | – | Android route (@Acetone1). Static regulatory page, as is /ecg-service/v1/ecg/about. The Android list has no read route for ECG readings. |
 
 ### Developer API (the public API's v2 paths, readable with an app token)
 
@@ -459,3 +482,9 @@ Don't use:
 | GET | `/app-configuration-service/v1/config` | verified | – | tab config |
 | GET | `/glp-service/v1/onboarding` | verified | – | GLP-1 onboarding LIST |
 | GET | `/growth-content-service/v1/discover-more` | verified | – | marketing noise |
+
+Don't use:
+
+| Method | Path | Verdict | Notes |
+|---|---|---|---|
+| GET | `/user-journey-service/v1/user-journey/first-week-in-review` | not-found | Android route (@Acetone1). 404 'currently unavailable', as is the v2 year-in-review (seasonal). |

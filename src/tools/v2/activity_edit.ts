@@ -8,15 +8,21 @@
 //   resolve_overlaps DELETES the overlapped activities (it doesn't trim them), so
 //   totem only sends it when the caller lists exactly the ids that will go.
 // - sleep → nap is refused by WHOOP silently; totem refuses it up front.
+// - merge (the app's Edit Activities drawer; route from @Acetone1's Android list):
+//     PATCH cd/v1/activities/merge?startTime=&endTime= [ids]
+//   Live (2026-11-22): WHOOP keeps the EARLIEST activity (its id and type) over
+//   the query bounds and deletes the others, whatever order the ids come in.
+//   The app's undo, DELETE …/merge?id=, answers 405, so there is no undo. It
+//   answers 422 while any activity inside the bounds is still pending scoring.
 // After every write: fresh read-back of the type and window. A main sleep that
 // comes back as a nap is repaired once via the cardio-details PUT.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
-import { defineTool, respond } from "../define.js";
+import { defineTool, respond, type ToolResult } from "../define.js";
 import { WRITE_DESTRUCTIVE } from "../annotations.js";
 import { preview } from "../../whoop/write_safety.js";
-import { WhoopConflictError } from "../../whoop/errors.js";
+import { WhoopApiError, WhoopConflictError } from "../../whoop/errors.js";
 import { get, str } from "../../whoop/bff.js";
 import { ActivityEditOut } from "../../schemas/activities.js";
 import { assertNotFuture, canonicalUtc } from "../../lib/dates.js";
@@ -31,6 +37,7 @@ import type { ScoreType } from "../../data/sports.js";
 import { instantInput, toInstantOpt } from "../../lib/instant.js";
 
 const LAST_NIGHT_PATH = "/home-service/v1/deep-dive/sleep/last-night";
+export const MERGE_PATH = "/core-details-bff/v1/activities/merge";
 const MIN_DURATION_MS = 60_000;
 
 function describeTile(t: ActivityTile): string {
@@ -47,10 +54,10 @@ export function registerActivityEdit(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: "whoop_activity_edit",
     description:
-      "Change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or a sleep or nap's window, by activity_id or " +
-      "sleep_date (that day's main sleep). Omitted bounds keep their value. A sleep window that overlaps others needs " +
-      "delete_overlapping = exactly the ids the preview lists; WHOOP then DELETES them. Nap→main sleep permanently re-cuts the day's " +
-      "cycles. Previews unless confirm:true.",
+      "Change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or a sleep/nap window, by activity_id or sleep_date " +
+      "(that day's main sleep). Omitted bounds keep their value. An overlapping sleep window needs delete_overlapping = exactly the " +
+      "ids the preview lists (WHOOP DELETES them). merge keeps the earliest over the joint window and DELETES the rest. Previews " +
+      "unless confirm:true.",
     input: {
       activity_id: z.string().min(1).optional(),
       sleep_date: z.iso.date().optional(),
@@ -60,17 +67,25 @@ export function registerActivityEdit(server: McpServer, client: WhoopClient): vo
       garment_id: z.number().int().optional().describe("Activities only"),
       delete_overlapping: z.array(z.string().min(1)).optional()
         .describe("Overlapping ids from the preview; WHOOP deletes them"),
+      merge: z.array(z.string().min(1)).optional().describe("Ids to combine with activity_id"),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
-  }, async ({ activity_id, sleep_date, start: startIn, end: endIn, type, garment_id, delete_overlapping, confirm }) => {
+  }, async ({ activity_id, sleep_date, start: startIn, end: endIn, type, garment_id, delete_overlapping, merge, confirm }) => {
     const start = toInstantOpt(startIn, "start");
     const end = toInstantOpt(endIn, "end");
     if ((activity_id === undefined) === (sleep_date === undefined)) {
       return errorResult({ error: "Pass exactly one of activity_id or sleep_date." });
     }
+    if (merge?.length) {
+      if (!activity_id) return errorResult({ error: "merge needs activity_id (sleeps and naps can't be merged)." });
+      if (start || end || type !== undefined || garment_id !== undefined || delete_overlapping?.length) {
+        return errorResult({ error: "merge can't be combined with other changes; merge first, then edit the result." });
+      }
+      return mergeActivities(client, activity_id, merge, confirm);
+    }
     if (!start && !end && type === undefined && garment_id === undefined && !delete_overlapping?.length) {
-      return errorResult({ error: "Nothing to change: pass start, end, type or garment_id." });
+      return errorResult({ error: "Nothing to change: pass start, end, type, garment_id or merge." });
     }
     try {
       if (start) assertNotFuture(start, "start");
@@ -266,5 +281,98 @@ export function registerActivityEdit(server: McpServer, client: WhoopClient): vo
       verified,
       warnings,
     });
+  });
+}
+
+/** Combine activities into one (see the header for what WHOOP does). */
+async function mergeActivities(client: WhoopClient, activityId: string, others: string[], confirm: boolean): Promise<ToolResult> {
+  const ids = [...new Set([activityId, ...others])];
+  if (ids.length < 2) return errorResult({ error: "merge needs at least one activity id other than activity_id." });
+
+  const recs = await Promise.all(ids.map((i) => readActivity(client, i)));
+  const missing = ids.filter((_, i) => !recs[i]);
+  if (missing.length) return errorResult({ error: `No activity ${missing.join(", ")}: WHOOP says it doesn't exist.` });
+  const rows = ids.map((id, i) => {
+    const rec = recs[i]!;
+    return { id, rec, score: rec.score_type ?? typeForInternalName(rec.type)?.score_type ?? null };
+  });
+  for (const r of rows) {
+    if (r.score === "SLEEP") return errorResult({ error: `${r.id} is a ${r.rec.type}; WHOOP only merges workouts and recovery activities.` });
+    if (!r.rec.start || !r.rec.end) return errorResult({ error: `Couldn't read ${r.id}'s window from WHOOP; not merging blind.` });
+  }
+  // WHOOP keeps the earliest; sending it first keeps the body readable.
+  rows.sort((a, b) => Date.parse(a.rec.start!) - Date.parse(b.rec.start!));
+  const keep = rows[0]!;
+  const gone = rows.slice(1);
+  const start = canonicalUtc(keep.rec.start!);
+  const end = canonicalUtc(rows.reduce((m, r) => (Date.parse(r.rec.end!) > Date.parse(m) ? r.rec.end! : m), keep.rec.end!));
+
+  // Anything else inside the joint window would block the merge or be swept into it.
+  const warnings: string[] = [`WHOOP keeps ${keep.id} (${keep.rec.type}, the earliest) over the joint window and DELETES the others. There is no undo.`];
+  const found = await overlappingTiles(client, start, end);
+  const strangers = found.tiles.filter((t) => !ids.includes(t.activity_id));
+  if (strangers.length) {
+    return errorResult({ error: "Other activities fall inside the merged window. Add them to merge, or merge a smaller set. Nothing was changed.", inside: strangers.map(describeTile) });
+  }
+  if (!found.complete) warnings.push("Couldn't read every day around the window, so other activities inside it may not be listed.");
+
+  const query = { startTime: start, endTime: end };
+  const body = rows.map((r) => r.id);
+  const window = (r: (typeof rows)[number]) => ({ type: r.rec.type, score_type: r.score, start: r.rec.start, end: r.rec.end });
+  if (!confirm) {
+    return respond("whoop_activity_edit", ActivityEditOut, preview("PATCH", `${MERGE_PATH}?startTime=${start}&endTime=${end}`, {
+      body,
+      keep: { activity_id: keep.id, ...window(keep) },
+      after: { type: keep.rec.type, score_type: keep.score, start, end },
+      will_delete: gone.map((r) => `${r.id} ${r.rec.type ?? "activity"} ${r.rec.start} – ${r.rec.end}`),
+      warnings,
+    }));
+  }
+
+  let response: unknown;
+  try {
+    response = await client.patch(MERGE_PATH, body, query);
+  } catch (e) {
+    if (e instanceof WhoopApiError && e.status === 422 && /pending/i.test(e.body)) {
+      return errorResult({ error: "WHOOP is still scoring one of these activities. Nothing was merged; try again in a minute.", status: 422, endpoint: MERGE_PATH });
+    }
+    const rejected = writeRejection(e, MERGE_PATH);
+    if (rejected) return rejected;
+    throw e;
+  }
+  const after = recordFromActivity(response);
+  const survivor = after?.id ?? keep.id;
+  if (survivor !== keep.id) warnings.push(`WHOOP kept ${survivor}, not the earliest (${keep.id}).`);
+  let back: ActivityRecord | null = null;
+  try {
+    back = await readActivityAs(client, survivor, keep.score ?? "CARDIO");
+  } catch (e) {
+    warnings.push(`Read-back failed: ${(e as Error).message}`);
+  }
+  const merged: string[] = [];
+  for (const r of gone) {
+    if (r.id === survivor) continue;
+    if (await isGone(client, r.id, r.score === "RECOVERY" ? "RECOVERY" : "CARDIO")) merged.push(r.id);
+    else warnings.push(`${r.id} still exists after the merge.`);
+  }
+  const afterStart = back?.start ?? after?.start ?? null;
+  const afterEnd = back?.end ?? after?.end ?? null;
+  if (back && !(sameInstant(afterStart, start) && sameInstant(afterEnd, end))) warnings.push(`WHOOP shows the window as ${afterStart} – ${afterEnd}.`);
+  const verified = Boolean(back) && sameInstant(afterStart, start) && sameInstant(afterEnd, end) && merged.length === gone.length;
+  return respond("whoop_activity_edit", ActivityEditOut, {
+    edited: true,
+    activity_id: survivor,
+    before: window(keep),
+    after: {
+      type: back?.type ?? after?.type ?? keep.rec.type,
+      score_type: back?.score_type ?? after?.score_type ?? keep.score,
+      start: toUtc(afterStart),
+      end: toUtc(afterEnd),
+      version: after?.version ?? null,
+    },
+    merged,
+    deleted_overlapping: [],
+    verified,
+    warnings,
   });
 }

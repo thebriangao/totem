@@ -22,7 +22,7 @@ export function registerSleep(server: McpServer, client: WhoopClient): void {
       description:
         "Sleep for a cycle day (default today = last night's main sleep) or one sleep or nap by activity_id: window, minutes asleep and " +
         "in bed, efficiency, stages, disturbances, HR and performance, plus the day's naps (with ids) and tonight's sleep need (today " +
-        "only). Unscored sleeps have no metrics.",
+        "only).",
       input: {
         date: z.iso.date().optional(),
         activity_id: z.string().uuid().optional(),

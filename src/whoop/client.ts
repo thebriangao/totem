@@ -305,7 +305,8 @@ function writeInvalidationTags(path: string): readonly string[] {
   const ACTIVITY = ["activity", "daily", "sleep", "recovery", "sleep_plan", "calendar", "trend", "lift", "milestones"] as const;
   if (
     path.includes("create-activity") || path.includes("cardio-details") || path.includes("sleep-details") ||
-    path.includes("recovery-details") || path.startsWith("/activities-service/v2/activities")
+    path.includes("recovery-details") || path.startsWith("/activities-service/v2/activities") ||
+    path.startsWith("/core-details-bff/v1/activities/merge")
   ) return ACTIVITY;
   // The coach can create, edit and delete activities, journal answers and
   // templates server-side, but only in a chat turn. Opening a conversation
@@ -380,6 +381,14 @@ export class WhoopClient {
     return this.request<T>("PUT", path, query, body);
   }
 
+  async patch<T = unknown>(
+    path: string,
+    body: unknown,
+    query: Record<string, QueryValue> = {},
+  ): Promise<T> {
+    return this.request<T>("PATCH", path, query, body);
+  }
+
   async delete<T = unknown>(
     path: string,
     query: Record<string, QueryValue> = {},
@@ -392,7 +401,7 @@ export class WhoopClient {
    * For whoop_raw, which shows a response as it was instead of assuming 200.
    */
   async write<T = unknown>(
-    method: "POST" | "PUT" | "DELETE",
+    method: "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
     body: unknown,
     query: Record<string, QueryValue> = {},

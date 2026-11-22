@@ -5,6 +5,7 @@ import { READ_ONLY } from "../annotations.js";
 import { SmartAlarmOut } from "../../schemas/alarm_schedule.js";
 import { masterSwitch, projectAlarmSchedules, projectNextAlarm } from "../../projections/alarm_schedule.js";
 import { WhoopAuthExpiredError } from "../../whoop/errors.js";
+import { get } from "../../whoop/bff.js";
 
 export const SA = "/smart-alarm-service/v1";
 export const SA_BFF = "/smart-alarm-bff/v1";
@@ -34,6 +35,19 @@ export async function readSmartAlarm(client: WhoopClient, fresh = false) {
   };
 }
 
+/** "07:35" minus 60 → "06:35", across midnight. */
+export function minusMinutes(hhmm: string, minutes: number): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const t = (((h! * 60 + m! - minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+}
+
+// IN_THE_GREEN and SLEEP_GOAL buzz inside a window that ends at the latest wake
+// time. The app's schedule screen (smart-alarm-bff/v1/schedule/components) says
+// "Alarm will vibrate between %s - %s" for those two modes only; the window is
+// GET /smart-alarm-service/v1/user-info/default-wake-window
+// {default_wake_window_minutes} (route from @Acetone1's Android list; 60 on the
+// test account, 2026-11-22).
 export function registerSmartAlarm(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: "whoop_smart_alarm",
@@ -42,5 +56,12 @@ export function registerSmartAlarm(server: McpServer, client: WhoopClient): void
       "and the next alarm WHOOP will set. Server state only: it doesn't prove the strap has synced.",
     input: {},
     annotations: READ_ONLY,
-  }, async () => respond("whoop_smart_alarm", SmartAlarmOut, await readSmartAlarm(client)));
+  }, async () => {
+    const [state, window] = await Promise.all([readSmartAlarm(client), tolerate(client.get(`${SA}/user-info/default-wake-window`))]);
+    const min = get(window, "default_wake_window_minutes");
+    const wakeWindow = typeof min === "number" && Number.isInteger(min) && min > 0 && min < 1440 ? min : null;
+    const schedules = wakeWindow === null ? state.schedules : state.schedules.map((sc) =>
+      sc.mode === "IN_THE_GREEN" || sc.mode === "SLEEP_GOAL" ? { ...sc, earliest: minusMinutes(sc.wake, wakeWindow) } : sc);
+    return respond("whoop_smart_alarm", SmartAlarmOut, { ...state, schedules, wake_window_min: wakeWindow });
+  });
 }

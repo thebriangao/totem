@@ -24,7 +24,7 @@ Scores, sleep, strain, stress and heart rate for a day, or a table of many days.
 
 ### `whoop_now`
 
-Live snapshot: activity state (idle, workout, sleep…) with sport and minutes so far, when WHOOP last processed strap data and the heart rate at that moment, current stress, and today's recovery, sleep, strain, calories and HRV. Never cached.
+Live snapshot: activity state (idle, workout, sleep…) with sport and minutes so far, when WHOOP last processed strap data and the heart rate at that moment, current stress, and today's recovery, sleep, strain, calories and HRV.
 
 No inputs.
 
@@ -51,7 +51,7 @@ Recovery for a cycle day (default today): score, state and contributors (HRV, RH
 
 ### `whoop_sleep`
 
-Sleep for a cycle day (default today = last night's main sleep) or one sleep or nap by activity_id: window, minutes asleep and in bed, efficiency, stages, disturbances, HR and performance, plus the day's naps (with ids) and tonight's sleep need (today only). Unscored sleeps have no metrics.
+Sleep for a cycle day (default today = last night's main sleep) or one sleep or nap by activity_id: window, minutes asleep and in bed, efficiency, stages, disturbances, HR and performance, plus the day's naps (with ids) and tonight's sleep need (today only).
 
 | Input | Type | Notes |
 |---|---|---|
@@ -94,12 +94,12 @@ Trends for 1–5 metrics over a window ending end_date (default today; week = 7 
 
 ### `whoop_calendar`
 
-Month grid for one pillar. days has one character per day of the month (days[0] = the 1st): H/M/L = high/medium/low, '-' = data but no score, '.' = no data. States only, no numbers; use whoop_day for a day's scores.
+Month grid for one pillar: days has one character per day (days[0] = the 1st): H/M/L = high/medium/low, J = journal entry, '-' = data but no score, '.' = no data. No numbers; whoop_day has a day's scores.
 
 | Input | Type | Notes |
 |---|---|---|
 | `date` | string | Any day in the month |
-| `pillar` | `recovery`, `strain`, `sleep` |  |
+| `pillar` | `recovery`, `strain`, `sleep`, `journal` |  |
 
 ## Activities
 
@@ -107,7 +107,7 @@ Workouts, naps and sleeps: read them, log new ones, fix or remove them.
 
 ### `whoop_workouts`
 
-Activities as the app lists them. List: one cycle day (date) or start_date–end_date (≤31 days; default the last 7), pending and unscored included, as rows of id, type, sport, start, minutes, status and CARDIO strain. With activity_id: strain, calories, HR, zones, distance and MSK summary. Sleeps and naps: whoop_sleep.
+Activities. List: one cycle day (date) or start_date–end_date (≤31 days; default the last 7), pending and unscored included, as rows of id, type, sport, start, minutes, status and CARDIO strain. With activity_id: strain, calories, HR, zones, distance and MSK summary. Sleeps and naps: whoop_sleep.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -137,7 +137,7 @@ Add `confirm: true` to make the change.
 
 ### `whoop_activity_edit` (changes data)
 
-Change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or a sleep or nap's window, by activity_id or sleep_date (that day's main sleep). Omitted bounds keep their value. A sleep window that overlaps others needs delete_overlapping = exactly the ids the preview lists; WHOOP then DELETES them. Nap→main sleep permanently re-cuts the day's cycles. Previews unless confirm:true.
+Change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or a sleep/nap window, by activity_id or sleep_date (that day's main sleep). Omitted bounds keep their value. An overlapping sleep window needs delete_overlapping = exactly the ids the preview lists (WHOOP DELETES them). merge keeps the earliest over the joint window and DELETES the rest. Previews unless confirm:true.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -148,6 +148,7 @@ Change an activity's start/end or type (CARDIO↔RECOVERY, nap→main sleep), or
 | `type` | string | internal_name, display name or sport_id |
 | `garment_id` | integer | Activities only |
 | `delete_overlapping` | list of string | Overlapping ids from the preview; WHOOP deletes them |
+| `merge` | list of string | Ids to combine with activity_id |
 
 Add `confirm: true` to make the change.
 
@@ -191,7 +192,7 @@ One exercise by exercise_id or name: metadata, workout history, medal records an
 
 ### `whoop_lift_library`
 
-Strength Trainer library. No arguments: your templates as [template_key, name] and WHOOP's workouts as [prebuilt_id, title, minutes]. With one of those ids: that workout's exercises, a template's sets as [weight, reps] ([weight, seconds] if timed). search: up to 10 exercises by name, muscle or equipment (custom ones included), with the ids whoop_lift_log and whoop_lift_exercise take.
+Strength Trainer library. No arguments: your templates as [template_key, name] and WHOOP's workouts as [prebuilt_id, title, minutes]. With one of those ids: that workout's exercises, a template's sets as [weight, reps] ([weight, seconds] if timed). search: up to 10 exercises (custom too) by name, muscle or equipment, with the ids whoop_lift_log and whoop_lift_exercise take.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -253,7 +254,7 @@ Daily journal answers and what they do to your recovery.
 
 ### `whoop_journal`
 
-Journal for a date (default today): answered behaviours (yes/no, value, time) and notes. include: unanswered; catalog (your behaviour ids and names, custom ones too; filter with search or category); magnitudes (ranges and step choices on catalog rows); impact (how behaviours move your recovery). impact_id: one personal impact's detail.
+Journal for a date (default today): answered behaviours (yes/no, value, time) and notes. include: unanswered; catalog (your behaviour ids and names, custom too; filter with search or category); magnitudes (ranges and step choices on catalog rows); impact (how behaviours move your recovery). impact_id: one personal impact's detail.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -337,7 +338,7 @@ Weight and body composition, and cycle tracking.
 
 ### `whoop_weight`
 
-Weight and body-composition readings, newest first, in kg (display_unit is the account's unit). The newest reading is the profile weight. cursor takes a returned next_cursor. Ids feed whoop_weight_log.
+Weight and body-composition readings, newest first, in kg (display_unit is the account's unit). The newest reading is the profile weight. Ids feed whoop_weight_log.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -437,11 +438,11 @@ Your profile, heart-rate zones, app settings, milestones and teams.
 
 ### `whoop_profile`
 
-Your profile: name, email, birthday, gender, physiological baseline, height (m), weight (kg), unit system, location, max and resting HR, membership, hidden metrics and stealth mode. include adds hr_zones (bpm), entitlements (features that are off, and why), integrations and community privacy.
+Your profile: name, email, birthday, gender, physiological baseline, height (m), weight (kg), unit system, location, max and resting HR, membership, hidden metrics and stealth mode. include adds hr_zones (bpm), entitlements (off features and why), integrations, community privacy and health (Healthspan, blood pressure, labs, AFib).
 
 | Input | Type | Notes |
 |---|---|---|
-| `include` | list of `hr_zones`, `entitlements`, `integrations`, `privacy` |  |
+| `include` | list of `hr_zones`, `entitlements`, `integrations`, `privacy`, `health` |  |
 
 ### `whoop_profile_update` (changes data)
 
@@ -509,7 +510,7 @@ Add `confirm: true` to make the change.
 
 ### `whoop_milestones`
 
-Milestone badges and the wear streak: totals, the data streak, top earned badges and the closest unearned ones. include badges lists every badge with its type. milestone_type returns one badge's detail: count, progress to the next level and levels earned with dates.
+Milestone badges and the wear streak: totals, the data streak, top earned badges and the closest unearned ones. include badges lists every badge. milestone_type returns one badge's detail: count, progress to the next level and levels earned with dates.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -538,12 +539,12 @@ Any WHOOP endpoint, for what no tool covers yet.
 
 ### `whoop_raw` (changes data)
 
-Escape hatch: call any WHOOP endpoint when no tool fits (the whoop://catalog/endpoints resource lists verified paths). GET by default. Writes need allow_write:true and confirm:true; some paths are refused outright (auth, account, purchases, consents, strap, telemetry). Social writes (follow, comment) are only available here.
+Escape hatch: call any WHOOP endpoint when no tool fits (the whoop://catalog/endpoints resource lists verified paths). Writes need allow_write:true and confirm:true; some paths are refused outright (auth, account, purchases, consents, strap, telemetry). Social writes (follow, comment) are only available here.
 
 | Input | Type | Notes |
 |---|---|---|
 | `path` (required) | string | e.g. /home-service/v1/home |
-| `method` | `GET`, `POST`, `PUT`, `DELETE` |  |
+| `method` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` |  |
 | `query` | object |  |
 | `body` | any |  |
 | `allow_write` | boolean |  |

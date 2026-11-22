@@ -23,11 +23,14 @@ v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), wi
 - **A container image** on every release, `ghcr.io/thebriangao/totem`, for the Railway template and any Docker host.
 - **Continuous heart rate and a day table.** `whoop_day` returns heart rate every 10 minutes for a day, or a window down to 6-second steps, and a table of up to 180 days of recovery, HRV, RHR, sleep, strain and more in one call.
 - New tools on the current API: `whoop_now`, `whoop_weight` / `whoop_weight_log` (from #35), `whoop_cycle` / `whoop_cycle_log`, `whoop_weekly_plan` / `whoop_weekly_plan_set`, `whoop_milestones`, `whoop_smart_alarm` / `whoop_smart_alarm_set` (from #39), `whoop_memory` / `whoop_memory_set`, `whoop_community`, and Strength Trainer logging with units, templates and 1RM (from #40 and #49).
+- **Routes from WHOOP's Android app**, shared by @Acetone1 in #5 and checked on a test account first: `whoop_activity_edit` can merge activities (`merge`; WHOOP keeps the earliest and deletes the rest), `whoop_calendar` shows which days have a journal entry (`pillar: "journal"`), and `whoop_smart_alarm` gives the wake window and, for goal modes, the earliest time the strap may buzz.
+- **Paid health features in `whoop_profile`** (`include: ["health"]`): Healthspan, blood pressure insights, Advanced Labs biomarkers and AFib history. Locked, empty and not-set-up states are exact; no test account has these features unlocked, so unlocked content comes back marked `unverified`.
+- `whoop_raw` can send PATCH.
 - **The consent page names who is asking and where access goes.** A site is named only by the real address access is sent to, so a link that would send your data elsewhere can't call itself Claude. Deny sends the app a refusal.
 
 ### Changed
 
-- **40 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,988 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
+- **40 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,990 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
 - **Every write previews first** and does nothing until `confirm: true`; `whoop_raw` writes also need `allow_write`, with a denylist that can't be bypassed by an odd path.
 - **The `totem` CLI is redesigned**: one visual language (a brand stripe, full-width step rules, aligned facts, a Next box, a spinner with elapsed time), colour only as decoration, ASCII where Unicode can't be trusted, and every failure ends with the command that fixes it. `totem local` and `totem cloud` ask only what a person must decide.
 - **Hosts:** Fly.io (one 512 MB machine in iad, about $4 a month), Cloudflare (free), Railway (named service, volume through Railway's API when its CLI fails, builds watched to the end) and your own Docker host.
@@ -47,7 +50,7 @@ v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), wi
 
 ### Thanks
 
-To everyone whose pull requests and reports shaped v2, including Vladimir Berestnev, Charles White, Ben Tesser, Selçuk Öztürk, k-vasily, chaotix345 and salmonumbrella, and to @TotallyKyle for the 1.5.1 report.
+To everyone whose pull requests and reports shaped v2, including Vladimir Berestnev, Charles White, Ben Tesser, Selçuk Öztürk, k-vasily, chaotix345 and salmonumbrella; to @Acetone1 for the map of WHOOP's Android routes; and to @TotallyKyle for the 1.5.1 report.
 
 ## [1.5.1] — 2026-09-08
 

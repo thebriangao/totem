@@ -61,7 +61,7 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: "whoop_workouts",
     description:
-      "Activities as the app lists them. List: one cycle day (date) or start_date–end_date (≤31 days; default the last 7), pending and " +
+      "Activities. List: one cycle day (date) or start_date–end_date (≤31 days; default the last 7), pending and " +
       "unscored included, as rows of id, type, sport, start, minutes, status and CARDIO strain. With activity_id: strain, calories, HR, " +
       "zones, distance and MSK summary. Sleeps and naps: whoop_sleep.",
     input: {

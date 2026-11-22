@@ -115,6 +115,8 @@ export const ActivityEditReceipt = z.object({
   before: ActivityWindow,
   after: ActivityWindow.extend({ version: z.number().int().nullable() }),
   repaired: z.literal(true).optional(),
+  /** merge: the ids WHOOP folded into activity_id (deleted). */
+  merged: z.array(z.string()).optional(),
   deleted_overlapping: z.array(z.string()),
   verified: z.boolean(),
   warnings: z.array(z.string()),

@@ -32,6 +32,8 @@ export const AlarmSchedule = z.object({
   /** The raw stored goal, only when it doesn't map to a mode. */
   goal: z.string().nullable(),
   wake: z.string(),
+  /** whoop_smart_alarm only, goal modes only: the earliest the strap may buzz (wake minus the wake window). */
+  earliest: z.string().optional(),
   enabled: z.boolean(),
 });
 export type AlarmScheduleT = z.infer<typeof AlarmSchedule>;
@@ -49,6 +51,8 @@ export const SmartAlarmOut = z.object({
   schedules: z.array(AlarmSchedule),
   unscheduled: z.array(z.enum(DAYS)),
   next_alarm: z.union([NextAlarm, z.literal("unavailable")]),
+  /** Minutes before the latest wake time that a goal-mode alarm may buzz (null if WHOOP didn't say). */
+  wake_window_min: z.number().int().nullable().optional(),
   note: z.string().nullable(),
 });
 

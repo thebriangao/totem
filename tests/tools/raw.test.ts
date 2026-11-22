@@ -57,6 +57,10 @@ describe("whoop_raw", () => {
     expect(JSON.parse(sent.text)).toMatchObject({ status: 201, response: { created: true } });
     const deleted = await call({ path: "/ai-conversation-service/v1/conversation/abc", method: "DELETE", allow_write: true, confirm: true });
     expect(JSON.parse(deleted.text)).toMatchObject({ method: "DELETE", status: 204 });
+    // PATCH (activity merge, Smart Alarm timezone) goes through the same gate.
+    const patched = await call({ path: "/core-details-bff/v1/activities/merge", method: "PATCH", body: ["a", "b"], query: { startTime: "s", endTime: "e" }, allow_write: true, confirm: true });
+    expect(whoop.write).toHaveBeenLastCalledWith("PATCH", "/core-details-bff/v1/activities/merge", ["a", "b"], { startTime: "s", endTime: "e" });
+    expect(JSON.parse(patched.text)).toMatchObject({ method: "PATCH", status: 204 });
   });
   it("refuses denylisted writes even with allow_write + confirm", async () => {
     const { whoop, call } = await setup();
@@ -92,7 +96,7 @@ describe("whoop_raw", () => {
       "/\\auth-service/v3/whoop",
       "/AUTH-SERVICE/v3/whoop",
     ]) {
-      for (const method of ["PUT", "DELETE"]) {
+      for (const method of ["PUT", "PATCH", "DELETE"]) {
         const out = await call({ path, method, body: {}, allow_write: true, confirm: true });
         expect(out.isError, `${method} ${JSON.stringify(path)}`).toBe(true);
       }

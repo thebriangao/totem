@@ -22,7 +22,7 @@ export function registerMilestones(server: McpServer, client: WhoopClient): void
     name: "whoop_milestones",
     description:
       "Milestone badges and the wear streak: totals, the data streak, top earned badges and the closest unearned ones. include badges " +
-      "lists every badge with its type. milestone_type returns one badge's detail: count, progress to the next level and levels earned " +
+      "lists every badge. milestone_type returns one badge's detail: count, progress to the next level and levels earned " +
       "with dates.",
     input: {
       milestone_type: z.string().regex(/^[A-Z0-9_]+$/).optional().describe("e.g. HIGH_STRAIN"),

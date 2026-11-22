@@ -59,6 +59,7 @@ export function whoopMarkdown(): string {
     `- **Captures.** The WHOOP iOS app (${IOS_APP_VERSION}) was run through mitmproxy on two accounts, and every request was recorded.`,
     `- **A live probe.** Each of the ${ENDPOINT_CATALOG.length} endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.`,
     "- **The heart-rate series and the bulk day history** were checked live the same day, including that another person's user id is refused.",
+    "- **Android routes.** [@Acetone1](https://github.com/Acetone1) shared the routes in WHOOP's Android app ([issue #5](https://github.com/thebriangao/totem/issues/5)). The ones that fit totem were called on the test account on 2026-11-22 and are marked \"Android route\" below.",
     "",
     "No real person's data appears in totem's tests or this page.",
     "",

@@ -75,7 +75,8 @@ describe("v2 tool registry", () => {
     // characters for 55 tools and v2 started at 50,318 for 40; the budget is 20%
     // under v1 (36,226). whoop_day's heart-rate series and day table added 366
     // characters; plain-string time inputs (src/lib/instant.ts) took 189 back.
-    // Measured now: 35,988.
+    // Merge, the journal calendar, include=health and raw PATCH (2026-11-22) were
+    // paid for by trimming wording that repeated the schema. Measured now: 35,990.
     const { tools } = await (await connect()).listTools();
     expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_000);
     // Write tools say once, the same way, that they preview by default.

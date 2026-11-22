@@ -1,5 +1,6 @@
 // AUTO-GENERATED from whoop-testing/probes/2026-11-21/endpoints.json (live probe run, 2026-11-21, plus the
-// heart-rate and bulk-history endpoints checked live the same day).
+// heart-rate and bulk-history endpoints checked live the same day; the last block is @Acetone1's Android
+// routes, checked on the test account on 2026-11-22).
 // Do not edit by hand. Paths are templated; no real identifiers. Verdicts:
 //   verified = worked live and was read back; not-found / server-error-500 / service-only-401 = do not use.
 export interface EndpointEntry {
@@ -447,14 +448,6 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "verdict": "verified",
     "tools": [],
     "notes": "{user_id, email, first_name, last_name}"
-  },
-  {
-    "method": "GET",
-    "path": "(healthspan BFF / blood pressure)",
-    "domain": "health",
-    "verdict": "not-found",
-    "tools": [],
-    "notes": "no path in any response; Healthspan locked; bp_trends entitlement off"
   },
   {
     "method": "GET",
@@ -1508,7 +1501,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "tools": [
       "whoop_smart_alarm_set"
     ],
-    "notes": "enum source: alarm_mode_value, sleep_goal_value"
+    "notes": "enum source: alarm_mode_value, sleep_goal_value; wake_time says 'Alarm will vibrate between %s - %s' for IN_THE_GREEN and SLEEP_GOAL only"
   },
   {
     "method": "GET",
@@ -2014,7 +2007,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "tools": [
       "whoop_weekly_plan_set"
     ],
-    "notes": "{plan_id, screens[]}; plan_id random per call until a plan record exists"
+    "notes": "{plan_id, screens[]}; plan_id random per call until a plan record exists; ?screens= one of STRAIN, SLEEP_PERFORMANCE, SLEEP_CONSISTENCY, ACTIVITIES, BEHAVIORS, WEIGHT, STEPS, HR_ZONES_ONE_TO_THREE, HR_ZONES_FOUR_TO_FIVE, STRENGTH_TRAINING_TIME, SLEEP_HOURS"
   },
   {
     "method": "GET",
@@ -2289,5 +2282,251 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "verdict": "not-exercised",
     "tools": [],
     "notes": "hypnogram {during, type LIGHT/REM/SWS/DISTURBANCES} per other open-source clients; not called live (no sleep on the test account); whoop_sleep reads stages from sleep-details instead"
+  },
+  {
+    "method": "GET",
+    "path": "/home-service/v1/home/activities/multi-modifications",
+    "domain": "activities",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). ?date=. The Edit Activities drawer: ACTIVITY_TILE_SELECTION items (activity_v2_id, during, selectable_state), footer Delete and Merge, limit callouts."
+  },
+  {
+    "method": "PATCH",
+    "path": "/core-details-bff/v1/activities/merge",
+    "domain": "activities",
+    "verdict": "verified",
+    "tools": [
+      "whoop_activity_edit"
+    ],
+    "notes": "Android route (@Acetone1). ?startTime&endTime, body [ids]. 200: the earliest activity (id, type) now spans the bounds; the others are deleted, in any id order. 422 while an activity inside the bounds is pending."
+  },
+  {
+    "method": "DELETE",
+    "path": "/core-details-bff/v1/activities/merge",
+    "domain": "activities",
+    "verdict": "not-found",
+    "tools": [],
+    "notes": "Android route (@Acetone1). ?id=. 405 Method Not Allowed, so a merge can't be undone."
+  },
+  {
+    "method": "PUT",
+    "path": "/core-details-bff/v2/sleep-details/nap-to-sleep/{activity_id}",
+    "domain": "sleep",
+    "verdict": "not-exercised",
+    "tools": [],
+    "notes": "Android route (@Acetone1). Not sent: whoop_activity_edit already turns a nap into a main sleep through cardio-details."
+  },
+  {
+    "method": "GET",
+    "path": "/core-details-bff/v1/strength-workout/exercises",
+    "domain": "strength",
+    "verdict": "not-found",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 404 with totem's iOS identity, as are /exercises/{id}, /history and /suggested (catalog ids like BENCHPRESS_BARBELL)."
+  },
+  {
+    "method": "GET",
+    "path": "/journal-service/v2/journals/{date}/calendar",
+    "domain": "journal",
+    "verdict": "verified",
+    "tools": [
+      "whoop_calendar"
+    ],
+    "notes": "Android route (@Acetone1). days_of_month[{date_value_display, cycle_id, day_state HAS_JOURNAL_ENTRY | NO_DATA, has_data}] for the date's month."
+  },
+  {
+    "method": "GET",
+    "path": "/journal-service/v1/journals/stats/user/{cycle_id}",
+    "domain": "journal",
+    "verdict": "exists-but-unclear",
+    "tools": [],
+    "notes": "Android route (@Acetone1). records[{behavior_tracker_id, yes_count, no_count, last_value}] for ~310 trackers. Counts are neither lifetime nor as-of (an older cycle gave a higher count), so unused."
+  },
+  {
+    "method": "GET",
+    "path": "/journal-service/v1/journals/behaviors/user",
+    "domain": "journal",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). The v1 tracker catalog (~309 rows with title, category, question_text). totem reads v3 behaviors instead."
+  },
+  {
+    "method": "GET",
+    "path": "/smart-alarm-service/v1/user-info/default-wake-window",
+    "domain": "smart_alarm",
+    "verdict": "verified",
+    "tools": [
+      "whoop_smart_alarm"
+    ],
+    "notes": "Android route (@Acetone1). {default_wake_window_minutes} (60). IN_THE_GREEN and SLEEP_GOAL buzz between the latest wake time minus this and the latest wake time."
+  },
+  {
+    "method": "GET",
+    "path": "/smart-alarm-service/v1/smartalarm/poll",
+    "domain": "smart_alarm",
+    "verdict": "server-error-500",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 500 on the test account, whose alarm preferences 500 too."
+  },
+  {
+    "method": "PATCH",
+    "path": "/smart-alarm-service/v1/smartalarm/preferences/timezone",
+    "domain": "smart_alarm",
+    "verdict": "server-error-500",
+    "tools": [],
+    "notes": "Android route (@Acetone1). {time_zone_offset: profile offset} answered 500 on the test account (preferences already broken); stopped there. Untested on a healthy account."
+  },
+  {
+    "method": "PUT",
+    "path": "/smart-alarm-service/v1/smartalarm/override",
+    "domain": "smart_alarm",
+    "verdict": "not-exercised",
+    "tools": [],
+    "notes": "Android route (@Acetone1). Not sent: the test account's alarm preferences 500, so there was no value to restore."
+  },
+  {
+    "method": "GET",
+    "path": "/progression-service/v3/{measurement_type}/manual/readings",
+    "domain": "trends",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). measurement_type vo2max (VO2_MAX, VO2MAX, vo2_max: 404). Records list plus the Add Manual Value sheet: timestamp, vo2_max_value, mL/kg/min, sources MANUAL_LAB_TEST, MANUAL_WEARABLE, MANUAL_OTHER."
+  },
+  {
+    "method": "POST",
+    "path": "/vo2max-service/v2/{measurement_type}/manual",
+    "domain": "trends",
+    "verdict": "exists-but-unclear",
+    "tools": [],
+    "notes": "Android route (@Acetone1). vo2max: 422 with an empty body for six shapes built from the sheet's fields (VO2_MAX: 404). Body unknown; nothing was created."
+  },
+  {
+    "method": "PUT",
+    "path": "/progression-service/v2/weekly-plan/{plan_id}/goal/activity",
+    "domain": "weekly_plan",
+    "verdict": "exists-but-unclear",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 204 for every body tried ({}, and goals/activities/goal_settings lists of tile ids like ANY_STRAIN), with and without a plan; nothing changed. Tiles: setup?screens=ACTIVITIES."
+  },
+  {
+    "method": "PUT",
+    "path": "/progression-service/v2/weekly-plan/{plan_id}/goal/behavior",
+    "domain": "weekly_plan",
+    "verdict": "exists-but-unclear",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 204 for {}; nothing changed. Tiles come from setup?screens=BEHAVIORS (behavior tracker ids, AVOID options)."
+  },
+  {
+    "method": "DELETE",
+    "path": "/progression-service/v2/weekly-plan/{plan_id}/goal/activity",
+    "domain": "weekly_plan",
+    "verdict": "exists-but-unclear",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 204 (and the same for goal/behavior); the test plan had no such goals to remove."
+  },
+  {
+    "method": "GET",
+    "path": "/progression-service/v2/weekly-plan/setup/overview",
+    "domain": "weekly_plan",
+    "verdict": "server-error-500",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 500 on the test account."
+  },
+  {
+    "method": "GET",
+    "path": "/healthspan-service/v1/healthspan/bff",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_profile"
+    ],
+    "notes": "Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_profile passes it through marked unverified."
+  },
+  {
+    "method": "GET",
+    "path": "/healthspan-service/v1/widget",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). {amoeba, locked_content}; locked on the test account."
+  },
+  {
+    "method": "GET",
+    "path": "/sage-service/v1/sage/bff",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_profile"
+    ],
+    "notes": "Android route (@Acetone1). ?date=. Blood Pressure Insights, same locked/unlocked shape; locked ('UPGRADE FOR ACCESS', WHOOP Life)."
+  },
+  {
+    "method": "GET",
+    "path": "/sage-service/v1/sage/manual/input",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). Manual blood pressure screens (guidelines, reading input)."
+  },
+  {
+    "method": "GET",
+    "path": "/advanced-labs-service/v1/advanced-labs/biomarkers/summary",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_profile"
+    ],
+    "notes": "Android route (@Acetone1). Pie chart plus SEARCHABLE_BIOMARKERS_LIST biomarkers[{id, title, value, unit, status_type}]: 100 rows, all '--' and UNAVAILABLE without results (46 KB)."
+  },
+  {
+    "method": "GET",
+    "path": "/advanced-labs-service/v1/advanced-labs/tests/history",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). Lab History; one empty-tile section without tests."
+  },
+  {
+    "method": "GET",
+    "path": "/arrhythmia-service/v2/afibhistory/screen",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_profile"
+    ],
+    "notes": "Android route (@Acetone1). 404 'No anf user found' until irregular rhythm notifications are set up (also /v2/settings)."
+  },
+  {
+    "method": "GET",
+    "path": "/arrhythmia-service/v1/about",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). Static regulatory page, as is /ecg-service/v1/ecg/about. The Android list has no read route for ECG readings."
+  },
+  {
+    "method": "GET",
+    "path": "/womens-health-service/v1/menstrual-cycle-insights/deep-dives",
+    "domain": "womens_health",
+    "verdict": "verified",
+    "tools": [],
+    "notes": "Android route (@Acetone1). Static phase guidance for the four phases (45 KB)."
+  },
+  {
+    "method": "GET",
+    "path": "/widget-service/v1/statistics/{statistic}",
+    "domain": "home",
+    "verdict": "server-error-500",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 500 for RECOVERY and for composite?statistics=… on the test account."
+  },
+  {
+    "method": "GET",
+    "path": "/user-journey-service/v1/user-journey/first-week-in-review",
+    "domain": "misc",
+    "verdict": "not-found",
+    "tools": [],
+    "notes": "Android route (@Acetone1). 404 'currently unavailable', as is the v2 year-in-review (seasonal)."
   }
 ];

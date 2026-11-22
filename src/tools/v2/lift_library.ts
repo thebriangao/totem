@@ -20,7 +20,7 @@ export function registerLiftLibrary(server: McpServer, client: WhoopClient): voi
     description:
       "Strength Trainer library. No arguments: your templates as [template_key, name] and WHOOP's workouts as [prebuilt_id, title, " +
       "minutes]. With one of those ids: that workout's exercises, a template's sets as [weight, reps] ([weight, seconds] if timed). " +
-      "search: up to 10 exercises by name, muscle or equipment (custom ones included), with the ids whoop_lift_log and " +
+      "search: up to 10 exercises (custom too) by name, muscle or equipment, with the ids whoop_lift_log and " +
       "whoop_lift_exercise take.",
     input: {
       template_key: z.number().int().optional(),

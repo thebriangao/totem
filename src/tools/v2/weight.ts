@@ -36,7 +36,7 @@ export function registerWeight(server: McpServer, client: WhoopClient): void {
     name: "whoop_weight",
     description:
       "Weight and body-composition readings, newest first, in kg (display_unit is the account's unit). The newest reading is the " +
-      "profile weight. cursor takes a returned next_cursor. Ids feed whoop_weight_log.",
+      "profile weight. Ids feed whoop_weight_log.",
     input: {
       limit: z.number().int().min(1).max(100).default(10),
       cursor: z.string().min(1).optional(),
