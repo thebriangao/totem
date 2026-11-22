@@ -212,7 +212,7 @@ describe("HTTP transport: misconfiguration", () => {
   it("refuses to start with a too-short auth token", async () => {
     await expect(
       startHttpServer(stubClient, { authToken: "short", port: 0 }),
-    ).rejects.toThrow(/16 chars/);
+    ).rejects.toThrow(/at least 32 characters/);
   });
 });
 

@@ -11,7 +11,7 @@
 //
 // Env:
 //   MCP_TRANSPORT=http        (required to select this transport)
-//   MCP_AUTH_TOKEN=<≥16 char> (required; also the JWT signing secret)
+//   MCP_AUTH_TOKEN=<≥32 char> (required; also the JWT signing secret)
 //   AUTH_PASSWORD=<password>  (optional; enables the OAuth/web-connector path)
 //   PUBLIC_URL=https://...    (optional; the server's public origin, used as the
 //                              OAuth issuer. Defaults to http://localhost:<port>)
@@ -33,7 +33,7 @@ import { isObject } from "./lib/walk.js";
 import { mountAdminTokens, type AdminTokensOptions } from "./server-admin.js";
 
 export interface HttpServerOptions {
-  /** Bearer token clients must present + JWT signing secret. Required, ≥16 chars. */
+  /** Bearer token clients must present + JWT signing secret. Required, ≥32 chars. */
   authToken: string;
   port?: number;
   host?: string;
@@ -91,10 +91,17 @@ export interface HttpServerHandle {
   close(): Promise<void>;
 }
 
+/** Shortest MCP_AUTH_TOKEN the HTTP server accepts. */
+export const MIN_AUTH_TOKEN_LENGTH = 32;
+
 export async function startHttpServer(client: WhoopClient, opts: HttpServerOptions): Promise<HttpServerHandle> {
-  if (!opts.authToken || opts.authToken.length < 16) {
+  // The token also keys the OAuth signing secret, and anyone can fetch material
+  // signed with it (open client registration), so a short or hand-picked token
+  // can be guessed offline. 32+ characters; the CLI generates 64 random hex.
+  if (!opts.authToken || opts.authToken.length < MIN_AUTH_TOKEN_LENGTH) {
     throw new Error(
-      "MCP_AUTH_TOKEN must be set and at least 16 chars. Generate one with `openssl rand -hex 32`.",
+      `MCP_AUTH_TOKEN must be set and at least ${MIN_AUTH_TOKEN_LENGTH} characters (yours is ${opts.authToken ? opts.authToken.length : 0}). ` +
+        "Generate one with `openssl rand -hex 32`, set it on the server, and update the clients that use it.",
     );
   }
   const port = opts.port ?? resolvePort(process.env);

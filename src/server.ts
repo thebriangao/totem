@@ -44,11 +44,19 @@ function chooseStore(transport: string): TokenStore {
   const mode = (process.env.WHOOP_TOKEN_STORE ?? "file").toLowerCase();
   if (mode === "memory") {
     if (inContainer() || transport === "http") {
-      throw new Error(
-        "WHOOP_TOKEN_STORE=memory is refused in a container or remote deployment: WHOOP rotates the refresh token on every " +
-          "refresh, so a restart would lose the login. Remove it and mount a volume for the token file (the image uses " +
-          "TOTEM_TOKEN_FILE=/data/tokens.json).",
+      // Not an error: v1's `totem cloud` set this as a host secret, so every
+      // deployment upgraded from v1 still carries it. Refusing to boot would take
+      // those servers down on upgrade. A memory-only login can't survive in a
+      // deployment (WHOOP rotates the refresh token on every refresh, so a restart
+      // would lose it), so the setting is ignored here and the token file is used.
+      log(
+        "WHOOP_TOKEN_STORE=memory is ignored in a container or remote deployment (a restart would lose the login). " +
+          "Using the token file instead. Remove the old WHOOP_TOKEN_STORE secret, and mount a volume for " +
+          "TOTEM_TOKEN_FILE (the image uses /data/tokens.json) so the login survives restarts.",
       );
+      const store = new FileTokenStore(resolveTokenFilePath(process.env));
+      store.assertWritable();
+      return store;
     }
     log("WHOOP_TOKEN_STORE=memory: the login lives only in this process; a restart needs `totem auth` again.");
     return new MemoryTokenStore(migrateFromEnv(process.env));
@@ -171,6 +179,9 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("[totem] fatal:", err);
+  // A startup failure is something the user has to act on: print the message,
+  // not a stack trace (set TOTEM_DEBUG=1 for the stack).
+  console.error(`[totem] fatal: ${err instanceof Error ? err.message : String(err)}`);
+  if (process.env.TOTEM_DEBUG && err instanceof Error && err.stack) console.error(err.stack);
   process.exit(1);
 });

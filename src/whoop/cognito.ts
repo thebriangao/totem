@@ -84,6 +84,7 @@ async function callCognito(target: "InitiateAuth", body: object): Promise<Cognit
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
+  let text: string;
   try {
     response = await fetch(ENDPOINT, {
       method: "POST",
@@ -100,6 +101,10 @@ async function callCognito(target: "InitiateAuth", body: object): Promise<Cognit
       body: JSON.stringify(body),
       signal: controller.signal,
     });
+    // fetch() resolves on the headers. Read the body under the same timer: a
+    // response that stalled mid-body used to hang the refresh forever, and with
+    // it every tool call waiting on a token.
+    text = await response.text();
   } catch (error) {
     if (controller.signal.aborted) {
       throw new Error(`Cognito ${target} timed out after ${REQUEST_TIMEOUT_MS}ms`);
@@ -108,7 +113,6 @@ async function callCognito(target: "InitiateAuth", body: object): Promise<Cognit
   } finally {
     clearTimeout(timeout);
   }
-  const text = await response.text();
   if (!response.ok) {
     let detail = text.slice(0, 200);
     let type: string | null = null;
