@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IMPERIAL, METRIC, body, connect, fixture, routes } from "./lift_v2_harness.js";
 import { registerLiftLog, LIFT_PATH, LINK_PATH } from "../../src/tools/v2/lift_log.js";
-import { WhoopConflictError } from "../../src/whoop/errors.js";
+import { WhoopApiError, WhoopConflictError } from "../../src/whoop/errors.js";
 import { parsePgRange } from "../../src/lib/dates.js";
 import { liftReadback } from "../../src/lib/lift_history.js";
 
@@ -123,6 +123,41 @@ describe("whoop_lift_log", () => {
     expect(result.isError).not.toBe(true);
     expect(body(result)).toMatchObject({ action: "logged", verified: false });
     expect(body(result).warnings[0]).toMatch(/lag/);
+  });
+
+  it("read-back compares the weights: a lift WHOOP read in another unit is not verified", async () => {
+    // 45.36 kg was converted to 100 for an imperial account, but WHOOP shows the sets as 100 kg:
+    // the account's unit changed between the unit read and the write.
+    const asKg = JSON.parse(JSON.stringify(fixture("history_bench")).replaceAll('"lbs"', '"kg"'));
+    const get = whoop({ [HISTORY]: asKg });
+    const client = await connect(registerLiftLog, { get, post: vi.fn().mockResolvedValue(fixture("lift_receipt")) });
+    const out = body(await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, unit: "kg", confirm: true } }));
+    expect(out.verified).toBe(false);
+    expect(out.warnings.join()).toMatch(/WHOOP shows 100\/100 kg where 45\.36\/45\.36 kg was sent/);
+    expect(out.warnings.join()).toMatch(/whoop_activity_delete/);
+  });
+
+  it("read-back tolerates WHOOP's whole-number display and a unit switched after the write", async () => {
+    // Sent 44.09 lb (20 kg); WHOOP shows "44 lbs". Later shown in kg ("20 kg") it still matches.
+    const shown = (value: string, units: string) => JSON.parse(JSON.stringify(fixture("history_bench")).replaceAll('"value":"100"', `"value":"${value}"`).replaceAll('"lbs"', `"${units}"`));
+    for (const history of [shown("44", "lbs"), shown("20", "kg")]) {
+      const client = await connect(registerLiftLog, { get: whoop({ [HISTORY]: history }), post: vi.fn().mockResolvedValue(fixture("lift_receipt")) });
+      const args = { ...BASE_ARGS, unit: "kg", exercises: [{ exercise_id: BENCH, sets: [{ reps: 5, weight: 20 }, { reps: 5, weight: 20 }] }], confirm: true };
+      expect(body(await client.callTool({ name: "whoop_lift_log", arguments: args })).verified).toBe(true);
+    }
+  });
+
+  it("an all-skipped lift reads back through the raw activity record, which answers while cardio-details 400s", async () => {
+    const id = "1f27998b-95c6-4865-acdd-3d413063ce9b";
+    const get = whoop({
+      "/core-details-bff/v1/cardio-details": new WhoopApiError(400, "/core-details-bff/v1/cardio-details", "Cannot view activity details for a pending activity"),
+      [`/activities-service/v2/activities/${id}`]: { id, type: "weightlifting_msk", score_type: "CARDIO", score_state: "pending", during: "['2026-11-21T17:00:00.000Z','2026-11-21T17:20:00.000Z')" },
+    });
+    const client = await connect(registerLiftLog, { get, post: vi.fn().mockResolvedValue(fixture("lift_receipt")) });
+    const args = { ...BASE_ARGS, unit: "kg", exercises: [{ exercise_id: BENCH, sets: [{ reps: 5, weight: 45.36, performed: false }] }], confirm: true };
+    const out = body(await client.callTool({ name: "whoop_lift_log", arguments: args }));
+    expect(out).toMatchObject({ action: "logged", verified: true });
+    expect(out.warnings).toBeUndefined();
   });
 
   it("warns when WHOOP widens the saved window", async () => {

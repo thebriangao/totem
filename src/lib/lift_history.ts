@@ -3,9 +3,29 @@
 // `show_more.next_start_date` is an exclusive upper-bound timestamp for the next
 // page. A newly logged or linked workout can take ~30 s to appear.
 import type { WhoopClient } from "../whoop/client.js";
+import { convertWeight, type WeightUnit } from "../whoop/units.js";
 import { parseLiftCards, type LiftCard } from "../projections/lift_cards.js";
 
 export const historyPath = (exerciseId: string) => `/weightlifting-service/v3/exercise/${encodeURIComponent(exerciseId)}/exercise_history`;
+
+/** History shows weights as whole numbers in the display unit (44.09 lb reads "44", 49.6 reads "50"). */
+const SHOWN_WEIGHT_TOLERANCE = 0.6;
+
+/**
+ * Compare the weights a history card shows with the weights that were sent, in
+ * the unit the card shows them in. A unit mix-up is a factor of 2.2, far outside
+ * the display rounding. Returns null when they agree or can't be compared (set
+ * count differs, or the card shows no weight unit); else both lists, per set.
+ */
+export function weightMismatch(card: LiftCard, sent: number[], sentUnit: WeightUnit): { shown: Array<number | null>; expected: number[]; unit: WeightUnit } | null {
+  if (card.sets.length !== sent.length) return null;
+  const unit = card.sets.find((s) => s.unit)?.unit;
+  if (!unit) return null;
+  const expected = sent.map((w) => convertWeight(w, sentUnit, unit));
+  const shown = card.sets.map((s) => s.weight);
+  const off = shown.some((w, i) => w !== null && Math.abs(w - expected[i]!) > SHOWN_WEIGHT_TOLERANCE);
+  return off ? { shown, expected, unit } : null;
+}
 
 /** Read-back pacing; tests set this to zeros. */
 export const liftReadback = { delaysMs: [0, 4_000, 8_000] as number[] };

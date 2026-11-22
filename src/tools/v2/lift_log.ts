@@ -27,7 +27,8 @@ import {
   type ExerciseSets,
 } from "../../lib/lift_sets.js";
 import { errorMessage, liftError } from "../../lib/lift_tool.js";
-import { findHistoryCard } from "../../lib/lift_history.js";
+import { findHistoryCard, weightMismatch } from "../../lib/lift_history.js";
+import { readActivityAs } from "../../lib/activity_records.js";
 import { setScheme } from "../../projections/lift_sessions.js";
 
 const TOOL = "whoop_lift_log";
@@ -63,17 +64,43 @@ function sessionSummary(items: ExerciseSets[], units: { input: WeightUnit; accou
   });
 }
 
-/** Does the first exercise's history (fresh, paged, retried while WHOOP catches up) show this activity? */
-async function verifyInHistory(client: WhoopClient, activityId: string, item: ExerciseSets | undefined, notBefore: string | undefined, expectedSets: number | null, warnings: string[]): Promise<boolean> {
+/**
+ * Does the first exercise's history (fresh, paged, retried while WHOOP catches
+ * up) show this activity with the weights that were sent? History is the only
+ * read that shows a lift's sets with their unit, so this is the check that
+ * catches a weight WHOOP read in another unit than the one it was converted to.
+ */
+async function verifyInHistory(
+  client: WhoopClient,
+  activityId: string,
+  item: ExerciseSets | undefined,
+  notBefore: string | undefined,
+  sent: { weights: number[]; unit: WeightUnit },
+  warnings: string[],
+): Promise<boolean> {
   if (!item) return false;
+  const name = item.exercise.name;
   try {
     const card = await findHistoryCard(client, item.exercise.exercise_id, activityId, notBefore);
     if (!card) {
-      warnings.push(`${item.exercise.name}'s history doesn't show this activity yet (WHOOP can lag ~30 s); check with whoop_lift_sessions.`);
+      // History lags; the raw activity record answers at once and says whether the write landed at all.
+      const record = await readActivityAs(client, activityId, "CARDIO").catch(() => null);
+      warnings.push(record
+        ? `The activity exists, but ${name}'s history doesn't show its sets yet (WHOOP can lag ~30 s), so the weights are unconfirmed. Don't log it again; check whoop_lift_exercise history.`
+        : `${name}'s history doesn't show this activity yet (WHOOP can lag ~30 s); check whoop_lift_exercise history before logging again.`);
       return false;
     }
-    if (expectedSets !== null && card.sets.length !== expectedSets) warnings.push(`${item.exercise.name}: history shows ${card.sets.length} sets, ${expectedSets} were sent.`);
-    return true;
+    let ok = true;
+    if (card.sets.length !== sent.weights.length) {
+      warnings.push(`${name}: history shows ${card.sets.length} sets, ${sent.weights.length} were sent.`);
+      ok = false;
+    }
+    const off = weightMismatch(card, sent.weights, sent.unit);
+    if (off) {
+      warnings.push(`${name}: WHOOP shows ${off.shown.join("/")} ${off.unit} where ${off.expected.join("/")} ${off.unit} was sent. The account's weight unit may have changed during the write: delete activity ${activityId} (whoop_activity_delete) and log it again.`);
+      ok = false;
+    }
+    return ok;
   } catch (e) {
     warnings.push(`Read-back failed: ${errorMessage(e)}`);
     return false;
@@ -139,6 +166,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     const account = await accountWeightUnit(client);
     const units = { input: unit, account };
     const converted = unit !== account;
+    const sentWeights = (sets: ExerciseSets["sets"]) => sets.map((s) => sentWeight(s.weight, unit, account));
 
     if (attach) {
       let target: unknown = null;
@@ -181,7 +209,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       const meta = get(linked, "workout_metadata");
       const linkedStart = parseDuring(get(meta, "during"))?.[0];
       const notBefore = linkedStart !== undefined ? new Date(linkedStart).toISOString() : typeof activityStart === "string" ? activityStart : undefined;
-      const verified = await verifyInHistory(client, attach, items[0], notBefore, null, warnings);
+      const verified = await verifyInHistory(client, attach, items[0], notBefore, { weights: sentWeights(items[0]!.sets), unit: account }, warnings);
       return respond(TOOL, LiftLogOutV2, {
         action: "attached",
         activity_id: attach,
@@ -250,11 +278,14 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     const firstPerformed = items.find((it) => it.sets.some((s) => s.performed !== false));
     let verified: boolean;
     if (firstPerformed) {
-      verified = await verifyInHistory(client, activityId, firstPerformed, new Date(savedMs?.[0] ?? startMs).toISOString(), firstPerformed.sets.filter((s) => s.performed !== false).length, warnings);
+      const performed = firstPerformed.sets.filter((s) => s.performed !== false);
+      verified = await verifyInHistory(client, activityId, firstPerformed, new Date(savedMs?.[0] ?? startMs).toISOString(), { weights: sentWeights(performed), unit: account }, warnings);
     } else {
+      // Nothing performed, so nothing reaches history. The raw activity record answers in
+      // every state; cardio-details 400s for the first seconds after a create.
       try {
-        const d = await client.get(DETAILS_PATH, { activityId }, { fresh: true });
-        verified = get(d, "details_edit_components", "activity_type_internal_name") === "weightlifting_msk";
+        verified = (await readActivityAs(client, activityId, "CARDIO"))?.type === "weightlifting_msk";
+        if (!verified) warnings.push("The new activity doesn't read back as a Strength Trainer workout.");
       } catch (e) {
         verified = false;
         warnings.push(`Read-back failed: ${errorMessage(e)}`);
