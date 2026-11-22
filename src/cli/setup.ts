@@ -329,6 +329,18 @@ interface HostStep {
 
 const worked = (r: ExecResult | boolean): boolean => (typeof r === "boolean" ? r : r.code === 0);
 
+/**
+ * A host CLI's output with this deploy's secrets blanked. totem shows the
+ * latest line a command printed and, when it fails, the end of its output; a
+ * CLI that echoes what it was given must not put the token or the password on
+ * screen that way.
+ */
+function redact(d: Deploy, text: string): string {
+  let out = text;
+  for (const secret of [d.env.MCP_AUTH_TOKEN, d.env.AUTH_PASSWORD]) if (secret) out = out.split(secret).join("***");
+  return out;
+}
+
 /** A host command: captured under a spinner showing its latest line, or attached with --verbose. */
 function hostCommand(d: Deploy, cmd: string, args: string[], input?: string): HostStep["run"] {
   const { ui, sys } = d.io;
@@ -351,14 +363,16 @@ async function runStep(d: Deploy, step: HostStep): Promise<"ok" | "skipped" | "c
     if (step.attached || d.verbose) ui.info(`${step.label}${ui.kit.g.ellipsis}`);
     for (let attempt = 0; attempt <= (step.retries ?? 0); attempt++) {
       if (attempt > 0) await ui.task(`The host didn't answer; trying again (${attempt}/${step.retries})`, () => sys.sleep(2500));
-      result = step.attached || d.verbose ? await step.run(() => {}) : await ui.task(step.label, step.run, { slow: Boolean(step.slow) });
+      result = step.attached || d.verbose
+        ? await step.run(() => {})
+        : await ui.task(step.label, (set) => step.run((line) => set(redact(d, line))), { slow: Boolean(step.slow) });
       if (worked(result)) break;
     }
     if (worked(result)) {
       ui.ok(step.done, duration(sys.now() - started));
       return "ok";
     }
-    ui.problem(`${step.label} failed.`, { detail: typeof result === "boolean" ? undefined : tail(result) });
+    ui.problem(`${step.label} failed.`, { detail: typeof result === "boolean" ? undefined : tail(result).map((line) => redact(d, line)) });
     const choices: Choice[] = [
       { label: "Try again" },
       ...(step.optional ? [{ label: "Skip this step", hint: step.optional }] : []),

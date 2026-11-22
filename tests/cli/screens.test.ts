@@ -71,6 +71,36 @@ describe("every screen", () => {
   });
 });
 
+describe("secrets", () => {
+  // The password is shown exactly once: on the last screen of a deploy that worked.
+  it("the connector password appears once, in the connect card, and nowhere before it", async () => {
+    const { text } = await render(screen("cloud-fly"));
+    expect(text.split(PASSWORD)).toHaveLength(2);
+    expect(text.indexOf(PASSWORD)).toBeGreaterThan(text.indexOf("6/6  Connect a client"));
+  });
+
+  it("a deploy that stops early never shows it", async () => {
+    for (const name of ["cloud-fly-deploy-failed", "cloud-cancelled", "cloud-server-not-answering", "cloud-fly-host-echoes-secrets"]) {
+      expect((await render(screen(name))).text, name).not.toContain(PASSWORD);
+    }
+  });
+
+  it("a host CLI that echoes the secrets back gets them blanked", async () => {
+    const { text } = await render(screen("cloud-fly-host-echoes-secrets"));
+    expect(text).toContain("MCP_AUTH_TOKEN=***");
+    expect(text).toContain("AUTH_PASSWORD=***");
+    expect(text).not.toContain(TOKEN);
+  });
+
+  it("the commands a deploy runs carry no secret on their command line", async () => {
+    for (const name of ["cloud-fly", "cloud-railway", "cloud-cloudrun"]) {
+      const { commands } = await render(screen(name));
+      expect(commands.join("\n"), name).not.toContain(TOKEN);
+      expect(commands.join("\n"), name).not.toContain(PASSWORD);
+    }
+  });
+});
+
 describe("narrow terminals", () => {
   it.each(["help", "local", "cloud-fly", "auth-fail-browser-closed", "status-server"])("%s wraps prose to the width", async (name) => {
     const { text } = await render(screen(name), NARROW);

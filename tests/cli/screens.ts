@@ -9,7 +9,7 @@ import { runCli, type AppCtx } from "../../src/cli/app.js";
 import { writeDeployRecord } from "../../src/cli/deploy_record.js";
 import type { ExecResult } from "../../src/cli/sys.js";
 import type { Style } from "../../src/cli/ui.js";
-import { fakeWorld, linkDependencies, TOKEN, type FakeWorld, type WorldOptions } from "./helpers.js";
+import { fakeWorld, linkDependencies, PASSWORD, TOKEN, type FakeWorld, type WorldOptions } from "./helpers.js";
 
 export interface Screen {
   name: string;
@@ -145,6 +145,13 @@ export const SCREENS: Screen[] = [
     name: "cloud-fly-deploy-failed", command: "totem cloud", about: "A failed step: the build fails on Fly; the person stops.",
     world: {
       exec: fly((a, w) => { if (a.startsWith("deploy")) { w.clock.t += 41_000; return { code: 1, stdout: "==> Building image\n#8 [builder 4/6] RUN npm ci\n#8 ERROR: process \"/bin/sh -c npm ci\" did not complete successfully: exit code 1\n", stderr: "Error: failed to fetch an image or build from source: error building: exit code 1\n" }; } return undefined; }),
+      answers: [["What now?", 1]],
+    },
+  },
+  {
+    name: "cloud-fly-host-echoes-secrets", command: "totem cloud", about: "A host CLI fails and echoes what it was given: the secrets in its output are blanked.",
+    world: {
+      exec: fly((a, _w) => (a.startsWith("secrets import") ? { code: 1, stdout: "", stderr: `Error: could not set secrets\nMCP_AUTH_TOKEN=${TOKEN}\nAUTH_PASSWORD=${PASSWORD}\n` } : undefined)),
       answers: [["What now?", 1]],
     },
   },
