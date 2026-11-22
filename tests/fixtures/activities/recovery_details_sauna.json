@@ -1,0 +1,153 @@
+{
+ "title_bar": {
+  "title_display": "DRY SAUNA",
+  "subtitle_display": "Today 7:00 AM to 7:20 AM"
+ },
+ "horizontal_stats": [
+  {
+   "stat_main_value_display": "0:20",
+   "stat_title_display": "MINUTES",
+   "stat_title_suffix_display": ":00",
+   "stat_comparison_display": "0:20:00",
+   "stat_trend_type": "NEUTRAL",
+   "stat_icon_display": null,
+   "stat_main_value_color": null
+  }
+ ],
+ "key_metric_carousel": {
+  "title": "SESSION METRICS",
+  "subtitle": "VS. 30 DAY RANGE",
+  "key_metric_tile": [
+   {
+    "key_metric_tile_icon": "RHR",
+    "key_metric_tile_title_display": "MIN HR",
+    "key_metric_tile_stat_value_display": "58",
+    "key_metric_tile_suffix_display": "bpm",
+    "key_metric_tile_trend_display": "0bpm",
+    "key_metric_tile_trend_type": "NEUTRAL"
+   },
+   {
+    "key_metric_tile_icon": "HEART_RATE",
+    "key_metric_tile_title_display": "AVG HR",
+    "key_metric_tile_stat_value_display": "71",
+    "key_metric_tile_suffix_display": "bpm",
+    "key_metric_tile_trend_display": "0bpm",
+    "key_metric_tile_trend_type": "NEUTRAL"
+   },
+   {
+    "key_metric_tile_icon": "MAX_HEART_RATE",
+    "key_metric_tile_title_display": "MAX HR",
+    "key_metric_tile_stat_value_display": "96",
+    "key_metric_tile_suffix_display": "bpm",
+    "key_metric_tile_trend_display": "0bpm",
+    "key_metric_tile_trend_type": "NEUTRAL"
+   }
+  ]
+ },
+ "segmented_control_display": [
+  {
+   "name_display": "HEART RATE",
+   "id": "HEART_RATE"
+  }
+ ],
+ "vow_response_string": "Recovery activities are low-intensity activities that promote blood flow to the muscles to help you recover from strain, fatigue, or sore muscles.",
+ "bar_graph_container": null,
+ "activity_source_display": null,
+ "editable": true,
+ "details_edit_components": {
+  "edit_activity_title_display": "EDIT ACTIVITY",
+  "single_score_type": "RECOVERY",
+  "activity_type_internal_name": "sauna",
+  "location": null,
+  "time_divider_title_display": "TIME",
+  "start_time_selector": {
+   "selected_time_title_display": "Start Time",
+   "formatted_time_display": "7:00 AM",
+   "initial_time": "2026-11-21T15:00:00.000Z"
+  },
+  "end_time_selector": {
+   "selected_time_title_display": "End Time",
+   "formatted_time_display": "7:20 AM",
+   "initial_time": "2026-11-21T15:20:00.000Z"
+  },
+  "location_divider_title_display": "LOCATION",
+  "location_prompt_display": "Where did you wear your WHOOP?",
+  "call_to_action_display": "SAVE",
+  "allowed_strap_locations": [
+   {
+    "strap_location_title_display": "---",
+    "strap_location": 0
+   },
+   {
+    "strap_location_title_display": "PERFORMANCE TANK",
+    "strap_location": 12
+   },
+   {
+    "strap_location_title_display": "MEN'S SWIMSUIT",
+    "strap_location": 13
+   },
+   {
+    "strap_location_title_display": "WOMEN'S SWIMSUIT",
+    "strap_location": 14
+   },
+   {
+    "strap_location_title_display": "CYCLING BIB",
+    "strap_location": 15
+   },
+   {
+    "strap_location_title_display": "WRIST BAND",
+    "strap_location": 1
+   },
+   {
+    "strap_location_title_display": "BICEP BAND",
+    "strap_location": 2
+   },
+   {
+    "strap_location_title_display": "ARM SLEEVE",
+    "strap_location": 3
+   },
+   {
+    "strap_location_title_display": "UNDERWEAR",
+    "strap_location": 10
+   },
+   {
+    "strap_location_title_display": "BRA",
+    "strap_location": 11
+   },
+   {
+    "strap_location_title_display": "SHORTS",
+    "strap_location": 7
+   },
+   {
+    "strap_location_title_display": "COMPRESSION TOP",
+    "strap_location": 6
+   },
+   {
+    "strap_location_title_display": "LEGGINGS",
+    "strap_location": 9
+   }
+  ]
+ },
+ "tiles": [
+  {
+   "type": "LOCKED_IMPACT_TILE",
+   "content": {
+    "description": "Keep logging this activity to receive insights. Once you reach 5 days with and 5 days without this activity, impacts will be unlocked.",
+    "details_yes_answers": {
+     "answer_count_text_display": 0,
+     "total_count_text_display": 5,
+     "answer_count_impact_style": "RECOVERY"
+    },
+    "details_no_answers": {
+     "answer_count_text_display": 1,
+     "total_count_text_display": 5,
+     "answer_count_impact_style": "INELIGIBLE"
+    },
+    "title": "IMPACT ON RECOVERY",
+    "value": "--",
+    "cta_button_label": "VIEW MORE IMPACTS",
+    "style": "INELIGIBLE"
+   }
+  }
+ ]
+}
