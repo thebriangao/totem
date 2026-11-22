@@ -1,8 +1,8 @@
 // The Connect page's highlighter against what Shiki's shellscript and json
-// grammars give the same snippets under the Pierre themes (run on 2026-11-22
-// with shiki 3 and @pierre/theme 2.1.0), except URLs, which stay uncoloured.
+// grammars give the same snippets (run on 2026-11-22 with shiki 3), except
+// URLs, which stay uncoloured. The token kinds are the same under every theme.
 import { describe, expect, it } from "vitest";
-import { highlight, jsonTokens, PIERRE, shellTokens } from "../../src/lib/highlight.js";
+import { highlight, jsonTokens, shellTokens, VSCODE } from "../../src/lib/highlight.js";
 
 const URL = "https://totem-c0ffee.fly.dev/mcp";
 const words = (tokens: Array<[string | null, string]>) => tokens.filter(([t]) => t !== null);
@@ -47,8 +47,8 @@ describe("highlight", () => {
     expect(highlight("https://a.example/mcp?x=<1>", "url")).toBe('<span class="t-url">https://a.example/mcp?x=&lt;1&gt;</span>');
   });
 
-  it("uses the Pierre theme colours", () => {
-    expect(PIERRE.light).toEqual({ bg: "#ffffff", fg: "#0a0a0a", cmd: "#693acf", flag: "#d5a910", str: "#199f43", key: "#d5512f", punc: "#636363" });
-    expect(PIERRE.dark).toEqual({ bg: "#0a0a0a", fg: "#fafafa", cmd: "#9d6afb", flag: "#ffd452", str: "#5ecc71", key: "#ff855e", punc: "#636363" });
+  it("uses VS Code's Light+ and Dark+ colours (Shiki's light-plus and dark-plus)", () => {
+    expect(VSCODE.light).toEqual({ fg: "#000000", cmd: "#795e26", flag: "#0000ff", str: "#a31515", key: "#0451a5", punc: "#000000" });
+    expect(VSCODE.dark).toEqual({ fg: "#d4d4d4", cmd: "#dcdcaa", flag: "#569cd6", str: "#ce9178", key: "#9cdcfe", punc: "#d4d4d4" });
   });
 });

@@ -73,7 +73,7 @@ describe("the Connect page", () => {
     expect(odd.match(/<script>/g)).toHaveLength(1);
   });
 
-  it("colours every snippet with Pierre and copies it as plain text from a floating icon button", () => {
+  it("colours every snippet like VS Code and copies it as plain text from a floating icon button", () => {
     const rows = [...html.matchAll(/<div class="box copyrow (?:line|block)"><code>([\s\S]*?)<\/code><button ([^>]*)>([\s\S]*?)<\/button><\/div>/g)];
     expect(rows).toHaveLength(5); // the address, Codex, Claude Code, OpenCode, Antigravity
     for (const [, code, attrs, inner] of rows) {
@@ -91,9 +91,10 @@ describe("the Connect page", () => {
     expect(html.match(/copyrow block/g)).toHaveLength(1); // only the Antigravity JSON keeps its button in the corner
     expect(html).not.toMatch(/>Copy</);
     expect(html).toContain('<p id="copied" class="sr" aria-live="polite"></p>');
-    // Pierre Light, then Pierre Dark.
-    expect(html).toMatch(/--code-bg: #ffffff; --code-fg: #0a0a0a; --t-cmd: #693acf; --t-flag: #d5a910;/);
-    expect(html).toMatch(/--code-bg: #0a0a0a; --code-fg: #fafafa; --t-cmd: #9d6afb; --t-flag: #ffd452;/);
+    // VS Code Light+, then Dark+, both on the page's own background.
+    expect(html).toMatch(/--code-bg: var\(--page\); --code-fg: #000000; --t-cmd: #795e26; --t-flag: #0000ff;/);
+    expect(html).toMatch(/--code-fg: #d4d4d4; --t-cmd: #dcdcaa; --t-flag: #569cd6;/);
+    expect(html.match(/--code-bg:/g)).toHaveLength(1);
   });
 
   it("says it is not affiliated with WHOOP and holds no password", () => {

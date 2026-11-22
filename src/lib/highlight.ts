@@ -1,8 +1,10 @@
 // Syntax colouring for the few snippets the Connect page shows: one-line shell
 // commands, a small JSON entry and the server address. Not a general
 // highlighter: it reproduces what Shiki's shellscript and json grammars give
-// these snippets under the Pierre themes (@pierre/theme 2.1.0, checked by
-// running Shiki over them on 2026-11-22), so the page needs no dependency.
+// these snippets under VS Code's themes (Light+ and Dark+, whose token colours
+// VS Code's default Light Modern and Dark Modern use; checked by running Shiki
+// over them on 2026-11-22), so the page needs no dependency. The background is
+// the page's own, not the theme's.
 //
 //   shell: the command (first word, and the first after && || | ;) is a function,
 //          a word starting with "-" is an option (constant), anything else is an
@@ -14,16 +16,15 @@
 //
 // Output is escaped HTML with one class per token (t-cmd, t-flag, t-str, t-key,
 // t-punc, and t-url, which has no colour but keeps a URL in one piece); the
-// page's CSS maps each class to its Pierre Light and Pierre Dark colour (PIERRE
-// below).
+// page's CSS maps each class to its Light+ and Dark+ colour (VSCODE below).
 
 export type CodeLang = "shell" | "json" | "url";
 type Token = "cmd" | "flag" | "str" | "key" | "punc" | "url" | null;
 
-/** Pierre Light and Pierre Dark (@pierre/theme 2.1.0): editor colours and the token colours these snippets use. */
-export const PIERRE = {
-  light: { bg: "#ffffff", fg: "#0a0a0a", cmd: "#693acf", flag: "#d5a910", str: "#199f43", key: "#d5512f", punc: "#636363" },
-  dark: { bg: "#0a0a0a", fg: "#fafafa", cmd: "#9d6afb", flag: "#ffd452", str: "#5ecc71", key: "#ff855e", punc: "#636363" },
+/** VS Code Light+ and Dark+: the editor text colour and the token colours these snippets use (punctuation is plain text). */
+export const VSCODE = {
+  light: { fg: "#000000", cmd: "#795e26", flag: "#0000ff", str: "#a31515", key: "#0451a5", punc: "#000000" },
+  dark: { fg: "#d4d4d4", cmd: "#dcdcaa", flag: "#569cd6", str: "#ce9178", key: "#9cdcfe", punc: "#d4d4d4" },
 } as const;
 
 const esc = (s: string): string =>

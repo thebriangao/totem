@@ -15,7 +15,7 @@ import type { Response } from "express";
 import { CLIENT_LOGOS } from "./consent_logos.js";
 import { CONSENT_FONT_PATH } from "./consent_page.js";
 import { FAVICON_LINK, TOTEM_MARK } from "../lib/brand.js";
-import { highlight, PIERRE, type CodeLang } from "../lib/highlight.js";
+import { highlight, VSCODE, type CodeLang } from "../lib/highlight.js";
 import {
   antigravityEntry, claudeConnectorLink, cursorInstallLink, remoteCommands, vscodeInstallLink,
 } from "../lib/install_links.js";
@@ -26,17 +26,17 @@ const CSS = `
   color-scheme: light dark;
   --page: #f6f8fb; --box: #ffffff; --fg: #141414; --dim: #5d6672; --line: #e2e7ee; --soft: #f0f4f9;
   --go: #141414; --on: #ffffff; --shadow: 0 1px 2px rgba(20, 20, 20, .05);
-  /* Code and the server address: Pierre Light (src/lib/highlight.ts). */
-  --code-bg: ${PIERRE.light.bg}; --code-fg: ${PIERRE.light.fg}; --t-cmd: ${PIERRE.light.cmd}; --t-flag: ${PIERRE.light.flag};
-  --t-str: ${PIERRE.light.str}; --t-key: ${PIERRE.light.key}; --t-punc: ${PIERRE.light.punc};
+  /* Code and the server address: VS Code Light+ colours on the page's own background (src/lib/highlight.ts). */
+  --code-bg: var(--page); --code-fg: ${VSCODE.light.fg}; --t-cmd: ${VSCODE.light.cmd}; --t-flag: ${VSCODE.light.flag};
+  --t-str: ${VSCODE.light.str}; --t-key: ${VSCODE.light.key}; --t-punc: ${VSCODE.light.punc};
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --page: #141414; --box: #1b1d20; --fg: #eef2f7; --dim: #9ba4af; --line: #2b2f34; --soft: #17191b;
     --go: #ffffff; --on: #141414; --shadow: none;
-    /* Pierre Dark. */
-    --code-bg: ${PIERRE.dark.bg}; --code-fg: ${PIERRE.dark.fg}; --t-cmd: ${PIERRE.dark.cmd}; --t-flag: ${PIERRE.dark.flag};
-    --t-str: ${PIERRE.dark.str}; --t-key: ${PIERRE.dark.key}; --t-punc: ${PIERRE.dark.punc};
+    /* VS Code Dark+. */
+    --code-fg: ${VSCODE.dark.fg}; --t-cmd: ${VSCODE.dark.cmd}; --t-flag: ${VSCODE.dark.flag};
+    --t-str: ${VSCODE.dark.str}; --t-key: ${VSCODE.dark.key}; --t-punc: ${VSCODE.dark.punc};
   }
 }
 * { box-sizing: border-box; margin: 0; }
@@ -107,7 +107,7 @@ const esc = (s: string): string =>
 const COPY_ICON = `<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="2"/><path d="M10.5 3.5v-.25A1.75 1.75 0 0 0 8.75 1.5h-5.5A1.75 1.75 0 0 0 1.5 3.25v5.5c0 .97.78 1.75 1.75 1.75h.25"/></svg>`;
 const CHECK_ICON = `<svg class="done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.25 3.25L13 4.75"/></svg>`;
 
-/** Something to copy: coloured with Pierre, with a copy button floating at its right (centred on one command, in the corner of a block). */
+/** Something to copy: coloured like VS Code, with a copy button floating at its right (centred on one command, in the corner of a block). */
 const copyRow = (text: string, label: string, lang: CodeLang): string =>
   `<div class="box copyrow ${lang === "json" ? "block" : "line"}"><code>${highlight(text, lang)}</code><button type="button" class="copy" data-copy="${esc(text)}" aria-label="Copy ${esc(label)}" title="Copy">${COPY_ICON}${CHECK_ICON}</button></div>`;
 
