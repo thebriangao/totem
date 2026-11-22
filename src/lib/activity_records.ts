@@ -122,18 +122,29 @@ const isStatus = (e: unknown, ...statuses: number[]): boolean => e instanceof Wh
  * sleep), then sleep-details for sleeps and naps. Returns null on 404.
  */
 export async function readActivity(client: WhoopClient, id: string): Promise<ActivityRecord | null> {
+  let recordFailed = false;
   try {
     const rec = recordFromActivity(await client.get(activityRecordPath(id), {}, { fresh: true }));
     if (rec && rec.type) return rec;
-  } catch {
-    // The record GET is a convenience (unverified for sleeps); the detail screens below decide.
+  } catch (e) {
+    // The record GET is the authoritative kind; the detail screens below are the fallback.
+    recordFailed = !isStatus(e, 404);
   }
+  let cardioPending = false;
   try {
     const rec = recordFromCardioDetails(await client.get(CARDIO_DETAILS_V1, { activityId: id }, { fresh: true }), id);
     if (rec.score_type !== "SLEEP" && rec.type) return rec;
   } catch (e) {
     if (isStatus(e, 404)) return null;
-    if (!isStatus(e, 400)) throw e; // 400 = a pending sleep
+    if (!isStatus(e, 400)) throw e; // 400 = a pending sleep, or any activity right after a write
+    cardioPending = true;
+  }
+  // sleep-details answers 200 for ANY existing activity id, workouts included
+  // (seen live), so it can't tell the kind apart. If the record read failed and
+  // cardio-details is still refusing, the kind is unknown: don't guess, or an
+  // edit or delete could be routed to the sleep endpoints for a workout.
+  if (recordFailed && cardioPending) {
+    throw new Error(`WHOOP couldn't say what kind of activity ${id} is right now (its record read failed and the detail screen is still processing). Nothing was changed; try again in a few seconds.`);
   }
   try {
     return recordFromSleepDetails(await client.get(sleepDetailsPath(id), {}, { fresh: true }), id);
