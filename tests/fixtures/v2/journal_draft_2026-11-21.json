@@ -1,0 +1,455 @@
+{
+ "integrations": null,
+ "journal": {
+  "tracked_behaviors": [
+   {
+    "behavior_tracker": {
+     "id": 177,
+     "created_at": 1706020926.004,
+     "updated_at": 1706020926.004,
+     "behavior_type": "NOT_ACTIONABLE",
+     "title": "Headache",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Experienced a headache?",
+     "time_label": null,
+     "time_context_label": null,
+     "magnitude": {
+      "type": "step",
+      "label": "to what extent?",
+      "units": null,
+      "interval": null,
+      "minimum_inclusive": null,
+      "maximum_inclusive": null,
+      "choices": [
+       {
+        "value": 0,
+        "label": "Slight"
+       },
+       {
+        "value": 1,
+        "label": "Moderate"
+       },
+       {
+        "value": 2,
+        "label": "Intense"
+       }
+      ],
+      "question_type": "LEVEL"
+     },
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "headache",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 177,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": true,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 171,
+     "created_at": 1694463651.048,
+     "updated_at": 1694464552.371,
+     "behavior_type": "NORMAL",
+     "title": "Momentous Sleep Pack",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Took Momentous Sleep Pack?",
+     "time_label": null,
+     "time_context_label": null,
+     "magnitude": null,
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "momentous-sleep-pack",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 171,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": null,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 79,
+     "created_at": 1617113027.847,
+     "updated_at": 1715280090.796,
+     "behavior_type": "NOT_ACTIONABLE",
+     "title": "Ovulation",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Ovulating?",
+     "time_label": null,
+     "time_context_label": null,
+     "magnitude": null,
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "ovulation",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 79,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": true,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 52,
+     "created_at": 1583522989.988,
+     "updated_at": 1669915317.664,
+     "behavior_type": "NORMAL",
+     "title": "Sauna",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": "",
+     "question_text": "Used a sauna?",
+     "time_label": "When did you stop?",
+     "time_context_label": "stopped at",
+     "magnitude": {
+      "type": "range",
+      "label": "for how long (minutes)?",
+      "units": "Minutes",
+      "interval": 1,
+      "minimum_inclusive": 1,
+      "maximum_inclusive": 300,
+      "choices": [],
+      "question_type": "FREEFORM"
+     },
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "sauna",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 52,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": null,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 43,
+     "created_at": 1582238367.547,
+     "updated_at": 1726253548.6,
+     "behavior_type": "NOT_ACTIONABLE",
+     "title": "Menstruation",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Menstruating?",
+     "time_label": null,
+     "time_context_label": null,
+     "magnitude": {
+      "type": "step",
+      "label": "Flow?",
+      "units": null,
+      "interval": null,
+      "minimum_inclusive": null,
+      "maximum_inclusive": null,
+      "choices": [
+       {
+        "value": 0,
+        "label": "Light"
+       },
+       {
+        "value": 1,
+        "label": "Moderate"
+       },
+       {
+        "value": 2,
+        "label": "Heavy"
+       }
+      ],
+      "question_type": "LEVEL"
+     },
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "menstruation",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 43,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": true,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 8,
+     "created_at": 1581464052.324,
+     "updated_at": 1739977591.092,
+     "behavior_type": "NORMAL",
+     "title": "Device (e.g. Phone) in Bed",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Viewed a screen device in bed?",
+     "time_label": null,
+     "time_context_label": null,
+     "magnitude": {
+      "type": "range",
+      "label": "How long did you use a device in bed (minutes)?",
+      "units": "Minutes",
+      "interval": 1,
+      "minimum_inclusive": 1,
+      "maximum_inclusive": 300,
+      "choices": [],
+      "question_type": "FREEFORM"
+     },
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "device-in-bed",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 8,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": "60",
+     "magnitude_input_value": 60,
+     "source": "USER",
+     "answered_yes": true,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 6,
+     "created_at": 1581464051.926,
+     "updated_at": 1739977488.164,
+     "behavior_type": "NORMAL",
+     "title": "Late Meal",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Ate food close to bedtime?",
+     "time_label": "When was your last meal?",
+     "time_context_label": "stopped eating at",
+     "magnitude": null,
+     "default_tracker": true,
+     "question_type": "YES_NO",
+     "internal_name": "late-meal",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 6,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": false,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 2,
+     "created_at": 1581464050.973,
+     "updated_at": 1739977534.217,
+     "behavior_type": "NORMAL",
+     "title": "Caffeine",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Consumed caffeine?",
+     "time_label": "When was your last serving?",
+     "time_context_label": "last serving at",
+     "magnitude": {
+      "type": "range",
+      "label": "How many servings of caffeine did you have?",
+      "units": "Servings",
+      "interval": 1,
+      "minimum_inclusive": 1,
+      "maximum_inclusive": 10,
+      "choices": [],
+      "question_type": "MAGNITUDE"
+     },
+     "default_tracker": true,
+     "question_type": "YES_NO",
+     "internal_name": "caffeine",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 2,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": 2,
+     "source": "AI",
+     "answered_yes": true,
+     "ever_ai_sourced": true
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 1,
+     "created_at": 1581464050.173,
+     "updated_at": 1739977391.663,
+     "behavior_type": "NEGATIVE",
+     "title": "Alcohol",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Have any alcoholic drinks?",
+     "time_label": "When was your last drink?",
+     "time_context_label": "stopped at",
+     "magnitude": {
+      "type": "range",
+      "label": "How many alcoholic drinks did you have?",
+      "units": "Drinks",
+      "interval": 1,
+      "minimum_inclusive": 1,
+      "maximum_inclusive": 20,
+      "choices": [],
+      "question_type": "MAGNITUDE"
+     },
+     "default_tracker": true,
+     "question_type": "YES_NO",
+     "internal_name": "alcohol",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": -2023329784,
+     "created_at": 1795312912.427,
+     "updated_at": 1795312912.427,
+     "behavior_tracker_id": 1,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": null,
+     "ever_ai_sourced": false
+    }
+   },
+   {
+    "behavior_tracker": {
+     "id": 163752,
+     "created_at": 1795315383.95,
+     "updated_at": 1795315496.999,
+     "behavior_type": "NORMAL",
+     "title": "Probe Hip Mobility",
+     "status": "active",
+     "category": "BEHAVIORS",
+     "journal_view_category": "BEHAVIORS",
+     "sticky": false,
+     "description": null,
+     "question_text": "Did you do hip mobility work today?",
+     "time_label": null,
+     "time_context_label": null,
+     "magnitude": null,
+     "default_tracker": false,
+     "question_type": "YES_NO",
+     "internal_name": "custom-163752",
+     "weekly_plan_goal": null,
+     "destination": null
+    },
+    "tracker_input": {
+     "journal_entry_id": 0,
+     "created_at": 1795315404.628,
+     "updated_at": 1795315404.628,
+     "behavior_tracker_id": 163752,
+     "time_input_value": null,
+     "time_input_label": null,
+     "magnitude_input_label": null,
+     "magnitude_input_value": null,
+     "source": "USER",
+     "answered_yes": true,
+     "ever_ai_sourced": false
+    }
+   }
+  ],
+  "user_id": 1,
+  "cycle_id": 1974268448,
+  "journal_entry_id": 0,
+  "notes": "synthetic note",
+  "user_reviewed": true,
+  "journal_entry_date": null
+ },
+ "metadata": {},
+ "experiment_variant": "neutral-state-for-all-behaviors"
+}

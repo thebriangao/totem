@@ -6,8 +6,9 @@ import { JournalBehaviorSchema } from "../../src/schemas/journal.js";
 import { OfficialExerciseSchema } from "../../src/schemas/strength.js";
 
 describe("bundled catalogs", () => {
-  it("has 308 behaviors", () => {
-    expect(BEHAVIORS.length).toBe(308);
+  it("has 309 behaviors (incl. 171, Momentous Sleep Pack)", () => {
+    expect(BEHAVIORS.length).toBe(309);
+    expect(BEHAVIORS_BY_ID.get(171)?.internal_name).toBe("momentous-sleep-pack");
   });
 
   it("every behavior parses against its schema", () => {

@@ -1,0 +1,146 @@
+{
+ "integrations": [
+  {
+   "section_title": null,
+   "tabs": [
+    {
+     "id": "apple-health",
+     "reporting_key": "apple-health",
+     "display_type": "BANNER",
+     "title_display": "APPLE HEALTH",
+     "subtitle_display": "Enable to import data from other apps into WHOOP and to share your data to Apple Health.",
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": "Connect now",
+     "banner_image": "https://d2iyx8dop2jz52.cloudfront.net/images/banner_images/apple_health_banner_image.png",
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/apple_health_integration_app_icon.png"
+    }
+   ]
+  },
+  {
+   "section_title": "NOT CONNECTED",
+   "tabs": [
+    {
+     "id": "61b11da1-ea15-4e59-8fe3-00e684a2bff0",
+     "reporting_key": "Clue",
+     "display_type": "SIMPLE",
+     "title_display": "CLUE",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/clue_integration_app_icon.png"
+    },
+    {
+     "id": "9d019f6a-7884-4704-9c92-7422e806e1b2",
+     "reporting_key": "Cronometer",
+     "display_type": "SIMPLE",
+     "title_display": "CRONOMETER",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/cronometer_integration_app_icon_white.png"
+    },
+    {
+     "id": "healthex",
+     "reporting_key": "HealthEx",
+     "display_type": "SIMPLE",
+     "title_display": "HEALTH RECORDS",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/healthex_integration_app_icon.png"
+    },
+    {
+     "id": "fe4e7b12-3f09-46ec-b410-72366c87b260",
+     "reporting_key": "Natural Cycles\u00b0",
+     "display_type": "SIMPLE",
+     "title_display": "NATURAL CYCLES\u00b0",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://app-cdn.prod.whoop.com/natural_cycles/natural_cycles_icon.png"
+    },
+    {
+     "id": "peloton",
+     "reporting_key": "Peloton",
+     "display_type": "SIMPLE",
+     "title_display": "PELOTON",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": false,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/peloton_integration_app_icon_white.png"
+    },
+    {
+     "id": "35f9f8bc-7c18-41b8-86d8-2a2c07fcc182",
+     "reporting_key": "pliability",
+     "display_type": "SIMPLE",
+     "title_display": "PLIABILITY",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/pliability_integration_app_icon_white.png"
+    },
+    {
+     "id": "strava",
+     "reporting_key": "Strava",
+     "display_type": "SIMPLE",
+     "title_display": "STRAVA",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d1p6er1a4zdb42.cloudfront.net/strava/strava_integration_icon.png"
+    },
+    {
+     "id": "trainingpeaks",
+     "reporting_key": "TrainingPeaks",
+     "display_type": "SIMPLE",
+     "title_display": "TRAININGPEAKS",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/trainingpeaks_integration_app_icon_white.png"
+    },
+    {
+     "id": "withings",
+     "reporting_key": "Withings",
+     "display_type": "SIMPLE",
+     "title_display": "WITHINGS",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": null,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/withings_integration_app_icon.png"
+    },
+    {
+     "id": "zwift",
+     "reporting_key": "ZWIFT",
+     "display_type": "SIMPLE",
+     "title_display": "ZWIFT",
+     "subtitle_display": null,
+     "connected": false,
+     "connected_from3_p": false,
+     "cta_text": null,
+     "banner_image": null,
+     "icon_image": "https://d2iyx8dop2jz52.cloudfront.net/images/app_icons/zwift_integration_app_icon_white.png"
+    }
+   ]
+  }
+ ]
+}

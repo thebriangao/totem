@@ -1,0 +1,36 @@
+{
+ "zones": [
+  {
+   "id": "ZONE_0",
+   "min": 0,
+   "max": 102
+  },
+  {
+   "id": "ZONE_1",
+   "min": 103,
+   "max": 126
+  },
+  {
+   "id": "ZONE_2",
+   "min": 127,
+   "max": 137
+  },
+  {
+   "id": "ZONE_3",
+   "min": 138,
+   "max": 149
+  },
+  {
+   "id": "ZONE_4",
+   "min": 150,
+   "max": 160
+  },
+  {
+   "id": "ZONE_5",
+   "min": 161,
+   "max": 172
+  }
+ ],
+ "effective_timestamp": null,
+ "max_hr_entry_field": null
+}
