@@ -126,6 +126,8 @@ export const LiftLibraryOut = z.union([
       name: z.string(),
       exercise_count: z.number().int(),
       last_used: z.string().nullable(),
+      created_at: z.string().nullable(),
+      source: z.string().nullable(),
     })),
     whoop_workouts: z.array(z.object({
       template_id: z.number().int(),

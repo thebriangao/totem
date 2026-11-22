@@ -6,13 +6,15 @@ export function projectLibraryList(raw: unknown): LiftLibraryOutT {
   const my = asArray(root.my_workouts_list)
     .map((w) => {
       if (!isObject(w)) return null;
-      const tid = asNumber(w.template_id ?? w.id);
+      const tid = asNumber(w.workout_template_key ?? w.template_id ?? w.id);
       if (tid === null) return null;
       return {
         template_id: tid,
         name: asString(w.name) ?? "",
         exercise_count: asNumber(w.exercise_count) ?? 0,
         last_used: asString(w.last_used),
+        created_at: asString(w.created_at),
+        source: asString(w.source),
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -23,7 +25,7 @@ export function projectLibraryList(raw: unknown): LiftLibraryOutT {
       if (tid === null) return null;
       return {
         template_id: tid,
-        name: asString(w.name) ?? "",
+        name: asString(w.name) ?? asString(w.title) ?? "",
         exercise_count: asNumber(w.exercise_count) ?? 0,
       };
     })
