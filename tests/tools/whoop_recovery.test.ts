@@ -28,6 +28,8 @@ describe("whoop_recovery projection", () => {
     });
     const cal = projectHealthMonitor(fx("monitor_calibrating"))!;
     expect(cal).toMatchObject({ spo2_pct: null, skin_temp_dev_f: null, with_values: 0, note: "Log 7 more sleeps to fully calibrate your ranges." });
+    // All five ranges are "NONE" while calibrating: nothing worth sending.
+    expect(cal.status).toEqual({});
   });
 
   it("parses assessment windows into inclusive {start, end} dates", () => {

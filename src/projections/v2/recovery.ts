@@ -86,7 +86,8 @@ export function projectHealthMonitor(raw: unknown): HealthMonitor | null {
   const value = (id: string): number | null => displayNumber(tiles.get(id)?.key_metric_tile_stat_value_display);
   const ranges = get(raw, "analytics", "ranges");
   const status: Record<string, string> = {};
-  if (isNode(ranges)) for (const [k, v] of Object.entries(ranges)) if (typeof v === "string") status[k] = v;
+  // "NONE" is WHOOP's "no range yet" (calibrating, or no value): five of them say nothing.
+  if (isNode(ranges)) for (const [k, v] of Object.entries(ranges)) if (typeof v === "string" && v !== "NONE") status[k] = v;
   const callout = nodes(raw.items).find((i) => i.type === "INFO_CALLOUT_TILE");
   const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
   return {
