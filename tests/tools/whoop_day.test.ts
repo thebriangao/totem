@@ -87,6 +87,16 @@ describe("whoop_day projection", () => {
     expect(out.strain?.calories).toBe(2104);
   });
 
+  // Live: home?date=2026-11-10 (before the account existed) carries
+  // whoop_live_metadata {day_strain: 0.0, recovery_score: 0, ms_of_sleep: 0, calories: 0}.
+  it("does not report the live-metadata 0 of a no-data day as zero calories", () => {
+    const home = fx("home_populated") as Record<string, any>;
+    home.pillars[0].sections[1].items = home.pillars[0].sections[1].items.filter((i: any) => i.content.trend_key !== "CALORIES");
+    home.metadata.whoop_live_metadata = { day_strain: 0.0, recovery_score: 0, ms_of_sleep: 0, calories: 0 };
+    const out = projectDay({ date: "2026-11-10", isToday: false, include: new Set<DaySection>(["strain"]), home });
+    expect(out.strain?.calories).toBeNull();
+  });
+
   it("finds activity tiles wherever the card sits (day-zero cards vs activity_items_card)", () => {
     expect(activityTiles(fx("home_day_zero_naps")).filter((t) => t.name === "nap").map((t) => t.status)).toEqual(["INCOMPLETE", "PENDING"]);
     expect(activityTiles(fx("home_populated"))).toHaveLength(5);

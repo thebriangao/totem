@@ -152,10 +152,14 @@ export function homeCycle(home: unknown): HomeCycle {
   };
 }
 
-/** whoop_live_metadata.calories: the fallback when the CALORIES key stat is missing. */
+/**
+ * whoop_live_metadata.calories: the fallback when the CALORIES key stat is missing.
+ * WHOOP sends 0 here for a day with no data (it sends 0 for every field), so 0 is
+ * "nothing recorded", never a measured day.
+ */
 export function liveCalories(home: unknown): number | null {
   const v = get(home, "metadata", "whoop_live_metadata", "calories");
-  return typeof v === "number" ? v : null;
+  return typeof v === "number" && v > 0 ? v : null;
 }
 
 export const kinds = (tiles: ActivityTile[], kind: ActivityKind): ActivityTile[] => tiles.filter((t) => t.type === kind);
