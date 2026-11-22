@@ -8,7 +8,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { defineTool, respond, type ToolResult } from "../define.js";
 import { WRITE_DESTRUCTIVE } from "../annotations.js";
 import { PreferencesSetOut } from "../../schemas/settings_v2.js";
-import { projectBehaviorToggles, projectDashboard, projectJournalPrefs, projectNotifications } from "../../projections/settings_v2.js";
+import { dashboardOptions, projectBehaviorToggles, projectDashboard, projectJournalPrefs, projectNotifications } from "../../projections/settings_v2.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { asString, isObject } from "../../lib/walk.js";
@@ -207,11 +207,24 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
     if (pinned && dupes(pinned).length > 0) return fail(`Pinned twice: ${dupes(pinned).join(", ")}.`);
     // Omitting gauge_metrics resets the gauges to HRV + SLEEP_PERFORMANCE, so
     // both lists are always sent: whatever isn't changing comes from a fresh read.
-    const before = await c.get(P.dashboardRead, {}, { fresh: true }).then(projectDashboard).catch(() => null);
-    if (!before && (!gauges || !pinned)) {
-      return fail("Couldn't read the current dashboard, and WHOOP resets whatever list isn't sent. Pass both gauges and pinned, or retry.");
+    const raw = await c.get(P.dashboardRead, {}, { fresh: true }).catch(() => null);
+    if (raw === null) {
+      return fail("Couldn't read the current dashboard: WHOOP resets whatever list isn't sent, and the screen is what says which metrics your account offers. Nothing was sent; retry.");
     }
-    const target = { gauges: [...(gauges ?? before!.gauges)], pinned: [...(pinned ?? before!.pinned)] };
+    const before = projectDashboard(raw);
+    // The zod enums are WHOOP's whole KeyMetric enum (learned from a 400), which
+    // includes metrics the app never offers here (CGM, PREGNANCY_WEEK, …). Only
+    // send what this account's own screen offers, as the app does.
+    const offered = dashboardOptions(raw);
+    const notGauge = (gauges ?? []).filter((m) => !offered.gauges.includes(m));
+    if (notGauge.length > 0) {
+      return fail(`WHOOP doesn't offer ${notGauge.join(", ")} as a focus gauge on your account.`, { gauge_options: offered.gauges });
+    }
+    const notPinnable = (pinned ?? []).filter((m) => !offered.pinnable.includes(m));
+    if (notPinnable.length > 0) {
+      return fail(`WHOOP doesn't offer ${notPinnable.join(", ")} as a dashboard metric on your account.`, { pinned_options: offered.pinnable });
+    }
+    const target = { gauges: [...(gauges ?? before.gauges)], pinned: [...(pinned ?? before.pinned)] };
     if (target.gauges.length !== 2) return fail("The current dashboard doesn't have 2 focus gauges; pass gauges too.");
     return {
       method: "PUT",
@@ -219,7 +232,7 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
       body: { gauge_metrics: target.gauges, pinned_metrics: target.pinned },
       before,
       target,
-      noChange: before !== null && eq(before, target),
+      noChange: eq(before, target),
       readBack: async () => projectDashboard(await c.get(P.dashboardRead, {}, { fresh: true })),
       matches: (a) => eq(a, target),
       warnings: [],

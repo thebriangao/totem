@@ -49,6 +49,19 @@ export function projectDashboard(raw: unknown) {
   };
 }
 
+/**
+ * What the dashboard screen offers this account: the gauge picker
+ * (`bottom_sheet_metrics`) and every metric that can be pinned (the pinned and
+ * unpinned sections). The app only ever sends values from these lists.
+ */
+export function dashboardOptions(raw: unknown) {
+  const r = isObject(raw) ? raw : {};
+  return {
+    gauges: asArray(r.bottom_sheet_metrics).flatMap((m) => (isObject(m) && asString(m.metric) ? [m.metric as string] : typeof m === "string" ? [m] : [])),
+    pinnable: [...metricsOf(r.pinned_metrics_section), ...metricsOf(r.unpinned_metrics_section)],
+  };
+}
+
 export interface BehaviorToggle {
   id: number;
   title: string | null;

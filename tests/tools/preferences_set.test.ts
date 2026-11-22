@@ -80,6 +80,36 @@ describe("whoop_preferences_set: dashboard", () => {
     expect(whoop.put).not.toHaveBeenCalled();
   });
 
+  it("only writes metrics the live dashboard screen offers, not everything in WHOOP's KeyMetric enum", async () => {
+    // KEY_METRICS came from a 400's enum list; the app only ever sends what its own screen offers
+    // (gauges: bottom_sheet_metrics; pinned: the pinned + unpinned sections). CGM, PREGNANCY_WEEK and
+    // STRESS_MONITOR are enum values this account's gauge picker doesn't have.
+    for (const args of [
+      { gauges: ["CGM", "HRV"] },
+      { gauges: ["STRESS_MONITOR", "HRV"] },
+      { pinned: ["HRV", "PREGNANCY_WEEK"] },
+    ]) {
+      const whoop = mockWhoop({ [DASH_READ]: dash });
+      const { result, out } = await call(whoop, { setting: "dashboard", ...args });
+      expect(result.isError).toBe(true);
+      expect(out.error).toMatch(/doesn't offer/);
+      expect(whoop.put).not.toHaveBeenCalled();
+    }
+    // Offered ones still go through: WEIGHT as a gauge, RECOVERY pinned.
+    const pinned = ["RECOVERY", "HRV"];
+    const whoop = mockWhoop({ [DASH_READ]: seq(dash, after(["WEIGHT", "STEPS"], pinned)) });
+    const { out } = await call(whoop, { setting: "dashboard", gauges: ["WEIGHT", "STEPS"], pinned });
+    expect(whoop.put).toHaveBeenCalledWith(DASH_WRITE, { gauge_metrics: ["WEIGHT", "STEPS"], pinned_metrics: pinned });
+    expect(out.verified).toBe(true);
+  });
+
+  it("refuses when the dashboard can't be read, even with both lists passed (nothing to check them against)", async () => {
+    const whoop = mockWhoop({ [DASH_READ]: new Error("down") });
+    const { result } = await call(whoop, { setting: "dashboard", gauges: ["RHR", "STEPS"], pinned: ["HRV"] });
+    expect(result.isError).toBe(true);
+    expect(whoop.put).not.toHaveBeenCalled();
+  });
+
   it("requires exactly two gauges, never the fixed ones, no duplicates", async () => {
     for (const gauges of [["RHR"], ["RHR", "STEPS", "HRV"], ["RECOVERY", "HRV"], ["HRV", "HRV"]]) {
       const whoop = mockWhoop({ [DASH_READ]: dash });
