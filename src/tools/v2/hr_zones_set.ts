@@ -80,13 +80,13 @@ export function registerHrZonesSet(server: McpServer, client: WhoopClient): void
         };
       }
       if (mode === "max_hr") {
-        const current = projectHrZones({ zones: {}, settings: await client.get("/hr-zones-service/v1/bff/settings") });
+        const current = projectHrZones({ zones: {}, settings: await client.get("/hr-zones-service/v1/bff/settings", {}, { fresh: true }) });
         if (current.max_hr === max_hr) {
           const out = HrZonesSetOut.parse({ updated: false, no_change: true, mode });
           return { content: [{ type: "text", text: jsonOut(out) }] };
         }
       } else {
-        const current = projectHrZones({ zones: await client.get("/hr-zones-service/v1/bff/zones"), settings: {} });
+        const current = projectHrZones({ zones: await client.get("/hr-zones-service/v1/bff/zones", {}, { fresh: true }), settings: {} });
         const sameZones = current.is_custom && current.zones.length === zones!.length && current.zones.every((zone, index) =>
           zone.id === zones![index]!.id && zone.min === zones![index]!.min && zone.max === zones![index]!.max,
         );
