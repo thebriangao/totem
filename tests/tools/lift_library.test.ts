@@ -14,6 +14,27 @@ describe("whoop_lift_library", () => {
     expect(JSON.stringify(out).length).toBeLessThan(1500);
   });
 
+  // The lists and a template's sets are positional rows with no column names in the output, so
+  // the listed description is the only place their order is stated (it was cut once for size).
+  it("the description states the order of every positional row the tool returns", async () => {
+    const get = routes({
+      "/weightlifting-service/v3/workout-library": fixture("library"),
+      "/weightlifting-service/v2/workout-template/18085254": fixture("template"),
+      "/users-service/v2/bootstrap": IMPERIAL,
+    });
+    const client = await connect(registerLiftLibrary, { get });
+    const description = (await client.listTools()).tools[0]!.description!;
+    const list = body(await client.callTool({ name: "whoop_lift_library", arguments: {} }));
+    expect(list.my[0]).toHaveLength(2);
+    expect(description).toContain("[template_key, name]");
+    expect(list.whoop[0]).toHaveLength(3);
+    expect(description).toContain("[prebuilt_id, title, minutes]");
+    const one = body(await client.callTool({ name: "whoop_lift_library", arguments: { template_key: 18085254 } }));
+    expect(one.template.exercises[0].sets[0]).toHaveLength(2);
+    expect(description).toContain("[weight, reps] ([weight, seconds] if timed)");
+    expect(description.length).toBeLessThanOrEqual(450);
+  });
+
   it("one template, weights labelled with the display unit", async () => {
     const get = routes({
       "/weightlifting-service/v2/workout-template/18085254": fixture("template"),
