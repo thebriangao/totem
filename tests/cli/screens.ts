@@ -201,6 +201,11 @@ export const SCREENS: Screen[] = [
   { name: "ping-down", command: "totem ping", about: "The server doesn't answer.", world: { http: down }, setup: onFly },
   { name: "error-token-on-terminal", command: "totem token", about: "The token isn't printed to a terminal unless asked.", world: { tty: true }, setup: onFly },
   { name: "deploy-self-hosted", command: "totem deploy", about: "Deploying to a self-hosted server isn't something totem can do.", setup: onCustom },
+  { name: "deploy-server", command: "totem deploy", about: "Deploying the install's code again (the host's own output streams between the lines).", setup: onFly },
+  { name: "deploy-failed", command: "totem deploy", about: "The host's deploy command fails.", world: { run: () => 1 }, setup: onFly },
+  { name: "error-logs-cli-missing", command: "totem logs", about: "The server was deployed from another machine: the host's CLI isn't here.", world: { missing: ["fly", "flyctl"] }, setup: onFly },
+  { name: "status-server-host", command: "totem status --host", about: "Status with the host's own view (its output streams after the $ line).", setup: onFly },
+  { name: "status-server-no-login", command: "totem status", about: "The server is up but its WHOOP login is gone.", world: { auth: { remoteStatus: { ok: true, status: { state: "expired", role: "owner", durable: true, detail: "WHOOP refused the refresh token" } } } }, setup: onFly },
 
   // ── update ─────────────────────────────────────────────────────────────
   { name: "update-check-available", command: "totem update --check", about: "Update available.", world: { exec: versions, http: github }, setup: gitCheckout },

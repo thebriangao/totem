@@ -347,6 +347,8 @@ async function runStep(d: Deploy, step: HostStep): Promise<"ok" | "skipped" | "c
   for (;;) {
     const started = sys.now();
     let result: ExecResult | boolean = false;
+    // An attached command prints for itself: say what it is first.
+    if (step.attached || d.verbose) ui.info(`${step.label}${ui.kit.g.ellipsis}`);
     for (let attempt = 0; attempt <= (step.retries ?? 0); attempt++) {
       if (attempt > 0) await ui.task(`The host didn't answer; trying again (${attempt}/${step.retries})`, () => sys.sleep(2500));
       result = step.attached || d.verbose ? await step.run(() => {}) : await ui.task(step.label, step.run, { slow: Boolean(step.slow) });
@@ -551,8 +553,9 @@ async function deployRailway(d: Deploy): Promise<string | null> {
     {
       // Railway volumes mount root-owned; the image's entrypoint hands /data to
       // the unprivileged user before starting the server.
-      label: "Adding the volume for the login", done: "Volume added at /data", retries: 1,
-      run: hostCommand(d, "railway", ["volume", "add", "--mount-path", "/data"]),
+      // Attached: with more than one service in the project, Railway asks which.
+      label: "Adding the volume for the login", done: "Volume added at /data", retries: 1, attached: true,
+      run: async () => (await sys.run("railway", ["volume", "add", "--mount-path", "/data"], { cwd: d.root })) === 0,
       optional: "Without a volume every restart or redeploy needs totem auth again.",
     },
     {

@@ -75,11 +75,33 @@ function remoteDeploy(app: AppCtx, io: Io, what: string): DeployInfo | null {
 
 // ── deploy / logs / status ──────────────────────────────────────────────────
 
-/** The host commands that deploy this install's code again, in order. */
-export function deployCommands(d: DeployInfo, extra: string[] = []): Array<[cmd: string, args: string[]]> | null {
+const HOST_CLI: Record<string, { names: string[]; install: string }> = {
+  fly: { names: ["fly", "flyctl"], install: "brew install flyctl" },
+  railway: { names: ["railway"], install: "npm i -g @railway/cli" },
+  cloudrun: { names: ["gcloud"], install: "brew install --cask google-cloud-sdk" },
+};
+
+/**
+ * The host's CLI on this machine ("fly" or "flyctl", whichever is installed),
+ * or an explanation printed and null. A server deployed from another machine
+ * leaves this one without the CLI: say that, not "spawn fly ENOENT".
+ */
+function hostCli(io: Io, d: DeployInfo, command: string): string | null {
+  const cli = HOST_CLI[d.platform];
+  if (!cli) return null;
+  const found = cli.names.find((n) => io.sys.has(n));
+  if (found) return found;
+  io.ui.error(`${command} needs the ${HOST_NAME[d.platform] ?? d.platform} CLI (${cli.names[0]}), which isn't installed on this machine.`, {
+    fix: [["Install it", cli.install], ["Then", command]],
+  });
+  return null;
+}
+
+/** The host commands that deploy this install's code again, in order. `fly` is the Fly binary to use. */
+export function deployCommands(d: DeployInfo, extra: string[] = [], fly = "fly"): Array<[cmd: string, args: string[]]> | null {
   switch (d.platform) {
     case "fly":
-      return [["fly", ["deploy", ...(d.app ? ["-a", d.app] : []), ...extra]]];
+      return [[fly, ["deploy", ...(d.app ? ["-a", d.app] : []), ...extra]]];
     case "railway":
       return [...(d.app ? [["railway", ["link", "--project", d.app]] as [string, string[]]] : []), ["railway", ["up", ...extra]]];
     case "cloudrun":
@@ -93,7 +115,8 @@ export function deployCommands(d: DeployInfo, extra: string[] = []): Array<[cmd:
 /** `totem deploy` with its output captured (for the updater). */
 export async function redeployCaptured(app: AppCtx, io: Io, onLine: (line: string) => void): Promise<ExecResult> {
   const d = detectDeploy(app.root, io.sys.env);
-  const commands = d ? deployCommands(d) : null;
+  const fly = ["fly", "flyctl"].find((n) => io.sys.has(n)) ?? "fly";
+  const commands = d ? deployCommands(d, [], fly) : null;
   if (!commands) return { code: 1, stdout: "", stderr: "no deployment that totem can deploy to" };
   let last: ExecResult = { code: 0, stdout: "", stderr: "" };
   for (const [cmd, args] of commands) {
@@ -108,13 +131,15 @@ async function deploy(args: string[], app: AppCtx, io: Io): Promise<number> {
   const d = remoteDeploy(app, io, "totem deploy");
   if (!d) return 1;
   const extra = args.filter((a) => a !== "--");
-  const commands = deployCommands(d, extra);
-  if (!commands) {
+  if (!HOST_CLI[d.platform]) {
     ui.error("totem can't deploy to a self-hosted server from here.", {
       detail: "On its host: rebuild the image (docker build -t totem .) and start it again.",
     });
     return 1;
   }
+  const cli = hostCli(io, d, "totem deploy");
+  if (!cli) return 1;
+  const commands = deployCommands(d, extra, cli)!;
   ui.header("totem deploy", `Deploy this install's code to ${HOST_NAME[d.platform] ?? d.platform}${d.app ? ` (${d.app})` : ""}.`);
   if (d.platform === "fly") {
     const toml = resolve(app.root, "fly.toml");
@@ -145,9 +170,15 @@ async function logs(args: string[], app: AppCtx, io: Io): Promise<number> {
   const d = remoteDeploy(app, io, "totem logs");
   if (!d) return 1;
   const extra = args.filter((a) => a !== "--");
+  if (!HOST_CLI[d.platform]) {
+    ui.error("The logs of a self-hosted server are on its host.", { detail: "There: docker logs <container>" });
+    return 1;
+  }
+  const cli = hostCli(io, d, "totem logs");
+  if (!cli) return 1;
   switch (d.platform) {
     case "fly":
-      return sys.run("fly", ["logs", ...(d.app ? ["-a", d.app] : []), ...extra], { cwd: app.root });
+      return sys.run(cli, ["logs", ...(d.app ? ["-a", d.app] : []), ...extra], { cwd: app.root });
     case "railway":
       if (d.app) await sys.run("railway", ["link", "--project", d.app], { cwd: app.root });
       return sys.run("railway", ["logs", ...extra], { cwd: app.root });
@@ -155,7 +186,6 @@ async function logs(args: string[], app: AppCtx, io: Io): Promise<number> {
       return sys.run("gcloud", ["run", "services", "logs", "read", d.app ?? "totem", "--region", d.region ?? "us-west1",
         ...(d.project ? ["--project", d.project] : []), ...extra], { cwd: app.root });
     default:
-      ui.error("The logs of a self-hosted server are on its host.", { detail: "There: docker logs <container>" });
       return 1;
   }
 }
@@ -218,7 +248,8 @@ async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
 
   if (args.includes("--host")) {
     // The host's own view, in its own words.
-    const view: [string, string[]] | null = d.platform === "fly" && d.app ? ["fly", ["status", "-a", d.app]]
+    const fly = ["fly", "flyctl"].find((n) => sys.has(n)) ?? "fly";
+    const view: [string, string[]] | null = d.platform === "fly" && d.app ? [fly, ["status", "-a", d.app]]
       : d.platform === "railway" ? ["railway", ["status"]]
       : d.platform === "cloudrun" && d.app ? ["gcloud", ["run", "services", "describe", d.app, "--region", d.region ?? "us-west1", ...(d.project ? ["--project", d.project] : []), "--format=value(status.url,status.latestReadyRevisionName)"]]
       : null;
