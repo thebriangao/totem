@@ -49,7 +49,7 @@ const FOLLOWER_MIN_LIFE_MS = 30_000;
 export class WhoopNotLoggedInError extends WhoopAuthExpiredError {
   constructor(where: string) {
     super();
-    this.message = `No WHOOP login on this server (${where}). Run \`totem auth\` to log in.`;
+    this.message = `No WHOOP login on this server (${where}). Run \`totem auth\` to log in (without the totem command: \`npx @thebriangao/totem auth --local\`).`;
     this.name = "WhoopNotLoggedInError";
   }
 }

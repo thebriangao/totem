@@ -141,6 +141,10 @@ const SITES: Record<string, { name: string; logo: ClientLogoId }> = {
   "chat.openai.com": { name: "ChatGPT", logo: "openai" },
   "vscode.dev": { name: "VS Code", logo: "vscode" },
   "insiders.vscode.dev": { name: "VS Code", logo: "vscode" },
+  // Cursor's web agents and Antigravity sign in through their own sites.
+  "www.cursor.com": { name: "Cursor", logo: "cursor" },
+  "cursor.com": { name: "Cursor", logo: "cursor" },
+  "antigravity.google": { name: "Antigravity", logo: "antigravity" },
 };
 
 // Apps that take the redirect through their own URL scheme.

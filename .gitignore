@@ -69,3 +69,7 @@ tokens.json*
 # Cloudflare (wrangler)
 .wrangler/
 .dev.vars
+
+# Claude Desktop bundle (scripts/build-mcpb.mjs)
+build/
+*.mcpb

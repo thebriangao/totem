@@ -161,6 +161,10 @@ describe("consent page: who is asking, and where access goes", () => {
     expect(consentClient("vscode://vscode.github-authentication/did-authenticate")).toMatchObject({ name: "VS Code", logo: "vscode" });
     // A scheme totem doesn't know is shown as it is, whatever the client calls itself.
     expect(consentClient("evilapp://cb", "Cursor")).toEqual({ name: "evilapp://cb", logo: null, destination: "evilapp://cb" });
+    // Cursor's web agents and Antigravity, by their exact sign-in hosts only.
+    expect(consentClient("https://www.cursor.com/agents/mcp/oauth/callback")).toEqual({ name: "Cursor", logo: "cursor", destination: "www.cursor.com" });
+    expect(consentClient("https://antigravity.google/oauth-callback")).toEqual({ name: "Antigravity", logo: "antigravity", destination: "antigravity.google" });
+    expect(consentClient("https://antigravity.google.evil.example/cb", "Google Antigravity")).toMatchObject({ name: "antigravity.google.evil.example", logo: null });
   });
 
   it("shows a long host whole, wrapping instead of clipping it", () => {

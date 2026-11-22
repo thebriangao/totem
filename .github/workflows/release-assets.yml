@@ -1,0 +1,35 @@
+name: Release assets
+
+# Attaches totem.mcpb (the Claude Desktop extension) to every release, under a
+# fixed name so the README can link to
+# https://github.com/thebriangao/totem/releases/latest/download/totem.mcpb
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the bundle to"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  mcpb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npx tsc
+      - run: node scripts/build-mcpb.mjs
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" build/totem.mcpb --clobber
