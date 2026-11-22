@@ -36,7 +36,8 @@ export function registerProfile(server: McpServer, client: WhoopClient): void {
       client.get("/users-service/v2/bootstrap"),
       soft("Profile details", client.get("/profile-service/v1/profile/bff/edit")),
       soft("Stealth mode", client.get("/users-service/v1/stealth-mode")),
-      Promise.all(HIDDEN_METRICS.map((m) => client.get(`/users-service/v1/hidden-metrics/${m}`).catch(() => null))),
+      // A failed read must not look like "not hidden": say so.
+      Promise.all(HIDDEN_METRICS.map((m) => soft(`Hidden-metric state for ${m}`, client.get(`/users-service/v1/hidden-metrics/${m}`)))),
       wants.has("hr_zones") ? soft("HR zones", client.get("/hr-zones-service/v1/bff/zones")) : null,
       wants.has("hr_zones") ? soft("HR zone settings", client.get("/hr-zones-service/v1/bff/settings")) : null,
       wants.has("entitlements") ? soft("Entitlements", client.get("/entitlement-service/v1/entitlements")) : null,

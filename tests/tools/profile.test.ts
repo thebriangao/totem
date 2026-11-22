@@ -52,6 +52,15 @@ describe("whoop_profile tool", () => {
     expect(out.warnings.join(" ")).toMatch(/Profile details unavailable/);
   });
 
+  it("says so when a hidden-metric read fails, instead of looking like nothing is hidden", async () => {
+    // jsonOut drops an empty hidden_metrics list, so without a warning "unknown" reads as "none hidden".
+    const whoop = mockWhoop({ ...BASE, "/users-service/v1/hidden-metrics/BODY_COMP": new Error("down") });
+    const client = await connect(registerProfile, whoop);
+    const out = parse(await client.callTool({ name: "whoop_profile", arguments: {} }));
+    expect(out).not.toHaveProperty("hidden_metrics");
+    expect(out.warnings.join(" ")).toMatch(/BODY_COMP unavailable/);
+  });
+
   it("adds the requested includes", async () => {
     const whoop = mockWhoop({
       ...BASE,
