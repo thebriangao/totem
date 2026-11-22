@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { body, connect, fixture, routes } from "./lift_v2_harness.js";
 import { registerLiftSessions } from "../../src/tools/v2/lift_sessions.js";
+import { WhoopApiError } from "../../src/whoop/errors.js";
 
 const repoFixture = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
 const SCORED = "5364dc07-c229-481f-b92f-0d7ee402fbbf";
@@ -36,9 +37,9 @@ describe("whoop_lift_sessions", () => {
     expect(s.exercises[0]).toMatchObject({ id: "LEGPRESS_PULLEYMACHINE", sets: "5x10", top: [200, 10], volume: 9600 });
     expect(s.exercises[0].rows).toBeUndefined();
     expect(JSON.stringify(out).length).toBeLessThan(2000);
-    // calendar pruning: only the two marked days were fetched, newest first
+    // calendar pruning: only the two marked days were fetched (in one paced chunk)
     const homeDates = get.mock.calls.filter((c) => c[0] === "/home-service/v1/home").map((c) => (c[1] as { date: string }).date);
-    expect(homeDates).toEqual(["2026-05-23", "2026-05-22"]);
+    expect(homeDates.sort()).toEqual(["2026-05-22", "2026-05-23"]);
     expect(get.mock.calls.some((c) => String(c[0]).startsWith("/developer/"))).toBe(false);
   });
 
@@ -66,9 +67,22 @@ describe("whoop_lift_sessions", () => {
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { start_date: "2026-11-21", end_date: "2026-11-21", include: ["sets"] } }));
     expect(out.sessions).toHaveLength(1);
     expect(out.sessions[0]).toMatchObject({ id: PENDING, src: "history", start: expect.stringContaining("2026-11-21") });
-    expect(out.sessions[0].exercises).toEqual([{ id: "BENCHPRESS_BARBELL", name: "Bench Press - Barbell", sets: "2x5", top: [100, 5], volume: 1000, medals: ["SILVER", "GOLD"], rows: [[100, 5], [100, 5]] }]);
+    expect(out.sessions[0].exercises).toEqual([{ id: "BENCHPRESS_BARBELL", sets: "2x5", top: [100, 5], volume: 1000, medal: "GOLD", rows: [[100, 5], [100, 5]] }]);
     // the deleted custom exercise's tile is not probed
     expect(get.mock.calls.some((c) => String(c[0]).includes("520AB719"))).toBe(false);
+  });
+
+  it("a pending 400 from cardio-details still finds the sets in history", async () => {
+    const pending = new WhoopApiError(400, "/core-details-bff/v1/cardio-details", "Cannot view activity details for a pending activity", "Cannot view activity details for a pending activity");
+    const get = routes({
+      "/core-details-bff/v1/cardio-details": pending,
+      "/weightlifting-service/v3/prs": { tiles: [{ exercise_id: "BENCHPRESS_BARBELL", name: "Bench Press - Barbell" }], show_more: false },
+      "/weightlifting-service/v3/exercise/BENCHPRESS_BARBELL/exercise_history": fixture("history_bench"),
+    });
+    const client = await connect(registerLiftSessions, { get });
+    const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: PENDING } }));
+    expect(out.sessions[0]).toMatchObject({ id: PENDING, src: "history", exercises: [{ id: "BENCHPRESS_BARBELL", sets: "2x5" }] });
+    expect(out.warnings.join()).toMatch(/pending/);
   });
 
   it("reads one activity by id", async () => {

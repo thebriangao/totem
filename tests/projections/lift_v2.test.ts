@@ -86,10 +86,13 @@ describe("lift sessions projection", () => {
   it("compacts exercises: scheme, top set, rows only on request", () => {
     const leg = parseCardioDetails(repoFixture("cardio_details")).exercises.find((e) => e.id === "LEGPRESS_PULLEYMACHINE")!;
     const summary = compactExercise(leg, false);
-    expect(summary).toEqual({ id: "LEGPRESS_PULLEYMACHINE", name: "Leg Press", sets: "5x10", top: [200, 10], volume: 9600, medals: ["BRONZE", "SILVER"] });
+    expect(summary).toEqual({ id: "LEGPRESS_PULLEYMACHINE", sets: "5x10", top: [200, 10], volume: 9600, medal: "SILVER" });
     const withRows = compactExercise(leg, true);
     expect(withRows.rows![1]).toEqual([180, 10, null, 139]);
     expect(setScheme([5, 5, 3])).toBe("5/5/3");
+    // "--" rows are sets WHOOP marks not performed
+    const skipped = { ...leg, sets: [{ weight: null, reps: null, time_seconds: null, pct_1rm: null, avg_hr: null, medal: null }] };
+    expect(compactExercise(skipped, true)).toMatchObject({ sets: "skipped", rows: [] });
     expect(setScheme([300, 300], "s")).toBe("2x300s");
   });
 
@@ -108,7 +111,7 @@ describe("lift sessions projection", () => {
     const { cards } = parseLiftCards(fixture("history_bench"));
     const parsed = parseHistoryCards([{ exercise_id: "BENCHPRESS_BARBELL", name: "Bench Press - Barbell", card: cards[0]! }]);
     expect(parsed).toMatchObject({ volume: 1000, unit: "lb" });
-    expect(compactExercise(parsed.exercises[0]!, true)).toMatchObject({ sets: "2x5", top: [100, 5], rows: [[100, 5], [100, 5]], medals: ["SILVER", "GOLD"] });
+    expect(compactExercise(parsed.exercises[0]!, true)).toMatchObject({ sets: "2x5", top: [100, 5], rows: [[100, 5], [100, 5]], medal: "GOLD" });
   });
 });
 

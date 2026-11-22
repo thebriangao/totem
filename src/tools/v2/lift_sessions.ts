@@ -17,7 +17,9 @@ import {
   parseHistoryCards,
   type HomeActivity,
 } from "../../projections/lift_sessions.js";
-import { parseLiftCards, type LiftCard } from "../../projections/lift_cards.js";
+import type { LiftCard } from "../../projections/lift_cards.js";
+import { walkHistory } from "../../lib/lift_history.js";
+import { WhoopApiError } from "../../whoop/errors.js";
 import { get } from "../../whoop/bff.js";
 import { runPaced } from "../../lib/concurrency.js";
 import { todayIso } from "../../lib/dates.js";
@@ -27,11 +29,13 @@ const MAX_SPAN_DAYS = 60;
 const DEFAULT_SPAN_DAYS = 14;
 const DAY_CHUNK = 3;
 const PR_PAGES = 6; // exercises probed for unscored sessions: 10 per page
-const HISTORY_PAGES = 3;
+const HISTORY_PAGES = 4; // 5 workouts per page
 const PACE = { concurrency: 3, jitterMaxMs: 120 };
 const STRENGTH_TRAINER = "weightlifting_msk";
 
 type Session = LiftSessionOutT & { _unit: "kg" | "lb" | null };
+/** cardio-details answered 400 (pending): treat as unscored. */
+const PENDING_400 = Symbol("pending");
 type CardIndex = Map<string, Array<{ exercise_id: string; name: string | null; card: LiftCard }>>;
 
 function addDays(date: string, n: number): string {
@@ -72,13 +76,14 @@ function unscored(activity: HomeActivity, detail: unknown): boolean {
  * Sets for unscored sessions: exercise_history is per exercise, so walk the
  * exercises the account has records for (v3/prs, deduped, deleted dropped) and
  * keep the cards whose GO TO ACTIVITY button points at a wanted activity.
+ * `fresh` skips the cache (a just-logged workout can lag ~30 s behind).
  */
-async function historyIndex(client: WhoopClient, wanted: Set<string>, oldestDate: string, warnings: string[]): Promise<CardIndex> {
+async function historyIndex(client: WhoopClient, wanted: Set<string>, notBefore: string | undefined, fresh: boolean, warnings: string[]): Promise<CardIndex> {
   const exercises = new Map<string, string | null>();
   let offset = 0;
   let more = true;
   for (let page = 0; page < PR_PAGES && more; page++) {
-    const raw = await client.get("/weightlifting-service/v3/prs", offset ? { offset } : {});
+    const raw = await client.get("/weightlifting-service/v3/prs", offset ? { offset } : {}, fresh ? { fresh: true } : {});
     for (const t of (get(raw, "tiles") ?? []) as unknown[]) {
       const id = get(t, "exercise_id");
       if (typeof id === "string" && get(t, "deleted") !== true && !exercises.has(id)) exercises.set(id, (get(t, "name") as string | undefined) ?? null);
@@ -90,28 +95,21 @@ async function historyIndex(client: WhoopClient, wanted: Set<string>, oldestDate
   if (more) warnings.push(`Unscored sessions matched against your ${exercises.size} most recent exercises only.`);
 
   const index: CardIndex = new Map();
-  await runPaced([...exercises].map(([exerciseId, name]) => async () => {
-    let cursor: string | null = null;
-    for (let page = 0; page < HISTORY_PAGES; page++) {
-      let raw: unknown;
-      try {
-        raw = await client.get(`/weightlifting-service/v3/exercise/${encodeURIComponent(exerciseId)}/exercise_history`, cursor ? { startDate: cursor } : {});
-      } catch {
-        return;
-      }
-      const { cards, next_cursor } = parseLiftCards(raw);
+  await runPaced([...exercises].map(([exerciseId, name]) => () =>
+    walkHistory(client, exerciseId, { notBefore, maxPages: HISTORY_PAGES, fresh }, (cards) => {
       for (const card of cards) {
         if (!card.activity_id || !wanted.has(card.activity_id)) continue;
         const list = index.get(card.activity_id) ?? [];
         list.push({ exercise_id: exerciseId, name, card });
         index.set(card.activity_id, list);
       }
-      const oldest = cards.at(-1)?.date;
-      if (!next_cursor || (oldest && oldest < oldestDate)) return;
-      cursor = next_cursor;
-    }
-  }), PACE);
+    })), PACE);
   return index;
+}
+
+/** True when any activity started within the last 2 h (its history may still be catching up). */
+function recent(activities: HomeActivity[], now = Date.now()): boolean {
+  return activities.some((a) => !a.start || now - Date.parse(a.start) < 2 * 3_600_000);
 }
 
 function fromIndex(activity: HomeActivity, detail: unknown, index: CardIndex, withRows: boolean): Session | null {
@@ -125,12 +123,12 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: TOOL,
     description:
-      "Strength sessions, newest first (default last 14 days, max 60): any activity with Strength Trainer sets, any sport, scored or not. Each exercise: sets scheme (\"3x5\"; timed in s), top [weight, reps], volume, medals. include sets adds rows [weight, reps] (or [weight, reps, pct_1rm, avg_hr] when scored). src history = unscored (no HR/%1RM). Weights in `unit`. activity_id reads one activity.",
+      "Strength sessions, newest first (default last 14 days, max 60; 5 per call): any activity with Strength Trainer sets, any sport, scored or not. Each exercise: id, sets (\"3x5\"; timed in s), top [weight, reps], volume, best medal. include sets adds rows [weight, reps] (or [weight, reps, pct_1rm, avg_hr] when scored). src history = unscored (no HR/%1RM). Weights in `unit`. Names: whoop_lift_library search. activity_id reads one activity.",
     input: {
       start_date: z.iso.date().optional().describe("Default end_date minus 13 days."),
       end_date: z.iso.date().optional().describe("Default today."),
       activity_id: z.string().optional().describe("Read one activity instead of a range."),
-      limit: z.number().int().min(1).max(20).default(10),
+      limit: z.number().int().min(1).max(20).default(5),
       include: z.array(z.enum(["sets"])).optional().describe("sets = per-set rows."),
     },
     annotations: READ_ONLY,
@@ -140,11 +138,21 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
     const today = todayIso();
 
     if (activity_id) {
-      const detail = await client.get("/core-details-bff/v1/cardio-details", { activityId: activity_id });
+      let detail: unknown = null;
+      try {
+        detail = await client.get("/core-details-bff/v1/cardio-details", { activityId: activity_id });
+      } catch (e) {
+        // WHOOP sometimes answers 400 "Cannot view activity details for a pending activity" for a few seconds after a log.
+        if (!(e instanceof WhoopApiError && e.status === 400)) throw e;
+        warnings.push("Activity details unavailable while pending; sets come from exercise history.");
+      }
       const activity = activityFromDetail(activity_id, detail, today);
       let session: Session | null;
       if (hasLiftData(detail)) session = buildSession(activity, detail, parseCardioDetails(detail), "details", withRows);
-      else session = fromIndex(activity, detail, await historyIndex(client, new Set([activity_id]), activity.date, warnings), withRows);
+      else {
+        const notBefore = activity.start ?? `${addDays(today, -MAX_SPAN_DAYS)}T00:00:00.000Z`;
+        session = fromIndex(activity, detail, await historyIndex(client, new Set([activity_id]), notBefore, recent([activity]), warnings), withRows);
+      }
       if (!session) warnings.push("This activity has no Strength Trainer sets.");
       const hoisted = hoistUnit(session ? [session] : []);
       return respond(TOOL, LiftSessionsOut, { from: activity.date, to: activity.date, ...hoisted, more: false, warnings });
@@ -171,12 +179,14 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
         .flatMap((h, k) => (h ? homeActivities(h, chunk[k]!) : []))
         .filter((a) => a.type === "CARDIO" && !seen.has(a.activity_id) && (seen.add(a.activity_id), true));
       const details = await runPaced(
-        activities.map((a) => () => client.get("/core-details-bff/v1/cardio-details", { activityId: a.activity_id }).catch(() => undefined)),
+        activities.map((a) => () => client.get("/core-details-bff/v1/cardio-details", { activityId: a.activity_id })
+          .catch((e) => (e instanceof WhoopApiError && e.status === 400 ? PENDING_400 : undefined))),
         PACE,
       );
       activities.forEach((a, k) => {
         const detail = details[k];
-        if (detail === undefined) detailFailures++;
+        if (detail === PENDING_400) candidates.set(a.activity_id, { activity: a, detail: null });
+        else if (detail === undefined) detailFailures++;
         else if (hasLiftData(detail)) sessions.push(buildSession(a, detail, parseCardioDetails(detail), "details", withRows));
         else if (unscored(a, detail)) candidates.set(a.activity_id, { activity: a, detail });
       });
@@ -184,7 +194,8 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
     if (detailFailures) warnings.push(`${detailFailures} activity detail read(s) failed.`);
 
     if (candidates.size > 0) {
-      const index = await historyIndex(client, new Set(candidates.keys()), start, warnings);
+      const list = [...candidates.values()].map((c) => c.activity);
+      const index = await historyIndex(client, new Set(candidates.keys()), `${addDays(start, -1)}T00:00:00.000Z`, recent(list), warnings);
       for (const { activity, detail } of candidates.values()) {
         const s = fromIndex(activity, detail, index, withRows);
         if (s) sessions.push(s);

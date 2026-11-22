@@ -154,12 +154,20 @@ export function setScheme(values: Array<number | null>, suffix = ""): string {
   return vs.every((v) => v === vs[0]) ? `${vs.length}x${vs[0]}${suffix}` : vs.map((v) => v + suffix).join("/");
 }
 
-/** Compact one exercise: summary always, per-set rows only when asked. */
+const MEDAL_RANK: Record<MedalT, number> = { GOLD: 3, SILVER: 2, BRONZE: 1 };
+
+/** The best medal in a list (GOLD > SILVER > BRONZE). */
+export function bestMedal(medals: MedalT[]): MedalT | null {
+  return medals.reduce<MedalT | null>((best, m) => (!best || MEDAL_RANK[m] > MEDAL_RANK[best] ? m : best), null);
+}
+
+/** Compact one exercise: summary always, per-set rows only when asked. "--" rows (not performed) are dropped. */
 export function compactExercise(ex: ParsedExercise, withRows: boolean): SessionExerciseOutT {
   const amount = (s: ParsedSet) => (ex.timed ? s.time_seconds : s.reps);
+  const sets = ex.sets.filter((s) => amount(s) !== null || s.weight !== null);
   let top: number[] | null = null;
   if (!ex.timed) {
-    for (const s of ex.sets) {
+    for (const s of sets) {
       if (s.weight === null || s.reps === null) continue;
       if (!top || s.weight > top[0]! || (s.weight === top[0] && s.reps > top[1]!)) top = [s.weight, s.reps];
     }
@@ -167,15 +175,14 @@ export function compactExercise(ex: ParsedExercise, withRows: boolean): SessionE
   }
   const out: SessionExerciseOutT = {
     id: ex.id,
-    name: ex.name,
-    sets: setScheme(ex.sets.map(amount), ex.timed ? "s" : ""),
+    sets: sets.length === 0 && ex.sets.length > 0 ? "skipped" : setScheme(sets.map(amount), ex.timed ? "s" : ""),
     top,
     volume: ex.volume,
-    medals: ex.medals,
+    medal: bestMedal(ex.medals),
   };
   if (withRows) {
-    const extra = ex.sets.some((s) => s.pct_1rm !== null || s.avg_hr !== null);
-    out.rows = ex.sets.map((s) => (extra ? [s.weight, amount(s), s.pct_1rm, s.avg_hr] : [s.weight, amount(s)]));
+    const extra = sets.some((s) => s.pct_1rm !== null || s.avg_hr !== null);
+    out.rows = sets.map((s) => (extra ? [s.weight, amount(s), s.pct_1rm, s.avg_hr] : [s.weight, amount(s)]));
   }
   return out;
 }

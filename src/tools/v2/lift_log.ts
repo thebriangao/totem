@@ -27,7 +27,7 @@ import {
   type ExerciseSets,
 } from "../../lib/lift_sets.js";
 import { errorMessage, liftError } from "../../lib/lift_tool.js";
-import { parseLiftCards } from "../../projections/lift_cards.js";
+import { findHistoryCard } from "../../lib/lift_history.js";
 import { setScheme } from "../../projections/lift_sessions.js";
 
 const TOOL = "whoop_lift_log";
@@ -63,14 +63,13 @@ function sessionSummary(items: ExerciseSets[], units: { input: WeightUnit; accou
   });
 }
 
-/** Does exercise_history for the first exercise with sets show a card for this activity? */
-async function verifyInHistory(client: WhoopClient, activityId: string, item: ExerciseSets | undefined, expectedSets: number | null, warnings: string[]): Promise<boolean> {
+/** Does the first exercise's history (fresh, paged, retried while WHOOP catches up) show this activity? */
+async function verifyInHistory(client: WhoopClient, activityId: string, item: ExerciseSets | undefined, notBefore: string | undefined, expectedSets: number | null, warnings: string[]): Promise<boolean> {
   if (!item) return false;
   try {
-    const raw = await client.get(`/weightlifting-service/v3/exercise/${encodeURIComponent(item.exercise.exercise_id)}/exercise_history`, {}, { fresh: true });
-    const card = parseLiftCards(raw).cards.find((c) => c.activity_id === activityId);
+    const card = await findHistoryCard(client, item.exercise.exercise_id, activityId, notBefore);
     if (!card) {
-      warnings.push(`${item.exercise.name}'s history doesn't show this activity yet.`);
+      warnings.push(`${item.exercise.name}'s history doesn't show this activity yet (WHOOP can lag ~30 s); check with whoop_lift_sessions.`);
       return false;
     }
     if (expectedSets !== null && card.sets.length !== expectedSets) warnings.push(`${item.exercise.name}: history shows ${card.sets.length} sets, ${expectedSets} were sent.`);
@@ -140,11 +139,13 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     const converted = unit !== account;
 
     if (attach) {
-      let target: unknown;
+      let target: unknown = null;
       try {
         target = await client.get(DETAILS_PATH, { activityId: attach }, { fresh: true });
       } catch (e) {
-        return liftError({ error: `Couldn't read activity ${attach}: ${errorMessage(e)}` });
+        // 400 "Cannot view activity details for a pending activity" happens right after a create; the link still works.
+        if (!(e instanceof WhoopApiError && e.status === 400)) return liftError({ error: `Couldn't read activity ${attach}: ${errorMessage(e)}` });
+        warnings.push("The activity's details aren't readable yet (pending), so its sport and time aren't shown.");
       }
       const sport = get(target, "details_edit_components", "activity_type_internal_name") ?? null;
       const tz = liftTimezone();
@@ -176,13 +177,15 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
         throw e;
       }
       const meta = get(linked, "workout_metadata");
-      const verified = await verifyInHistory(client, attach, items[0], null, warnings);
+      const linkedStart = parseDuring(get(meta, "during"))?.[0];
+      const notBefore = linkedStart !== undefined ? new Date(linkedStart).toISOString() : typeof activityStart === "string" ? activityStart : undefined;
+      const verified = await verifyInHistory(client, attach, items[0], notBefore, null, warnings);
       return respond(TOOL, LiftLogOutV2, {
         action: "attached",
         activity_id: attach,
         saved_during: (get(meta, "during") as string | undefined) ?? null,
         score_state: (get(meta, "score_state") as string | undefined) ?? null,
-        volume_kg: (get(meta, "total_effective_volume_kg") as number | undefined) ?? null,
+        effective_volume_kg: (get(meta, "total_effective_volume_kg") as number | undefined) ?? null,
         unit: account,
         converted_from: converted ? unit : null,
         sent_weights: converted ? items.map(({ sets }) => sets.map((s) => sentWeight(s.weight, unit, account))) : null,
@@ -245,7 +248,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
     const firstPerformed = items.find((it) => it.sets.some((s) => s.performed !== false));
     let verified: boolean;
     if (firstPerformed) {
-      verified = await verifyInHistory(client, activityId, firstPerformed, firstPerformed.sets.filter((s) => s.performed !== false).length, warnings);
+      verified = await verifyInHistory(client, activityId, firstPerformed, new Date(savedMs?.[0] ?? startMs).toISOString(), firstPerformed.sets.filter((s) => s.performed !== false).length, warnings);
     } else {
       try {
         const d = await client.get(DETAILS_PATH, { activityId }, { fresh: true });
@@ -260,7 +263,7 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       activity_id: activityId,
       saved_during: saved,
       score_state: (get(receipt, "score_state") as string | undefined) ?? null,
-      volume_kg: (get(receipt, "total_effective_volume_kg") as number | undefined) ?? null,
+      effective_volume_kg: (get(receipt, "total_effective_volume_kg") as number | undefined) ?? null,
       unit: account,
       converted_from: converted ? unit : null,
       sent_weights: converted ? items.map(({ sets }) => sets.map((s) => sentWeight(s.weight, unit, account))) : null,

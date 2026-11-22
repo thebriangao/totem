@@ -3,6 +3,9 @@ import { IMPERIAL, METRIC, body, connect, fixture, routes } from "./lift_v2_harn
 import { registerLiftLog, LIFT_PATH, LINK_PATH } from "../../src/tools/v2/lift_log.js";
 import { WhoopConflictError } from "../../src/whoop/errors.js";
 import { parsePgRange } from "../../src/lib/dates.js";
+import { liftReadback } from "../../src/lib/lift_history.js";
+
+liftReadback.delaysMs = [0, 0];
 
 const BENCH = "BENCHPRESS_BARBELL";
 const HISTORY = `/weightlifting-service/v3/exercise/${BENCH}/exercise_history`;
@@ -95,6 +98,33 @@ describe("whoop_lift_log", () => {
     });
   });
 
+  it("read-back pages history (5 workouts per page) and retries while WHOOP catches up", async () => {
+    const card = fixture<{ items: unknown[] }>("history_bench").items[0];
+    const page1 = { id: "exercise_history", items: [], show_more: { next_start_date: "2026-11-21T18:42:00.000Z" } };
+    let reads = 0;
+    const get = whoop({
+      [HISTORY]: (q: Record<string, unknown>) => {
+        if (!q.startDate) return page1;
+        reads++;
+        return { id: "exercise_history", items: reads < 2 ? [] : [card], show_more: null };
+      },
+    });
+    const client = await connect(registerLiftLog, { get, post: vi.fn().mockResolvedValue(fixture("lift_receipt")) });
+    const out = body(await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, confirm: true } }));
+    expect(out.verified).toBe(true);
+    expect(get).toHaveBeenCalledWith(HISTORY, { startDate: "2026-11-21T18:42:00.000Z" }, { fresh: true });
+    expect(reads).toBe(2);
+  });
+
+  it("not found after the retries: verified false with a warning, never an error", async () => {
+    const get = whoop({ [HISTORY]: { id: "exercise_history", items: [], show_more: null } });
+    const client = await connect(registerLiftLog, { get, post: vi.fn().mockResolvedValue(fixture("lift_receipt")) });
+    const result = await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, confirm: true } });
+    expect(result.isError).not.toBe(true);
+    expect(body(result)).toMatchObject({ action: "logged", verified: false });
+    expect(body(result).warnings[0]).toMatch(/lag/);
+  });
+
   it("warns when WHOOP widens the saved window", async () => {
     const receipt = { ...fixture<Record<string, unknown>>("lift_receipt"), during: "['2026-11-21T16:50:00.000Z','2026-11-21T17:20:00.000Z')" };
     const client = await connect(registerLiftLog, { get: whoop({ "/users-service/v2/bootstrap": METRIC }), post: vi.fn().mockResolvedValue(receipt) });
@@ -179,7 +209,7 @@ describe("whoop_lift_log", () => {
       });
       expect(del).not.toHaveBeenCalled();
       expect(out).toMatchObject({ action: "attached", activity_id: TARGET, score_state: "incomplete", unit: "lb", verified: true });
-      expect(out.volume_kg).toBeCloseTo(171.78, 1);
+      expect(out.effective_volume_kg).toBeCloseTo(171.78, 1);
     });
 
     it("maps 409 'already linked'", async () => {

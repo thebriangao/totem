@@ -15,13 +15,13 @@ const SetRow = z.array(z.number().nullable());
 // ─── whoop_lift_sessions ──────────────────────────────────────────────────
 export const SessionExerciseOut = z.object({
   id: z.string(),
-  name: z.string().nullable(),
-  /** "3x5", "5/5/3", or "2x300s" for timed exercises. */
+  /** "3x5", "5/5/3", "2x300s" for timed exercises, or "skipped". */
   sets: z.string(),
-  /** Heaviest set [weight, reps] (rep exercises). */
+  /** Heaviest set [weight, reps] (rep exercises with weight). */
   top: SetRow.nullable(),
   volume: z.number().nullable(),
-  medals: z.array(MedalT),
+  /** Best medal won in this exercise. */
+  medal: MedalT.nullable(),
   rows: z.array(SetRow).optional(),
 });
 export type SessionExerciseOutT = z.infer<typeof SessionExerciseOut>;
@@ -149,7 +149,8 @@ export const LiftLogReceipt = z.object({
   activity_id: z.string(),
   saved_during: z.string().nullable(),
   score_state: z.string().nullable(),
-  volume_kg: z.number().nullable(),
+  /** WHOOP's own total_effective_volume_kg (its effective-load formula, not sets x reps x weight). */
+  effective_volume_kg: z.number().nullable(),
   /** Unit the weights were sent in (the account's display unit). */
   unit: UnitT,
   converted_from: UnitT.nullable(),
