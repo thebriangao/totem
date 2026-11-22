@@ -60,6 +60,84 @@ describe("serializeEnvValue round-trips through dotenv", () => {
   it("throws rather than silently corrupting an unrepresentable value", () => {
     expect(() => serializeEnvValue("all three ' \" `")).toThrow(/Cannot represent/);
   });
+
+  // dotenv reads `\'` as an escaped quote, so 'hunter2\' kept going to the next
+  // quote in the file. A backslash is harmless in a bare value.
+  it("writes a plain value containing backslashes bare", () => {
+    expect(serializeEnvValue("hunter2\\")).toBe("hunter2\\");
+    expect(serializeEnvValue("C:\\path\\to")).toBe("C:\\path\\to");
+    expect(serializeEnvValue("literal\\nnotnewline")).toBe("literal\\nnotnewline");
+  });
+
+  // dotenv converts every CR in the file to LF before parsing; only "\r" inside
+  // double quotes yields one.
+  for (const value of ["a\rb", "\r", "line1\r\nline2", "tab\tand\rcr #x"]) {
+    it(`round-trips a carriage return: ${JSON.stringify(value)}`, () => {
+      expect(parse(`${serializeEnvLine("K", value)}\nNEXT=1\n`)).toEqual({ K: value, NEXT: "1" });
+    });
+  }
+  it("throws for a carriage return it cannot escape", () => {
+    expect(() => serializeEnvValue('cr\r and "quote"')).toThrow(/Cannot represent/);
+    expect(() => serializeEnvValue("cr\r and back\\slash")).toThrow(/Cannot represent/);
+  });
+});
+
+describe("a value ending in a backslash", () => {
+  it("does not swallow the next quoted value", () => {
+    // Was written as WHOOP_PASSWORD='hunter2\' and read back as
+    // { WHOOP_PASSWORD: "hunter2\\'\nAUTH_PASSWORD=" } with AUTH_PASSWORD gone.
+    upsertEnvFile(envPath, { WHOOP_PASSWORD: "hunter2\\", AUTH_PASSWORD: "#secret" });
+    expect(readEnvFile(envPath)).toEqual({ WHOOP_PASSWORD: "hunter2\\", AUTH_PASSWORD: "#secret" });
+  });
+
+  it("round-trips next to every kind of quoted neighbour", () => {
+    const neighbours = ["#hash", " padded ", "it's", 'say "hi"', "a'b\"c", "multi\nline", ""];
+    for (const value of ["pw\\", "\\", "a\\\\", "C:\\dir\\"]) {
+      for (const neighbour of neighbours) {
+        rmSync(envPath, { force: true });
+        upsertEnvFile(envPath, { BEFORE: neighbour, K: value, AFTER: neighbour });
+        expect(readEnvFile(envPath), JSON.stringify([value, neighbour])).toEqual({ BEFORE: neighbour, K: value, AFTER: neighbour });
+      }
+    }
+  });
+
+  it("refuses, leaving the file untouched, when the value must be quoted and would swallow a neighbour", () => {
+    writeFileSync(envPath, "AUTH_PASSWORD='#secret'\n");
+    // `#` forces quotes and the trailing backslash escapes the closing one.
+    expect(() => upsertEnvFile(envPath, { WHOOP_PASSWORD: "#pw\\" })).not.toThrow(); // appended after: nothing follows it
+    expect(readEnvFile(envPath)).toEqual({ AUTH_PASSWORD: "#secret", WHOOP_PASSWORD: "#pw\\" });
+
+    const before = "WHOOP_PASSWORD=old\nAUTH_PASSWORD='#secret'\n";
+    writeFileSync(envPath, before);
+    expect(() => upsertEnvFile(envPath, { WHOOP_PASSWORD: "#pw\\" })).toThrow(/would not read back intact/);
+    expect(readFileSync(envPath, "utf8")).toBe(before);
+  });
+
+  it("repairs a file an older version already wrote this way", () => {
+    // On disk from before the fix: the password swallowed the next line.
+    writeFileSync(envPath, "WHOOP_PASSWORD='hunter2\\'\nAUTH_PASSWORD='#secret'\nOTHER=1\n");
+    expect(readEnvFile(envPath).AUTH_PASSWORD).toBeUndefined();
+    // An unrelated write (a token refresh) must still go through…
+    upsertEnvFile(envPath, { WHOOP_IOS_BEARER_TOKEN: "eyJ.abc" });
+    expect(readEnvFile(envPath)).toMatchObject({ WHOOP_IOS_BEARER_TOKEN: "eyJ.abc", OTHER: "1" });
+    // …and re-saving the password brings the swallowed key back.
+    upsertEnvFile(envPath, { WHOOP_PASSWORD: "hunter2\\" });
+    expect(readEnvFile(envPath)).toEqual({ WHOOP_PASSWORD: "hunter2\\", AUTH_PASSWORD: "#secret", OTHER: "1", WHOOP_IOS_BEARER_TOKEN: "eyJ.abc" });
+  });
+
+  it("deleting the swallowing key also brings the swallowed one back", () => {
+    writeFileSync(envPath, "WHOOP_PASSWORD='hunter2\\'\nAUTH_PASSWORD='#secret'\n");
+    deleteEnvKeys(envPath, ["WHOOP_PASSWORD"]);
+    expect(readEnvFile(envPath)).toEqual({ AUTH_PASSWORD: "#secret" });
+  });
+
+  it("never puts a secret's value in the refusal message", () => {
+    writeFileSync(envPath, "WHOOP_PASSWORD=old\nAUTH_PASSWORD='#secret'\n");
+    let message = "";
+    try { upsertEnvFile(envPath, { WHOOP_PASSWORD: "#topsecret\\" }); } catch (error) { message = String(error); }
+    expect(message).toMatch(/WHOOP_PASSWORD/);
+    expect(message).not.toMatch(/topsecret|#secret/);
+  });
 });
 
 describe("upsertEnvFile", () => {
