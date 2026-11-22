@@ -1,0 +1,561 @@
+{
+ "week_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "NOV 15 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "HR_ZONES_ALL",
+    "metric_name_display": "WEEKLY TOTAL",
+    "metric_value_display": "0:17",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": 1020000,
+    "previous_metric_value": 0,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "bar_groups": [
+       {
+        "position_x": 0.78571,
+        "width": 0.05,
+        "bars": [
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:00",
+           "value": 0,
+           "scrubber_style": "MAX_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:00",
+           "value": 0,
+           "scrubber_style": "HARD_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 0,
+           "scrubber_style": "MODERATE_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 0,
+           "scrubber_style": "LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 0,
+           "scrubber_style": "VERY_LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "secondary_contextual_display": "Zone 0",
+           "value_display": "0:00",
+           "value": 0,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         }
+        ],
+        "data_scrubber_details": null,
+        "top_label": {
+         "label": "0:00",
+         "label_style": "NONE",
+         "rendered_below": false,
+         "show_background_gradient": false
+        },
+        "bottom_label": null
+       },
+       {
+        "position_x": 0.92857,
+        "width": 0.05,
+        "bars": [
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:00",
+           "value": 6000,
+           "scrubber_style": "MAX_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.03,
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:00",
+           "value": 54000,
+           "scrubber_style": "HARD_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.01,
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 21000,
+           "scrubber_style": "MODERATE_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 4000,
+           "scrubber_style": "LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.03,
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 52000,
+           "scrubber_style": "VERY_LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.21,
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "secondary_contextual_display": "Zone 0",
+           "value_display": "0:06",
+           "value": 373000,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         }
+        ],
+        "data_scrubber_details": null,
+        "top_label": {
+         "label": "0:17",
+         "label_style": "NONE",
+         "rendered_below": false,
+         "show_background_gradient": false
+        },
+        "bottom_label": null
+       }
+      ],
+      "id": "-672125603",
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null
+     },
+     "type": "BAR_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": {
+   "title_display": "HR ZONES BREAKDOWN",
+   "sub_title_display": "(WEEKLY TOTAL)",
+   "bars": [],
+   "configurable_bars": [
+    {
+     "top_label_display": "Zone 0",
+     "bottom_label_display_text": "0:12",
+     "color": "ZONE_0",
+     "percent_of_total": 0.7313725490196078
+    },
+    {
+     "top_label_display": "Zone 1",
+     "bottom_label_display_text": "0:01",
+     "color": "ZONE_1",
+     "percent_of_total": 0.10196078431372549
+    },
+    {
+     "top_label_display": "Zone 2",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_2",
+     "percent_of_total": 0.00784313725490196
+    },
+    {
+     "top_label_display": "Zone 3",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_3",
+     "percent_of_total": 0.041176470588235294
+    },
+    {
+     "top_label_display": "Zone 4",
+     "bottom_label_display_text": "0:01",
+     "color": "ZONE_4",
+     "percent_of_total": 0.10588235294117647
+    },
+    {
+     "top_label_display": "Zone 5",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_5",
+     "percent_of_total": 0.011764705882352941
+    }
+   ],
+   "number_of_grid_columns": 2,
+   "trend_key": null
+  },
+  "breakdown_bars": [],
+  "whoop_coach_vow": null,
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ },
+ "month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "OCT 25 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "HR_ZONES_ALL",
+    "metric_name_display": "AVG. WEEKLY TOTAL",
+    "metric_value_display": "0:17",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": 1020000,
+    "previous_metric_value": 0,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "bar_groups": [
+       {
+        "position_x": 0.875,
+        "width": 0.18,
+        "bars": [
+         {
+          "height": 0.01,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:00",
+           "value": 12000,
+           "scrubber_style": "MAX_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.06,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:01",
+           "value": 108000,
+           "scrubber_style": "HARD_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.02,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 42000,
+           "scrubber_style": "MODERATE_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 8000,
+           "scrubber_style": "LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.06,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:01",
+           "value": 104000,
+           "scrubber_style": "VERY_LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.41,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "Zone 0",
+           "value_display": "0:12",
+           "value": 746000,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         }
+        ],
+        "data_scrubber_details": null,
+        "top_label": null,
+        "bottom_label": null
+       }
+      ],
+      "id": "-1812059964",
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null
+     },
+     "type": "BAR_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": {
+   "title_display": "HR ZONES BREAKDOWN",
+   "sub_title_display": "(AVG. WEEKLY TOTAL)",
+   "bars": [],
+   "configurable_bars": [
+    {
+     "top_label_display": "Zone 0",
+     "bottom_label_display_text": "0:12",
+     "color": "ZONE_0",
+     "percent_of_total": 0.7313725490196078
+    },
+    {
+     "top_label_display": "Zone 1",
+     "bottom_label_display_text": "0:01",
+     "color": "ZONE_1",
+     "percent_of_total": 0.10196078431372549
+    },
+    {
+     "top_label_display": "Zone 2",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_2",
+     "percent_of_total": 0.00784313725490196
+    },
+    {
+     "top_label_display": "Zone 3",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_3",
+     "percent_of_total": 0.041176470588235294
+    },
+    {
+     "top_label_display": "Zone 4",
+     "bottom_label_display_text": "0:01",
+     "color": "ZONE_4",
+     "percent_of_total": 0.10588235294117647
+    },
+    {
+     "top_label_display": "Zone 5",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_5",
+     "percent_of_total": 0.011764705882352941
+    }
+   ],
+   "number_of_grid_columns": 2,
+   "trend_key": null
+  },
+  "breakdown_bars": [],
+  "whoop_coach_vow": null,
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ },
+ "six_month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "MAY 31 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "HR_ZONES_ALL",
+    "metric_name_display": "AVG. WEEKLY TOTAL",
+    "metric_value_display": "0:17",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": 1020000,
+    "previous_metric_value": 0,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "bar_groups": [
+       {
+        "position_x": 0.96286,
+        "width": 0.025,
+        "bars": [
+         {
+          "height": 0.01,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:00",
+           "value": 12000,
+           "scrubber_style": "MAX_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.06,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 4-5",
+           "value_display": "0:01",
+           "value": 108000,
+           "scrubber_style": "HARD_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.02,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 42000,
+           "scrubber_style": "MODERATE_HR_ZONE"
+          }
+         },
+         {
+          "height": 0,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:00",
+           "value": 8000,
+           "scrubber_style": "LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.06,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "ZONES 1-3",
+           "value_display": "0:01",
+           "value": 104000,
+           "scrubber_style": "VERY_LIGHT_HR_ZONE"
+          }
+         },
+         {
+          "height": 0.41,
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "secondary_contextual_display": "Zone 0",
+           "value_display": "0:12",
+           "value": 746000,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         }
+        ],
+        "data_scrubber_details": null,
+        "top_label": null,
+        "bottom_label": null
+       }
+      ],
+      "id": "-921272142",
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null
+     },
+     "type": "BAR_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": {
+   "title_display": "HR ZONES BREAKDOWN",
+   "sub_title_display": "(AVG. WEEKLY TOTAL)",
+   "bars": [],
+   "configurable_bars": [
+    {
+     "top_label_display": "Zone 0",
+     "bottom_label_display_text": "0:12",
+     "color": "ZONE_0",
+     "percent_of_total": 0.7313725490196078
+    },
+    {
+     "top_label_display": "Zone 1",
+     "bottom_label_display_text": "0:01",
+     "color": "ZONE_1",
+     "percent_of_total": 0.10196078431372549
+    },
+    {
+     "top_label_display": "Zone 2",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_2",
+     "percent_of_total": 0.00784313725490196
+    },
+    {
+     "top_label_display": "Zone 3",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_3",
+     "percent_of_total": 0.041176470588235294
+    },
+    {
+     "top_label_display": "Zone 4",
+     "bottom_label_display_text": "0:01",
+     "color": "ZONE_4",
+     "percent_of_total": 0.10588235294117647
+    },
+    {
+     "top_label_display": "Zone 5",
+     "bottom_label_display_text": "0:00",
+     "color": "ZONE_5",
+     "percent_of_total": 0.011764705882352941
+    }
+   ],
+   "number_of_grid_columns": 2,
+   "trend_key": null
+  },
+  "breakdown_bars": [],
+  "whoop_coach_vow": null,
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ }
+}

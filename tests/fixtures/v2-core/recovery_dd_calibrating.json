@@ -1,0 +1,277 @@
+{
+ "metadata": {},
+ "header": {
+  "title": "TODAY",
+  "end_icon": "EDUCATION",
+  "end_item": null,
+  "deep_dive_score_type": "RECOVERY",
+  "destination": {
+   "screen": "EDUCATION_PAGE",
+   "parameters": {
+    "feature_education_name": "RECOVERY_EDUCATION",
+    "source": null
+   }
+  }
+ },
+ "sections": [
+  {
+   "items": [
+    {
+     "type": "SCORE_GAUGE",
+     "content": {
+      "score_display_title": "RECOVERY",
+      "destination": null,
+      "id": "RECOVERY_SCORE_GAUGE",
+      "score_display": "--",
+      "score_display_style": null,
+      "score_display_suffix": "%",
+      "gauge_fill_percentage": 0,
+      "score_target": null,
+      "lower_optimal_percentage": null,
+      "higher_optimal_percentage": null,
+      "progress_fill_style": "CALIBRATING"
+     }
+    }
+   ],
+   "id": null,
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [
+    {
+     "type": "STEPPER",
+     "content": {
+      "title": "Wear WHOOP to sleep for 4 nights to fully calibrate your Recovery Score.",
+      "close_icon": null,
+      "style": "ONBOARDING",
+      "progress_bar": {
+       "type": "DISCRETE",
+       "discrete_step_total": 4,
+       "discrete_filled_total": 0,
+       "continuous_progress": null
+      }
+     }
+    }
+   ],
+   "id": null,
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [
+    {
+     "type": "CONTRIBUTORS_TILE",
+     "content": {
+      "id": "RECOVERY_CONTRIBUTORS_TILE",
+      "metrics": [
+       {
+        "id": "CONTRIBUTORS_TILE_HRV",
+        "icon": "HRV_OUTLINE",
+        "title": "Heart Rate Variability",
+        "status": "--",
+        "status_subtitle": null,
+        "metric_style": "NO_DATA",
+        "status_icon": null,
+        "status_type": "NO_DATA",
+        "destination": {
+         "screen": "TRENDS",
+         "parameters": {
+          "trend_key": "HRV",
+          "duration": 1,
+          "date": "2026-11-21"
+         }
+        }
+       },
+       {
+        "id": "CONTRIBUTORS_TILE_RHR",
+        "icon": "RHR",
+        "title": "Resting Heart Rate",
+        "status": "--",
+        "status_subtitle": null,
+        "metric_style": "NO_DATA",
+        "status_icon": null,
+        "status_type": "NO_DATA",
+        "destination": {
+         "screen": "TRENDS",
+         "parameters": {
+          "trend_key": "RHR",
+          "duration": 1,
+          "date": "2026-11-21"
+         }
+        }
+       },
+       {
+        "id": "CONTRIBUTORS_TILE_RESPIRATORY_RATE",
+        "icon": "RESPIRATORY_RATE",
+        "title": "RESPIRATORY RATE",
+        "status": "--",
+        "status_subtitle": null,
+        "metric_style": "NO_DATA",
+        "status_icon": null,
+        "status_type": "NO_DATA",
+        "destination": {
+         "screen": "TRENDS",
+         "parameters": {
+          "trend_key": "RESPIRATORY_RATE",
+          "duration": 1,
+          "date": "2026-11-21"
+         }
+        }
+       },
+       {
+        "id": "CONTRIBUTORS_TILE_SLEEP_PERFORMANCE",
+        "icon": "SLEEP",
+        "title": "SLEEP PERFORMANCE",
+        "status": "--",
+        "status_subtitle": null,
+        "metric_style": "NO_DATA",
+        "status_icon": null,
+        "status_type": "NO_DATA",
+        "destination": {
+         "screen": "TRENDS",
+         "parameters": {
+          "trend_key": "SLEEP_PERFORMANCE",
+          "duration": 1,
+          "date": "2026-11-21"
+         }
+        }
+       }
+      ],
+      "footer": {
+       "items": []
+      }
+     }
+    }
+   ],
+   "id": null,
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [
+    {
+     "type": "HEADER",
+     "content": {
+      "id": null,
+      "title": "Today's Activities",
+      "subtitle": null,
+      "subtitle_end": null,
+      "cta": null,
+      "cta_state": null,
+      "icon": null,
+      "style": "LARGE",
+      "destination": null,
+      "leading_button": null,
+      "interaction": null
+     }
+    }
+   ],
+   "id": null,
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [
+    {
+     "type": "ACTIVITY",
+     "content": {
+      "is_gps_enabled": null,
+      "title": "MEDITATION",
+      "score_display": "0:20",
+      "start_time_text": "6:01 AM",
+      "end_time_text": "6:21 AM",
+      "secondary_icon_url": null,
+      "status": "COMPLETE",
+      "type": "RECOVERY",
+      "activity_v2_id": "29792beb-daf3-4422-b2ee-ad1d4d318d94",
+      "sport_id": -1,
+      "internal_name": "meditation",
+      "during": {
+       "lower_endpoint": "2026-11-21T14:01:00.000+0000",
+       "lower_bound_type": "CLOSED",
+       "upper_endpoint": "2026-11-21T14:21:00.000+0000",
+       "upper_bound_type": "OPEN"
+      },
+      "destination": {
+       "screen": "RECOVERY_DETAILS",
+       "parameters": {
+        "activity_id": "29792beb-daf3-4422-b2ee-ad1d4d318d94",
+        "entry_point": "Deep Dive",
+        "type": "RECOVERY"
+       }
+      }
+     }
+    },
+    {
+     "type": "ACTIVITY",
+     "content": {
+      "is_gps_enabled": null,
+      "title": "DRY SAUNA",
+      "score_display": "0:10",
+      "start_time_text": "7:00 AM",
+      "end_time_text": "7:10 AM",
+      "secondary_icon_url": null,
+      "status": "COMPLETE",
+      "type": "RECOVERY",
+      "activity_v2_id": "6db1e439-a2d5-43c3-bc0b-0a0eaa451b48",
+      "sport_id": -1,
+      "internal_name": "sauna",
+      "during": {
+       "lower_endpoint": "2026-11-21T15:00:00.000+0000",
+       "lower_bound_type": "CLOSED",
+       "upper_endpoint": "2026-11-21T15:10:00.000+0000",
+       "upper_bound_type": "OPEN"
+      },
+      "destination": {
+       "screen": "RECOVERY_DETAILS",
+       "parameters": {
+        "activity_id": "6db1e439-a2d5-43c3-bc0b-0a0eaa451b48",
+        "entry_point": "Deep Dive",
+        "type": "RECOVERY"
+       }
+      }
+     }
+    },
+    {
+     "type": "ACTIVITY",
+     "content": {
+      "is_gps_enabled": null,
+      "title": "STRETCHING",
+      "score_display": "0:10",
+      "start_time_text": "7:15 AM",
+      "end_time_text": "7:25 AM",
+      "secondary_icon_url": null,
+      "status": "COMPLETE",
+      "type": "RECOVERY",
+      "activity_v2_id": "6fb48200-0e75-4ff0-b72d-963113b288f7",
+      "sport_id": -1,
+      "internal_name": "stretching",
+      "during": {
+       "lower_endpoint": "2026-11-21T15:15:00.000+0000",
+       "lower_bound_type": "CLOSED",
+       "upper_endpoint": "2026-11-21T15:25:00.000+0000",
+       "upper_bound_type": "OPEN"
+      },
+      "destination": {
+       "screen": "RECOVERY_DETAILS",
+       "parameters": {
+        "activity_id": "6fb48200-0e75-4ff0-b72d-963113b288f7",
+        "entry_point": "Deep Dive",
+        "type": "RECOVERY"
+       }
+      }
+     }
+    }
+   ],
+   "id": null,
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [],
+   "id": null,
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [],
+   "id": null,
+   "section_type": "COMPACT"
+  }
+ ]
+}

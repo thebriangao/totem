@@ -1,39 +1,59 @@
+// whoop_day (v2): replaces whoop_today, whoop_day and whoop_daily_brief.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
-import { TodayOut } from "../../schemas/today.js";
-import { projectToday } from "../../projections/today.js";
-import { WhoopProjectionError } from "../../whoop/errors.js";
-import { jsonOut } from "../../whoop/json_out.js";
+import { defineTool, respond } from "../define.js";
+import { READ_ONLY } from "../annotations.js";
+import { todayIso } from "../../lib/dates.js";
+import { DayOut } from "../../schemas/v2/day.js";
+import { DAY_SECTIONS, projectDay, type DaySection } from "../../projections/v2/day.js";
+import { activityTiles } from "../../projections/v2/core_home.js";
+import { mainSleepTile } from "../../projections/v2/sleep.js";
+import { projectSleepNeedV2 } from "../../projections/v2/core_sleep_need.js";
+
+const NAME = "whoop_day";
+const DEFAULT_SECTIONS: DaySection[] = ["scores", "sleep", "strain", "activities"];
 
 export function registerDay(server: McpServer, client: WhoopClient): void {
-  server.tool(
-    "whoop_day",
-    "Composite snapshot for any past date: recovery, sleep + stages, day strain, workouts count. Same shape as whoop_today but current_state is always null (not relevant for historical days).",
+  defineTool(
+    server,
     {
-      date: z.iso.date().describe("YYYY-MM-DD date to fetch. Required."),
+      name: NAME,
+      description:
+        "One cycle day at a glance (default today): cycle (its id is informational; it changes when sleeps are edited, never reuse it), " +
+        "scores, main sleep summary, strain with calories and steps, the day's activities grouped CARDIO/RECOVERY/SLEEP with status, " +
+        "workouts_count (CARDIO only), WHOOP coach activity recommendations, and the live state today. " +
+        "Opt-in sections: key_stats (dashboard stats by trend key) and sleep_plan (tonight's sleep need; today only, null when WHOOP's sleep coach errors). " +
+        "Scores are null while WHOOP is calibrating. Durations are minutes.",
+      input: {
+        date: z.iso.date().optional().describe("Cycle day YYYY-MM-DD; defaults to today"),
+        include: z.array(z.enum(DAY_SECTIONS)).min(1).optional()
+          .describe("Sections to return; default scores, sleep, strain, activities"),
+      },
+      annotations: READ_ONLY,
     },
-    async ({ date }) => {
-      // Window the target date so we catch the sleep that *ends* on it.
-      const dayMs = Date.parse(`${date}T00:00:00.000Z`);
-      const start = new Date(dayMs - 86_400_000).toISOString();
-      const end = new Date(dayMs + 2 * 86_400_000).toISOString();
-      const [home, sleep, recovery] = await Promise.all([
-        client.get("/home-service/v1/home", { date }),
-        // Light sleep summary (~1 KB) — the full hypnogram lives in whoop_sleep.
-        client.get("/developer/v2/activity/sleep", { start, end, limit: "10" }).catch(() => null),
-        // Deep-dive recovery is date-aligned; the /developer/v2/recovery records
-        // match by UTC created_at, which is off-by-one on historical lookups.
-        client.get("/home-service/v1/deep-dive/recovery", { date }).catch(() => null),
+    async ({ date, include }) => {
+      const today = todayIso();
+      const d = date ?? today;
+      const isToday = d === today;
+      const inc = new Set<DaySection>(include ?? DEFAULT_SECTIONS);
+      const [home, recovery, strain, sleepNeed, userState] = await Promise.all([
+        client.get("/home-service/v1/home", { date: d }),
+        inc.has("scores") ? client.get("/home-service/v1/deep-dive/recovery", { date: d }).catch(() => null) : undefined,
+        inc.has("strain") ? client.get("/home-service/v1/deep-dive/strain", { date: d }).catch(() => null) : undefined,
+        // sleepneed 500s when Smart Alarm preferences are broken (SPEC.md §8): degrade to null.
+        inc.has("sleep_plan") && isToday
+          ? client.get("/coaching-service/v2/sleepneed").then(projectSleepNeedV2).catch(() => null)
+          : undefined,
+        isToday ? client.get("/activities-service/v1/user-state").catch(() => null) : undefined,
       ]);
-      const projected = projectToday({ home, sleep, recovery, state: null, date });
-      try {
-        const out = TodayOut.parse(projected);
-        return { content: [{ type: "text", text: jsonOut(out) }] };
-      } catch (e) {
-        if (e instanceof z.ZodError) throw new WhoopProjectionError("whoop_day", e);
-        throw e;
+      let sleepDetails: unknown;
+      if (inc.has("sleep")) {
+        const main = mainSleepTile(activityTiles(home));
+        if (main) sleepDetails = await client.get(`/core-details-bff/v2/sleep-details/${main.id}`).catch(() => null);
       }
+      const projected = projectDay({ date: d, isToday, include: inc, home, recovery, strain, sleepDetails, sleepNeed, userState });
+      return respond(NAME, DayOut, projected);
     },
   );
 }

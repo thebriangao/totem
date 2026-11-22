@@ -1,0 +1,147 @@
+// whoop_trend: GET /progression-service/v3/trends/{metric}?endDate= (SPEC.md §4.7).
+// Every response carries exactly three windows (week, month, six_month; no year).
+// Window bounds are derived from endDate: WHOOP's date_picker.next_date_time is
+// the NEXT window's start and the range is only a display string. Windows are
+// inclusive: week = 7 days, month = 30, six_month = 180, all ending on endDate.
+// Duration metrics (unit "hr", "h:mm" displays, ms on the wire) come out in minutes.
+import { addDays, displayMinutes, displayNumber, get, isNode, msToMin, nodes, str, type Node } from "./core_common.js";
+
+export const TREND_WINDOWS = ["week", "month", "six_month"] as const;
+export type TrendWindow = (typeof TREND_WINDOWS)[number];
+export const WINDOW_DAYS: Record<TrendWindow, number> = { week: 7, month: 30, six_month: 180 };
+const SEGMENT_KEY: Record<TrendWindow, string> = {
+  week: "week_time_segment",
+  month: "month_time_segment",
+  six_month: "six_month_time_segment",
+};
+
+export function windowBounds(endDate: string, window: TrendWindow): { start: string; end: string } {
+  return { start: addDays(endDate, -(WINDOW_DAYS[window] - 1)), end: endDate };
+}
+
+export interface TrendRow {
+  key: string | null;
+  /** WHOOP's own average for the window; null when WHOOP shows "---". */
+  avg: number | null;
+  prev_avg: number | null;
+  change_pct: number | null;
+  direction: string | null;
+  unit: string | null;
+}
+
+export interface TrendWindowOut {
+  start: string;
+  end: string;
+  hidden: boolean;
+  rows: TrendRow[];
+  /** Strain/sleep "breakdown" bars: [label, days]. */
+  breakdown: Array<[string, number | null]> | null;
+  /** One value per day from `start` (null = no data). */
+  points?: { start: string; step: "day"; values: Array<number | null> };
+}
+
+const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const isClock = (s: unknown): boolean => typeof s === "string" && /^\d+:\d{2}$/.test(s.trim());
+
+function row(m: Node): TrendRow {
+  const unit = str(m.metric_units_display);
+  const duration = unit === "hr" || isClock(m.metric_value_display);
+  const conv = (v: unknown): number | null => (duration ? msToMin(num(v)) : num(v));
+  return {
+    key: str(m.trend_key),
+    avg: conv(m.current_metric_value),
+    prev_avg: conv(m.previous_metric_value),
+    change_pct: num(m.metric_change),
+    direction: m.trend_direction === "NONE" ? null : str(m.trend_direction),
+    unit: duration ? "min" : unit,
+  };
+}
+
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+/** "SUN, MAY 17" / "TUE, NOV 25, 2025" → ISO date, taking the year from the window's end. */
+export function pointDate(label: string | null, endDate: string): string | null {
+  if (!label) return null;
+  const all = label.toUpperCase().match(/([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}))?/g);
+  const last = all?.[all.length - 1]?.match(/([A-Z]{3})[A-Z]*\s+(\d{1,2})(?:,\s*(\d{4}))?/);
+  if (!last) return null;
+  const month = MONTHS.indexOf(last[1]!);
+  if (month < 0) return null;
+  const endYear = Number(endDate.slice(0, 4));
+  const endMonth = Number(endDate.slice(5, 7)) - 1;
+  const year = last[3] ? Number(last[3]) : month > endMonth ? endYear - 1 : endYear;
+  return `${year}-${String(month + 1).padStart(2, "0")}-${last[2]!.padStart(2, "0")}`;
+}
+
+const parseDisplay = (d: string | null): number | null => (isClock(d) ? displayMinutes(d) : displayNumber(d));
+
+function rawPoints(segment: Node, endDate: string): Array<{ date: string | null; value: number | null }> {
+  const out: Array<{ date: string | null; value: number | null }> = [];
+  for (const p of nodes(get(segment, "graph", "plots"))) {
+    const plot = isNode(p.plot) ? p.plot : null;
+    if (!plot) continue;
+    for (const seg of nodes(plot.segments)) {
+      for (const pt of nodes(seg.points)) {
+        const dsd = isNode(pt.data_scrubber_details) ? pt.data_scrubber_details : {};
+        const display = str(dsd.value_display) ?? str(get(pt, "graph_label", "label"));
+        out.push({ date: pointDate(str(dsd.primary_contextual_display), endDate), value: parseDisplay(display) });
+      }
+    }
+    for (const group of nodes(plot.bar_groups)) {
+      const bars = nodes(group.bars);
+      const first = isNode(bars[0]?.data_scrubber_details) ? (bars[0]!.data_scrubber_details as Node) : {};
+      // A stacked group (HR_ZONES_ALL) shows its total as the top label; a single
+      // bar carries its own value (TIME_IN_BED's top label is a clock time).
+      const display = bars.length > 1
+        ? str(get(group, "top_label", "label"))
+        : str(first.value_display) ?? str(get(group, "top_label", "label"));
+      out.push({ date: pointDate(str(first.primary_contextual_display), endDate), value: parseDisplay(display) });
+    }
+  }
+  return out;
+}
+
+/** Daily values aligned to the window (index 0 = window start). */
+export function dailyValues(segment: Node, endDate: string, window: TrendWindow): Array<number | null> {
+  const { start } = windowBounds(endDate, window);
+  const values: Array<number | null> = new Array(WINDOW_DAYS[window]).fill(null);
+  const startMs = Date.parse(`${start}T00:00:00Z`);
+  for (const p of rawPoints(segment, endDate)) {
+    if (!p.date || p.value === null) continue;
+    const i = Math.round((Date.parse(`${p.date}T00:00:00Z`) - startMs) / 86_400_000);
+    if (i >= 0 && i < values.length) values[i] = p.value;
+  }
+  return values;
+}
+
+function breakdown(segment: Node): TrendWindowOut["breakdown"] {
+  const bars = nodes(get(segment, "breakdown_bar", "bars"));
+  if (!bars.length) return null;
+  // Labels carry Unicode isolates around the range, e.g. "All Out \u2066(>18.0)\u2069".
+  return bars.map((b) => [(str(b.top_label_display) ?? "").replace(/[\u2066-\u2069]/g, ""), num(b.bottom_label_display)]);
+}
+
+export function projectTrendWindow(raw: unknown, endDate: string, window: TrendWindow, withPoints: boolean): TrendWindowOut | null {
+  const segment = get(raw, SEGMENT_KEY[window]);
+  if (!isNode(segment)) return null;
+  const bounds = windowBounds(endDate, window);
+  const out: TrendWindowOut = {
+    ...bounds,
+    hidden: segment.is_hidden === true,
+    rows: nodes(segment.metrics).map(row),
+    breakdown: breakdown(segment),
+  };
+  if (withPoints) out.points = { start: bounds.start, step: "day", values: dailyValues(segment, endDate, window) };
+  return out;
+}
+
+export interface TrendDelta { key: string | null; diff: number | null; diff_pct: number | null }
+
+/** Per trend key: window A's average minus window B's (A = end_date, B = compare_end_date). */
+export function compareRows(a: TrendRow[], b: TrendRow[]): TrendDelta[] {
+  return a.map((ra) => {
+    const bv = b.find((x) => x.key === ra.key)?.avg ?? null;
+    const diff = ra.avg !== null && bv !== null ? Math.round((ra.avg - bv) * 100) / 100 : null;
+    return { key: ra.key, diff, diff_pct: diff !== null && bv ? Math.round((diff / bv) * 1000) / 10 : null };
+  });
+}

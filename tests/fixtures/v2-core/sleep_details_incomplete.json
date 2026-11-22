@@ -1,0 +1,211 @@
+{
+ "missing_hr_data": null,
+ "sleep_metric_breakdowns": [
+  {
+   "sleep_metric_title_display": "WAKE EVENTS",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": "per hour",
+   "sleep_metric_type": "WAKE_EVENTS"
+  },
+  {
+   "sleep_metric_title_display": "EFFICIENCY",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": "%",
+   "sleep_metric_type": "EFFICIENCY"
+  },
+  {
+   "sleep_metric_title_display": "REM",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "REM_SLEEP"
+  },
+  {
+   "sleep_metric_title_display": "LIGHT",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "LIGHT_SLEEP"
+  },
+  {
+   "sleep_metric_title_display": "SWS (DEEP)",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "DEEP_SLEEP"
+  },
+  {
+   "sleep_metric_title_display": "AWAKE",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "AWAKE"
+  },
+  {
+   "sleep_metric_title_display": "RESTORATIVE SLEEP",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "RESTORATIVE_SLEEP"
+  },
+  {
+   "sleep_metric_title_display": "TIME IN BED",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "TIME_IN_BED"
+  },
+  {
+   "sleep_metric_title_display": "HOURS OF SLEEP",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "HOURS_OF_SLEEP"
+  },
+  {
+   "sleep_metric_title_display": "WAKE EVENTS",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": null,
+   "sleep_metric_type": "TOTAL_WAKE_EVENTS"
+  },
+  {
+   "sleep_metric_title_display": "LATENCY",
+   "sleep_metric_value_display": null,
+   "sleep_metric_comparison_display": null,
+   "sleep_metric_trend_type": null,
+   "metric_unit_display": "min",
+   "sleep_metric_type": "LATENCY"
+  },
+  {
+   "sleep_metric_title_display": "RESPIRATORY RATE",
+   "sleep_metric_value_display": "--",
+   "sleep_metric_comparison_display": "No Data",
+   "sleep_metric_trend_type": "NEUTRAL",
+   "metric_unit_display": null,
+   "sleep_metric_type": "RESPIRATORY_RATE"
+  }
+ ],
+ "graph": {
+  "id": null,
+  "plots": [
+   {
+    "plot": {
+     "segments": [],
+     "diagonal_points": null,
+     "id": "SLEEP_HEART_RATE",
+     "hide_while_scrubbing": false,
+     "skip_scrubbing": null
+    },
+    "type": "LINE_PLOT"
+   }
+  ],
+  "graph_title_display": "HEART RATE",
+  "graph_buttons": null,
+  "layout_direction": "LEFT_TO_RIGHT",
+  "spotlight_target_id": null
+ },
+ "sleep_details_labels": {
+  "sleep_duration_time_display": "Today 2:30 AM to 5:30 AM",
+  "screen_title_display": "INCOMPLETE SLEEP",
+  "sleep_metrics_label_display": "SLEEP METRICS",
+  "vs_thirty_day_range_label_display": "VS. 30 DAY RANGE"
+ },
+ "activity_display_type": "INCOMPLETE_ACTIVITY",
+ "sleep_details_edit_components": {
+  "sleep_start_time": "2026-11-21T10:30:00.000Z",
+  "sleep_end_time": "2026-11-21T13:30:00.000Z",
+  "nap_to_sleep_available": false
+ },
+ "bar_graph_container": {
+  "duration_title_display": "DURATION",
+  "duration_display": "0:00",
+  "typical_range_title_display": "TYPICAL RANGE",
+  "heart_rate_zones": [
+   {
+    "bar_graph_tile_title_display": "AWAKE",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": null,
+    "id": "AWAKE",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "AWAKE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "LIGHT",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": null,
+    "id": "LIGHT_SLEEP",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "LIGHT_SLEEP",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "SWS (DEEP)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": null,
+    "id": "SWS_SLEEP",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "SWS_SLEEP",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "REM",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": null,
+    "id": "REM_SLEEP",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "REM_SLEEP",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   }
+  ],
+  "time_splice_layout_direction": "LEFT_TO_RIGHT"
+ },
+ "whoop_coach_vow": null,
+ "additional_info_text": null,
+ "metadata": null
+}

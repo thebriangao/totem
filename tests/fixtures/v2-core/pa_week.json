@@ -1,0 +1,9 @@
+{
+ "is_assessment_needed": false,
+ "has_assessment": false,
+ "total_recoveries": 0,
+ "required_recoveries": 7,
+ "recoveries_before_recent_cutoff": 0,
+ "expected_assessment_during": "['2026-11-09','2026-11-16')",
+ "next_assessment_during": "['2026-11-16','2026-11-23')"
+}
