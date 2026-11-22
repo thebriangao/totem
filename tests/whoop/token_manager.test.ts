@@ -397,6 +397,72 @@ describe("TokenManager: the token file is the source of truth", () => {
     expect((new FileTokenStore(file).load() as TokenRecord).refresh_token).toBe("rt-auth");
   });
 
+  it("a refresh that lands after the login was handed off or removed doesn't write the tokens back", async () => {
+    const file = join(dir, "tokens.json");
+    const now = Date.now();
+    const refreshed = (): CognitoTokens => ({ accessToken: jwtExpiring(now, 24 * HOUR, { n: "refreshed" }), refreshToken: "rt-refreshed", idToken: "", expiresAt: 0 });
+
+    // `totem auth` pushed the login to a deployment and left the marker mid-refresh.
+    new FileTokenStore(file).save(login(now, { access_token: jwtExpiring(now, 0) }));
+    const handOff = vi.fn(async (): Promise<CognitoTokens> => {
+      new FileTokenStore(file).save({ handed_off_to: "https://totem-x.fly.dev", saved_at: new Date(now + 5).toISOString() });
+      return refreshed();
+    });
+    await expect(new TokenManager({ store: new FileTokenStore(file), refresh: handOff, ...quiet }).getToken()).rejects.toBeInstanceOf(WhoopLoginHandedOffError);
+    expect(new FileTokenStore(file).load()).toMatchObject({ handed_off_to: "https://totem-x.fly.dev" });
+
+    // The token file was deleted (a logout) mid-refresh.
+    new FileTokenStore(file).save(login(now, { access_token: jwtExpiring(now, 0) }));
+    const remove = vi.fn(async (): Promise<CognitoTokens> => {
+      rmSync(file);
+      return refreshed();
+    });
+    await expect(new TokenManager({ store: new FileTokenStore(file), refresh: remove, ...quiet }).getToken()).rejects.toBeInstanceOf(WhoopNotLoggedInError);
+    expect(new FileTokenStore(file).load()).toBeNull();
+  });
+
+  it("annotate() never writes a stale copy over tokens another process rotated", async () => {
+    const file = join(dir, "tokens.json");
+    let clock = Date.now();
+    const now = (): number => clock;
+    new FileTokenStore(file).save(login(clock, { access_token: jwtExpiring(clock, HOUR) }));
+    const cognito = fakeCognito(now);
+    const proc = (pid: number) => {
+      const lock = new TokenLock({ path: `${file}.lock`, pid, host: "laptop", now, isAlive: () => true });
+      return { lock, manager: new TokenManager({ store: new FileTokenStore(file), lock, now, refresh: cognito.refresh, ...quiet }) };
+    };
+    const a = proc(1);
+    a.manager.start();
+    a.lock.stopHeartbeat();
+    clock += 8 * HOUR; // a went silent (asleep, stalled); b takes the login over and rotates it
+    const b = proc(2);
+    b.manager.start();
+    await b.manager.getToken();
+    expect((new FileTokenStore(file).load() as TokenRecord).refresh_token).toBe("rt-1");
+
+    a.manager.annotate({ installation_id: "A-INSTALL" }); // a hasn't noticed yet
+    expect((new FileTokenStore(file).load() as TokenRecord).refresh_token).toBe("rt-1");
+    // The owner still can, and keeps the rotated tokens.
+    b.manager.annotate({ installation_id: "B-INSTALL" });
+    expect(new FileTokenStore(file).load()).toMatchObject({ refresh_token: "rt-1", installation_id: "B-INSTALL" });
+    a.manager.stop();
+    b.manager.stop();
+  });
+
+  it("a refresh keeps what annotate() recorded while it was on the wire", async () => {
+    const file = join(dir, "tokens.json");
+    const now = Date.now();
+    new FileTokenStore(file).save(login(now, { access_token: jwtExpiring(now, 0) }));
+    let manager!: TokenManager;
+    const refresh = vi.fn(async (): Promise<CognitoTokens> => {
+      manager.annotate({ user_id: 77, installation_id: "KEEP" });
+      return { accessToken: jwtExpiring(now, 24 * HOUR), refreshToken: "rt-1", idToken: "", expiresAt: 0 };
+    });
+    manager = new TokenManager({ store: new FileTokenStore(file), refresh, ...quiet });
+    await manager.getToken();
+    expect(new FileTokenStore(file).load()).toMatchObject({ refresh_token: "rt-1", user_id: 77, installation_id: "KEEP" });
+  });
+
   it("adopt() saves a pushed login and switches to it", async () => {
     const now = Date.now();
     const store = new MemoryTokenStore(login(now));

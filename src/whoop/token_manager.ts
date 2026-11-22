@@ -239,7 +239,11 @@ export class TokenManager {
 
   /** Record extra fields on the current login (owner only, best-effort). */
   annotate(patch: { user_id?: number | undefined; installation_id?: string | undefined }): void {
-    if (!this.record || !this.canWrite()) return;
+    // Start from the file, and only as the proven owner: writing our in-memory
+    // copy as a process that lost the lock would put a spent refresh token back
+    // over the one the new owner rotated.
+    this.sync();
+    if (!this.record || (this.lock && !this.lock.verify())) return;
     const next: TokenRecord = { ...this.record };
     if (patch.user_id !== undefined) next.user_id = patch.user_id;
     if (patch.installation_id !== undefined) next.installation_id = patch.installation_id;
@@ -355,11 +359,6 @@ export class TokenManager {
     }
   }
 
-  /** Whether this process may write the token file. */
-  private canWrite(): boolean {
-    return !this.lock || this.lock.held;
-  }
-
   /** Make sure we own the login (or may take it over). */
   private claim(): boolean {
     if (!this.lock) return true;
@@ -430,18 +429,23 @@ export class TokenManager {
       throw new WhoopRefreshUnavailableError(error);
     }
 
-    // `totem auth` replaced the login while we were refreshing: the new login
-    // wins, and the session we just refreshed is simply abandoned.
+    // The file changed while we were refreshing. If `totem auth` replaced the
+    // login, handed it to a deployment, or the file was removed, that wins: the
+    // session we just refreshed is abandoned, never written back over it.
     if (this.store.version() !== versionBefore) {
       this.sync(true);
-      if (this.record && this.record.refresh_token !== before.refresh_token) {
+      if (!this.record) {
+        this.log("the login was handed off or removed while refreshing; not saving the refreshed session");
+        return;
+      }
+      if (this.record.refresh_token !== before.refresh_token) {
         this.log("the login was replaced while refreshing; using the new one");
         return;
       }
     }
 
     const record: TokenRecord = {
-      ...before,
+      ...(this.record ?? before), // the same login, with anything annotate() added meanwhile
       access_token: next.accessToken,
       refresh_token: next.refreshToken || before.refresh_token,
       refreshed_at: new Date(this.now()).toISOString(),
