@@ -27,6 +27,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { WhoopClient } from "./whoop/client.js";
 import { registerTools } from "./tools/register.js";
 import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
+import { timezoneSettled } from "./whoop/init_timezone.js";
 import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
 
@@ -300,6 +301,10 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
         res.status(400).json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: No valid session ID provided" }, id: null });
         return;
       }
+      // Hold the first requests after a cold start (bounded, then a no-op) until
+      // the member's timezone has been read from their profile: this host's
+      // clock is UTC, and a tool that ran first would report the UTC day.
+      await timezoneSettled();
       const session = existing ?? (await createSession());
       session.lastSeen = Date.now();
       try {

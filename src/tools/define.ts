@@ -5,6 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { WhoopProjectionError } from "../whoop/errors.js";
 import { jsonOut } from "../whoop/json_out.js";
+import { timezoneSettled } from "../whoop/init_timezone.js";
 
 export type ToolResult = { content: Array<{ type: "text"; text: string }>; isError?: boolean };
 
@@ -23,9 +24,15 @@ export function defineTool<Shape extends z.ZodRawShape>(
   server.registerTool(
     spec.name,
     { description: spec.description, inputSchema: spec.input, annotations: spec.annotations },
+    // On a UTC host the member's timezone is looked up from their profile at
+    // boot; a handler that ran before it landed read "today" off the UTC clock.
+    // This resolves at once except during the first seconds after a cold start.
     // The SDK's callback typing is generic over the shape; the cast keeps each
     // tool's handler typed by its own zod shape.
-    handler as never,
+    (async (args: z.infer<z.ZodObject<Shape>>) => {
+      await timezoneSettled();
+      return handler(args);
+    }) as never,
   );
 }
 
