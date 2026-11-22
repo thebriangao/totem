@@ -3,49 +3,76 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
 import { RawOut } from "../../schemas/escape.js";
 import { preview } from "../../whoop/write_safety.js";
-import { jsonOut } from "../../whoop/json_out.js";
+import { defineTool, respond } from "../define.js";
+import { WRITE_DESTRUCTIVE, openWorld } from "../annotations.js";
+
+/** Smart-alarm goals WHOOP can read back. Others it accepts, then 500s on forever (SPEC.md §7). */
+export const SAFE_ALARM_GOALS = [
+  "EXACT_TIME_PERFORM", "EXACT_TIME_PEAK", "EXACT_TIME_OPTIMIZE_SLEEP", "IN_THE_GREEN",
+  "SLEEP_HEALTH_PEAK", "SLEEP_HEALTH_PERFORM", "SLEEP_HEALTH_GET_BY",
+] as const;
+
+/**
+ * Writes whoop_raw refuses even with allow_write (D14). Same categories as the
+ * probe blocklist minus social (D9: social writes are allowed here, explicitly).
+ */
+const WRITE_DENYLIST: ReadonlyArray<[RegExp, string]> = [
+  [/^\/auth-service\//, "auth is handled by totem itself"],
+  [/(password|e-?mail|mfa|\/phone|verif|otp|logout|log-out|sign-?out|revoke|\/sessions?\b|deactivat|delete-account|account-deletion|close-account)/i, "could lock you out of your account"],
+  [/^\/users-service\/v\d+\/users\/?$/, "account deletion"],
+  [/^\/(commerce-service|order-service|rma-service|referral-service|membership-service|advanced-labs-service|growth-content-service|payment-service|checkout-service|billing-service)\//, "purchases, membership or orders"],
+  [/(consent|\/terms|agreement|clinical|research|access_care|access_product)/i, "consents and legal agreements"],
+  [/^\/(integrations-bff|integrations-service|social-service)\//, "third-party account connections"],
+  [/(strap|garment|pairing|firmware|\/device)/i, "the strap or device"],
+  [/^\/(messaging-service)\//, "sends SMS or email"],
+  [/^\/(sentry-proxy-service|metrics-service|mobile-metric-service|log-service|pip-metrics-service)\//, "telemetry"],
+];
+
+export function rawWriteRefusal(path: string, body: unknown): string | null {
+  for (const [re, why] of WRITE_DENYLIST) if (re.test(path)) return `whoop_raw won't write to ${path}: ${why}.`;
+  if (path.startsWith("/smart-alarm-service/v1/smartalarm/preferences")) {
+    const goal = (body as { goal?: unknown } | null)?.goal;
+    if (goal !== undefined && !(SAFE_ALARM_GOALS as readonly unknown[]).includes(goal)) {
+      return `whoop_raw won't set Smart Alarm goal ${JSON.stringify(goal)}: WHOOP accepts some goals it can't read back, which breaks the alarm permanently. Allowed: ${SAFE_ALARM_GOALS.join(", ")}.`;
+    }
+  }
+  return null;
+}
 
 export function registerRaw(server: McpServer, client: WhoopClient): void {
-  server.tool(
-    "whoop_raw",
-    "ESCAPE HATCH: call any Whoop endpoint directly — use only when no specific tool fits, and look up the exact path with whoop_endpoints first. Mutating methods (POST/PUT/DELETE) require confirm:true.",
+  defineTool(
+    server,
     {
-      path: z.string(),
-      method: z.enum(["GET", "POST", "PUT", "DELETE"]).default("GET"),
-      query: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
-      body: z.unknown().optional(),
-      confirm: z.boolean().default(false),
+      name: "whoop_raw",
+      description:
+        "Escape hatch: call any WHOOP endpoint when no tool fits (see the whoop://catalog/endpoints resource for verified paths). GET by default. Writes need allow_write:true and confirm:true, and some paths are refused outright (auth, account, purchases, consents, strap, telemetry). Social writes (follow, comment) are only available here.",
+      input: {
+        path: z.string().describe("Path starting with /, e.g. /home-service/v1/home"),
+        method: z.enum(["GET", "POST", "PUT", "DELETE"]).default("GET"),
+        query: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+        body: z.unknown().optional(),
+        allow_write: z.boolean().default(false).describe("Required for POST/PUT/DELETE."),
+        confirm: z.boolean().default(false).describe("false returns a preview of the write."),
+      },
+      annotations: openWorld(WRITE_DESTRUCTIVE),
     },
-    async ({ path, method, query, body, confirm }) => {
+    async ({ path, method, query, body, allow_write, confirm }) => {
       const safePath = path.startsWith("/") ? path : `/${path}`;
-      const isMutate = method !== "GET";
-      if (isMutate && !confirm) {
-        return {
-          content: [
-            { type: "text", text: jsonOut(preview(method, safePath, { query: query ?? {}, body })) },
-          ],
-        };
+      const q = query ?? {};
+      if (method === "GET") {
+        const response = await client.get(safePath, q);
+        return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response });
       }
-      let response: unknown;
-      switch (method) {
-        case "GET":
-          response = await client.get(safePath, query ?? {});
-          break;
-        case "POST":
-          response = await client.post(safePath, body, query ?? {});
-          break;
-        case "PUT":
-          response = await client.put(safePath, body, query ?? {});
-          break;
-        case "DELETE":
-          response = await client.delete(safePath, query ?? {});
-          break;
-      }
-      if (isMutate) client.invalidateAll();
-      // The client throws on non-2xx, so reaching here means success; it doesn't
-      // surface the exact code, so 200 stands in for any 2xx (incl. 201/204).
-      const out = RawOut.parse({ path: safePath, method, status: 200, response });
-      return { content: [{ type: "text", text: jsonOut(out) }] };
+      if (!allow_write) throw new Error("whoop_raw writes need allow_write:true (and confirm:true). Prefer a specific whoop_* tool if one fits.");
+      const refusal = rawWriteRefusal(safePath, body);
+      if (refusal) throw new Error(refusal);
+      if (!confirm) return respond("whoop_raw", RawOut, preview(method, safePath, { query: q, body }));
+      // The client invalidates dependent cache tags itself (everything for unknown paths).
+      const response =
+        method === "POST" ? await client.post(safePath, body, q)
+        : method === "PUT" ? await client.put(safePath, body, q)
+        : await client.delete(safePath, q);
+      return respond("whoop_raw", RawOut, { path: safePath, method, status: 200, response });
     },
   );
 }
