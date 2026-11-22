@@ -332,6 +332,8 @@ docker run -d -p 3000:3000 -v totem-data:/data -e MCP_AUTH_TOKEN=$(openssl rand 
 TOTEM_ADMIN_TOKEN=<that MCP_AUTH_TOKEN> totem auth --url https://your-server
 ```
 
+The push carries your WHOOP session and the server's `MCP_AUTH_TOKEN`, so `totem auth` only sends it over `https://` (or to `localhost`), and never follows a redirect with it. For a server on a private network that encrypts by other means (a VPN, a tailnet), add `--allow-http`.
+
 No WHOOP tokens go in the host's environment. A host without a volume works too, but loses the login on every restart (run `totem auth` again after one).
 
 ### Deploying to Hugging Face Spaces (free hosting)

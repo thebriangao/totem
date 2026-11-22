@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  loginFromCookies, loginWithRefreshToken, markHandedOff, pickInstallationId, pushLogin, readLocalStatus,
-  resolveAuthTarget, retireLegacyEnv, saveLocalLogin, validateLogin, type WhoopLogin,
+  checkPushUrl, fetchRemoteStatus, loginFromCookies, loginWithRefreshToken, markHandedOff, pickInstallationId, pushLogin,
+  readLocalStatus, resolveAuthTarget, retireLegacyEnv, saveLocalLogin, validateLogin, type WhoopLogin,
 } from "../../src/cli/auth_flow.js";
 import { flyToml } from "../../src/cli/setup.js";
 import { readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
@@ -153,6 +153,41 @@ describe("pushLogin", () => {
       .toMatchObject({ ok: false, reason: "server-error", detail: "EROFS" });
     const down = vi.fn(async () => { throw new Error("ECONNREFUSED"); }) as unknown as typeof fetch;
     expect(await pushLogin("https://x", "t", login, { userId: null }, { fetch: down })).toMatchObject({ ok: false, reason: "unreachable" });
+  });
+
+  const okFetch = () => vi.fn(async () => new Response(JSON.stringify({ ok: true, state: "ok" }), { status: 200 }));
+
+  it("never sends the login or the MCP_AUTH_TOKEN over plain http to another machine", async () => {
+    for (const url of ["http://totem.example.com", "http://192.168.1.20:3000", "HTTP://totem-x.fly.dev/", "ftp://totem.example.com", "totem.example.com", "http://localhost.evil.example"]) {
+      const fetchMock = okFetch();
+      const push = await pushLogin(url, "tok", login, { userId: 7 }, { fetch: fetchMock as unknown as typeof fetch });
+      expect(push, url).toMatchObject({ ok: false, reason: "insecure" });
+      expect(await fetchRemoteStatus(url, "tok", { fetch: fetchMock as unknown as typeof fetch }), url).toMatchObject({ ok: false, reason: "insecure" });
+      expect(fetchMock, url).not.toHaveBeenCalled();
+    }
+  });
+
+  it("allows https anywhere, http to this machine, and http elsewhere only when asked", async () => {
+    for (const url of ["https://totem-x.fly.dev", "http://localhost:3000", "http://127.0.0.1:3000/", "http://[::1]:3000"]) {
+      const fetchMock = okFetch();
+      expect(await pushLogin(url, "tok", login, { userId: null }, { fetch: fetchMock as unknown as typeof fetch }), url).toMatchObject({ ok: true });
+      expect(fetchMock, url).toHaveBeenCalledOnce();
+    }
+    const fetchMock = okFetch();
+    const r = await pushLogin("http://pi.tailnet.ts.net:3000", "tok", login, { userId: null }, { fetch: fetchMock as unknown as typeof fetch, allowHttp: true });
+    expect(r).toMatchObject({ ok: true });
+    expect(checkPushUrl("http://pi.tailnet.ts.net:3000")).toMatchObject({ ok: false });
+    expect(checkPushUrl("http://pi.tailnet.ts.net:3000/", { allowHttp: true })).toEqual({ ok: true, url: "http://pi.tailnet.ts.net:3000" });
+    expect(checkPushUrl("ftp://x.example", { allowHttp: true })).toMatchObject({ ok: false });
+  });
+
+  it("doesn't follow a redirect with the tokens in hand", async () => {
+    const fetchMock = vi.fn(async () => new Response("", { status: 307, headers: { location: "https://elsewhere.example/admin/tokens" } }));
+    const r = await pushLogin("https://totem.example.com", "tok", login, { userId: null }, { fetch: fetchMock as unknown as typeof fetch });
+    expect(r).toMatchObject({ ok: false, reason: "redirected", httpStatus: 307 });
+    expect(r.ok === false && r.detail).toContain("https://elsewhere.example/admin/tokens");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].redirect).toBe("manual");
   });
 });
 

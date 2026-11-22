@@ -15,7 +15,7 @@ import {
   captureBrowserLogin, findBrowser, BrowserLoginError, SUPPORTED_BROWSERS, type FoundBrowser,
 } from "./browser_login.js";
 import {
-  cliEnv, fetchRemoteStatus, loginFromCookies, loginWithRefreshToken, markHandedOff, pickInstallationId,
+  checkPushUrl, cliEnv, fetchRemoteStatus, loginFromCookies, loginWithRefreshToken, markHandedOff, pickInstallationId,
   pushLogin, readLocalStatus, readTokenFile, resolveAuthTarget, retireLegacyEnv, saveLocalLogin, validateLogin,
   type AuthTarget, type PushResult, type RemoteStatus, type WhoopLogin,
 } from "./auth_flow.js";
@@ -27,6 +27,8 @@ interface AuthFlags {
   local: boolean;
   status: boolean;
   help: boolean;
+  /** Push over plain http to a host other than this machine (a private network). */
+  allowHttp: boolean;
   url?: string | undefined;
   browser?: string | undefined;
 }
@@ -41,6 +43,7 @@ export function parseAuthFlags(argv: string[]): AuthFlags {
     local: argv.includes("--local"),
     status: argv.includes("--status") || argv[0] === "status",
     help: argv.includes("--help") || argv.includes("-h"),
+    allowHttp: argv.includes("--allow-http"),
     url: value("--url"),
     browser: value("--browser"),
   };
@@ -55,7 +58,7 @@ function printHelp(): void {
   say("totem auth            log in through a browser; saved here, or pushed to your deployment");
   say("totem auth --paste    paste the whoop-auth-refresh-token cookie instead of opening a browser");
   say("totem auth --local    save the login on this machine even if a deployment is recorded");
-  say("totem auth --url URL  push the login to the totem server at URL");
+  say("totem auth --url URL  push the login to the totem server at URL (https; --allow-http for a private network)");
   say("totem auth --status   show where the login lives and when it last refreshed");
   say("Env: TOTEM_TOKEN_FILE (token file path), TOTEM_BROWSER (browser executable).");
 }
@@ -138,7 +141,7 @@ async function showStatus(root: string, flags: AuthFlags): Promise<number> {
     say(c.gray("  (no MCP_AUTH_TOKEN recorded for it; run `totem auth` to push a login and record it)"));
     return 0;
   }
-  const r = await fetchRemoteStatus(target.url, adminToken);
+  const r = await fetchRemoteStatus(target.url, adminToken, { allowHttp: flags.allowHttp });
   if (r.ok) printRemoteStatus(r.status);
   else fail(`${r.reason}${r.httpStatus ? ` (${r.httpStatus})` : ""}: ${r.detail}`);
   return r.ok ? 0 : 1;
@@ -157,6 +160,12 @@ function explainPushFailure(r: Extract<PushResult, { ok: false }>, url: string):
     case "unauthorized":
       fail(`${url} rejected the MCP_AUTH_TOKEN.`);
       break;
+    case "insecure":
+      fail(r.detail);
+      break;
+    case "redirected":
+      fail(`${url} answered with a redirect (${r.detail}). totem doesn't follow redirects with the login in hand: use the server's final https:// address.`);
+      break;
     default:
       fail(`${url} refused the login (${r.httpStatus ?? "?"}): ${r.detail}`);
   }
@@ -167,6 +176,7 @@ async function pushToDeployment(
   target: Extract<AuthTarget, { kind: "remote" }>,
   login: WhoopLogin,
   userId: number | null,
+  allowHttp: boolean,
 ): Promise<{ ok: boolean; status?: RemoteStatus }> {
   const env = cliEnv(resolve(root, ".env"));
   let token = target.adminToken || env.TOTEM_ADMIN_TOKEN || env.MCP_AUTH_TOKEN || "";
@@ -179,7 +189,7 @@ async function pushToDeployment(
       prompted = true;
       if (!token) break;
     }
-    const r = await pushLogin(target.url, token, login, { userId });
+    const r = await pushLogin(target.url, token, login, { userId }, { allowHttp });
     if (r.ok) {
       const record = readDeployRecord(root);
       if (prompted && record?.url && record.url.replace(/\/+$/, "") === target.url) {
@@ -212,6 +222,14 @@ export async function runAuth(root: string, argv: string[] = [], opts: RunAuthOp
   const env = cliEnv(envPath);
   const target = opts.target ?? resolveAuthTarget(readDeployRecord(root), flags, env);
   const localFile = resolveTokenFilePath(env);
+  if (target.kind === "remote") {
+    // Before anyone logs in: the push must have somewhere safe to go.
+    const safe = checkPushUrl(target.url, { allowHttp: flags.allowHttp });
+    if (!safe.ok) {
+      fail(safe.reason);
+      return 1;
+    }
+  }
   say(target.kind === "remote" ? `Logging into WHOOP for ${c.bold(target.url)}` : `Logging into WHOOP for this machine (${c.gray(localFile)})`);
   say("");
 
@@ -244,7 +262,7 @@ export async function runAuth(root: string, argv: string[] = [], opts: RunAuthOp
     return 0;
   }
 
-  const pushed = await pushToDeployment(root, target, login, check.userId);
+  const pushed = await pushToDeployment(root, target, login, check.userId, flags.allowHttp);
   if (!pushed.ok) {
     say(c.gray("  The new login wasn't saved anywhere. Run `totem auth` again once the server is reachable."));
     return 1;

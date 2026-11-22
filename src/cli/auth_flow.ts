@@ -198,7 +198,46 @@ export function markHandedOff(
 
 export type PushResult =
   | { ok: true; status: RemoteStatus }
-  | { ok: false; reason: "unauthorized" | "not-found" | "unreachable" | "rejected" | "server-error"; httpStatus: number | null; detail: string };
+  | {
+      ok: false;
+      reason: "unauthorized" | "not-found" | "unreachable" | "rejected" | "server-error" | "insecure" | "redirected";
+      httpStatus: number | null;
+      detail: string;
+    };
+
+/** This machine: plain http to it never crosses a network. */
+function isLoopbackHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  return h === "localhost" || h === "::1" || /^127(\.\d{1,3}){3}$/.test(h);
+}
+
+/**
+ * Whether a login may be pushed to `url`. The push carries the WHOOP session
+ * and the server's MCP_AUTH_TOKEN, so it goes over https, or over plain http
+ * only to this machine. `allowHttp` (`totem auth --allow-http`) is the opt-in
+ * for a private network that encrypts by other means (a VPN, a tailnet).
+ */
+export function checkPushUrl(
+  url: string,
+  opts: { allowHttp?: boolean | undefined } = {},
+): { ok: true; url: string } | { ok: false; reason: string } {
+  const cleaned = cleanUrl(url);
+  let parsed: URL;
+  try {
+    parsed = new URL(cleaned);
+  } catch {
+    return { ok: false, reason: `'${cleaned}' isn't a URL (expected https://…).` };
+  }
+  if (parsed.protocol === "https:") return { ok: true, url: cleaned };
+  if (parsed.protocol !== "http:") return { ok: false, reason: `'${cleaned}' isn't an https:// URL.` };
+  if (isLoopbackHost(parsed.hostname) || opts.allowHttp) return { ok: true, url: cleaned };
+  return {
+    ok: false,
+    reason:
+      `${cleaned} is plain http: the WHOOP login and the server's MCP_AUTH_TOKEN would cross the network unencrypted. ` +
+      "Use its https:// address, or add --allow-http for a private network you trust.",
+  };
+}
 
 export interface RemoteStatus {
   state?: string;
@@ -217,19 +256,30 @@ async function adminCall(
   url: string,
   adminToken: string,
   body: unknown,
-  doFetch: typeof fetch,
+  opts: { fetch?: typeof fetch | undefined; allowHttp?: boolean | undefined },
 ): Promise<PushResult> {
+  const target = checkPushUrl(url, opts);
+  if (!target.ok) return { ok: false, reason: "insecure", httpStatus: null, detail: target.reason };
+  const doFetch = opts.fetch ?? fetch;
   let response: Response;
   try {
     const init: RequestInit = {
       method,
       headers: { authorization: `Bearer ${adminToken}`, accept: "application/json", ...(body ? { "content-type": "application/json" } : {}) },
+      // Never follow a redirect: a 307/308 would re-send the body (the WHOOP
+      // tokens) to wherever it points, https or not.
+      redirect: "manual",
       signal: AbortSignal.timeout(20_000),
     };
     if (body) init.body = JSON.stringify(body);
-    response = await doFetch(`${cleanUrl(url)}/admin/tokens`, init);
+    response = await doFetch(`${target.url}/admin/tokens`, init);
   } catch (error) {
     return { ok: false, reason: "unreachable", httpStatus: null, detail: (error as Error).message };
+  }
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel().catch(() => undefined);
+    const to = response.headers.get("location") ?? "another address";
+    return { ok: false, reason: "redirected", httpStatus: response.status, detail: `it redirects to ${to}` };
   }
   const text = await response.text().catch(() => "");
   let json: Record<string, unknown> = {};
@@ -248,7 +298,7 @@ export function pushLogin(
   adminToken: string,
   login: WhoopLogin,
   extras: { userId: number | null },
-  opts: { fetch?: typeof fetch } = {},
+  opts: { fetch?: typeof fetch | undefined; allowHttp?: boolean | undefined } = {},
 ): Promise<PushResult> {
   return adminCall("POST", url, adminToken, {
     access_token: login.accessToken,
@@ -256,12 +306,16 @@ export function pushLogin(
     client_id: login.clientId,
     source: login.source,
     ...(extras.userId ? { user_id: extras.userId } : {}),
-  }, opts.fetch ?? fetch);
+  }, opts);
 }
 
 /** GET /admin/tokens on a deployment. */
-export function fetchRemoteStatus(url: string, adminToken: string, opts: { fetch?: typeof fetch } = {}): Promise<PushResult> {
-  return adminCall("GET", url, adminToken, undefined, opts.fetch ?? fetch);
+export function fetchRemoteStatus(
+  url: string,
+  adminToken: string,
+  opts: { fetch?: typeof fetch | undefined; allowHttp?: boolean | undefined } = {},
+): Promise<PushResult> {
+  return adminCall("GET", url, adminToken, undefined, opts);
 }
 
 export interface LocalStatus {
