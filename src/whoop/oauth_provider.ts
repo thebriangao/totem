@@ -29,7 +29,7 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { InvalidGrantError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { redirectUriMatches } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
 
 const ACCESS_TTL_S = 3600;            // 1 hour
@@ -220,25 +220,31 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     return constantTimeEqual(password, this.password);
   }
 
+  // A bad grant must be the SDK's InvalidGrantError: the token endpoint maps it
+  // to 400 `invalid_grant`, the client's cue to send the user back through
+  // /authorize. A plain Error became 500 `server_error`, which reads as an
+  // outage, so an expired 30-day refresh token (or a rotated MCP_AUTH_TOKEN)
+  // left the connector failing instead of asking to reconnect.
+  private liveCode(client: OAuthClientInformationFull, authorizationCode: string): AuthCodeEntry {
+    const entry = this.codes.get(authorizationCode);
+    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
+      throw new InvalidGrantError("invalid or expired authorization code");
+    }
+    return entry;
+  }
+
   async challengeForAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<string> {
-    const entry = this.codes.get(authorizationCode);
-    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
-      throw new Error("invalid or expired authorization code");
-    }
-    return entry.challenge;
+    return this.liveCode(client, authorizationCode).challenge;
   }
 
   async exchangeAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<OAuthTokens> {
-    const entry = this.codes.get(authorizationCode);
-    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
-      throw new Error("invalid or expired authorization code");
-    }
+    const entry = this.liveCode(client, authorizationCode);
     this.codes.delete(authorizationCode); // one-time use
     return this.issueTokens(client.client_id, entry.scopes, entry.resource);
   }
@@ -250,7 +256,7 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   ): Promise<OAuthTokens> {
     const payload = verifyToken(refreshToken, this.signingSecret);
     if (!payload || payload.typ !== "refresh" || payload.cid !== client.client_id) {
-      throw new Error("invalid refresh token");
+      throw new InvalidGrantError("invalid or expired refresh token");
     }
     const grantScopes = scopes ?? ((payload.scopes as string[]) ?? []);
     return this.issueTokens(client.client_id, grantScopes, payload.resource as string | undefined);
