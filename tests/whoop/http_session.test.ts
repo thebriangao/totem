@@ -87,4 +87,55 @@ describe("HTTP transport: session creation", () => {
     expect(list.status).toBe(200);
     expect(registerCalls.count).toBe(before + 1);
   });
+
+  const INIT = JSON.stringify({
+    jsonrpc: "2.0", id: 1, method: "initialize",
+    params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } },
+  });
+  const initialize = async (): Promise<string> => {
+    const r = await fetch(`${BASE}/mcp`, { method: "POST", headers: HEADERS, body: INIT });
+    await r.text();
+    return r.headers.get("mcp-session-id")!;
+  };
+  const toolsList = (sid: string) => fetch(`${BASE}/mcp`, {
+    method: "POST",
+    headers: { ...HEADERS, "mcp-session-id": sid, "mcp-protocol-version": "2025-06-18" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
+  });
+
+  // The transport turns this initialize down (406), so the session id is never
+  // handed out. The session built for it used to stay in memory until the
+  // 30-minute idle sweep, one full McpServer per bad attempt.
+  it("drops the session at once when the transport rejects the initialize", async () => {
+    const { StreamableHTTPServerTransport } = await import("@modelcontextprotocol/sdk/server/streamableHttp.js");
+    const closed = vi.spyOn(StreamableHTTPServerTransport.prototype, "close");
+    try {
+      const r = await fetch(`${BASE}/mcp`, { method: "POST", headers: { ...HEADERS, accept: "application/json" }, body: INIT });
+      expect(r.status).toBe(406);
+      expect(r.headers.get("mcp-session-id")).toBeNull();
+      await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
+      // A good initialize is left alone.
+      const sid = await initialize();
+      expect((await toolsList(sid)).status).toBe(200);
+      expect(closed).toHaveBeenCalledTimes(1);
+    } finally {
+      closed.mockRestore();
+    }
+  });
+
+  // ~2.7 MB of heap per session and no ceiling on how many: a client that
+  // re-initializes on every request could exhaust a 256 MB VM within the sweep window.
+  it("caps live sessions, evicting the least recently used", async () => {
+    const first = await initialize();
+    const second = await initialize();
+    const rest: string[] = [];
+    for (let i = 0; i < 29; i++) rest.push(await initialize());
+    expect((await toolsList(first)).status).toBe(200); // touch: `second` is now the oldest
+    for (let i = 0; i < 12; i++) rest.push(await initialize()); // well past the cap of 32
+    const evicted = await toolsList(second);
+    expect(evicted.status).toBe(404);
+    expect(((await evicted.json()) as { error: { message: string } }).error.message).toMatch(/session not found/i);
+    expect((await toolsList(first)).status).toBe(200); // recently used, so kept
+    expect((await toolsList(rest.at(-1)!)).status).toBe(200);
+  });
 });

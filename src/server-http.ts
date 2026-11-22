@@ -116,7 +116,25 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   }, 5 * 60_000);
   sweep.unref();
 
+  // A session holds its own McpServer with every tool registered: ~2.7 MB of
+  // heap each (measured, idle, after GC). The sweep above only bounds how long
+  // one lives, not how many there are, so a client that re-initializes instead
+  // of reusing its session id could still exhaust a small VM inside the idle
+  // window. Past the cap the least recently used session is dropped; its client
+  // gets 404 "Session not found" on its next call and re-initializes.
+  const MAX_SESSIONS = 32;
+  function evictLeastRecentlyUsed(): void {
+    let oldest: [string, Session] | undefined;
+    for (const candidate of sessions) {
+      if (!oldest || candidate[1].lastSeen < oldest[1].lastSeen) oldest = candidate;
+    }
+    if (!oldest) return;
+    sessions.delete(oldest[0]);
+    void oldest[1].transport.close().catch(() => undefined);
+  }
+
   async function createSession(): Promise<Session> {
+    while (sessions.size >= MAX_SESSIONS) evictLeastRecentlyUsed();
     const newId = randomUUID();
     const newServer = new McpServer({ name: "totem", version: "1.5.1" });
     registerTools(newServer, client);
@@ -286,6 +304,12 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
         await session.transport.handleRequest(req, res, req.body);
       } finally {
         releaseSettledJsonStreams(session.transport);
+        // An initialize the transport turned down (wrong Accept header, bad
+        // protocol version header) never assigns the session id, so no client
+        // can ever address this session: drop it now, not at the idle sweep.
+        if (!existing && session.transport.sessionId === undefined) {
+          void session.transport.close().catch(() => undefined);
+        }
       }
     } catch (err) {
       console.error("[totem] request error:", err);
