@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WhoopClient } from "../../src/whoop/client.js";
 import {
   WhoopApiError,
-  WhoopAuthExpiredError,
+  WhoopEndpointUnauthorizedError,
   WhoopServerError,
 } from "../../src/whoop/errors.js";
 
@@ -21,7 +21,7 @@ describe("WhoopClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("includes bearer header and apiVersion query param on GET", async () => {
+  it("includes bearer header and no apiVersion query param on GET", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
@@ -29,7 +29,7 @@ describe("WhoopClient", () => {
     await client.get("/home-service/v1/home", { date: "2026-05-23" });
 
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toContain("apiVersion=7");
+    expect(url).not.toContain("apiVersion");
     expect(url).toContain("date=2026-05-23");
     expect(url).toContain("/home-service/v1/home");
     expect((init as RequestInit).method).toBe("GET");
@@ -41,14 +41,14 @@ describe("WhoopClient", () => {
       accept: "*/*",
       "user-agent": "iOS",
       "x-whoop-device-platform": "iOS",
-      "x-whoop-ios-version": "5.52.0",
+      "x-whoop-ios-version": "5.78.0",
       "x-whoop-bundle-name": "com.whoop.iphone",
     });
   });
 
-  it("throws WhoopAuthExpiredError on 401", async () => {
+  it("throws WhoopEndpointUnauthorizedError on a 401 it can't retry", async () => {
     fetchMock.mockResolvedValueOnce(new Response("unauthorized", { status: 401 }));
-    await expect(makeClient().get("/x")).rejects.toBeInstanceOf(WhoopAuthExpiredError);
+    await expect(makeClient().get("/x")).rejects.toBeInstanceOf(WhoopEndpointUnauthorizedError);
   });
 
   it("throws WhoopServerError on 5xx", async () => {
@@ -281,10 +281,10 @@ describe("WhoopClient", () => {
     expect((fetchMock.mock.calls[1]![1] as RequestInit).headers).toMatchObject({ authorization: "Bearer new" });
   });
 
-  it("gives up with WhoopAuthExpiredError when the retry also gets 401", async () => {
+  it("treats a 401 that survives a refresh as endpoint-specific, not an expired login", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(new Response("unauthorized", { status: 401 })));
     const client = new WhoopClient({ getToken: async () => "t", onUnauthorized: () => {} });
-    await expect(client.get("/x")).rejects.toBeInstanceOf(WhoopAuthExpiredError);
+    await expect(client.get("/x")).rejects.toBeInstanceOf(WhoopEndpointUnauthorizedError);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

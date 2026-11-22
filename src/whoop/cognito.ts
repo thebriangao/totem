@@ -9,11 +9,11 @@
 //   3. Get AccessToken + RefreshToken from AuthenticationResult
 //   4. To refresh: InitiateAuth with REFRESH_TOKEN_AUTH (no MFA needed)
 import { randomUUID } from "node:crypto";
-import { REQUEST_TIMEOUT_MS } from "./constants.js";
+import { REQUEST_TIMEOUT_MS, WEB_CLIENT_ID } from "./constants.js";
 
 const ENDPOINT = "https://api.prod.whoop.com/auth-service/v3/whoop/";
 const USER_AGENT =
-  "aws-sdk-swift/1.5.86 ua/2.1 api/cognito_identity_provider#1.5.86 os/ios#26.3.1 lang/swift#5.10 m/D,N,Z,b";
+  "aws-sdk-swift/1.7.93 ua/2.1 api/cognito_identity_provider#1.7.93 os/ios#27.0.0 lang/swift#5.10 m/D,N,Z,b";
 
 interface AuthenticationResult {
   AccessToken: string;
@@ -63,7 +63,7 @@ async function callCognito(
       headers: {
         "content-type": "application/x-amz-json-1.1",
         "x-amz-target": `AWSCognitoIdentityProviderService.${target}`,
-        "amz-sdk-request": "attempt=1; max=1",
+        "amz-sdk-request": "attempt=1; max=2",
         "amz-sdk-invocation-id": randomUUID(),
         "user-agent": USER_AGENT,
         accept: "*/*",
@@ -146,19 +146,38 @@ export async function bootstrapCognito(input: BootstrapInput): Promise<CognitoTo
 /**
  * Use the long-lived refresh token to mint a fresh access token.
  * No MFA needed — refresh tokens are pre-authenticated.
- * Returns new access token; refresh token usually NOT rotated (reuse the existing one).
+ *
+ * WHOOP rotates the refresh token on EVERY refresh (6/6 in the 2026-11 capture,
+ * every probe refresh since). The returned refreshToken must be persisted before
+ * the new access token is used; the old one is dead.
+ *
+ * `clientId` must be the client that issued the refresh token: browser-login
+ * tokens come from WHOOP's web client (WEB_CLIENT_ID). Legacy tokens minted by the
+ * old iOS password flow used "" (WHOOP's proxy filled in the iOS client).
  */
 export async function refreshCognitoSession(
-  _email: string,
   refreshToken: string,
+  clientId: string = WEB_CLIENT_ID,
 ): Promise<CognitoTokens> {
   const resp = await callCognito("InitiateAuth", {
     AuthFlow: "REFRESH_TOKEN_AUTH",
     AuthParameters: { REFRESH_TOKEN: refreshToken },
-    ClientId: "",
+    ClientId: clientId,
   });
   if (!resp.AuthenticationResult) {
-    throw new Error(`Refresh did not return tokens: ${JSON.stringify(resp)}`);
+    throw new Error(`Refresh did not return tokens: ${JSON.stringify(resp).slice(0, 200)}`);
   }
   return tokensFromAuth(resp.AuthenticationResult, refreshToken);
+}
+
+/** The `client_id` claim of an access token (which Cognito client issued it). */
+export function decodeJwtClientId(jwt: string): string | null {
+  const parts = jwt.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1]!.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as { client_id?: string };
+    return payload.client_id ?? null;
+  } catch {
+    return null;
+  }
 }

@@ -181,7 +181,7 @@ async function main(): Promise<void> {
   // Verify auto-refresh works (catches "account requires MFA on every login").
   // This rotates the access token, so push the freshest one afterward.
   try {
-    const refreshed = await refreshCognitoSession(email, refresh);
+    const refreshed = await refreshCognitoSession(refresh, "");
     if (refreshed.accessToken && refreshed.accessToken !== access) {
       access = refreshed.accessToken;
       if (refreshed.refreshToken && refreshed.refreshToken !== refresh) refresh = refreshed.refreshToken;

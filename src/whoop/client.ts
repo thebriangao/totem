@@ -1,10 +1,14 @@
-import { BASE_URL, API_VERSION, REQUEST_TIMEOUT_MS } from "./constants.js";
+import { BASE_URL, REQUEST_TIMEOUT_MS } from "./constants.js";
 import { deviceHeaders } from "./device.js";
 import { isoDay } from "../lib/dates.js";
 import {
   WhoopApiError,
-  WhoopAuthExpiredError,
+  WhoopConflictError,
+  WhoopEndpointUnauthorizedError,
   WhoopServerError,
+  apiErrorDetail,
+  htmlTitle,
+  parseOverlaps,
 } from "./errors.js";
 
 export interface WhoopClientConfig {
@@ -17,7 +21,12 @@ export interface WhoopClientConfig {
    * retry, so the token source can force a refresh.
    */
   onUnauthorized?: (rejectedToken: string) => void;
+  /** Injectable sleep for the 412 retry backoff (tests pass a no-op). */
+  sleep?: (ms: number) => Promise<void>;
 }
+
+/** Backoff for WHOOP's 412 "User's cycle is concurrently being updated" on writes. */
+const RETRY_412_DELAYS_MS = [2_000, 10_000] as const;
 
 type QueryValue = string | number | boolean | undefined | null;
 
@@ -186,6 +195,33 @@ function cachePolicy(
     path === "/activities-service/v1/user-state" ||
     path.startsWith("/health-service/v2/stress-bff/")
   ) return null;
+  // Never cache: the coach and memory (every read can change state), other
+  // people's data (D9: community + Humans), and today's health monitor.
+  if (
+    path.startsWith("/ai-conversation-") ||
+    path.startsWith("/context-hub-bff/") ||
+    path.startsWith("/community-service/") ||
+    path.startsWith("/followers-service/") ||
+    path.startsWith("/coaching-service/v1/health/bff/monitor")
+  ) return null;
+  // Static catalogs change with app releases, not with user actions.
+  if (
+    path === "/activities-service/v1/sports" ||
+    path === "/activities-service/v2/activity-types" ||
+    path === "/weightlifting-service/v2/exercise" ||
+    path === "/strap-location-service/v1/garment"
+  ) return { ttlMs: 24 * 60 * 60_000, tags: ["catalog"] };
+  // Per-activity detail screens carry no date hint; their content changes on edits.
+  if (path.startsWith("/core-details-bff/v2/sleep-details/") || path.includes("recovery-details")) {
+    return { ttlMs: 5 * 60_000, tags: ["activity", "sleep", "daily"] };
+  }
+  if (path.startsWith("/progression-service/v3/trends/WEIGHT/readings")) {
+    return { ttlMs: 5 * 60_000, tags: ["trend", "weight", "profile"] };
+  }
+  if (path.includes("/weekly-plan")) return { ttlMs: historical ? 60 * 60_000 : 5 * 60_000, tags: ["trend", "weekly_plan", "daily"] };
+  if (path.startsWith("/milestones-service/") || path.startsWith("/streaks-service/")) {
+    return { ttlMs: 10 * 60_000, tags: ["milestones"] };
+  }
 
   if (path === "/home-service/v1/home") return { ttlMs: historical ? 60 * 60_000 : 30_000, tags: ["daily"] };
   if (path.includes("calendar/")) return { ttlMs: historical ? 12 * 60 * 60_000 : 15 * 60_000, tags: ["calendar", "daily"] };
@@ -201,7 +237,6 @@ function cachePolicy(
     return { ttlMs: historical ? 15 * 60_000 : 60_000, tags: ["activity", "daily"] };
   }
   if (path.includes("weightlifting-service")) return { ttlMs: 5 * 60_000, tags: ["lift"] };
-  if (path.includes("community-service")) return { ttlMs: 5 * 60_000, tags: ["community"] };
   if (
     path.includes("bootstrap") ||
     path.includes("hidden-metrics") ||
@@ -214,16 +249,37 @@ function cachePolicy(
 }
 
 function writeInvalidationTags(path: string): readonly string[] {
+  const ACTIVITY = ["activity", "daily", "sleep", "recovery", "sleep_plan", "calendar", "trend", "lift", "milestones"] as const;
   if (
-    path.includes("create-activity") || path.includes("cardio-details") || path.includes("sleep-details")
-  ) return ["activity", "daily", "sleep", "recovery", "sleep_plan", "calendar", "trend", "lift"];
-  if (path.includes("journal-service") || path.includes("menstrual") || path.includes("symptom")) {
-    return ["journal", "daily", "recovery", "sleep", "trend"];
+    path.includes("create-activity") || path.includes("cardio-details") || path.includes("sleep-details") ||
+    path.includes("recovery-details") || path.startsWith("/activities-service/v2/activities")
+  ) return ACTIVITY;
+  // The coach can create, edit and delete activities, journal answers and
+  // templates server-side in a chat turn.
+  if (path.startsWith("/ai-conversation-")) return [...ACTIVITY, "journal", "settings"];
+  if (path.startsWith("/progression-service/v3/trends/WEIGHT/readings")) {
+    // The latest reading also rewrites the profile weight (bootstrap).
+    return ["trend", "weight", "profile", "settings", "daily"];
   }
-  if (path.includes("weightlifting-service")) return ["lift", "activity", "daily", "trend"];
-  if (path.includes("profile-service") || path.includes("hr-zones") || path.includes("smart-alarm") || path.includes("hidden-metrics")) {
+  if (path.includes("/weekly-plan")) return ["trend", "weekly_plan", "daily"];
+  if (
+    path.includes("journal-service") || path.includes("menstrual") || path.includes("symptom") ||
+    path.includes("hormonal") || path.includes("pregnancy") || path.startsWith("/womens-health-service/") ||
+    path.startsWith("/activities-service/v1/journals/")
+  ) {
+    return ["journal", "daily", "recovery", "sleep", "trend", "settings"];
+  }
+  if (path.includes("weightlifting-service")) return ["lift", "activity", "daily", "trend", "milestones"];
+  if (
+    path.includes("profile-service") || path.includes("hr-zones") || path.includes("smart-alarm") ||
+    path.includes("hidden-metrics") || path.includes("stealth-mode") || path.startsWith("/users-service/") ||
+    path.startsWith("/user-preferences-service/") || path.startsWith("/notification-service/") ||
+    path.startsWith("/privacy-service")
+  ) {
     return ["settings", "profile", "daily", "sleep_plan"];
   }
+  // Memory writes touch nothing cached (the context hub is never cached).
+  if (path.startsWith("/context-hub-bff/")) return [];
   // whoop_raw can mutate any undocumented endpoint.
   return ["all"];
 }
@@ -298,9 +354,11 @@ export class WhoopClient {
     query: Record<string, QueryValue>,
     body: unknown,
     retried = false,
+    attempt412 = 0,
   ): Promise<T> {
+    // No `apiVersion` param: the app sent it on 0 of 5,813 requests (2026-11
+    // capture), so it was totem's clearest single tell.
     const url = new URL(BASE_URL + path);
-    url.searchParams.set("apiVersion", API_VERSION);
     for (const [k, v] of Object.entries(query)) {
       if (v === undefined || v === null) continue;
       url.searchParams.set(k, String(v));
@@ -311,7 +369,7 @@ export class WhoopClient {
     // accept, priority — see device.ts), then layer auth and, for writes, the
     // body content-type on top so they always win. `accept-encoding` is left
     // unset on purpose: setting it manually disables undici's automatic response
-    // decompression, which would break response.json().
+    // decompression, which would break response parsing.
     const headers: Record<string, string> = {
       ...deviceHeaders(),
       authorization: `Bearer ${token}`,
@@ -341,29 +399,51 @@ export class WhoopClient {
 
     if (response.status === 401) {
       // Whoop can reject a token before its local expiry (revocation, clock
-      // skew). Force one refresh and retry before giving up.
+      // skew, a birthday/country profile edit). Force one refresh and retry.
       if (!retried && this.config.onUnauthorized) {
         await response.body?.cancel().catch(() => {});
         this.config.onUnauthorized(token);
-        return this.send<T>(method, path, query, body, true);
+        return this.send<T>(method, path, query, body, true, attempt412);
       }
-      throw new WhoopAuthExpiredError();
+      // A 401 that survives a fresh token is path-specific (WHOOP refuses some
+      // endpoints for user tokens), not an expired login. Login expiry surfaces
+      // from the refresh itself (WhoopAuthExpiredError in the token manager).
+      await response.body?.cancel().catch(() => {});
+      throw new WhoopEndpointUnauthorizedError(path);
+    }
+    if (response.status === 412 && method !== "GET" && attempt412 < RETRY_412_DELAYS_MS.length) {
+      // "User's cycle is concurrently being updated": WHOOP is recomputing the
+      // day (often right after another write). It succeeds on retry.
+      await response.body?.cancel().catch(() => {});
+      await (this.config.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(RETRY_412_DELAYS_MS[attempt412]!);
+      return this.send<T>(method, path, query, body, retried, attempt412 + 1);
     }
     if (response.status >= 500) {
-      throw new WhoopServerError(response.status, path);
+      const text = await response.text().catch(() => "");
+      throw new WhoopServerError(response.status, path, htmlTitle(text) ?? apiErrorDetail(text));
     }
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      let description: string | undefined;
-      try {
-        const parsed = JSON.parse(text) as { error_description?: string; error?: string };
-        description = parsed.error_description ?? parsed.error;
-      } catch {
-        // body not JSON
+      if (response.status === 412) {
+        throw new WhoopApiError(412, path, text, "WHOOP is updating this day; try again in a minute");
       }
+      if (response.status === 409) {
+        throw new WhoopConflictError(path, text, parseOverlaps(text), apiErrorDetail(text));
+      }
+      const description = apiErrorDetail(text) ??
+        (response.status === 422 && !text.trim() ? "WHOOP rejected the request shape (422, no details)" : undefined);
       throw new WhoopApiError(response.status, path, text, description);
     }
 
-    return response.status === 204 ? undefined as T : (await response.json()) as T;
+    if (response.status === 204) return undefined as T;
+    // Some endpoints answer 200 with an empty body, or a bare JSON literal
+    // (profile PUT returns `false` when it refused the values).
+    const text = await response.text();
+    if (!text.trim()) return undefined as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as T;
+    }
   }
 }

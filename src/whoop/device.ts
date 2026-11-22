@@ -19,20 +19,20 @@
 //     no marketing cookies. A unique invented header would be the precise
 //     fingerprint we are trying not to leave.
 //
-// Captured from WHOOP iOS 5.52.0 (build 595097). Bump these when the app ships a
+// Captured from WHOOP iOS 5.78.0 (build 772673), 2026-11-21. Bump these when the app ships a
 // new version so we keep blending with the current install base.
 
 import { randomUUID } from "node:crypto";
 
-export const IOS_APP_VERSION = "5.52.0";
-export const IOS_BUILD_NUMBER = "595097";
+export const IOS_APP_VERSION = "5.78.0";
+export const IOS_BUILD_NUMBER = "772673";
 export const IOS_BUNDLE_NAME = "com.whoop.iphone";
 
 // When the constants above were captured from a real device. If the bundled
 // version drifts too far behind the live install base it stops being camouflage
 // and becomes a "this one frozen old version" cohort — warn at boot so it gets
 // refreshed. Bump alongside the version/build when you re-capture.
-export const IOS_VERSION_CAPTURED_AT = "2026-05"; // YYYY-MM
+export const IOS_VERSION_CAPTURED_AT = "2026-11"; // YYYY-MM
 export function versionStaleWarning(maxAgeMonths = 6): string | null {
   const [y, m] = IOS_VERSION_CAPTURED_AT.split("-").map(Number);
   if (!y || !m) return null;

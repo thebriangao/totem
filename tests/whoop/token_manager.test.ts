@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/whoop/cognito.js", () => ({
   decodeJwtExp: () => 0,
+  decodeJwtClientId: () => null,
   refreshCognitoSession: vi.fn().mockResolvedValue({
     accessToken: "fresh-access",
     refreshToken: "fresh-refresh",

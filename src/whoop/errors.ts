@@ -9,15 +9,55 @@ export function apiErrorDetail(body: string): string | undefined {
       if (typeof value === "string" && value.trim()) return value.trim().replace(/\s+/g, " ").slice(0, 300);
     }
   } catch {
-    // A non-JSON 4xx body is intentionally not exposed to the model.
+    // Not JSON. WHOOP answers some validation failures as short text/plain
+    // ("Requested impact not found."); expose those, but never an HTML page or a
+    // long body (it could carry a fragment of health data).
+    const text = body.trim();
+    if (text && text.length <= 300 && !text.startsWith("<")) return text.replace(/\s+/g, " ");
+    const title = htmlTitle(body);
+    if (title) return title;
   }
   return undefined;
 }
 
+/** `<title>` of an HTML error page (Cloudflare/Jetty), if any. */
+export function htmlTitle(body: string): string | undefined {
+  const m = body.match(/<title>([^<]{1,200})<\/title>/i);
+  return m ? m[1]!.trim() : undefined;
+}
+
+export interface OverlappingActivity {
+  id?: string | undefined;
+  type?: string | undefined;
+  start?: string | undefined;
+  end?: string | undefined;
+}
+
+/** Parse the structured 409 overlap body from create/edit-activity writes. */
+export function parseOverlaps(body: string): OverlappingActivity[] {
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    const list = (parsed.overlapping_activities ?? (parsed.error as Record<string, unknown> | undefined)?.overlapping_activities) as unknown;
+    if (!Array.isArray(list)) return [];
+    return list.map((raw) => {
+      const a = (raw ?? {}) as Record<string, unknown>;
+      const during = typeof a.during === "string" ? a.during.match(/'([^']+)','([^']*)'/) : null;
+      return {
+        id: (a.activity_id ?? a.id ?? a.activity_v2_id) as string | undefined,
+        type: (a.activity_internal_name ?? a.internal_name ?? a.type ?? a.activity_type) as string | undefined,
+        start: (a.start_time ?? a.start ?? during?.[1]) as string | undefined,
+        end: (a.end_time ?? a.end ?? during?.[2]) as string | undefined,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export class WhoopAuthExpiredError extends Error {
-  constructor() {
+  constructor(detail?: string) {
     super(
-      "Whoop bearer token expired. Run `totem auth` to capture a fresh one.",
+      `Whoop login expired${detail ? ` (${detail})` : ""}. Run \`totem auth\` to log in again.`,
     );
     this.name = "WhoopAuthExpiredError";
   }
@@ -39,11 +79,28 @@ export class WhoopApiError extends Error {
 }
 
 export class WhoopServerError extends Error {
-  constructor(public readonly status: number, public readonly path: string) {
+  constructor(public readonly status: number, public readonly path: string, detail?: string) {
     super(
-      `Whoop API returned ${status} on ${path}. This is usually transient — try again in 30s.`,
+      `Whoop API returned ${status} on ${path}${detail ? ` (${detail})` : ""}. This is usually transient — try again in 30s. ` +
+        `A 500 right after a write can also mean WHOOP rejected the values (it validates some fields only after saving).`,
     );
     this.name = "WhoopServerError";
+  }
+}
+
+/** 401 that survived a fresh token: WHOOP refuses this endpoint for user tokens. */
+export class WhoopEndpointUnauthorizedError extends Error {
+  constructor(public readonly path: string) {
+    super(`WHOOP rejected ${path} for user tokens (401 with a freshly refreshed token). This endpoint isn't available to this account; it is not an expired login.`);
+    this.name = "WhoopEndpointUnauthorizedError";
+  }
+}
+
+/** 409 on a write: overlap with existing activities, or a conflicting state. */
+export class WhoopConflictError extends WhoopApiError {
+  constructor(path: string, body: string, public readonly overlaps: OverlappingActivity[], description?: string) {
+    super(409, path, body, description ?? (overlaps.length ? `overlaps ${overlaps.length} existing activit${overlaps.length === 1 ? "y" : "ies"}` : undefined));
+    this.name = "WhoopConflictError";
   }
 }
 

@@ -40,3 +40,14 @@ export function canonicalUtc(iso: string | number | Date): string {
   if (Number.isNaN(date.getTime())) throw new Error("Invalid timestamp; expected an ISO-8601 datetime with an offset.");
   return date.toISOString();
 }
+
+/**
+ * Refuse times in the future. WHOOP accepts future activities and sleeps, then
+ * leaves an empty cycle on that date that no API can delete (SPEC.md §7).
+ * A small allowance covers clock skew between this host and WHOOP.
+ */
+export function assertNotFuture(iso: string, what = "time", now: number = Date.now(), skewMs = 2 * 60_000): void {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) throw new Error(`Invalid ${what}: ${iso}`);
+  if (t > now + skewMs) throw new Error(`The ${what} ${iso} is in the future. WHOOP accepts future entries but then leaves an undeletable empty day behind, so totem refuses them.`);
+}

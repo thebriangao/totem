@@ -2,7 +2,8 @@
 // when the access token is within `refreshSkewSeconds` of expiry. Writes
 // rotated tokens to an injected TokenStore so server restarts pick up fresh
 // state without re-bootstrapping.
-import { decodeJwtExp, refreshCognitoSession } from "./cognito.js";
+import { decodeJwtClientId, decodeJwtExp, refreshCognitoSession } from "./cognito.js";
+import { WEB_CLIENT_ID } from "./constants.js";
 import { EnvFileTokenStore, type TokenStore } from "./token_store.js";
 
 export interface TokenManagerConfig {
@@ -74,7 +75,10 @@ export class TokenManager {
   }
 
   private async doRefresh(): Promise<void> {
-    const next = await refreshCognitoSession(this.email, this.refreshToken);
+    // Browser-login tokens refresh against WHOOP's web client; legacy iOS
+    // password-flow tokens refresh with "" (WHOOP's proxy fills the iOS client).
+    const clientId = decodeJwtClientId(this.accessToken) === WEB_CLIENT_ID ? WEB_CLIENT_ID : "";
+    const next = await refreshCognitoSession(this.refreshToken, clientId);
     this.accessToken = next.accessToken;
     // Cognito may rotate the refresh token; if it does, persist the new one.
     if (next.refreshToken && next.refreshToken !== this.refreshToken) {
