@@ -5,6 +5,7 @@ import {
   antigravityEntry, claudeConnectorLink, cursorInstallLink, cursorWebLink, remoteCommands, vscodeInstallLink,
 } from "../../src/lib/install_links.js";
 import { CONNECT_CSP, renderConnectPage } from "../../src/whoop/connect_page.js";
+import { TOTEM_LOGO_SVG } from "../../src/lib/brand.js";
 
 const MCP = "https://totem-a1b2c3.fly.dev/mcp";
 
@@ -104,6 +105,18 @@ describe("GET /connect and GET / on a running server", async () => {
     expect(r.headers.get("x-frame-options")).toBe("DENY");
     expect(r.headers.get("cache-control")).toBe("no-store");
     expect(await r.text()).toContain(MCP);
+  });
+
+  it("serves the logo as its favicon, without a login", async () => {
+    const r = await fetch(`${base}/favicon.svg`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toBe("image/svg+xml");
+    expect(r.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(await r.text()).toBe(TOTEM_LOGO_SVG);
+    const page = await (await fetch(`${base}/connect`)).text();
+    expect(page).toContain('<link rel="icon" href="/favicon.svg" type="image/svg+xml">');
+    expect(page).toContain('<p class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">');
+    expect(CONNECT_CSP).toContain("img-src 'self'");
   });
 
   it("sends the bare address to the Connect page", async () => {

@@ -1,3 +1,5 @@
+<p align="center"><img src="../../assets/brand/totem.svg" width="96" alt=""></p>
+
 <h1 align="center">totem</h1>
 
 <p align="center"><b>AI 앱을 위한 나만의 WHOOP 서버.</b><br>

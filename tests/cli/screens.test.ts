@@ -17,7 +17,7 @@ import { PLAIN, visibleWidth, type Style } from "../../src/cli/ui.js";
 import { PASSWORD, terminalPage, TOKEN } from "./helpers.js";
 import { KEY_SCREENS, SCREENS, render, type Screen } from "./screens.js";
 
-const COLOR: Style = { color: true, unicode: true, width: 80 };
+const COLOR: Style = { color: true, unicode: true, width: 80, palette: "truecolor" };
 const ASCII: Style = { color: false, unicode: false, width: 80 };
 const NARROW: Style = { color: false, unicode: true, width: 48 };
 const screen = (name: string): Screen => {
@@ -58,8 +58,8 @@ describe("every screen", () => {
   it.each(SCREENS.map((s) => [s.name, s] as const))("%s: colour only decorates", async (_name, s) => {
     const plain = (await render(s)).text;
     const coloured = (await render(s, COLOR)).text;
-    // Only bold, dim, five of the basic colours and their resets.
-    for (const code of coloured.match(/\x1b\[[^m]*m/g) ?? []) expect(code).toMatch(/^\x1b\[(1|2|22|31|32|33|35|36|39)m$/);
+    // Only bold, dim, four of the basic colours, the brand colour (ice #B7D3F2) and their resets.
+    for (const code of coloured.match(/\x1b\[[^m]*m/g) ?? []) expect(code).toMatch(/^\x1b\[(1|2|22|31|32|33|36|39|38;2;183;211;242)m$/);
     expect(stripVTControlCharacters(coloured)).toBe(plain);
   });
 

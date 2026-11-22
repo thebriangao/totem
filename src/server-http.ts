@@ -35,6 +35,7 @@ import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
 import { mountAdminTokens, type AdminTokensOptions } from "./server-admin.js";
 import { VERSION } from "./version.js";
+import { FAVICON_PATH, TOTEM_LOGO_SVG, serverIdentity } from "./lib/brand.js";
 
 export interface HttpServerOptions {
   /** Bearer token clients must present + JWT signing secret. Required, ≥32 chars. */
@@ -171,7 +172,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   async function createSession(): Promise<Session> {
     while (sessions.size >= MAX_SESSIONS) evictLeastRecentlyUsed();
     const newId = randomUUID();
-    const newServer = new McpServer({ name: "totem", version: VERSION });
+    const newServer = new McpServer(serverIdentity(VERSION));
     registerTools(newServer, client);
     const newTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => newId,
@@ -262,6 +263,15 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   let globalFails = 0;
   let globalResetAt = 0;
   const GLOBAL_FAIL_MAX = 50;
+
+  // The logo, as the pages' favicon (their CSP allows images from here only).
+  app.get(FAVICON_PATH, (_req: Request, res: Response) => {
+    res.setHeader("content-type", "image/svg+xml");
+    res.setHeader("cache-control", "public, max-age=86400");
+    res.setHeader("x-content-type-options", "nosniff");
+    res.setHeader("content-security-policy", "default-src 'none'");
+    res.end(TOTEM_LOGO_SVG);
+  });
 
   // The consent page's typeface: one file, from this server, cacheable forever
   // (the page's CSP allows fonts from here and nowhere else). Without it the

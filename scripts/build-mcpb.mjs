@@ -32,6 +32,7 @@ cpSync(join(root, "dist"), join(stage, "dist"), {
   filter: (src) => !src.endsWith(".map") && !src.includes(`${join("dist", "cloudflare")}`),
 });
 cpSync(join(root, "LICENSE"), join(stage, "LICENSE"));
+cpSync(join(root, "assets", "brand", "totem.png"), join(stage, "icon.png"));
 const runtime = { name: pkg.name, version: pkg.version, type: pkg.type, dependencies: pkg.dependencies };
 writeFileSync(join(stage, "package.json"), JSON.stringify(runtime, null, 2) + "\n");
 execFileSync("npm", ["install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", "--silent"], { cwd: stage, stdio: "inherit" });
@@ -40,6 +41,7 @@ const manifest = {
   manifest_version: "0.3",
   name: "totem",
   display_name: "WHOOP (totem)",
+  icon: "icon.png",
   version: pkg.version,
   description: "Your WHOOP data in Claude: recovery, sleep, strain, workouts, journal and more.",
   long_description:

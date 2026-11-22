@@ -1,4 +1,14 @@
-# Client logo sources
+# Brand assets
+
+## totem's logo
+
+`totem.svg` is totem's logo, and `totem.png` is a 512 px render of it (the Claude Desktop extension's icon). The colours are ice `#B7D3F2` and ink `#141414`, with fold `#7A9CC6` as the mark's darker face. `src/lib/brand.ts` carries the same logo and colours for the pages, the MCP server's icon and the CLI; `tests/lib/brand.test.ts` keeps it in step with this file. To re-render the PNG after a change:
+
+```bash
+magick -background none -density 192 assets/brand/totem.svg -resize 512x512 -depth 8 -colors 64 PNG8:assets/brand/totem.png
+```
+
+## Client logo sources
 
 The consent page shows the logo of the AI client that is asking for access. The logos live in `src/whoop/consent_logos.ts` as inline SVG. They are trademarks of their owners, used only to identify the client, and nothing here implies that the owners endorse totem. They are not covered by totem's licence.
 

@@ -7,13 +7,14 @@
 // connector password is asked for later, on the consent page, by each app's
 // own sign-in.
 //
-// Like the consent page it loads nothing but its own typeface. It has one
+// Like the consent page it loads nothing but its own typeface and favicon. It has one
 // small script, allowed by hash, for the Copy buttons; without it the text is
 // still there to select.
 import { createHash } from "node:crypto";
 import type { Response } from "express";
 import { CLIENT_LOGOS } from "./consent_logos.js";
 import { CONSENT_FONT_PATH } from "./consent_page.js";
+import { FAVICON_LINK, TOTEM_MARK } from "../lib/brand.js";
 import {
   antigravityEntry, claudeConnectorLink, cursorInstallLink, remoteCommands, vscodeInstallLink,
 } from "../lib/install_links.js";
@@ -22,17 +23,20 @@ const CSS = `
 @font-face { font-family: "Manrope"; src: url("${CONSENT_FONT_PATH}") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
 :root {
   color-scheme: light dark;
-  --page: #fbfaf9; --box: #ffffff; --fg: #141413; --dim: #6f6e6a; --line: #e6e5e1; --soft: #f4f3f1;
-  --go: #0f0f0e; --on: #ffffff; --shadow: 0 1px 2px rgba(20, 20, 19, .05);
+  --page: #f6f8fb; --box: #ffffff; --fg: #141414; --dim: #5d6672; --line: #e2e7ee; --soft: #f0f4f9;
+  --go: #141414; --on: #b7d3f2; --shadow: 0 1px 2px rgba(20, 20, 20, .05);
 }
 @media (prefers-color-scheme: dark) {
-  :root { --page: #0c0c0b; --box: #161615; --fg: #eeede9; --dim: #9a9993; --line: #2a2a28; --soft: #111110; --go: #eeede9; --on: #111110; --shadow: none; }
+  :root {
+    --page: #141414; --box: #1b1d20; --fg: #eef2f7; --dim: #9ba4af; --line: #2b2f34; --soft: #17191b;
+    --go: #b7d3f2; --on: #141414; --shadow: none;
+  }
 }
 * { box-sizing: border-box; margin: 0; }
 html { background: var(--page); color: var(--fg); font: 15px/1.5 "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
 body { min-height: 100vh; padding: 24px 18px 48px; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
-.brand svg { width: 20px; height: 20px; }
+.brand svg { width: 24px; height: 24px; border-radius: 6px; }
 main { max-width: 1080px; margin: clamp(18px, 5vh, 56px) auto 0; }
 h1 { font-size: 27px; font-weight: 450; letter-spacing: -.01em; line-height: 1.2; }
 .lead { color: var(--dim); margin: 10px 0 26px; max-width: 60ch; }
@@ -66,8 +70,8 @@ const SCRIPT = `function said(b,t){b.textContent=t;setTimeout(function(){b.textC
 
 const hash = (s: string): string => createHash("sha256").update(s).digest("base64");
 
-/** Nothing loads or runs except this page's stylesheet and Copy script (by hash) and its typeface. */
-export const CONNECT_CSP = `default-src 'none'; style-src 'sha256-${hash(CSS)}'; script-src 'sha256-${hash(SCRIPT)}'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+/** Nothing loads or runs except this page's stylesheet and Copy script (by hash), its typeface and its favicon. */
+export const CONNECT_CSP = `default-src 'none'; style-src 'sha256-${hash(CSS)}'; script-src 'sha256-${hash(SCRIPT)}'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 export function setConnectSecurityHeaders(res: Response): void {
   res.setHeader("Content-Security-Policy", CONNECT_CSP);
@@ -78,8 +82,6 @@ export function setConnectSecurityHeaders(res: Response): void {
 
 const esc = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-
-const TOTEM_MARK = `<svg viewBox="0 0 22 22" fill="currentColor" aria-hidden="true"><rect x="6" y="1" width="10" height="5" rx="2.5"/><rect x="3" y="8.5" width="16" height="5" rx="2.5"/><rect x="6" y="16" width="10" height="5" rx="2.5"/></svg>`;
 
 const copyRow = (text: string, label: string): string =>
   `<div class="box copyrow"><code>${esc(text)}</code><button type="button" data-copy="${esc(text)}" aria-label="Copy ${esc(label)}">Copy</button></div>`;
@@ -133,6 +135,7 @@ export function renderConnectPage(d: { mcpUrl: string }): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
+${FAVICON_LINK}
 <title>Connect your apps · totem</title>
 <style>${CSS}</style>
 </head>

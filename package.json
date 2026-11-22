@@ -33,7 +33,6 @@
   "files": [
     "dist/",
     "src/",
-    "assets/banner.svg",
     "assets/fonts/",
     "assets/brand/",
     "scripts/",

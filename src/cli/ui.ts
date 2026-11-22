@@ -23,8 +23,12 @@
 //     lines never get a border or a prefix.
 //   - Colour is decoration only: every state is also a glyph and a word. It
 //     is off for NO_COLOR, TERM=dumb and anything that isn't a terminal.
-//   - The 8 basic ANSI colours, bold and dim, so the terminal's own theme
-//     decides the shades (truecolor greys vanish on a light background).
+//   - The basic ANSI colours, bold and dim, so the terminal's own theme
+//     decides the shades (truecolor greys vanish on a light background). The
+//     one exception is the brand colour, totem's ice blue (src/lib/brand.ts):
+//     exact where the terminal draws 24-bit colour, the nearest of 256
+//     otherwise, bright blue on a basic terminal, and the logo's darker fold
+//     shade when the terminal says its background is light.
 //   - ASCII glyphs where Unicode can't be trusted (legacy Windows consoles,
 //     TERM=dumb/linux, a non-UTF-8 locale).
 import { createInterface } from "node:readline/promises";
@@ -38,6 +42,10 @@ export interface Style {
   unicode: boolean;
   /** Columns to lay out for: the terminal's width, kept between 40 and 80. */
   width: number;
+  /** Colours the terminal can draw; only the brand colour uses more than the basic ones. Default "basic". */
+  palette?: "basic" | "256" | "truecolor";
+  /** The terminal reports a light background (COLORFGBG), so the brand colour takes its darker shade. */
+  light?: boolean;
 }
 
 type Env = Record<string, string | undefined>;
@@ -58,8 +66,16 @@ export function detectStyle(stream: StreamLike = process.stdout, env: Env = proc
     : platform === "win32" ? Boolean(env.WT_SESSION || env.TERM_PROGRAM || env.ConEmuTask || env.TERM)
     : locale === "" || /utf-?8/i.test(locale);
   const columns = stream.isTTY && stream.columns ? stream.columns : 80;
-  return { color, unicode, width: Math.max(40, Math.min(80, columns)) };
+  const palette = /^(truecolor|24bit)$/i.test(env.COLORTERM ?? "") || TRUECOLOR_APPS.has(env.TERM_PROGRAM ?? "") || set(env.WT_SESSION) ? "truecolor"
+    : /256/.test(env.TERM ?? "") ? "256"
+    : "basic";
+  // COLORFGBG is "fg;bg" (sometimes "fg;default;bg"); 7 and 15 are the light greys and white.
+  const bg = (env.COLORFGBG ?? "").split(";").pop();
+  return { color, unicode, width: Math.max(40, Math.min(80, columns)), palette, light: bg === "7" || bg === "15" };
 }
+
+/** Terminals that draw 24-bit colour without saying so in COLORTERM. */
+const TRUECOLOR_APPS = new Set(["iTerm.app", "WezTerm", "ghostty", "vscode", "Hyper"]);
 
 export const PLAIN: Style = { color: false, unicode: true, width: 80 };
 
@@ -94,12 +110,20 @@ export interface Paint {
   red(s: string): string; green(s: string): string; yellow(s: string): string;
   /** The one accent: the brand stripe, step counters, things to copy, the selected choice. */
   accent(s: string): string;
-  /** A second colour for the brand name and the Next box, so they stand apart from things to copy. */
+  /** The brand colour, for the brand name, the header stripe and the Next box, so they stand apart from things to copy. */
   brand(s: string): string;
 }
+
+/** The SGR code for the brand colour: ice #B7D3F2, or the fold #7A9CC6 on a light background. */
+export function brandSgr(style: Style): string {
+  if (style.palette === "truecolor") return style.light ? "38;2;122;156;198" : "38;2;183;211;242";
+  if (style.palette === "256") return style.light ? "38;5;110" : "38;5;153";
+  return "94";
+}
+
 export function paint(style: Style): Paint {
-  const sgr = (open: number, close: number) => (s: string): string => (style.color && s ? `\x1b[${open}m${s}\x1b[${close}m` : s);
-  return { bold: sgr(1, 22), dim: sgr(2, 22), red: sgr(31, 39), green: sgr(32, 39), yellow: sgr(33, 39), accent: sgr(36, 39), brand: sgr(35, 39) };
+  const sgr = (open: number | string, close: number) => (s: string): string => (style.color && s ? `\x1b[${open}m${s}\x1b[${close}m` : s);
+  return { bold: sgr(1, 22), dim: sgr(2, 22), red: sgr(31, 39), green: sgr(32, 39), yellow: sgr(33, 39), accent: sgr(36, 39), brand: sgr(brandSgr(style), 39) };
 }
 
 // ── text ────────────────────────────────────────────────────────────────────

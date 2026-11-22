@@ -2,8 +2,8 @@
 // used, and that each primitive lays out within the width it is given.
 import { describe, expect, it } from "vitest";
 import {
-  detectStyle, duration, glyphs, kit, listOf, maskSecrets, padEnd, shellLines, truncate, Ui, visibleWidth, when, wrap, wrapHanging,
-  type Style,
+  brandSgr, detectStyle, duration, glyphs, kit, listOf, maskSecrets, padEnd, paint, shellLines, truncate, Ui, visibleWidth, when, wrap,
+  wrapHanging, type Style,
 } from "../../src/cli/ui.js";
 
 const tty = { isTTY: true, columns: 120 };
@@ -29,6 +29,36 @@ describe("detectStyle: colour", () => {
     expect(detectStyle(pipe, { ...utf8, FORCE_COLOR: "1" }, "linux").color).toBe(true);
     expect(detectStyle(pipe, { ...utf8, FORCE_COLOR: "0" }, "linux").color).toBe(false);
     expect(detectStyle(tty, { ...utf8, FORCE_COLOR: "1", NO_COLOR: "1" }, "linux").color).toBe(false);
+  });
+});
+
+describe("detectStyle: the brand colour", () => {
+  it("draws ice #B7D3F2 exactly on a 24-bit terminal, the nearest of 256 otherwise, bright blue on a basic one", () => {
+    const truecolor = detectStyle(tty, { ...utf8, COLORTERM: "truecolor" }, "darwin");
+    expect(truecolor.palette).toBe("truecolor");
+    expect(brandSgr(truecolor)).toBe("38;2;183;211;242");
+    expect(detectStyle(tty, { ...utf8, TERM_PROGRAM: "iTerm.app" }, "darwin").palette).toBe("truecolor");
+    expect(detectStyle(tty, { ...utf8, WT_SESSION: "x" }, "win32").palette).toBe("truecolor");
+    const apple = detectStyle(tty, { ...utf8, TERM_PROGRAM: "Apple_Terminal", TERM: "xterm-256color" }, "darwin");
+    expect(apple.palette).toBe("256");
+    expect(brandSgr(apple)).toBe("38;5;153");
+    const basic = detectStyle(tty, { ...utf8, TERM: "xterm" }, "linux");
+    expect(basic.palette).toBe("basic");
+    expect(brandSgr(basic)).toBe("94");
+    expect(brandSgr(style())).toBe("94"); // a Style without a palette is basic
+  });
+  it("takes the logo's darker fold shade when the terminal says its background is light", () => {
+    const light = detectStyle(tty, { ...utf8, COLORTERM: "truecolor", COLORFGBG: "0;15" }, "darwin");
+    expect(light.light).toBe(true);
+    expect(brandSgr(light)).toBe("38;2;122;156;198");
+    expect(brandSgr({ ...light, palette: "256" })).toBe("38;5;110");
+    expect(detectStyle(tty, { ...utf8, COLORFGBG: "15;default;0" }, "darwin").light).toBe(false);
+  });
+  it("is the only colour beyond the basic ones, and is off with colour", () => {
+    const p = paint(style({ color: true, palette: "truecolor" }));
+    expect(p.brand("totem")).toBe("\x1b[38;2;183;211;242mtotem\x1b[39m");
+    expect(p.accent("x")).toBe("\x1b[36mx\x1b[39m");
+    expect(paint(style({ palette: "truecolor" })).brand("totem")).toBe("totem");
   });
 });
 

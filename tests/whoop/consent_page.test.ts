@@ -27,16 +27,18 @@ const heading = (html: string): string => html.match(/<h1>([\s\S]*?)<\/h1>/)![1]
 const tile = (html: string): string => html.match(/<span class="tile">([\s\S]*?)<\/span><div>/)![1]!;
 const sentTo = (html: string): string => html.match(/<p class="sent">Access will be sent to <b>([\s\S]*?)<\/b>\.<\/p>/)![1]!;
 
-describe("consent page: one document that loads only its own typeface", () => {
+describe("consent page: one document that loads only its own typeface and favicon", () => {
   const html = page();
 
-  it("has no scripts, images, frames, links or inline handlers", () => {
-    for (const forbidden of ["script", "img", "image", "link", "iframe", "object", "embed", "video", "audio", "base", "foreignobject", "use"]) expect(tags(html), forbidden).not.toContain(forbidden);
+  it("has no scripts, images, frames, links (bar its favicon) or inline handlers", () => {
+    for (const forbidden of ["script", "img", "image", "iframe", "object", "embed", "video", "audio", "base", "foreignobject", "use"]) expect(tags(html), forbidden).not.toContain(forbidden);
+    // One link: the favicon, from this server.
+    expect([...html.matchAll(/<link\b[^>]*>/g)].map((m) => m[0])).toEqual(['<link rel="icon" href="/favicon.svg" type="image/svg+xml">']);
     expect(html).not.toMatch(/\son[a-z]+\s*=/i);       // no onclick= etc.
     expect(html).not.toMatch(/\sstyle\s*=/i);          // no inline style attributes (the CSP would drop them), logos included
     expect(html).not.toMatch(/@import/i);
-    // No src or href anywhere: the form's own action is the only address in the markup.
-    expect([...html.matchAll(/\b(?:src|href|xlink:href)\s*=/gi)]).toHaveLength(0);
+    // No src, and no href but the favicon's: the form's action is the only other address in the markup.
+    expect([...html.matchAll(/\b(?:src|href|xlink:href)\s*=\s*"([^"]*)"/gi)].map((m) => m[1])).toEqual(["/favicon.svg"]);
     expect(attr(html, /<form\b[^>]*>/, "action")).toBe("/oauth/consent");
     expect(attr(html, /<form\b[^>]*>/, "method")).toBe("POST");
   });
@@ -309,10 +311,10 @@ describe("consent page: the logos", () => {
 });
 
 describe("consent page: Content-Security-Policy", () => {
-  it("allows the page's own stylesheet by hash, its typeface from this server, and nothing else", () => {
+  it("allows the page's own stylesheet by hash, its typeface and favicon from this server, and nothing else", () => {
     const css = page().match(/<style>([\s\S]*?)<\/style>/)![1]!;
     const hash = createHash("sha256").update(css).digest("base64");
-    expect(CONSENT_CSP).toBe(`default-src 'none'; style-src 'sha256-${hash}'; font-src 'self'; base-uri 'none'; frame-ancestors 'none'`);
+    expect(CONSENT_CSP).toBe(`default-src 'none'; style-src 'sha256-${hash}'; font-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'`);
     // One stylesheet for every state and every client.
     for (const other of [page({ error: true }), page({ redirectUri: LOOPBACK, clientName: "Codex" }), page({ redirectUri: "https://evil.example/cb" })]) {
       expect(other.match(/<style>([\s\S]*?)<\/style>/)![1]).toBe(css);

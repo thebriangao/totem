@@ -6,12 +6,13 @@
 // be sent, what the client will be able to do, and offers Authorize and Deny.
 //
 // It is a password form on a public URL, so it is built to be boring and safe:
-// one document, no scripts, no images, nothing loaded from anywhere except its
-// own typeface from this same server. Logos are inline SVG. Every value it
-// shows or posts back goes through esc().
+// one document, no scripts, nothing loaded from anywhere except its own
+// typeface and favicon from this same server. Logos, totem's included, are
+// inline SVG. Every value it shows or posts back goes through esc().
 import { createHash } from "node:crypto";
 import type { Response } from "express";
 import { CLIENT_LOGOS, type ClientLogoId } from "./consent_logos.js";
+import { FAVICON_LINK, TOTEM_MARK } from "../lib/brand.js";
 
 /** Where the page's typeface is served from (see consentFont in consent_font.ts). */
 export const CONSENT_FONT_PATH = "/oauth/consent/manrope.woff2";
@@ -23,20 +24,20 @@ const CONSENT_CSS = `
 @font-face { font-family: "Manrope"; src: url("${CONSENT_FONT_PATH}") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
 :root {
   color-scheme: light dark;
-  --page: #fbfaf9; --box: #ffffff; --fg: #141413; --dim: #6f6e6a; --line: #e6e5e1; --soft: #f4f3f1;
-  --go: #0f0f0e; --on: #ffffff; --error: #b3261e; --shadow: 0 1px 2px rgba(20, 20, 19, .05);
+  --page: #f6f8fb; --box: #ffffff; --fg: #141414; --dim: #5d6672; --line: #e2e7ee; --soft: #f0f4f9;
+  --go: #141414; --on: #b7d3f2; --error: #b3261e; --shadow: 0 1px 2px rgba(20, 20, 20, .05);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --page: #0c0c0b; --box: #161615; --fg: #eeede9; --dim: #9a9993; --line: #2a2a28; --soft: #111110;
-    --go: #eeede9; --on: #111110; --error: #ff8f85; --shadow: none;
+    --page: #141414; --box: #1b1d20; --fg: #eef2f7; --dim: #9ba4af; --line: #2b2f34; --soft: #17191b;
+    --go: #b7d3f2; --on: #141414; --error: #ff8f85; --shadow: none;
   }
 }
 * { box-sizing: border-box; margin: 0; }
 html { background: var(--page); color: var(--fg); font: 15px/1.5 "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
 body { min-height: 100vh; padding: 24px 22px 48px; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
-.brand svg { width: 20px; height: 20px; }
+.brand svg { width: 24px; height: 24px; border-radius: 6px; }
 form { max-width: 1080px; margin: clamp(18px, 6vh, 60px) auto 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; }
 section { min-width: 0; }
 h1 { font-size: 27px; font-weight: 450; letter-spacing: -.01em; line-height: 1.2; margin-bottom: 20px; overflow-wrap: anywhere; }
@@ -78,10 +79,10 @@ button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 const CONSENT_CSS_HASH = createHash("sha256").update(CONSENT_CSS).digest("base64");
 
 /**
- * The consent page's Content-Security-Policy: nothing may load or run, with one
- * exception. No scripts, images, frames or connections; the one stylesheet
- * above, by hash; the page's typeface from this server only; no <base>; no
- * framing.
+ * The consent page's Content-Security-Policy: nothing may load or run, with
+ * these exceptions: the one stylesheet above, by hash, and the page's typeface
+ * and favicon from this server only. No scripts, frames or connections; no
+ * <base>; no framing.
  *
  * It deliberately has NO `form-action`: that directive also governs where the
  * form's response may redirect, and the whole point of this form is a 302 to
@@ -90,7 +91,7 @@ const CONSENT_CSS_HASH = createHash("sha256").update(CONSENT_CSS).digest("base64
  * submit silently goes nowhere. `default-src` does not stand in for
  * `form-action`, so leaving it out leaves the redirect alone.
  */
-export const CONSENT_CSP = `default-src 'none'; style-src 'sha256-${CONSENT_CSS_HASH}'; font-src 'self'; base-uri 'none'; frame-ancestors 'none'`;
+export const CONSENT_CSP = `default-src 'none'; style-src 'sha256-${CONSENT_CSS_HASH}'; font-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'`;
 
 // Security headers for the HTML consent page (a password form) ONLY. A
 // document CSP or X-Frame-Options on the JSON metadata and API responses made
@@ -218,9 +219,6 @@ export const CONSENT_PERMISSIONS = [
 const esc = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-// totem's own mark. A placeholder shape until the project has a logo.
-const TOTEM_MARK = `<svg viewBox="0 0 22 22" fill="currentColor" aria-hidden="true"><rect x="6" y="1" width="10" height="5" rx="2.5"/><rect x="3" y="8.5" width="16" height="5" rx="2.5"/><rect x="6" y="16" width="10" height="5" rx="2.5"/></svg>`;
-
 /**
  * The tile for a client totem doesn't recognise: a plain globe. (It used to be
  * the first letter of the name, which read as a logo the client didn't have.)
@@ -270,6 +268,7 @@ export function renderConsentForm(d: {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
+${FAVICON_LINK}
 <title>${d.error ? "Incorrect password" : `Authorize ${name}`} · totem</title>
 <style>${CONSENT_CSS}</style>
 </head>
@@ -314,6 +313,7 @@ export function renderConsentClosed(message: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
+${FAVICON_LINK}
 <title>totem</title>
 <style>${CONSENT_CSS}</style>
 </head>

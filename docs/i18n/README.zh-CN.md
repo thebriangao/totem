@@ -1,3 +1,5 @@
+<p align="center"><img src="../../assets/brand/totem.svg" width="96" alt=""></p>
+
 <h1 align="center">totem</h1>
 
 <p align="center"><b>你自己的 WHOOP 服务器，供 AI 应用使用。</b><br>
