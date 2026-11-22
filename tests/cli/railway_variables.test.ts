@@ -101,3 +101,24 @@ describe("totem cloud on Railway", () => {
     for (const line of commands) expect(line).not.toMatch(/MCP_AUTH_TOKEN=|AUTH_PASSWORD=|a1b2c3d4e5f6a7b8|Kq7m-Rt2x/);
   });
 });
+
+describe("the Railway build watcher", () => {
+  it("waits for its own deployment instead of taking the previous one's success", async () => {
+    const { render, SCREENS } = await import("./screens.js");
+    const base = SCREENS.find((s) => s.name === "cloud-railway")!;
+    let polls = 0;
+    const exec = (cmd: string, args: string[], input: string | undefined, world: Parameters<NonNullable<typeof base.world>["exec"] & object>[3]) => {
+      const a = args.join(" ");
+      if (cmd === "railway" && a.startsWith("deployment list")) {
+        polls++;
+        // The previous deploy first, then the new one, which fails.
+        return { code: 0, stdout: polls < 3 ? '[{"id":"old","status":"SUCCESS"}]' : '{"deployments":[{"id":"0b5c2f9e-1d2a-4c3b-9e8f-7a6b5c4d3e2f","status":"FAILED"},{"id":"old","status":"SUCCESS"}]}', stderr: "" };
+      }
+      return base.world!.exec!(cmd, args, input, world);
+    };
+    const { text, code } = await render({ ...base, world: { ...base.world, exec, answers: [...(base.world!.answers ?? []), ["What now?", 1]] } });
+    expect(code).toBe(1);
+    expect(text).toContain("The deployment ended as FAILED");
+    expect(text).not.toContain("✓ Deployed");
+  });
+});

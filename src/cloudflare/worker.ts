@@ -122,6 +122,9 @@ export class Totem extends DurableObject<Env> {
   }
 
   private async scheduleWake(tokens: TokenManager): Promise<void> {
+    // Nothing to keep alive without a login. The push that brings one is a
+    // request, and it schedules the first wake-up.
+    if (!tokens.current()) return;
     const now = Date.now();
     const due = tokens.nextRefreshAt() ?? now + MAX_ALARM_GAP_MS;
     const at = Math.min(Math.max(due, now + MIN_ALARM_GAP_MS), now + MAX_ALARM_GAP_MS);

@@ -205,9 +205,15 @@ export async function connectInstalled(io: Io, target: Target): Promise<{ done: 
     const recipe = client.recipe(target, sys);
     if (recipe.kind === "link" && opened.has(recipe.url)) { done.push(client.name); continue; }
     if (recipe.kind === "link") opened.add(recipe.url);
-    const applied = await applyRecipe(io, client, recipe);
-    if (applied.done) done.push(client.name);
-    for (const step of applied.steps) if (!steps.includes(step)) steps.push(step);
+    // One app failing in a way totem didn't foresee (a permission error, say)
+    // doesn't stop the others.
+    try {
+      const applied = await applyRecipe(io, client, recipe);
+      if (applied.done) done.push(client.name);
+      for (const step of applied.steps) if (!steps.includes(step)) steps.push(step);
+    } catch (error) {
+      ui.problem(`Couldn't set up ${client.name}.`, { detail: error instanceof Error ? error.message : String(error), fix: [["Try it alone", `totem connect ${client.id}`]] });
+    }
   }
   return { done, steps };
 }
@@ -736,8 +742,11 @@ async function railwayBuild(d: Deploy, set: (line: string) => void): Promise<Exe
     await sys.sleep(5000);
     const list = await sys.exec("railway", ["deployment", "list", ...svc, "--json"], { cwd: d.root });
     try {
-      const all = JSON.parse(list.stdout) as Array<{ id: string; status: string }>;
-      const mine = (id ? all.find((x) => x.id === id) : all[0]) ?? all[0];
+      const parsed = JSON.parse(list.stdout) as unknown;
+      const all = (Array.isArray(parsed) ? parsed : (parsed as { deployments?: unknown[] }).deployments ?? []) as Array<{ id: string; status: string }>;
+      // This deployment only: until it shows up, the newest one listed may be
+      // the previous deploy, already a success.
+      const mine = id ? all.find((x) => x.id === id) : all[0];
       if (mine) status = mine.status;
     } catch { continue; }
     set(`Railway: ${status.toLowerCase().replace(/_/g, " ")}`);

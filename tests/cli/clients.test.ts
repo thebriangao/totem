@@ -260,3 +260,22 @@ describe("OpenCode: the older entry and commented config files", () => {
     }
   });
 });
+
+describe("totem connect, everything found", () => {
+  it("keeps going when one app fails in a way totem didn't foresee", async () => {
+    const w = fakeWorld({ exec: (cmd) => (cmd === "claude" ? (() => { throw new Error("EACCES: permission denied"); })() : undefined) });
+    try {
+      mkdirSync(join(w.home, ".cursor"), { recursive: true });
+      writeDeployRecord(w.root, { platform: "local" });
+      mkdirSync(join(w.root, "dist"), { recursive: true });
+      writeFileSync(join(w.root, "dist", "server.js"), "");
+      const app: AppCtx = { root: w.root, version: "2.0.0", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
+      await runCli(["connect"], app, w.io);
+      const text = w.transcript().replace(/\s+/g, " ");
+      expect(text).toContain("Couldn't set up Claude Code.");
+      expect(text).toContain("Added the whoop server to Cursor");
+    } finally {
+      w.cleanup();
+    }
+  });
+});
