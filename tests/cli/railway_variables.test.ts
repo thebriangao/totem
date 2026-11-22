@@ -1,14 +1,13 @@
 // The Railway deploy sets MCP_AUTH_TOKEN and the connector password on the
 // service. They must not travel on the `railway` command line, where any local
 // user can read them from `ps` while it runs.
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { railwayVariableCommands, setRailwayVariables } from "../../src/cli/setup.js";
+import { render, SCREENS } from "./screens.js";
 
 const TOKEN = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const PASSWORD = "Kq7m-Rt2x-Vb9n-Lp4w";
 const ENV = { MCP_TRANSPORT: "http", MCP_AUTH_TOKEN: TOKEN, AUTH_PASSWORD: PASSWORD, PUBLIC_URL: "" };
-
-afterEach(() => vi.restoreAllMocks());
 
 describe("railwayVariableCommands", () => {
   const commands = railwayVariableCommands(ENV);
@@ -53,7 +52,7 @@ describe("setRailwayVariables", () => {
 
   it("runs the stdin commands and reports success", async () => {
     const { calls, exec } = record(() => ok);
-    expect(await setRailwayVariables(ENV, "/app", exec)).toBe(true);
+    expect((await setRailwayVariables(ENV, "/app", exec)).code).toBe(0);
     expect(calls.map((c) => c.args.join(" "))).toEqual([
       "variable set MCP_AUTH_TOKEN --stdin --skip-deploys",
       "variable set AUTH_PASSWORD --stdin --skip-deploys",
@@ -62,20 +61,31 @@ describe("setRailwayVariables", () => {
     expect(calls[0]!.input).toBe(TOKEN);
   });
 
-  it("stops and reports a failure without putting a secret on argv", async () => {
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  it("stops at a failure and returns it, without putting a secret on argv", async () => {
     const { calls, exec } = record((args) => (args[2] === "AUTH_PASSWORD" ? { code: 1, stdout: "", stderr: "Failed to fetch: operation timed out" } : ok));
-    expect(await setRailwayVariables(ENV, "/app", exec)).toBe(false);
+    const result = await setRailwayVariables(ENV, "/app", exec);
+    expect(result).toMatchObject({ code: 1, stderr: "Failed to fetch: operation timed out" });
     expect(calls).toHaveLength(2);
     expect(calls.flatMap((c) => c.args).join(" ")).not.toContain(PASSWORD);
-    expect(log.mock.calls.flat().join("\n")).toContain("operation timed out");
   });
 
   it("falls back for a Railway CLI without `variable set --stdin`, and says so", async () => {
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const { calls, exec } = record((args) => (args[0] === "variable" ? { code: 2, stdout: "", stderr: "error: unrecognized subcommand 'set'" } : ok));
-    expect(await setRailwayVariables(ENV, "/app", exec)).toBe(true);
+    let told = 0;
+    expect((await setRailwayVariables(ENV, "/app", exec, () => { told++; })).code).toBe(0);
     expect(calls.at(-1)!.args).toEqual(["variables", "--set", "MCP_TRANSPORT=http", "--set", `MCP_AUTH_TOKEN=${TOKEN}`, "--set", `AUTH_PASSWORD=${PASSWORD}`]);
-    expect(log.mock.calls.flat().join("\n")).toMatch(/can't read a value from stdin/);
+    expect(told).toBe(1);
+  });
+});
+
+// The whole Railway flow with a fake host: what `totem cloud` actually runs.
+describe("totem cloud on Railway", () => {
+  it("passes no secret on any command line", async () => {
+    const { commands, code } = await render(SCREENS.find((s) => s.name === "cloud-railway")!);
+    expect(code).toBe(0);
+    const railway = commands.filter((c) => c.includes(" railway "));
+    expect(railway).toContain("exec  railway variable set MCP_AUTH_TOKEN --stdin --skip-deploys  <stdin>");
+    expect(railway).toContain("exec  railway variable set AUTH_PASSWORD --stdin --skip-deploys  <stdin>");
+    for (const line of commands) expect(line).not.toMatch(/MCP_AUTH_TOKEN=|AUTH_PASSWORD=|a1b2c3d4e5f6a7b8|Kq7m-Rt2x/);
   });
 });

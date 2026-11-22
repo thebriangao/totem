@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ConfigNotMergeableError, mergeJsonConfig } from "../../src/cli/setup.js";
+import { ConfigNotMergeableError, mergeJsonConfig } from "../../src/cli/clients.js";
 
 const ENTRY = { command: "/usr/local/bin/node", args: ["/opt/totem/dist/server.js"] };
 

@@ -7,6 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerTools, READ_TOOLS, WRITE_TOOLS } from "../../src/tools/register.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
+import { render, SCREENS } from "../cli/screens.js";
 
 const READ = [
   "whoop_calendar", "whoop_coach_history", "whoop_community", "whoop_cycle", "whoop_day", "whoop_journal",
@@ -93,11 +94,17 @@ describe("v2 tool registry", () => {
     }
   });
 
-  it("states the same tool count wherever a person reads it", () => {
-    for (const file of ["package.json", "server.json", "src/cli/index.ts"]) {
+  it("states the same tool count wherever a person reads it", async () => {
+    for (const file of ["package.json", "server.json"]) {
       const text = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
       expect(text, file).toMatch(/\b40 tools\b|\(40 total\)/);
       expect(text, file).not.toMatch(/\b55 tools\b|\(55 total\)/);
     }
+    // The CLI doesn't carry a number or a list of its own: `totem tools` reads
+    // the registry, so what it prints is what the server registers.
+    const { text } = await render(SCREENS.find((s) => s.name === "tools")!);
+    expect(text).toMatch(/\b40 tools: 23 read your WHOOP data and 17 change it\b/);
+    for (const name of [...READ, ...WRITE_ADDITIVE, ...WRITE_DESTRUCTIVE]) expect(text, name).toMatch(new RegExp(`\\b${name}\\b`));
+    expect(text.match(/\bwhoop_\w+/g)).toHaveLength(40);
   });
 });

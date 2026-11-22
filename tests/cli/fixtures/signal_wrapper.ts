@@ -3,6 +3,6 @@
 // becomes of the child.
 //
 //   node --import tsx signal_wrapper.ts <child script> <state dir>
-import { run } from "../../../src/cli/ui.js";
+import { run } from "../../../src/cli/sys.js";
 
 run(process.execPath, [process.argv[2]!, process.argv[3]!]).then((code) => process.exit(code));

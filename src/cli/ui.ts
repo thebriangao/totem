@@ -1,331 +1,290 @@
-// Shared CLI primitives: colors, subprocess runner, HTTP ping, interactive
-// prompts, and small helpers used by both the command dispatcher (index.ts)
-// and the guided setup flows (setup.ts).
-import { spawn, spawnSync, type SpawnOptions } from "node:child_process";
+// The CLI's visual language: one small set of primitives every screen is built
+// from, so `totem local`, `totem cloud`, `totem auth`, `totem update` and the
+// rest read as one tool.
+//
+//   header      title + one-line purpose, at the top of a screen
+//   step        "2/6  Secrets": where you are in a guided flow
+//   ok/warn/fail/info   one-line results, each led by a mark
+//   para/hint   wrapped prose: what is happening, what to do now
+//   rows        aligned key/value facts
+//   code        something to paste, alone on its line with no decoration
+//   next        the boxed "what to do now" block that ends a screen
+//   problem     what went wrong + the exact commands that fix it
+//   task        a spinner with elapsed time for anything slow
+//   select/confirm/text/hidden   the four prompts
+//
+// Rendering is separate from effects. `kit(style)` returns pure functions that
+// turn data into lines; `Ui` writes those lines somewhere and asks questions.
+// A screen can therefore be rendered in a test with a fixed Style and no
+// terminal. Nothing here spawns a process or touches the network (see sys.ts).
+//
+// Rules the primitives enforce:
+//   - 80 columns at most, less on a narrow terminal; prose wraps, pasteable
+//     lines never get a border or a prefix.
+//   - Colour is decoration only: every state is also a glyph and a word. It
+//     is off for NO_COLOR, TERM=dumb and anything that isn't a terminal.
+//   - The 8 basic ANSI colours, bold and dim, so the terminal's own theme
+//     decides the shades (truecolor greys vanish on a light background).
+//   - ASCII glyphs where Unicode can't be trusted (legacy Windows consoles,
+//     TERM=dumb/linux, a non-UTF-8 locale).
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
-import { randomBytes } from "node:crypto";
-import { request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
-import { existsSync } from "node:fs";
-import { constants as osConstants } from "node:os";
-import { resolve } from "node:path";
-import { spawnArgs, pkgBin } from "./spawn.js";
+import { stripVTControlCharacters } from "node:util";
 
-export const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
-// Modern truecolor palette (Tailwind-400-ish) — vivid but easy on a dark terminal.
-const ANSI = {
-  reset: "\x1b[0m",
-  bold: "\x1b[1m",
-  dim: "\x1b[2m",
-  brand: "\x1b[38;2;235;235;235m",
-  brandDim: "\x1b[38;2;150;150;150m",
-  gray: "\x1b[38;2;128;128;128m",
-  white: "\x1b[38;2;245;245;245m",
-  green: "\x1b[38;2;52;211;153m",   // emerald
-  red: "\x1b[38;2;248;113;113m",    // red
-  yellow: "\x1b[38;2;251;191;36m",  // amber
-  cyan: "\x1b[38;2;34;211;238m",    // cyan
-  violet: "\x1b[38;2;167;139;250m", // violet
-  pink: "\x1b[38;2;244;114;182m",   // pink
+// ── style ───────────────────────────────────────────────────────────────────
+
+export interface Style {
+  color: boolean;
+  unicode: boolean;
+  /** Columns to lay out for: the terminal's width, kept between 40 and 80. */
+  width: number;
+}
+
+type Env = Record<string, string | undefined>;
+interface StreamLike { isTTY?: boolean | undefined; columns?: number | undefined }
+
+const set = (v: string | undefined): boolean => v !== undefined && v !== "";
+
+export function detectStyle(stream: StreamLike = process.stdout, env: Env = process.env, platform: NodeJS.Platform = process.platform): Style {
+  const color = set(env.NO_COLOR) ? false
+    : set(env.FORCE_COLOR) && env.FORCE_COLOR !== "0" ? true
+    : env.TERM === "dumb" ? false
+    : Boolean(stream.isTTY);
+  const locale = env.LC_ALL || env.LC_CTYPE || env.LANG || "";
+  const unicode = env.TOTEM_ASCII === "1" ? false
+    : env.TERM === "dumb" || env.TERM === "linux" ? false
+    // Windows: only terminals known to render UTF-8 (Windows Terminal, VS Code,
+    // ConEmu, anything that sets TERM). The legacy console gets ASCII.
+    : platform === "win32" ? Boolean(env.WT_SESSION || env.TERM_PROGRAM || env.ConEmuTask || env.TERM)
+    : locale === "" || /utf-?8/i.test(locale);
+  const columns = stream.isTTY && stream.columns ? stream.columns : 80;
+  return { color, unicode, width: Math.max(40, Math.min(80, columns)) };
+}
+
+export const PLAIN: Style = { color: false, unicode: true, width: 80 };
+
+// ── glyphs ──────────────────────────────────────────────────────────────────
+
+export interface Glyphs {
+  ok: string; fail: string; warn: string; info: string;
+  /** Menu path separator: Settings → Connectors. */
+  arrow: string;
+  pointer: string; ask: string; dot: string; ellipsis: string; dash: string;
+  h: string; v: string; tl: string; tr: string; bl: string; br: string;
+  spinner: string[];
+}
+const UNICODE: Glyphs = {
+  ok: "✓", fail: "✗", warn: "!", info: "•", arrow: "→", pointer: "›", ask: "?", dot: "·", ellipsis: "…", dash: "–",
+  h: "─", v: "│", tl: "╭", tr: "╮", bl: "╰", br: "╯",
+  spinner: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
 };
-function wrap(code: string, s: string): string {
-  return useColor ? `${code}${s}${ANSI.reset}` : s;
-}
-export const c = {
-  brand: (s: string) => wrap(ANSI.brand, s),
-  brandDim: (s: string) => wrap(ANSI.brandDim, s),
-  gray: (s: string) => wrap(ANSI.gray, s),
-  white: (s: string) => wrap(ANSI.white, s),
-  green: (s: string) => wrap(ANSI.green, s),
-  red: (s: string) => wrap(ANSI.red, s),
-  yellow: (s: string) => wrap(ANSI.yellow, s),
-  cyan: (s: string) => wrap(ANSI.cyan, s),
-  violet: (s: string) => wrap(ANSI.violet, s),
-  pink: (s: string) => wrap(ANSI.pink, s),
-  bold: (s: string) => wrap(ANSI.bold, s),
-  dim: (s: string) => wrap(ANSI.dim, s),
+const ASCII: Glyphs = {
+  ok: "+", fail: "x", warn: "!", info: "-", arrow: ">", pointer: ">", ask: "?", dot: "-", ellipsis: "...", dash: "-",
+  h: "-", v: "|", tl: "+", tr: "+", bl: "+", br: "+",
+  spinner: ["-", "\\", "|", "/"],
 };
+export const glyphs = (style: Style): Glyphs => (style.unicode ? UNICODE : ASCII);
 
-// Spawn a command, inheriting stdio. Resolves with the exit code.
-//
-// SIGTERM and SIGHUP are passed on to the child. A supervisor (systemd, a
-// container runtime, a closed terminal) signals this process, not the one it
-// started: without the hand-off this wrapper died and `totem start` left the
-// server running, orphaned, still holding its port. The wrapper then waits for
-// the child and exits with its result.
-export function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
-  return new Promise((res) => {
-    const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", ...opts }));
-    let forwarded = false;
-    const onTerm = (): void => { forwarded = true; child.kill("SIGTERM"); };
-    const onHup = (): void => { forwarded = true; child.kill("SIGHUP"); };
-    process.on("SIGTERM", onTerm);
-    process.on("SIGHUP", onHup);
-    const done = (code: number): void => {
-      process.off("SIGTERM", onTerm);
-      process.off("SIGHUP", onHup);
-      res(code);
-    };
-    child.on("exit", (code, signal) => {
-      if (signal) {
-        // A signal we passed on is a normal shutdown, not a crash to report.
-        if (!forwarded) console.error(c.red(`\nKilled by signal ${signal}`));
-        done(128 + (osConstants.signals[signal] ?? 0));
-        return;
-      }
-      done(code ?? 1);
-    });
-    child.on("error", (err) => {
-      console.error(c.red("Failed to spawn:"), (err as Error).message);
-      done(1);
-    });
-  });
+// ── colour ──────────────────────────────────────────────────────────────────
+
+export interface Paint {
+  bold(s: string): string; dim(s: string): string;
+  red(s: string): string; green(s: string): string; yellow(s: string): string;
+  /** The one accent: step counters, things to copy, the selected choice. */
+  accent(s: string): string;
+}
+export function paint(style: Style): Paint {
+  const sgr = (open: number, close: number) => (s: string): string => (style.color && s ? `\x1b[${open}m${s}\x1b[${close}m` : s);
+  return { bold: sgr(1, 22), dim: sgr(2, 22), red: sgr(31, 39), green: sgr(32, 39), yellow: sgr(33, 39), accent: sgr(36, 39) };
 }
 
-// Run a command and capture stdout (for parsing CLI output like a deploy URL).
-export function capture(cmd: string, args: string[], opts: SpawnOptions = {}): { code: number; stdout: string; stderr: string } {
-  const r = spawnSync(...spawnArgs(cmd, args, { encoding: "utf8" as const, ...opts }));
-  return { code: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
-}
+// ── text ────────────────────────────────────────────────────────────────────
 
-// Async sibling of capture(). `capture` uses spawnSync, which BLOCKS the event
-// loop for the whole subprocess — so a spinner (setInterval) can't animate over
-// it. For slow, network-bound lookups (gcloud/railway/fly API calls) run them
-// through this instead and wrap with withSpinner() so the UI stays alive.
-export function captureAsync(
-  cmd: string,
-  args: string[],
-  opts: SpawnOptions & { input?: string } = {},
-): Promise<{ code: number; stdout: string; stderr: string }> {
-  const { input, ...spawnOpts } = opts;
-  return new Promise((res) => {
-    // input set → pipe stdin so secrets can be fed over a pipe (off the argv,
-    // which is visible in `ps`/`/proc`); otherwise ignore stdin as before.
-    const child = spawn(...spawnArgs(cmd, args, { stdio: [input !== undefined ? "pipe" : "ignore", "pipe", "pipe"], ...spawnOpts }));
-    let stdout = "";
-    let stderr = "";
-    child.stdout?.on("data", (d: Buffer) => (stdout += d.toString()));
-    child.stderr?.on("data", (d: Buffer) => (stderr += d.toString()));
-    child.on("error", () => res({ code: 1, stdout, stderr }));
-    child.on("close", (code) => res({ code: code ?? 1, stdout, stderr }));
-    if (input !== undefined) { child.stdin?.write(input); child.stdin?.end(); }
-  });
-}
+/** Columns a string takes on screen (escape sequences don't count). */
+export const visibleWidth = (s: string): number => [...stripVTControlCharacters(s)].length;
 
-// ── spinner ──────────────────────────────────────────────────────────────
-// A braille spinner for the "thinking" gaps where we do work with no visible
-// output (our own network lookups, HTTP polling, backoff waits). Subprocesses
-// run with inherited stdio print their own progress, so they don't need this.
-// IMPORTANT: a spinner only animates while the event loop is free — pair it
-// with async work (await captureAsync / httpGet / setTimeout), never spawnSync.
-const SPIN_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-export interface Spinner {
-  stop: (final?: string) => void;
-}
+export const padEnd = (s: string, width: number): string => s + " ".repeat(Math.max(0, width - visibleWidth(s)));
 
-export function spin(message: string | (() => string)): Spinner {
-  // Message can be a live function (e.g. an elapsed-time counter), re-evaluated
-  // on every frame.
-  const msg = (): string => (typeof message === "function" ? message() : message);
-  // No TTY (piped/CI): no cursor tricks — print the message once, plainly.
-  if (!process.stdout.isTTY) {
-    console.log(c.gray(`  ${msg()}…`));
-    return { stop: (final) => { if (final) console.log(final); } };
-  }
-  let i = 0;
-  process.stdout.write("\x1b[?25l"); // hide cursor
-  const draw = (): void => {
-    process.stdout.write(`\r\x1b[2K${c.cyan(SPIN_FRAMES[i % SPIN_FRAMES.length]!)} ${c.gray(msg())}`);
-    i++;
-  };
-  draw();
-  const timer = setInterval(draw, 80);
-  return {
-    stop: (final?: string): void => {
-      clearInterval(timer);
-      process.stdout.write("\r\x1b[2K\x1b[?25h"); // clear line + restore cursor
-      if (final) console.log(final);
-    },
-  };
-}
-
-// Run async work under a spinner; always stops the spinner, even on throw.
-export async function withSpinner<T>(message: string, fn: () => Promise<T>): Promise<T> {
-  const s = spin(message);
-  try {
-    return await fn();
-  } finally {
-    s.stop();
-  }
-}
-
-// A visible backoff: spin for `ms` so a silent wait doesn't look like a hang.
-export async function pause(ms: number, message: string): Promise<void> {
-  const s = spin(message);
-  await new Promise((r) => setTimeout(r, ms));
-  s.stop();
-}
-
-// Is a CLI tool on PATH? Uses which/where (real executables) rather than the
-// `command -v` shell builtin, so we avoid `shell: true` — which both triggers
-// Node 25's DEP0190 warning and is an injection risk.
-export function commandExists(cmd: string): boolean {
-  const probe = process.platform === "win32" ? "where" : "which";
-  const r = spawnSync(probe, [cmd], { encoding: "utf8" });
-  return (r.status ?? 1) === 0 && (r.stdout ?? "").trim().length > 0;
-}
-
-// 256-bit random hex token (for MCP_AUTH_TOKEN / signing secret).
-export function genToken(): string {
-  return randomBytes(32).toString("hex");
-}
-
-// Cryptographically-random password. Rejection sampling over an unambiguous
-// alphabet (no 0/O/1/l/I) plus symbols for entropy — safe to read/retype.
-export function genPassword(len = 18): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*-_=+";
-  const max = Math.floor(256 / alphabet.length) * alphabet.length; // reject modulo bias
-  let out = "";
-  while (out.length < len) {
-    const b = randomBytes(1)[0]!;
-    if (b < max) out += alphabet[b % alphabet.length];
+/**
+ * Word-wrap to `width` columns. A word longer than the line (a URL, a path, a
+ * command) stays whole on its own line: it is never cut, because a cut value
+ * can't be pasted.
+ */
+export function wrap(text: string, width: number): string[] {
+  const out: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      if (line === "") line = word;
+      else if (visibleWidth(line) + 1 + visibleWidth(word) <= width) line += " " + word;
+      else { out.push(line); line = word; }
+    }
+    out.push(line);
   }
   return out;
 }
 
-// Best-effort copy to the OS clipboard. Returns true on success, false if no
-// clipboard tool is available (never throws).
-export function copyToClipboard(text: string): boolean {
-  const [cmd, args]: [string, string[]] =
-    process.platform === "darwin" ? ["pbcopy", []]
-    : process.platform === "win32" ? ["clip", []]
-    : ["xclip", ["-selection", "clipboard"]];
-  try {
-    const r = spawnSync(cmd, args, { input: text });
-    return (r.status ?? 1) === 0;
-  } catch {
-    return false;
+/**
+ * wrap(), keeping a list marker hanging: the lines after "1. " or "- " start
+ * under the text, not under the marker.
+ */
+export function wrapHanging(text: string, width: number): string[] {
+  const marker = text.match(/^(\d+\.|[-*])\s+/)?.[0];
+  if (!marker) return wrap(text, width);
+  const pad = " ".repeat(marker.length);
+  return wrap(text.slice(marker.length), width - marker.length).map((l, i) => (i === 0 ? marker + l : pad + l));
+}
+
+/** Cut to `width` columns with an ellipsis: for output that must stay one line per line. */
+export function truncate(text: string, width: number, ellipsis = "…"): string {
+  return visibleWidth(text) <= width ? text : [...text].slice(0, Math.max(0, width - ellipsis.length)).join("") + ellipsis;
+}
+
+/** "a", "a and b", "a, b and c". */
+export function listOf(items: string[]): string {
+  return items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/** "42s", "1m 42s"; empty under a second. */
+export function duration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 1) return "";
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+/** An ISO timestamp as "2026-11-21 23:10 UTC" (the same on every machine). */
+export function when(iso: string | null | undefined): string {
+  if (!iso) return "unknown";
+  const t = new Date(iso);
+  return Number.isNaN(t.getTime()) ? iso : `${t.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+
+/**
+ * One shell command as lines of at most `width` columns, split between
+ * arguments with a trailing backslash so the block still pastes as one
+ * command. Windows shells have no shared continuation character, so there the
+ * command stays on one line.
+ */
+export function shellLines(words: string[], width: number, platform: NodeJS.Platform = process.platform): string[] {
+  const one = words.join(" ");
+  if (platform === "win32" || visibleWidth(one) <= width) return [one];
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line === "" ? word : `${line} ${word}`;
+    // Leave room for the " \" that marks a continued line.
+    if (line !== "" && visibleWidth(candidate) + 2 > width) { lines.push(line); line = "  " + word; } else line = candidate;
   }
+  lines.push(line);
+  return lines.map((l, i) => (i < lines.length - 1 ? `${l} \\` : l));
 }
 
-// Run a bundled script resiliently. A published install (`npm install -g`)
-// ships the compiled `dist/*.js` and only runtime deps — no `tsx`/`typescript`.
-// A dev checkout has `tsx` + the TypeScript source. Prefer whichever fits:
-// dist+node by default (works everywhere), source+tsx when `preferSource` is set
-// (live dev, picks up edits without a rebuild). `relNoExt` is relative to src/
-// or dist/ without extension, e.g. "scripts/cognito_bootstrap" or "server".
-export function runScript(
-  root: string,
-  relNoExt: string,
-  args: string[] = [],
-  opts: { preferSource?: boolean } & SpawnOptions = {},
-): Promise<number> {
-  const { preferSource = false, ...spawnOpts } = opts;
-  const distJs = resolve(root, "dist", `${relNoExt}.js`);
-  const srcTs = resolve(root, "src", `${relNoExt}.ts`);
-  const tsx = pkgBin(root, "tsx");
-  const viaDist = existsSync(distJs) ? [distJs] : null;
-  const viaTsx = tsx && existsSync(srcTs) ? [tsx, srcTs] : null;
-  const pick = preferSource ? viaTsx ?? viaDist : viaDist ?? viaTsx;
-  if (pick) return run(process.execPath, [...pick, ...args], { cwd: root, ...spawnOpts });
-  console.error(c.red(`Can't run ${relNoExt}: need either a built dist/ or the tsx dev dependency.`));
-  console.error(c.gray("Run ") + c.bold("npm install && totem build") + c.gray(" in a source checkout, or reinstall the published package."));
-  return Promise.resolve(1);
+// ── primitives (pure) ───────────────────────────────────────────────────────
+
+export type Mark = "ok" | "fail" | "warn" | "info";
+/** A way out of a problem: what it does, and the exact command. */
+export type Fix = [label: string, command: string];
+
+export interface Kit {
+  style: Style;
+  g: Glyphs;
+  c: Paint;
+  header(title: string, subtitle?: string): string[];
+  step(n: number, total: number, title: string): string[];
+  section(title: string): string[];
+  mark(kind: Mark, text: string, detail?: string): string[];
+  para(text: string, indent?: number): string[];
+  hint(text: string, indent?: number): string[];
+  rows(pairs: Array<[key: string, value: string]>, indent?: number): string[];
+  code(lines: string[], indent?: number): string[];
+  next(lines: string[], title?: string): string[];
+  problem(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }, indent?: number): string[];
 }
 
-// Ensure a CLI tool is on PATH; if not, offer to install it (with permission).
-// Tries brew → npm → install script, in that order, based on what's available.
-// Note: a freshly installed tool often isn't on this process's PATH yet, so we
-// re-check and, if still missing, tell the user to re-run in a new shell.
-export async function ensureCli(
-  name: string,
-  opts: { brewPkg?: string; npmPkg?: string; scriptUrl?: string; manualHint: string },
-): Promise<boolean> {
-  if (commandExists(name)) return true;
-  console.log(c.yellow(`  ${name} isn't installed.`));
-  // Collect the install methods that are actually available and try them in
-  // order (brew → npm → script), falling THROUGH if one fails (e.g. a brew
-  // formula doesn't exist) instead of giving up after the first.
-  const methods: Array<[string, string[]]> = [];
-  if (opts.brewPkg && commandExists("brew")) methods.push(["brew", ["install", opts.brewPkg]]);
-  if (opts.npmPkg && commandExists("npm")) methods.push(["npm", ["install", "-g", opts.npmPkg]]);
-  if (opts.scriptUrl) methods.push(["sh", ["-c", `curl -fsSL ${opts.scriptUrl} | sh`]]);
-  if (methods.length === 0) {
-    console.log(c.gray(`  Install it manually: ${opts.manualHint}`));
-    return false;
-  }
-  for (const [cmd, args] of methods) {
-    console.log(c.gray(`    $ ${cmd} ${args.join(" ")}`));
-    if (!(await promptYesNo(`Install ${name} via \`${cmd}\`?`, true))) continue;
-    if ((await run(cmd, args)) === 0 && commandExists(name)) return true;
-    console.log(c.yellow(`  ${cmd} didn't get ${name} working${methods.length > 1 ? " — trying the next method" : ""}.`));
-  }
-  if (!commandExists(name)) {
-    console.log(c.yellow(`  ${name} still isn't on this shell's PATH.`));
-    console.log(c.gray(`  ${opts.manualHint} — or open a new terminal and re-run.`));
-    return false;
-  }
-  return true;
+export function kit(style: Style): Kit {
+  const g = glyphs(style);
+  const c = paint(style);
+  const W = style.width;
+  const symbol: Record<Mark, string> = { ok: c.green(g.ok), fail: c.red(g.fail), warn: c.yellow(g.warn), info: c.dim(g.info) };
+
+  const mark = (kind: Mark, text: string, detail?: string): string[] => {
+    const body = wrap(text, W - 4);
+    const tail = detail ? `  ${c.dim(detail)}` : "";
+    // The detail rides on the last line when it fits, else gets its own.
+    const fits = visibleWidth(body[body.length - 1]!) + visibleWidth(tail) <= W - 4;
+    const lines = body.map((line, i) => `  ${i === 0 ? symbol[kind] : " "} ${line}${fits && i === body.length - 1 ? tail : ""}`);
+    if (detail && !fits) for (const d of wrap(detail, W - 4)) lines.push(`    ${c.dim(d)}`);
+    return lines;
+  };
+
+  const rows = (pairs: Array<[string, string]>, indent = 2): string[] => {
+    const keyWidth = Math.max(...pairs.map(([k]) => visibleWidth(k))) + 3;
+    const pad = " ".repeat(indent);
+    return pairs.flatMap(([key, value]) => {
+      const lines = wrap(value, Math.max(16, W - indent - keyWidth));
+      return lines.map((line, i) => `${pad}${i === 0 ? c.dim(padEnd(key, keyWidth)) : " ".repeat(keyWidth)}${line}`);
+    });
+  };
+
+  return {
+    style, g, c,
+    header: (title, subtitle) => ["", c.bold(title), ...(subtitle ? wrap(subtitle, W).map(c.dim) : []), ""],
+    step: (n, total, title) => ["", `${c.accent(`${n}/${total}`)}  ${c.bold(title)}`],
+    section: (title) => ["", c.bold(title)],
+    mark,
+    para: (text, indent = 2) => wrapHanging(text, W - indent).map((l) => " ".repeat(indent) + l),
+    hint: (text, indent = 4) => wrap(text, W - indent).map((l) => " ".repeat(indent) + c.dim(l)),
+    rows,
+    code: (lines, indent = 4) => lines.map((l) => " ".repeat(indent) + c.accent(l)),
+    next: (lines, title = "Next") => {
+      // │ + space + inner + space + │: the box is inner + 4 columns wide.
+      const body = lines.flatMap((l) => (l === "" ? [""] : wrapHanging(l, W - 4)));
+      const inner = Math.max(visibleWidth(title) + 2, ...body.map(visibleWidth));
+      return [
+        "",
+        c.dim(`${g.tl}${g.h} `) + c.bold(title) + c.dim(` ${g.h.repeat(inner - 1 - visibleWidth(title))}${g.tr}`),
+        ...body.map((l) => `${c.dim(g.v)} ${padEnd(l, inner)} ${c.dim(g.v)}`),
+        c.dim(`${g.bl}${g.h.repeat(inner + 2)}${g.br}`),
+      ];
+    },
+    problem: (what, opts = {}, indent = 0) => {
+      const pad = " ".repeat(indent);
+      const head = wrap(what, W - indent - 2).map((l, i) => `${pad}${i === 0 ? c.red(g.fail) : " "} ${l}`);
+      // A string is prose and wraps. An array is a command's own output, line by
+      // line: a long line continues indented, so where each one starts stays
+      // visible and nothing (the exit code at the end, say) is cut off.
+      const details = (Array.isArray(opts.detail)
+        ? opts.detail.flatMap((d) => wrap(d, W - indent - 4).map((l, i) => (i === 0 ? l : `  ${l}`)))
+        : opts.detail ? wrap(opts.detail, W - indent - 2) : [])
+        .map((l) => `${pad}  ${c.dim(l)}`);
+      const fix = opts.fix ?? [];
+      const labelWidth = fix.length ? Math.max(...fix.map(([label]) => visibleWidth(label))) + 3 : 0;
+      const fixes = fix.map(([label, command]) => `${pad}  ${padEnd(label, labelWidth)}${c.accent(command)}`);
+      return [...head, ...details, ...fixes];
+    },
+  };
 }
 
-// Open a URL in the default browser, cross-platform. Best-effort, never throws.
-export function openUrl(url: string): void {
-  const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
-  try { spawnSync(cmd, args, { stdio: "ignore" }); } catch { /* best-effort */ }
-}
-
-// GET a URL, resolve with {status, body}. Used for health + OAuth metadata checks.
-// Follows the URL's scheme: a self-hosted or local deployment may be plain
-// http, and an https request to it never gets an answer.
-export function httpGet(url: string, timeoutMs = 12_000): Promise<{ status: number; body: string }> {
-  return new Promise((res) => {
-    let u: URL;
-    try { u = new URL(url); } catch { res({ status: 0, body: "" }); return; }
-    const plain = u.protocol === "http:";
-    const req = (plain ? httpRequest : httpsRequest)(
-      { method: "GET", hostname: u.hostname.replace(/^\[|\]$/g, ""), port: u.port || (plain ? 80 : 443), path: u.pathname + u.search, headers: { "user-agent": "totem-setup" } },
-      (response) => {
-        let body = "";
-        response.setEncoding("utf8");
-        response.on("data", (ch: string) => (body += ch));
-        response.on("end", () => res({ status: response.statusCode ?? 0, body }));
-      },
-    );
-    req.setTimeout(timeoutMs, () => { req.destroy(); res({ status: 0, body: "" }); });
-    req.on("error", () => res({ status: 0, body: "" }));
-    req.end();
-  });
-}
-
-export function ping(url: string, timeoutMs = 10_000): Promise<number> {
-  return httpGet(url, timeoutMs).then((r) => {
-    const ok = r.status >= 200 && r.status < 300;
-    const label = ok ? c.green(`✓ ${r.status}`) : c.red(`✗ ${r.status || "timeout"}`);
-    const preview = r.body.length > 100 ? r.body.slice(0, 97) + "..." : r.body;
-    console.log(`${label}  ${url}  ${c.gray(preview.replace(/\s+/g, " ").trim())}`);
-    return ok ? 0 : 1;
-  });
-}
-
-// ── interactive prompts ─────────────────────────────────────────────────────
+// ── prompts ─────────────────────────────────────────────────────────────────
 
 /**
  * A question was asked and the input ended before an answer came (stdin closed
  * or redirected from /dev/null, Ctrl-D at the prompt).
  *
- * No answer is not an answer: it must never be read as "take the default". The
- * prompts used to resolve "" here, and every default-yes confirmation then
- * proceeded, so `totem cloud < /dev/null` said yes to creating apps and
- * starting billable deploys. The prompts throw this instead and the command
- * stops.
+ * No answer is not an answer: it must never be read as "take the default"
+ * (`totem cloud < /dev/null` once said yes to every deploy gate). Every prompt
+ * throws this instead, and the command stops.
  */
 export class InputClosedError extends Error {
   constructor(public readonly question: string) {
     super("Input ended before the question was answered.");
     this.name = "InputClosedError";
   }
+}
+
+export interface Choice {
+  label: string;
+  hint?: string | undefined;
 }
 
 // Piped input: ONE line reader per input stream for the life of the process.
@@ -350,226 +309,293 @@ function pipedLine(): Promise<string | null> {
   return new Promise((resolve) => waiting.waiters.push(resolve));
 }
 
-// On a terminal: a fresh readline per question. Long-lived readlines break when
-// a subprocess in between (e.g. the build step) inherits stdin, so we open/close
-// per ask. Resolves null when the input ends without an answer.
-async function ask(query: string): Promise<string | null> {
-  if (!process.stdin.isTTY) {
-    process.stdout.write(query);
-    const line = await pipedLine();
-    process.stdout.write("\n");
-    return line === null ? null : line.trim();
-  }
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  // Ctrl-C during a text prompt: readline swallows SIGINT (emits it on the
-  // interface). Handle it here — restore the cursor, drop a line, exit.
-  rl.on("SIGINT", () => { process.stderr.write("\x1b[?25h"); process.stdout.write("\n"); process.exit(130); });
-  try {
-    return await new Promise<string | null>((resolve) => {
-      rl.once("close", () => resolve(null));
-      rl.question(query).then((a) => resolve(a.trim())).catch(() => resolve(null));
-    });
-  } finally {
-    rl.close();
-  }
+const SHOW_CURSOR = "\x1b[?25h";
+const HIDE_CURSOR = "\x1b[?25l";
+const CLEAR_LINE = "\r\x1b[2K";
+
+// ── Ui: writes the primitives and asks the questions ─────────────────────────
+
+export interface UiOptions {
+  style?: Style;
+  /** Where screens go. Default: stdout. */
+  write?: (text: string) => void;
+  /** Where top-level problems go. Default: stderr. */
+  writeErr?: (text: string) => void;
+  /** Animate spinners and menus (a real terminal on both ends). */
+  live?: boolean;
+  /** Someone can answer a question (stdin is a terminal). */
+  canAsk?: boolean;
+  now?: () => number;
 }
 
-/** The answer, or InputClosedError when the input ended instead. */
-async function answerTo(query: string, question: string): Promise<string> {
-  const answer = await ask(query);
-  if (answer === null) throw new InputClosedError(question);
-  return answer;
-}
+export class Ui {
+  readonly style: Style;
+  readonly kit: Kit;
+  readonly live: boolean;
+  readonly canAsk: boolean;
+  protected readonly write: (text: string) => void;
+  protected readonly writeErr: (text: string) => void;
+  protected readonly now: () => number;
 
-// Kept for API compatibility; no-op now that prompts are per-call.
-export function closePrompts(): void {}
-
-export async function prompt(question: string, fallback = ""): Promise<string> {
-  const suffix = fallback ? c.gray(` [${fallback}]`) : "";
-  const answer = await answerTo(`${c.violet("?")} ${c.white(question)}${suffix}${c.gray(" ›")} `, question);
-  return answer || fallback;
-}
-
-// Keep all readline redraws on a muted stream, including cursor/erase writes.
-// The visible prompt goes directly to stdout, so it cannot be erased (#27).
-// Readline handles paste markers and editing; secrets must never be trimmed.
-async function askHidden(query: string): Promise<string> {
-  const stdin = process.stdin;
-  if (!stdin.isTTY) {
-    // Piped: the shared line reader (see pipedLine), untrimmed.
-    process.stdout.write(query);
-    const line = await pipedLine();
-    process.stdout.write("\n");
-    return line ?? "";
-  }
-  const wasRaw = stdin.isRaw;
-  const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
-  const rl = createInterface({ input: stdin, output: muted, terminal: Boolean(stdin.isTTY) });
-  rl.on("SIGINT", () => { rl.close(); process.stdout.write("\n"); process.exit(130); });
-  process.stdout.write(query);
-  try {
-    return await new Promise<string>((resolve) => {
-      rl.once("close", () => resolve(""));
-      rl.question("").then(resolve).catch(() => resolve(""));
-    });
-  } finally {
-    rl.close();
-    if (stdin.isTTY && typeof stdin.setRawMode === "function") stdin.setRawMode(Boolean(wasRaw));
-    stdin.pause();
-    muted.end();
-    process.stdout.write("\n");
-  }
-}
-
-// A masked prompt for secrets (a pasted refresh token, an MCP admin token). Same look as
-// `prompt`, but nothing you type is shown.
-export async function promptHidden(question: string): Promise<string> {
-  return askHidden(`${c.violet("?")} ${c.white(question)}${c.gray(" ›")} `);
-}
-
-// Enter — and ANY answer that isn't an explicit "no" — proceeds when `defaultYes`
-// is set. To decline you must actually type n / no / N / NO. (When `defaultYes`
-// is false it's the mirror: only an explicit y / yes proceeds.)
-//
-// The input ending is neither: it throws InputClosedError (see there).
-export async function promptYesNo(question: string, defaultYes = true): Promise<boolean> {
-  const hint = defaultYes ? `${c.green(c.bold("Y"))}${c.gray("/n")}` : `${c.gray("y/")}${c.red(c.bold("N"))}`;
-  const answer = (await answerTo(`${c.violet("?")} ${c.white(question)} ${c.gray("(")}${hint}${c.gray(")")}${c.gray(" ›")} `, question)).trim().toLowerCase();
-  if (defaultYes) return !/^(n|no)$/.test(answer);
-  return /^(y|yes)$/.test(answer);
-}
-
-// Numbered menu. Returns the 0-based index of the choice. Used as the non-TTY
-// fallback for select() (piped stdin can't do raw-mode arrow keys).
-export async function promptChoice(question: string, choices: string[]): Promise<number> {
-  console.log(`${c.violet("?")} ${c.bold(c.white(question))}`);
-  choices.forEach((ch, i) => console.log(`  ${c.cyan(c.bold(String(i + 1)))}${c.gray(".")} ${ch}`));
-  for (let attempts = 0; attempts < 100; attempts++) {
-    const raw = await answerTo(`  ${c.gray("enter a number")}: `, question);
-    const n = parseInt(raw, 10);
-    if (Number.isInteger(n) && n >= 1 && n <= choices.length) return n - 1;
-    if (raw === "") return 0; // Enter alone → first choice
-    console.log(c.red(`  Please enter 1-${choices.length}.`));
-  }
-  return 0;
-}
-
-// ── arrow-key selector ──────────────────────────────────────────────────────
-// Up/down (or j/k, or 1-9) to move, Enter to pick, Ctrl-C to cancel. Each choice
-// is a label with an optional dim hint. Returns the 0-based index. Falls back to
-// the numbered prompt when stdin/stdout isn't an interactive TTY (pipes, CI).
-export interface SelectChoice {
-  label: string;
-  hint?: string | undefined;
-}
-
-export async function select(
-  question: string,
-  choices: Array<string | SelectChoice>,
-  opts: { defaultIndex?: number } = {},
-): Promise<number> {
-  const items = choices.map((ch) => (typeof ch === "string" ? { label: ch } : ch));
-  const stdin = process.stdin;
-  const interactive = Boolean(stdin.isTTY) && Boolean(process.stdout.isTTY) && typeof stdin.setRawMode === "function";
-  if (!interactive) {
-    return promptChoice(question, items.map((it) => (it.hint ? `${it.label} ${c.gray(it.hint)}` : it.label)));
+  constructor(opts: UiOptions = {}) {
+    this.style = opts.style ?? detectStyle();
+    this.kit = kit(this.style);
+    this.write = opts.write ?? ((text) => { process.stdout.write(text); });
+    this.writeErr = opts.writeErr ?? ((text) => { process.stderr.write(text); });
+    this.live = opts.live ?? (Boolean(process.stdout.isTTY) && Boolean(process.stdin.isTTY) && process.env.TERM !== "dumb");
+    this.canAsk = opts.canAsk ?? Boolean(process.stdin.isTTY);
+    this.now = opts.now ?? Date.now;
   }
 
-  let idx = Math.min(Math.max(opts.defaultIndex ?? 0, 0), items.length - 1);
+  // output ────────────────────────────────────────────────────────────────
+  private blank = false;
+  /** One line. Two blank lines in a row become one, so primitives can each ask for air. */
+  line(text = ""): void {
+    if (text === "" && this.blank) return;
+    this.blank = text === "";
+    this.write(text + "\n");
+  }
+  lines(lines: string[]): void { for (const l of lines) this.line(l); }
+  header(title: string, subtitle?: string): void { this.lines(this.kit.header(title, subtitle)); }
+  step(n: number, total: number, title: string): void { this.lines(this.kit.step(n, total, title)); }
+  section(title: string): void { this.lines(this.kit.section(title)); }
+  ok(text: string, detail?: string): void { this.lines(this.kit.mark("ok", text, detail)); }
+  warn(text: string, detail?: string): void { this.lines(this.kit.mark("warn", text, detail)); }
+  fail(text: string, detail?: string): void { this.lines(this.kit.mark("fail", text, detail)); }
+  info(text: string, detail?: string): void { this.lines(this.kit.mark("info", text, detail)); }
+  para(text: string, indent?: number): void { this.lines(this.kit.para(text, indent)); }
+  hint(text: string, indent?: number): void { this.lines(this.kit.hint(text, indent)); }
+  rows(pairs: Array<[string, string]>, indent?: number): void { this.lines(this.kit.rows(pairs, indent)); }
+  code(lines: string[], indent?: number): void { this.lines(this.kit.code(lines, indent)); }
+  next(lines: string[], title?: string): void { this.lines(this.kit.next(lines, title)); }
+  /** What went wrong and how to fix it, inside a flow (indented under its step). */
+  problem(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }): void {
+    this.lines(this.kit.problem(what, opts, 2));
+  }
+  /** A problem that ends the command: goes to stderr, flush left. */
+  error(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }): void {
+    for (const l of this.kit.problem(what, opts, 0)) this.writeErr(l + "\n");
+  }
 
-  const render = (first: boolean): void => {
-    if (!first) process.stdout.write(`\x1b[${items.length + 1}A`); // back up to the question line
-    process.stdout.write(`\r\x1b[2K${c.violet("?")} ${c.bold(c.white(question))}  ${c.dim("↑/↓ · enter")}\n`);
-    items.forEach((it, i) => {
-      const selected = i === idx;
-      const pointer = selected ? c.cyan("❯") : " ";
-      const label = selected ? c.bold(c.cyan(it.label)) : c.white(it.label);
-      const hint = it.hint ? "  " + c.dim(it.hint) : "";
-      process.stdout.write(`\r\x1b[2K ${pointer} ${label}${hint}\n`);
-    });
-  };
-
-  render(true);
-  process.stdout.write("\x1b[?25l"); // hide the blinking cursor while the menu is active
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding("utf8");
-
-  const n = items.length;
-  return new Promise<number>((resolveSel) => {
-    const cleanup = (): void => {
-      stdin.setRawMode(false);
-      stdin.pause();
-      stdin.removeListener("data", onData);
-      process.stdout.write("\x1b[?25h"); // restore the cursor once a choice is made
+  // progress ──────────────────────────────────────────────────────────────
+  /**
+   * Run slow work under a spinner that counts the seconds, so a wait never
+   * looks like a hang. `set(detail)` shows the latest thing happening (the
+   * last line a subprocess printed). The spinner line disappears when the work
+   * ends; the caller then prints the result with ok()/fail().
+   *
+   * Without a terminal there is nothing to animate: `slow` work gets one
+   * plain "started" line so a log shows what it is waiting on.
+   */
+  async task<T>(label: string, work: (set: (detail: string) => void) => Promise<T>, opts: { slow?: boolean } = {}): Promise<T> {
+    const { g, c } = this.kit;
+    if (!this.live) {
+      if (opts.slow) this.lines(this.kit.mark("info", c.dim(label + g.ellipsis)));
+      return work(() => {});
+    }
+    const started = this.now();
+    let detail = "";
+    let frame = 0;
+    const draw = (): void => {
+      const elapsed = duration(this.now() - started);
+      const head = `  ${c.accent(g.spinner[frame++ % g.spinner.length]!)} ${label}${elapsed && this.now() - started >= 3000 ? c.dim(` ${elapsed}`) : ""}`;
+      const room = this.style.width - visibleWidth(head) - 3;
+      const tail = detail && room > 8 ? c.dim(`  ${detail.length > room ? detail.slice(0, room - 1) + g.ellipsis : detail}`) : "";
+      this.write(`${CLEAR_LINE}${head}${tail}`);
     };
-    // Scan the chunk left-to-right rather than exact-matching the whole thing:
-    // a single read can batch several bytes (a paste, a fast double-press, or a
-    // terminal/PTY that delivers the arrow sequence and the Enter together like
-    // "\x1b[B\r"). Incomplete escape sequences at a chunk boundary are stashed in
-    // `pending` and prepended to the next read so a split "\x1b" + "[B" still works.
-    let pending = "";
-    const onData = (raw: string): void => {
-      const chunk = pending + raw;
-      pending = "";
-      if (chunk.includes("\x03")) { cleanup(); process.stdout.write("\n"); process.exit(130); }
-      let moved = false;
-      let i = 0;
-      while (i < chunk.length) {
-        const rest = chunk.slice(i);
-        const ch = rest[0]!;
-        if (ch === "\r" || ch === "\n") { cleanup(); if (moved) render(false); resolveSel(idx); return; }
-        if (ch === "\x1b") {
-          if (rest === "\x1b" || rest === "\x1b[") { pending = rest; break; } // incomplete — wait for more
-          if (rest.startsWith("\x1b[A")) { idx = (idx - 1 + n) % n; moved = true; i += 3; continue; }
-          if (rest.startsWith("\x1b[B")) { idx = (idx + 1) % n; moved = true; i += 3; continue; }
-          i += rest.length >= 3 ? 3 : rest.length; continue; // unknown escape — skip it
-        }
-        if (ch === "k") { idx = (idx - 1 + n) % n; moved = true; }
-        else if (ch === "j") { idx = (idx + 1) % n; moved = true; }
-        else if (/[1-9]/.test(ch)) { const x = parseInt(ch, 10) - 1; if (x < n) { idx = x; moved = true; } }
-        i += 1;
+    this.write(HIDE_CURSOR);
+    draw();
+    const timer = setInterval(draw, 90);
+    try {
+      return await work((d) => { detail = stripVTControlCharacters(d).replace(/\s+/g, " ").trim(); });
+    } finally {
+      clearInterval(timer);
+      this.write(`${CLEAR_LINE}${SHOW_CURSOR}`);
+    }
+  }
+
+  // prompts ───────────────────────────────────────────────────────────────
+  /** One line of input, or InputClosedError when the input ended instead. */
+  protected async answer(query: string, question: string): Promise<string> {
+    let line: string | null;
+    if (!process.stdin.isTTY) {
+      this.write(query);
+      line = await pipedLine();
+      this.write("\n");
+    } else {
+      // A fresh readline per question: a long-lived one breaks when a
+      // subprocess in between (a login, a build) inherits stdin.
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      // readline swallows Ctrl-C; turn it back into a clean exit.
+      rl.on("SIGINT", () => { process.stdout.write(`${SHOW_CURSOR}\n`); process.exit(130); });
+      try {
+        line = await new Promise<string | null>((resolve) => {
+          rl.once("close", () => resolve(null));
+          rl.question(query).then(resolve).catch(() => resolve(null));
+        });
+      } finally {
+        rl.close();
       }
-      if (moved) render(false);
+    }
+    if (line === null) throw new InputClosedError(question);
+    return line.trim();
+  }
+
+  protected q(question: string, suffix = ""): string {
+    const { c, g } = this.kit;
+    return `${c.accent(g.ask)} ${c.bold(question)}${suffix ? " " + c.dim(suffix) : ""}`;
+  }
+
+  /**
+   * Yes or no. Enter takes the default; y/yes and n/no are the only other
+   * answers. Anything else is asked again, then counts as no: a stray key is
+   * not consent.
+   */
+  async confirm(question: string, defaultYes = true): Promise<boolean> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const a = (await this.answer(`${this.q(question, defaultYes ? "(Y/n)" : "(y/N)")} `, question)).toLowerCase();
+      if (a === "") return defaultYes;
+      if (a === "y" || a === "yes") return true;
+      if (a === "n" || a === "no") return false;
+      this.hint("Answer y or n.", 2);
+    }
+    return false;
+  }
+
+  /** Free text; Enter takes `fallback`. */
+  async text(question: string, fallback = ""): Promise<string> {
+    const a = await this.answer(`${this.q(question, fallback ? `(${fallback})` : "")}${this.kit.c.dim(":")} `, question);
+    return a || fallback;
+  }
+
+  /**
+   * A secret: nothing typed is shown, and nothing is trimmed. Readline does the
+   * editing (paste markers, backspace, Ctrl-U) on a muted stream, so not even
+   * its redraws reach the screen. Answers "" when the input ends.
+   */
+  async hidden(question: string): Promise<string> {
+    const query = `${this.q(question, "(hidden)")}${this.kit.c.dim(":")} `;
+    const stdin = process.stdin;
+    if (!stdin.isTTY) {
+      this.write(query);
+      const line = await pipedLine();
+      this.write("\n");
+      return line ?? "";
+    }
+    const wasRaw = stdin.isRaw;
+    const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
+    const rl = createInterface({ input: stdin, output: muted, terminal: true });
+    rl.on("SIGINT", () => { rl.close(); process.stdout.write("\n"); process.exit(130); });
+    this.write(query);
+    try {
+      return await new Promise<string>((resolve) => {
+        rl.once("close", () => resolve(""));
+        rl.question("").then(resolve).catch(() => resolve(""));
+      });
+    } finally {
+      rl.close();
+      if (typeof stdin.setRawMode === "function") stdin.setRawMode(Boolean(wasRaw));
+      stdin.pause();
+      muted.end();
+      this.write("\n");
+    }
+  }
+
+  /** The menu as it looks with `selected` chosen: what stays on screen after a choice. */
+  menu(question: string, choices: Choice[], selected: number, active = false): string[] {
+    const { c, g } = this.kit;
+    const labelWidth = Math.max(...choices.map((ch) => visibleWidth(ch.label))) + 3;
+    const room = this.style.width - 4 - labelWidth;
+    return [
+      this.q(question, active ? `(${this.style.unicode ? "↑↓" : "up/down"}, Enter)` : ""),
+      ...choices.map((ch, i) => {
+        const on = i === selected;
+        const hint = ch.hint && room >= 12 ? c.dim(ch.hint.length > room ? ch.hint.slice(0, room - 1) + g.ellipsis : ch.hint) : "";
+        const label = hint ? padEnd(ch.label, labelWidth) : ch.label;
+        return `  ${on ? c.accent(g.pointer) : " "} ${on ? c.accent(label) : label}${hint}`;
+      }),
+    ];
+  }
+
+  /**
+   * Pick one. On a terminal: arrows (or j/k, or a digit) move, Enter chooses.
+   * Piped: a numbered list, answered with a number (Enter = the default).
+   * Returns the index.
+   */
+  async select(question: string, choices: Choice[], defaultIndex = 0): Promise<number> {
+    const n = choices.length;
+    let idx = Math.min(Math.max(defaultIndex, 0), n - 1);
+    const stdin = process.stdin;
+    if (!this.live || typeof stdin.setRawMode !== "function") {
+      const { c } = this.kit;
+      const labelWidth = Math.max(...choices.map((ch) => visibleWidth(ch.label))) + 3;
+      this.line(this.q(question));
+      choices.forEach((ch, i) => this.line(`  ${c.accent(String(i + 1))}. ${ch.hint ? padEnd(ch.label, labelWidth) + c.dim(ch.hint) : ch.label}`));
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const raw = await this.answer(`  ${c.dim(`Number (${idx + 1}):`)} `, question);
+        if (raw === "") return idx;
+        const picked = Number(raw);
+        if (Number.isInteger(picked) && picked >= 1 && picked <= n) return picked - 1;
+        this.hint(`Enter a number from 1 to ${n}.`, 2);
+      }
+      throw new InputClosedError(question);
+    }
+
+    const render = (first: boolean, active: boolean): void => {
+      if (!first) this.write(`\x1b[${n + 1}A`);
+      for (const l of this.menu(question, choices, idx, active)) this.write(`${CLEAR_LINE}${l}\n`);
     };
-    stdin.on("data", onData);
-  });
+    render(true, true);
+    this.write(HIDE_CURSOR);
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    return new Promise<number>((resolve) => {
+      const cleanup = (): void => {
+        stdin.setRawMode(false);
+        stdin.pause();
+        stdin.removeListener("data", onData);
+        this.write(SHOW_CURSOR);
+      };
+      // Scan each chunk left to right: one read can carry several keys (a fast
+      // double press, or an arrow and Enter together), and an escape sequence
+      // can be split across two reads.
+      let pending = "";
+      const onData = (raw: string): void => {
+        const chunk = pending + raw;
+        pending = "";
+        if (chunk.includes("\x03")) { cleanup(); this.write("\n"); process.exit(130); }
+        if (chunk.includes("\x04")) { cleanup(); this.write("\n"); process.exit(130); }
+        let i = 0;
+        while (i < chunk.length) {
+          const rest = chunk.slice(i);
+          const ch = rest[0]!;
+          if (ch === "\r" || ch === "\n") { cleanup(); render(false, false); resolve(idx); return; }
+          if (ch === "\x1b") {
+            if (rest === "\x1b" || rest === "\x1b[") { pending = rest; break; }
+            if (rest.startsWith("\x1b[A")) { idx = (idx - 1 + n) % n; i += 3; continue; }
+            if (rest.startsWith("\x1b[B")) { idx = (idx + 1) % n; i += 3; continue; }
+            i += Math.min(rest.length, 3);
+            continue;
+          }
+          if (ch === "k") idx = (idx - 1 + n) % n;
+          else if (ch === "j") idx = (idx + 1) % n;
+          else if (/[1-9]/.test(ch) && Number(ch) <= n) idx = Number(ch) - 1;
+          i += 1;
+        }
+        render(false, true);
+      };
+      stdin.on("data", onData);
+    });
+  }
 }
 
-// ── confirmation for sensitive actions ──────────────────────────────────────
-// A loud, explicit y/n gate for anything that mutates cloud state, spends money,
-// or changes permissions. Shows exactly what will run + why, so the user is
-// giving informed consent rather than watching it happen.
-export interface ConfirmOpts {
-  detail?: string;        // one-line consequence ("grants build access to …")
-  cmd?: string;           // the exact command we're about to run
-  defaultYes?: boolean;   // Enter = proceed (true) vs Enter = decline (false)
-}
-
-export async function confirmStep(summary: string, opts: ConfirmOpts = {}): Promise<boolean> {
-  console.log(`  ${c.yellow("⚠")}  ${c.bold(c.white(summary))}`);
-  if (opts.detail) console.log(`     ${c.gray(opts.detail)}`);
-  if (opts.cmd) console.log(`     ${c.dim("$")} ${c.cyan(opts.cmd)}`);
-  return promptYesNo("  Proceed?", opts.defaultYes ?? true);
-}
-
-// Redact secret values when echoing a command so tokens/passwords never hit the
-// screen or scrollback. Masks the value of any KEY=value whose key looks
-// sensitive (or whose value is long enough to be a token).
-export function maskArgs(args: string[]): string {
+/** Mask the value of any KEY=value whose key names a secret, for showing a command. */
+export function maskSecrets(args: string[]): string {
   return args
     .map((a) => {
       const eq = a.indexOf("=");
-      if (eq <= 0) return a;
-      const key = a.slice(0, eq);
-      if (/(_?TOKEN|PASSWORD|_SECRET|BEARER|REFRESH|EMAIL)/i.test(key)) return `${key}=${c.dim("•••")}`;
-      return a;
+      return eq > 0 && /(TOKEN|PASSWORD|SECRET|BEARER|REFRESH)/i.test(a.slice(0, eq)) ? `${a.slice(0, eq)}=***` : a;
     })
     .join(" ");
-}
-
-// Section header for the guided flows — a violet rule + step counter + title.
-export function step(n: number, total: number, title: string): void {
-  console.log("");
-  console.log(`${c.violet("▌")} ${c.violet(c.bold(`${n}/${total}`))}  ${c.bold(c.white(title))}`);
 }

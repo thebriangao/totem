@@ -1,0 +1,37 @@
+
+totem local
+Run totem on this computer and connect an AI client to it.
+
+1/3  Prerequisites
+  ✓ Node.js 24.3.0
+  ✓ Dependencies installed
+  ✓ Server built
+
+2/3  WHOOP login
+  A Google Chrome window opens on WHOOP's site with a temporary profile. Log in
+  there. totem never sees what you type: it waits for WHOOP's session cookies,
+  then closes the window and deletes the profile.
+  • Waiting for you to log in in the browser…
+  ✓ Logged in to WHOOP  user 1234567
+  ✓ Login saved  ~/.config/totem/tokens.json
+
+3/3  Connect a client
+? Which client?
+  › Claude Desktop   installed
+    Claude Code      installed
+    Cursor
+    Codex            installed
+    OpenCode         installed
+    VS Code
+    Gemini CLI       installed
+    Windsurf
+    Another client   show what to paste
+  ✓ Added the whoop server to Claude Desktop
+    ~/Library/Application Support/Claude/claude_desktop_config.json
+
+╭─ Next ───────────────────────────────────╮
+│ 1. Quit and reopen Claude Desktop.       │
+│ 2. Ask it: "How did I sleep last night?" │
+│                                          │
+│ Connect another client: totem connect    │
+╰──────────────────────────────────────────╯
