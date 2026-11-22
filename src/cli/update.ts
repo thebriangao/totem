@@ -475,9 +475,30 @@ async function runCheck(ctx: UpdateCtx): Promise<number> {
   return 0;
 }
 
+/**
+ * Whether an unattended update may move this checkout: `git rev-parse
+ * --abbrev-ref HEAD` says `main`, or `HEAD` when detached (at a release tag).
+ * An empty answer (git failed) is not a yes.
+ */
+export function followsReleases(branch: string): boolean {
+  return branch === "main" || branch === "HEAD";
+}
+
 // The scheduled job: non-interactive, pull-to-latest-if-newer, log everything.
 async function runAuto(ctx: UpdateCtx): Promise<number> {
   const stamp = new Date().toISOString();
+  if (ctx.isGit) {
+    // An update checks out the release tag. Only do that unattended to a
+    // checkout that is following releases: on `main`, or already detached at a
+    // tag. Anything else is someone's work in progress (a feature branch whose
+    // tracked tree happens to be clean), and silently moving it off its branch
+    // loses their place.
+    const branch = capture("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: ctx.root }).stdout.trim();
+    if (!followsReleases(branch)) {
+      console.log(`[totem auto-update ${stamp}] on branch '${branch}', not main or a release tag — skipping (run \`totem update\` to update it yourself)`);
+      return 0;
+    }
+  }
   const versions = await fetchVersions(ctx);
   const latest = versions[0];
   if (!latest) { console.log(`[totem auto-update ${stamp}] no version list (offline?) — skipping`); return 0; }

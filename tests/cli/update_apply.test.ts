@@ -21,12 +21,13 @@ vi.mock("../../src/cli/ui.js", async (importOriginal) => {
     capture: (cmd: string, args: string[]) => respond(cmd, args),
     captureAsync: async (cmd: string, args: string[]) => respond(cmd, args),
     commandExists: () => true,
+    httpGet: async () => ({ status: 0, body: "" }), // no release notes: never the network
     ping: async () => 0,
     spin: () => ({ stop: () => {} }),
   };
 });
 
-const { applyVersion } = await import("../../src/cli/update.js");
+const { applyVersion, runUpdate, followsReleases } = await import("../../src/cli/update.js");
 
 const root = resolve(import.meta.dirname, "..", "..");
 const ctx = {
@@ -111,5 +112,45 @@ describe("applyVersion (git install)", () => {
     answer = detachedAt("abc1234");
     expect(await applyVersion(ctx, { version: "1.5.1", tag: "v1.5.1" })).toBe(0);
     expect(git().filter((a) => a.startsWith("checkout"))).toEqual(["checkout --quiet v1.5.1"]);
+  });
+});
+
+// The scheduled job checks out a release tag. On a feature branch that would
+// silently take someone's checkout off their branch.
+describe("auto-run (git install)", () => {
+  let printed: string[];
+  const newer = (cmd: string, args: string[]): Result | undefined => {
+    if (cmd === "git" && args[0] === "tag") return { code: 0, stdout: "v9.9.9\nv1.5.0\n", stderr: "" };
+    return undefined;
+  };
+  const branch = (name: string) => (cmd: string, args: string[]): Result | undefined =>
+    cmd === "git" && args.join(" ") === "rev-parse --abbrev-ref HEAD" ? { code: 0, stdout: `${name}\n`, stderr: "" } : newer(cmd, args);
+
+  beforeEach(() => {
+    calls.length = 0;
+    printed = [];
+    vi.spyOn(console, "log").mockImplementation((...a: unknown[]) => { printed.push(a.join(" ")); });
+  });
+
+  it("only follows main or a detached release checkout", () => {
+    expect(followsReleases("main")).toBe(true);
+    expect(followsReleases("HEAD")).toBe(true);
+    expect(followsReleases("v2")).toBe(false);
+    expect(followsReleases("feature/main")).toBe(false);
+    expect(followsReleases("")).toBe(false);
+  });
+
+  it("leaves a checkout on another branch alone", async () => {
+    answer = branch("v2-ux");
+    expect(await runUpdate(["--auto-run"], ctx)).toBe(0);
+    expect(git().some((a) => a.startsWith("checkout") || a.startsWith("fetch"))).toBe(false);
+    expect(calls.some((c) => c.cmd === "npm")).toBe(false);
+    expect(printed.join("\n")).toMatch(/on branch 'v2-ux'.*skipping/);
+  });
+
+  it.each(["main", "HEAD"])("updates a checkout on %s", async (name) => {
+    answer = branch(name);
+    expect(await runUpdate(["--auto-run"], ctx)).toBe(0);
+    expect(git()).toContain("checkout --quiet v9.9.9");
   });
 });
