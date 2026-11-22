@@ -7,7 +7,13 @@ export const HIDDEN_METRICS = ["BODY_COMP", "HEALTHSPAN"] as const;
 /** Push namespaces, case-sensitive (a lowercase one is a 400 or a silent no-op). */
 export const NOTIFICATION_NAMESPACES = ["StressSummary", "GPS", "ConversationalCheckIn", "CheckIn"] as const;
 
-export const CLOCK_FORMATS = ["TWELVE_HOUR_FORMAT", "TWENTY_FOUR_HOUR_FORMAT", "TWELVE_HOUR_FORMAT_NO_PERIOD"] as const;
+/**
+ * The two clock formats that were written and read back live. WHOOP's enum has
+ * a third, TWELVE_HOUR_FORMAT_NO_PERIOD, known only from a 400's enum list:
+ * never sent by the app, never returned. Values copied from an error message
+ * are what broke Smart Alarm preferences (SPEC §7 S1), so it stays out.
+ */
+export const CLOCK_FORMATS = ["TWELVE_HOUR_FORMAT", "TWENTY_FOUR_HOUR_FORMAT"] as const;
 
 /** The server's KeyMetric enum (settings §2.15). */
 export const KEY_METRICS = [

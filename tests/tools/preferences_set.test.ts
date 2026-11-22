@@ -258,6 +258,14 @@ describe("whoop_preferences_set: clock_format", () => {
     expect(out.verified).toBe(false);
   });
 
+  it("refuses a clock format that was never written live (only seen in a 400's enum list)", async () => {
+    vi.stubEnv("WHOOP_TIMEZONE", "America/Los_Angeles");
+    const whoop = mockWhoop({ "/users-service/v2/bootstrap": boot(zoneOffset("America/Los_Angeles")) });
+    const { result } = await call(whoop, { setting: "clock_format", clock_format: "TWELVE_HOUR_FORMAT_NO_PERIOD" });
+    expect(result.isError).toBe(true);
+    expect(whoop.post).not.toHaveBeenCalled();
+  });
+
   it("refuses when the timezone it would send doesn't match the profile offset", async () => {
     vi.stubEnv("WHOOP_TIMEZONE", "Asia/Tokyo");
     const whoop = mockWhoop({ "/users-service/v2/bootstrap": boot("-0800") });
