@@ -79,8 +79,10 @@ describe("secrets", () => {
     expect(text.indexOf(PASSWORD)).toBeGreaterThan(text.indexOf("6/6  Connect a client"));
   });
 
+  // "Early" is before the deploy finished. Once the server has the password it
+  // is handed over even if the flow then stops (cloud_flow.test.ts).
   it("a deploy that stops early never shows it", async () => {
-    for (const name of ["cloud-fly-deploy-failed", "cloud-cancelled", "cloud-server-not-answering", "cloud-fly-host-echoes-secrets"]) {
+    for (const name of ["cloud-fly-deploy-failed", "cloud-cancelled", "cloud-fly-host-echoes-secrets"]) {
       expect((await render(screen(name))).text, name).not.toContain(PASSWORD);
     }
   });

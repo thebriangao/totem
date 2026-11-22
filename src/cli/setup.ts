@@ -1005,11 +1005,27 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
     if (project) extra.project = project;
   }
   writeDeployRecord(root, { platform, app: d.appName, url, ...extra, mcp_auth_token: mcpToken });
+  const mcpUrl = `${url.replace(/\/+$/, "")}/mcp`;
+  // The server has had the connector password since the deploy finished, and
+  // this run is the only time totem can show it. A flow that stops before the
+  // connect card must still hand it over: otherwise the person owns a server
+  // that no client can sign in to.
+  const handOverPassword = (): void => {
+    if (ownPassword) return;
+    const handedOver = sys.copy(password);
+    ui.line();
+    ui.rows([
+      ["URL", ui.kit.c.accent(mcpUrl)],
+      ["Password", `${ui.kit.c.bold(password)}${handedOver ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
+    ]);
+    ui.hint("The connector password is already set on the server, and totem shows it this once. Save it in your password manager.", 2);
+  };
   if (!check.healthy) {
     ui.problem("The deploy finished, but the server isn't answering.", {
       detail: "It may still be starting. Its logs say what it is doing.",
       fix: [["Read its logs", "totem logs"], ["Check it again", "totem ping"], ["Then log in", "totem auth"]],
     });
+    handOverPassword();
     return 1;
   }
 
@@ -1019,7 +1035,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
 
   ui.step(6, TOTAL, "Connect a client");
   const copied = !ownPassword && sys.copy(password);
-  ui.lines(connectCard(ui.kit, sys, { target: { kind: "remote", mcpUrl: `${url.replace(/\/+$/, "")}/mcp` }, password: ownPassword ? null : password, copied }));
+  ui.lines(connectCard(ui.kit, sys, { target: { kind: "remote", mcpUrl }, password: ownPassword ? null : password, copied }));
   sys.openUrl("https://claude.ai/settings/connectors");
   ui.next([
     ...(loggedIn ? [] : ["First, finish the WHOOP login: totem auth", ""]),
