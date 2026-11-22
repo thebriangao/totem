@@ -28,8 +28,33 @@ const WRITE_DENYLIST: ReadonlyArray<[RegExp, string]> = [
   [/^\/(sentry-proxy-service|metrics-service|mobile-metric-service|log-service|pip-metrics-service)\//, "telemetry"],
 ];
 
-export function rawWriteRefusal(path: string, body: unknown): string | null {
-  for (const [re, why] of WRITE_DENYLIST) if (re.test(path)) return `whoop_raw won't write to ${path}: ${why}.`;
+/**
+ * The path WHOOP will route, for matching against the denylist: query and
+ * fragment dropped, percent-decoded, duplicate slashes collapsed, lower-cased.
+ * Null when the text doesn't say where the request lands (still-encoded
+ * characters, "." or ".." segments, ";" path parameters, backslashes,
+ * whitespace or control characters) — every one of those let a denylisted
+ * endpoint through while the denylist matched the literal string.
+ */
+function routedPath(path: string): string | null {
+  let routed = path.split(/[?#]/)[0]!;
+  try {
+    routed = decodeURIComponent(routed);
+  } catch {
+    return null;
+  }
+  if (/[%;\\\u0000- \u007f]/.test(routed)) return null;
+  routed = routed.replace(/\/{2,}/g, "/");
+  if (routed.split("/").some((segment) => segment === "." || segment === "..")) return null;
+  return routed.toLowerCase();
+}
+
+export function rawWriteRefusal(rawPath: string, body: unknown): string | null {
+  const path = routedPath(rawPath);
+  if (path === null) {
+    return `whoop_raw won't write to ${JSON.stringify(rawPath)}: write paths must be plain (no percent-encoding, "." or ".." segments, ";", backslashes or whitespace) so they can be checked. Put parameters in \`query\`.`;
+  }
+  for (const [re, why] of WRITE_DENYLIST) if (re.test(path)) return `whoop_raw won't write to ${rawPath}: ${why}.`;
   if (path.startsWith("/smart-alarm-service/v1/smartalarm/preferences")) {
     const goal = (body as { goal?: unknown } | null)?.goal;
     if (goal !== undefined && !(SAFE_ALARM_GOALS as readonly unknown[]).includes(goal)) {

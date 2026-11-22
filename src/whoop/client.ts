@@ -153,6 +153,24 @@ function containsPendingState(value: unknown): boolean {
   }
 }
 
+/**
+ * Refuse a path the URL parser would not send as written. `new URL()` resolves
+ * "." and ".." segments (also spelled "%2e"), turns "\" into "/", drops tabs
+ * and newlines, cuts at "#", and without a leading "/" reads the text as part
+ * of the host. A path built from a caller-supplied id could otherwise reach a
+ * different endpoint (or host, with the bearer token) than the one the calling
+ * tool, and whoop_raw's write denylist, checked.
+ */
+export function assertVerbatimPath(path: string): void {
+  const beforeQuery = path.split("?")[0]!;
+  const dotSegment = beforeQuery.split("/").some((segment) => /^(?:\.|%2e){1,2}$/i.test(segment));
+  if (!path.startsWith("/") || dotSegment || /[\\#\u0000-\u001f\u007f]/.test(path)) {
+    throw new Error(
+      `Refusing to call WHOOP path ${JSON.stringify(path)}: it must start with "/" and contain no "." or ".." segments, backslashes, "#" or control characters.`,
+    );
+  }
+}
+
 function cacheKey(path: string, query: Record<string, QueryValue>): string {
   const params = Object.entries(query)
     .filter(([, value]) => value !== undefined && value !== null)
@@ -356,6 +374,7 @@ export class WhoopClient {
     retried = false,
     attempt412 = 0,
   ): Promise<T> {
+    assertVerbatimPath(path);
     // No `apiVersion` param: the app sent it on 0 of 5,813 requests (2026-11
     // capture), so it was totem's clearest single tell.
     const url = new URL(BASE_URL + path);

@@ -281,6 +281,37 @@ describe("WhoopClient", () => {
     expect((fetchMock.mock.calls[1]![1] as RequestInit).headers).toMatchObject({ authorization: "Bearer new" });
   });
 
+  it("refuses a path the URL parser would rewrite, before any request or token use", async () => {
+    const getToken = vi.fn(async () => "t");
+    const client = new WhoopClient({ getToken });
+    for (const path of [
+      "/activities-service/v2/activities/x/../../../users-service/v1/users", // → /users-service/v1/users
+      "/a/%2E%2e/b",
+      "/a/./b",
+      "/a\\b",
+      "/a\tb",
+      "/a#b",
+      "@evil.example/x",       // without the leading "/" this is a different HOST
+      ".evil.example/x",
+    ]) {
+      await expect(client.delete(path), JSON.stringify(path)).rejects.toThrow(/Refusing to call WHOOP path/);
+      await expect(client.get(path), JSON.stringify(path)).rejects.toThrow(/Refusing to call WHOOP path/);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it("still sends ordinary paths, including dots inside a segment and an inline query", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("{}", { status: 200 })));
+    const client = makeClient();
+    await client.get("/weightlifting-service/v2/exercise/a.b..c");
+    await client.get("/x/v1.2/y?z=1");
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      "https://api.prod.whoop.com/weightlifting-service/v2/exercise/a.b..c",
+      "https://api.prod.whoop.com/x/v1.2/y?z=1",
+    ]);
+  });
+
   it("treats a 401 that survives a refresh as endpoint-specific, not an expired login", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(new Response("unauthorized", { status: 401 })));
     const client = new WhoopClient({ getToken: async () => "t", onUnauthorized: () => {} });
