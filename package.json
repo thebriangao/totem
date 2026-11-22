@@ -45,6 +45,8 @@
     "SECURITY.md",
     "LICENSE",
     ".env.example",
+    "wrangler.jsonc",
+    ".dev.vars.example",
     "Dockerfile",
     ".dockerignore"
   ],
@@ -67,5 +69,15 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "cloudflare": {
+    "bindings": {
+      "MCP_AUTH_TOKEN": {
+        "description": "The server's own key: 64 random characters. Generate one with `openssl rand -hex 32` and keep it; `totem auth --url` asks for it."
+      },
+      "AUTH_PASSWORD": {
+        "description": "The password you type on totem's sign-in page when Claude, ChatGPT or another app connects. Use 16+ characters."
+      }
+    }
   }
 }

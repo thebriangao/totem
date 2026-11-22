@@ -210,6 +210,29 @@ export class TokenManager {
     this.lock?.release();
   }
 
+  /**
+   * When the keep-alive next means to refresh (epoch ms), or null when there is
+   * nothing to keep alive. A host that may freeze the process between requests
+   * (a Cloudflare Durable Object) schedules its own wake-up for this time.
+   */
+  nextRefreshAt(): number | null {
+    return this.nextAt;
+  }
+
+  /**
+   * Run the keep-alive now if it is due: the host's scheduled wake-up, for when
+   * a timer can't be trusted to survive. Errors are handled as the timer's are
+   * (logged, retried with backoff), so this never throws.
+   */
+  async wake(): Promise<void> {
+    if (this.stopped) return;
+    this.sync();
+    if (!this.record || this.handoff || this.fatal || this.expired) return;
+    if (this.now() < this.dueAt(this.record)) return;
+    this.clearTimer();
+    await this.keepAlive();
+  }
+
   /** The current access token, refreshing first when needed. */
   async getToken(): Promise<string> {
     this.sync();

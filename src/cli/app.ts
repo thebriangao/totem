@@ -45,7 +45,9 @@ interface Command {
 // ── where the server runs ───────────────────────────────────────────────────
 
 export interface DeployInfo { platform: string; app?: string | undefined; url?: string | undefined; region?: string | undefined; project?: string | undefined; mcp_auth_token?: string | undefined }
-const HOST_NAME: Record<string, string> = { fly: "Fly.io", railway: "Railway", cloudrun: "Google Cloud Run", custom: "your own server", local: "this computer" };
+const HOST_NAME: Record<string, string> = { fly: "Fly.io", railway: "Railway", cloudflare: "Cloudflare", cloudrun: "Google Cloud Run", custom: "your own server", local: "this computer" };
+/** Wrangler through npx (see setup.ts): Cloudflare needs nothing installed beyond Node. */
+const WRANGLER = ["--yes", "wrangler@4"];
 const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
 
 /**
@@ -78,6 +80,8 @@ function remoteDeploy(app: AppCtx, io: Io, what: string): DeployInfo | null {
 const HOST_CLI: Record<string, { names: string[]; install: string }> = {
   fly: { names: ["fly", "flyctl"], install: "brew install flyctl" },
   railway: { names: ["railway"], install: "npm i -g @railway/cli" },
+  cloudflare: { names: ["npx"], install: "install Node.js from https://nodejs.org" },
+  // Servers deployed by totem 1.x; totem 2 no longer creates them.
   cloudrun: { names: ["gcloud"], install: "brew install --cask google-cloud-sdk" },
 };
 
@@ -104,6 +108,8 @@ export function deployCommands(d: DeployInfo, extra: string[] = [], fly = "fly")
       return [[fly, ["deploy", ...(d.app ? ["-a", d.app] : []), ...extra]]];
     case "railway":
       return [...(d.app ? [["railway", ["link", "--project", d.app]] as [string, string[]]] : []), ["railway", ["up", ...extra]]];
+    case "cloudflare":
+      return [["npx", [...WRANGLER, "deploy", ...(d.app ? ["--name", d.app] : []), ...extra]]];
     case "cloudrun":
       return [["gcloud", ["run", "deploy", d.app ?? "totem", "--source", ".", "--region", d.region ?? "us-west1", "--min-instances", "1",
         ...(d.project ? ["--project", d.project] : []), "--quiet", ...extra]]];
@@ -182,6 +188,8 @@ async function logs(args: string[], app: AppCtx, io: Io): Promise<number> {
     case "railway":
       if (d.app) await sys.run("railway", ["link", "--project", d.app], { cwd: app.root });
       return sys.run("railway", ["logs", ...extra], { cwd: app.root });
+    case "cloudflare":
+      return sys.run("npx", [...WRANGLER, "tail", ...(d.app ? [d.app] : []), ...extra], { cwd: app.root });
     case "cloudrun":
       return sys.run("gcloud", ["run", "services", "logs", "read", d.app ?? "totem", "--region", d.region ?? "us-west1",
         ...(d.project ? ["--project", d.project] : []), ...extra], { cwd: app.root });
@@ -231,7 +239,7 @@ async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
     return 1;
   }
   const local = d.platform === "local";
-  rows.push(["Runs on", local ? "this computer, started by your AI client" : `${HOST_NAME[d.platform] ?? d.platform}${d.app ? `, ${d.platform === "railway" ? "project" : d.platform === "cloudrun" ? "service" : "app"} ${d.app}` : ""}`]);
+  rows.push(["Runs on", local ? "this computer, started by your AI client" : `${HOST_NAME[d.platform] ?? d.platform}${d.app ? `, ${d.platform === "railway" ? "project" : d.platform === "cloudrun" ? "service" : d.platform === "cloudflare" ? "Worker" : "app"} ${d.app}` : ""}`]);
   if (d.url) rows.push(["Address", cleanUrl(d.url)]);
   ui.rows(rows);
   ui.line();
@@ -251,6 +259,7 @@ async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
     const fly = ["fly", "flyctl"].find((n) => sys.has(n)) ?? "fly";
     const view: [string, string[]] | null = d.platform === "fly" && d.app ? [fly, ["status", "-a", d.app]]
       : d.platform === "railway" ? ["railway", ["status"]]
+      : d.platform === "cloudflare" && d.app ? ["npx", [...WRANGLER, "deployments", "list", "--name", d.app]]
       : d.platform === "cloudrun" && d.app ? ["gcloud", ["run", "services", "describe", d.app, "--region", d.region ?? "us-west1", ...(d.project ? ["--project", d.project] : []), "--format=value(status.url,status.latestReadyRevisionName)"]]
       : null;
     if (view) {
@@ -425,7 +434,7 @@ const commands: Record<string, Command> = {
     group: "Run and maintain",
     summary: "Show the server's logs",
     usage: "totem logs [-- <host options>]",
-    about: "Runs the host's log command for your server (fly logs, railway logs, gcloud run services logs read). Anything after -- goes to that command.",
+    about: "Runs the host's log command for your server (fly logs, railway logs, wrangler tail). Anything after -- goes to that command.",
     run: logs,
   },
   deploy: {

@@ -1,0 +1,5 @@
+# Secrets for totem on Cloudflare (the Deploy to Cloudflare button asks for these).
+# MCP_AUTH_TOKEN: 64 random characters, for example the output of `openssl rand -hex 32`.
+MCP_AUTH_TOKEN=
+# AUTH_PASSWORD: the password you type on totem's sign-in page when a client connects.
+AUTH_PASSWORD=

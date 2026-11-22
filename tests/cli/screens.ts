@@ -66,14 +66,16 @@ const railway: Handler = (cmd, args, _input, world) => {
   return undefined;
 };
 
-const gcloud: Handler = (cmd, args, _input, world) => {
+/** Wrangler through npx, signed in; the deploy prints the workers.dev address. */
+const cloudflare: Handler = (cmd, args, _input, world) => {
+  if (cmd !== "npx") return undefined;
   const a = args.join(" ");
-  if (a.startsWith("auth list")) return out("you@example.com\n");
-  if (a === "config get-value project") return out("my-project\n");
-  if (a.startsWith("projects list")) return out("my-project\nother-project\n");
-  if (a.startsWith("billing projects describe")) return out("True\n");
-  if (a.startsWith("run deploy")) { world.clock.t += 187_000; return out("Building using Dockerfile\nDeploying container to Cloud Run service\nDone.\n"); }
-  if (a.startsWith("run services describe")) return out("https://totem-c0ffee2-abcdefghij-uw.a.run.app\n");
+  if (a.endsWith("wrangler@4 whoami")) return out("👋 You are logged in with an OAuth Token, associated with the email you@example.com.\n");
+  if (a.includes("wrangler@4 deploy")) {
+    world.clock.t += 21_000;
+    const name = args[args.indexOf("--name") + 1];
+    return out(`Total Upload: 3846.74 KiB / gzip: 815.41 KiB\nUploaded ${name} (3.06 sec)\nDeployed ${name} triggers (0.44 sec)\n  https://${name}.you.workers.dev\n`);
+  }
   return undefined;
 };
 
@@ -160,8 +162,8 @@ export const SCREENS: Screen[] = [
     name: "cloud-server-not-answering", command: "totem cloud", about: "The deploy works but the server never answers /health.",
     world: { exec: fly(), http: () => ({ status: 0, body: "", ms: 3000, error: "ENOTFOUND" }) },
   },
-  { name: "cloud-railway", command: "totem cloud", about: "Cloud setup on Railway.", world: { exec: railway, answers: [["Where should the server run?", 1]] } },
-  { name: "cloud-cloudrun", command: "totem cloud", about: "Cloud setup on Google Cloud Run.", world: { exec: gcloud, answers: [["Where should the server run?", 2]] } },
+  { name: "cloud-cloudflare", command: "totem cloud", about: "Cloud setup on Cloudflare Workers (free plan).", world: { exec: cloudflare, answers: [["Where should the server run?", 1]] } },
+  { name: "cloud-railway", command: "totem cloud", about: "Cloud setup on Railway.", world: { exec: railway, answers: [["Where should the server run?", 2]] } },
   {
     name: "cloud-custom", command: "totem cloud", about: "Cloud setup on your own Docker host.",
     world: { answers: [["Where should the server run?", 3], ["Public https URL", "totem.example.com"]] },

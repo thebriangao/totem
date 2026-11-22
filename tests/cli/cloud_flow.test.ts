@@ -104,35 +104,52 @@ describe("totem cloud: choosing your own connector password", () => {
 // On Cloud Run, choosing where to deploy can itself create things (a new
 // project, a billing link) before the plan is shown. Cancelling the plan must
 // not then say that nothing was created.
-describe("totem cloud: cancelling the plan after a Google Cloud project was created", () => {
-  /** gcloud with an account, and either a project already selected or none at all. */
-  const gcloudWith = (selected: string): NonNullable<WorldOptions["exec"]> => {
-    let project = selected;
-    return (_cmd, args) => {
-      const a = args.join(" ");
-      if (a.startsWith("auth list")) return out("you@example.com\n");
-      if (a === "config get-value project") return out(project ? `${project}\n` : "(unset)\n");
-      if (a.startsWith("projects list")) return out("");
-      if (a.startsWith("projects create")) { project = args[2]!; return out(""); }
-      if (a.startsWith("billing projects describe")) return out(selected ? "True\n" : "False\n");
-      if (a.startsWith("billing accounts list")) return out("billingAccounts/0X0X0X-0X0X0X-0X0X0X\n");
-      return undefined;
-    };
+describe("totem cloud: Cloudflare", () => {
+  /** Wrangler signed in; the deploy reads the secrets file it was given and prints the address. */
+  const wrangler = (seen: { file?: string | undefined; body?: string | undefined }): NonNullable<WorldOptions["exec"]> => (cmd, args) => {
+    if (cmd !== "npx") return undefined;
+    const a = args.join(" ");
+    if (a.endsWith("whoami")) return out("👋 You are logged in with an OAuth Token, associated with the email you@example.com.\n");
+    if (a.includes(" deploy ")) {
+      seen.file = args[args.indexOf("--secrets-file") + 1];
+      seen.body = readFileSync(seen.file!, "utf8");
+      return out(`Uploaded ${args[args.indexOf("--name") + 1]}\n  https://totem-c0ffee.you.workers.dev\nCurrent Version ID: x\n`);
+    }
+    return undefined;
   };
-  const cancel: WorldOptions["answers"] = [["Where should the server run?", 2], ["New project ID", "my-totem-project"], ["Deploy this?", 2]];
+  const pick: WorldOptions = { answers: [["Where should the server run?", 1]] };
 
-  it("says what was already created instead of 'nothing'", async () => {
-    const { w, code, text } = await cloud({ exec: gcloudWith(""), answers: cancel });
-    expect(code).toBe(1);
-    expect(w.commands).toContain("exec  gcloud projects create my-totem-project");
-    expect(text).not.toMatch(/nothing (has been|was) created/i);
-    expect(text).toContain("Cancel             no server is created");
-    expect(text.replace(/\s+/g, " ")).toContain("Cancelled. No server was created. Already done above, and left as it is: the Google Cloud project my-totem-project and billing on my-totem-project.");
+  it("passes the secrets in a private temporary file, deletes it, and records the workers.dev address", async () => {
+    const seen: { file?: string | undefined; body?: string | undefined } = {};
+    const { w, code, text } = await cloud({ exec: wrangler(seen), ...pick });
+    expect(code).toBe(0);
+    expect(JSON.parse(seen.body!)).toEqual({ MCP_AUTH_TOKEN: TOKEN, AUTH_PASSWORD: PASSWORD });
+    expect(() => statSync(seen.file!)).toThrow();
+    expect(w.commands.join("\n")).not.toContain(TOKEN);
+    expect(w.commands.join("\n")).not.toContain(PASSWORD);
+    expect(readDeployRecord(w.root)).toMatchObject({ platform: "cloudflare", app: "totem-c0ffee", url: "https://totem-c0ffee.you.workers.dev", mcp_auth_token: TOKEN });
+    expect(text).toContain("Signed in to Cloudflare");
+    expect(text).toContain("you@example.com");
   });
 
-  it("still says nothing was created when nothing was", async () => {
-    const { w, text } = await cloud({ exec: gcloudWith("my-project"), answers: cancel });
-    expect(w.commands.some((c) => c.includes("projects create") || c.includes("billing projects link"))).toBe(false);
+  it("signs in with Wrangler when nobody is signed in", async () => {
+    let signedIn = false;
+    const exec: NonNullable<WorldOptions["exec"]> = (cmd, args) => {
+      const a = args.join(" ");
+      if (cmd === "npx" && a.endsWith("whoami")) return signedIn ? out("associated with the email you@example.com.\n") : { code: 1, stdout: "You are not authenticated. Please run `wrangler login`.\n", stderr: "" };
+      return wrangler({})(cmd, args, undefined, undefined as never);
+    };
+    const run: NonNullable<WorldOptions["run"]> = (cmd, args) => { if (cmd === "npx" && args.join(" ").endsWith("login")) signedIn = true; return undefined; };
+    const { w } = await cloud({ exec, run, ...pick });
+    expect(w.commands.some((c) => c.includes("wrangler@4 login"))).toBe(true);
+  });
+});
+
+describe("totem cloud: cancelling the plan", () => {
+  it("says nothing was created", async () => {
+    const { w, code, text } = await cloud({ exec: fly, answers: [["Deploy this?", 2]] });
+    expect(code).toBe(1);
+    expect(w.commands.some((c) => c.includes("apps create"))).toBe(false);
     expect(text).toContain("Cancelled. Nothing was created.");
   });
 });

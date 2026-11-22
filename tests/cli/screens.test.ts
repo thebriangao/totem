@@ -95,7 +95,7 @@ describe("secrets", () => {
   });
 
   it("the commands a deploy runs carry no secret on their command line", async () => {
-    for (const name of ["cloud-fly", "cloud-railway", "cloud-cloudrun"]) {
+    for (const name of ["cloud-fly", "cloud-railway", "cloud-cloudflare"]) {
       const { commands } = await render(screen(name));
       expect(commands.join("\n"), name).not.toContain(TOKEN);
       expect(commands.join("\n"), name).not.toContain(PASSWORD);

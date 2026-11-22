@@ -65,3 +65,7 @@ captures/
 
 # WHOOP login written by `totem auth` if TOTEM_TOKEN_FILE points into the repo
 tokens.json*
+
+# Cloudflare (wrangler)
+.wrangler/
+.dev.vars

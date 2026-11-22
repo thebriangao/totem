@@ -40,7 +40,7 @@ const AUTO_LABEL = "com.totem.autoupdate";
 const AUTO_INTERVAL_SEC = 6 * 60 * 60; // there is no push channel to a user's machine: poll
 const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
 const autoLogPath = (root: string): string => resolve(root, ".totem-autoupdate.log");
-const HOST_NAME: Record<string, string> = { fly: "Fly", railway: "Railway", cloudrun: "Cloud Run" };
+const HOST_NAME: Record<string, string> = { fly: "Fly", railway: "Railway", cloudflare: "Cloudflare", cloudrun: "Cloud Run" };
 
 // ── semver ────────────────────────────────────────────────────────────────
 // Compare two x.y.z[-pre] strings (leading "v" ignored). -1 / 0 / 1. A
@@ -250,7 +250,7 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
   }
   heading(2, `Deploy to ${host}`);
   // The host's CLI has to be on this machine to deploy from it.
-  const cli = remote.platform === "fly" ? ["fly", "flyctl"] : remote.platform === "railway" ? ["railway"] : ["gcloud"];
+  const cli = remote.platform === "fly" ? ["fly", "flyctl"] : remote.platform === "railway" ? ["railway"] : remote.platform === "cloudflare" ? ["npx"] : ["gcloud"];
   if (!cli.some((c) => sys.has(c))) {
     ui.warn(`The ${host} CLI (${cli[cli.length - 1]}) isn't installed on this machine, so the server still runs ${ctx.version}.`);
     ui.hint(`Install it, then: totem deploy`);
@@ -278,6 +278,7 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
     ui.ok("The server is up", "/health answered");
   }
   if (remote.platform === "cloudrun") ui.warn("A new Cloud Run revision starts without a WHOOP login.", "log in again: totem auth");
+  else if (remote.platform === "cloudflare") ui.hint("The WHOOP login lives in the Worker's Durable Object and carries over. If tools start failing: totem auth");
   else ui.hint("The WHOOP login lives on the server's volume and carries over. If tools start failing: totem auth");
   return "done";
 }

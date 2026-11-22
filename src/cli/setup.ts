@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { pkgBin } from "./spawn.js";
 import { realAuthDeps, runAuth } from "./auth.js";
-import { readDeployRecord, writeDeployRecord, type DeployRecord } from "./deploy_record.js";
+import { readDeployRecord, writeDeployRecord } from "./deploy_record.js";
 import { migrateFromEnv, resolveTokenFilePath, writeFileAtomic } from "../whoop/token_store.js";
 import {
   CLIENTS, FIRST_QUESTION, SERVER_NAME, applyRecipe, connectCard, findClient, lastLine, recipeLines, tildify,
@@ -27,8 +27,12 @@ import { duration, listOf, maskSecrets, shellLines, when, type Choice, type Fix 
 
 const NODE_MIN = 24;
 export const FLY_VOLUME = "totem_data";
-export const FLY_REGION = "sjc";
-const CLOUD_RUN_REGION = "us-west1";
+/** Fly's cheapest region (Ashburn, Virginia), and the smallest machine totem is comfortable in. */
+export const FLY_REGION = "iad";
+export const FLY_VM = { size: "shared-cpu-1x", memory: "512mb" } as const;
+/** Wrangler through npx: nothing to install, and the major version totem was tested with. */
+export const WRANGLER = ["--yes", "wrangler@4"] as const;
+const wrangler = (args: string[]): string[] => [...WRANGLER, ...args];
 
 /** The last few lines a command printed: enough to see why it failed. */
 function tail(r: ExecResult, lines = 6): string[] {
@@ -291,11 +295,11 @@ export async function runLocalSetup(root: string, io: Io = realIo()): Promise<nu
 
 // ── CLOUD ───────────────────────────────────────────────────────────────────
 
-type Platform = "fly" | "railway" | "cloudrun" | "custom";
+type Platform = "fly" | "railway" | "cloudflare" | "custom";
 const HOSTS: Array<{ id: Platform; name: string; hint: string }> = [
-  { id: "fly", name: "Fly.io", hint: "a small VM with a volume for the login (recommended)" },
-  { id: "railway", name: "Railway", hint: "a managed service with a dashboard" },
-  { id: "cloudrun", name: "Google Cloud Run", hint: "serverless; no disk, so a restart needs a new login" },
+  { id: "fly", name: "Fly.io", hint: "one small always-on machine, about $4 a month (recommended)" },
+  { id: "cloudflare", name: "Cloudflare", hint: "Workers free plan; no card, no machine to look after" },
+  { id: "railway", name: "Railway", hint: "a managed service with a dashboard, on Railway's paid plan" },
   { id: "custom", name: "My own server", hint: "any Docker host; totem prints the commands" },
 ];
 
@@ -433,6 +437,12 @@ export function flyToml(appName: string, withVolume: boolean): string {
           ``,
         ]
       : []),
+    `# One small machine: 512 MB is enough, and with the volume it stays under`,
+    `# Fly's $5 a month at current prices.`,
+    `[[vm]]`,
+    `  size = "${FLY_VM.size}"`,
+    `  memory = "${FLY_VM.memory}"`,
+    ``,
     `[http_service]`,
     `  internal_port = 3000`,
     `  force_https = true`,
@@ -631,152 +641,43 @@ async function setPublicUrl(d: Deploy, url: string, steps: HostStep[]): Promise<
   return url;
 }
 
-// GOOGLE CLOUD RUN ────────────────────────────────────────────────────────────
+// CLOUDFLARE ──────────────────────────────────────────────────────────────────
 
-const gcloud = (d: { io: Io }, args: string[]): Promise<ExecResult> => d.io.sys.exec("gcloud", args);
-const value = (r: ExecResult): string => r.stdout.trim().replace(/^\(unset\)$/, "");
-
-/** Pick the Google account to deploy as; signing in to another happens right here. */
-async function chooseGcloudAccount(io: Io): Promise<boolean> {
-  const { ui, sys } = io;
-  for (;;) {
-    const all = (await ui.task("Listing your Google accounts", () => gcloud({ io }, ["auth", "list", "--format=value(account)"]))).stdout.trim().split("\n").filter(Boolean);
-    const active = value(await gcloud({ io }, ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"]));
-    const idx = await ui.select("Which Google account?", [
-      ...all.map((a) => ({ label: a, hint: a === active ? "active" : undefined })),
-      { label: "Sign in to another account" },
-    ], Math.max(0, all.indexOf(active)));
-    if (idx === all.length) {
-      if ((await sys.run("gcloud", ["auth", "login"])) !== 0) {
-        ui.fail("The Google sign-in didn't finish.");
-        if (!(await ui.confirm("Try again?", true))) return false;
-      }
-      continue;
-    }
-    const picked = all[idx]!;
-    if (picked !== active) {
-      const r = await ui.task(`Switching to ${picked}`, () => gcloud({ io }, ["config", "set", "account", picked]));
-      if (r.code !== 0) { ui.fail(`Couldn't switch to ${picked}: ${lastLine(r)}`); continue; }
-    }
-    ui.ok("Google account", picked);
-    return true;
-  }
+/** The address Wrangler prints after a deploy: https://<name>.<account subdomain>.workers.dev */
+export function workersDevUrl(output: string, name: string): string | null {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return output.match(new RegExp(`https://${escaped}\\.[a-z0-9-]+\\.workers\\.dev`, "i"))?.[0] ?? null;
 }
 
-/**
- * Pick the GCP project, or create one. Like linking billing below, this
- * happens before the deploy plan is shown: what it creates is added to
- * `already`, so cancelling the plan doesn't claim that nothing was created.
- */
-async function chooseGcloudProject(io: Io, already: string[]): Promise<boolean> {
-  const { ui, sys } = io;
-  const current = value(await gcloud({ io }, ["config", "get-value", "project"]));
-  const projects = (await ui.task("Listing your projects", () => gcloud({ io }, ["projects", "list", "--format=value(projectId)"]))).stdout.trim().split("\n").filter(Boolean);
-  const idx = await ui.select("Which Google Cloud project?", [
-    ...projects.map((p) => ({ label: p, hint: p === current ? "current" : undefined })),
-    { label: "Create a new project" },
-  ], Math.max(0, projects.indexOf(current)));
-  let project = projects[idx];
-  if (!project) {
-    for (;;) {
-      const fresh = `totem-${sys.token().slice(0, 6)}`;
-      project = (await ui.text("New project ID (6-30 lower-case letters, digits, hyphens)", fresh)).trim() || fresh;
-      const made = await ui.task(`Creating ${project}`, () => gcloud({ io }, ["projects", "create", project!]));
-      if (made.code === 0) { ui.ok("Project created", project); already.push(`the Google Cloud project ${project}`); break; }
-      ui.fail(`Couldn't create ${project}: ${lastLine(made)}`);
-      if (!(await ui.confirm("Try another ID?", true))) return false;
-    }
-  }
-  const chosen = project;
-  const set = await ui.task(`Selecting ${chosen}`, () => gcloud({ io }, ["config", "set", "project", chosen]));
-  if (set.code !== 0) { ui.fail(`Couldn't select ${chosen}: ${lastLine(set)}`); return false; }
-  ui.ok("Project", chosen);
-  return true;
-}
-
-// Cloud Run needs billing on the project. An existing billing account is linked
-// from here; creating one (adding a payment method) only exists in the console.
-async function ensureGcloudBilling(io: Io, already: string[]): Promise<boolean> {
-  const { ui, sys } = io;
-  const project = value(await gcloud({ io }, ["config", "get-value", "project"]));
-  const billing = await ui.task("Checking billing", () => gcloud({ io }, ["billing", "projects", "describe", project, "--format=value(billingEnabled)"]));
-  if (billing.code === 0 && /true/i.test(billing.stdout)) { ui.ok("Billing is on for the project"); return true; }
-
-  const accounts = (await ui.task("Listing your billing accounts", () => gcloud({ io }, ["billing", "accounts", "list", "--filter=open=true", "--format=value(name)"]))).stdout.trim().split("\n").filter(Boolean);
-  if (accounts.length > 0) {
-    const idx = await ui.select("Cloud Run needs billing on the project. Link which billing account?", [
-      ...accounts.map((a) => ({ label: a })),
-      { label: "None of these", hint: "set one up in the console" },
-    ]);
-    const account = accounts[idx];
-    if (account) {
-      const link = await ui.task("Linking billing", () => gcloud({ io }, ["billing", "projects", "link", project, "--billing-account", account]));
-      if (link.code === 0) { ui.ok("Billing linked", account); already.push(`billing on ${project}`); return true; }
-      ui.fail(`Couldn't link billing: ${lastLine(link)}`);
-    }
-  }
-  const url = `https://console.cloud.google.com/billing/linkedaccount?project=${project}`;
-  ui.warn("The project needs a billing account, and only the Google Cloud console can create one.");
-  ui.para("Opening it in your browser:", 4);
-  ui.code([url]);
-  sys.openUrl(url);
-  return ui.confirm("Is billing on for the project now?", true);
-}
-
-async function deployCloudRun(d: Deploy): Promise<string | null> {
+// One Wrangler deploy: it bundles src/cloudflare/worker.ts with wrangler.jsonc,
+// creates the Durable Object that keeps the login, and uploads the two secrets
+// from a temporary file (never a command line). The server works out its own
+// address from the requests it gets, so there is no second pass for PUBLIC_URL.
+async function deployCloudflare(d: Deploy): Promise<string | null> {
   const { ui, sys } = d.io;
-  d.cleanup = ["Remove the unfinished service", `gcloud run services delete ${d.appName} --region ${CLOUD_RUN_REGION}`];
-  // The settings go in a temp YAML file (--env-vars-file), not --set-env-vars:
-  // values would otherwise sit on the command line, and a random password can
-  // collide with any inline delimiter. The file lives in the OS temp dir, never
-  // the uploaded source dir, and is deleted afterwards. PUBLIC_URL follows once
-  // the address is known.
-  const envFile = resolve(tmpdir(), `totem-env-${randomUUID()}.yaml`);
-  writeFileSync(envFile, Object.entries(d.env).filter(([, v]) => v !== "").map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join("\n") + "\n", { mode: 0o600 });
+  d.cleanup = ["Remove the unfinished Worker", `npx wrangler delete --name ${d.appName}`];
+  const secretsFile = resolve(tmpdir(), `totem-secrets-${randomUUID()}.json`);
+  writeFileSync(secretsFile, JSON.stringify({ MCP_AUTH_TOKEN: d.env.MCP_AUTH_TOKEN, AUTH_PASSWORD: d.env.AUTH_PASSWORD }), { mode: 0o600 });
+  let url: string | null = null;
   try {
-    const steps: HostStep[] = [
-      {
-        label: "Turning on the Cloud Run, Cloud Build and Artifact Registry APIs", done: "APIs on",
-        run: hostCommand(d, "gcloud", ["services", "enable", "run.googleapis.com", "cloudbuild.googleapis.com", "artifactregistry.googleapis.com"]),
-        optional: "The deploy fails if they are off.",
+    const deployed = await runStep(d, {
+      label: "Building and deploying on Cloudflare", done: "Deployed", slow: true,
+      run: async (set) => {
+        const r = await sys.exec("npx", wrangler(["deploy", "--name", d.appName, "--secrets-file", secretsFile]), {
+          cwd: d.root,
+          onLine: (line) => (d.verbose ? ui.hint(redact(d, line), 4) : set(line)),
+        });
+        url = workersDevUrl(`${r.stdout}\n${r.stderr}`, d.appName) ?? url;
+        return r;
       },
-      {
-        // `gcloud run deploy --source` builds with the project's default compute
-        // service account, which on a new project may not build.
-        label: "Letting Cloud Build use the default service account", done: "Build access granted",
-        run: hostCommand(d, "sh", ["-c", 'P="$(gcloud config get-value project 2>/dev/null)"; N="$(gcloud projects describe "$P" --format=\'value(projectNumber)\' 2>/dev/null)"; gcloud projects add-iam-policy-binding "$P" --member="serviceAccount:${N}-compute@developer.gserviceaccount.com" --role=roles/cloudbuild.builds.builder --condition=None']),
-        optional: "Fine to skip if the project already builds from source.",
-      },
-      {
-        label: "Building and deploying on Cloud Run", done: "Deployed", slow: true,
-        run: hostCommand(d, "gcloud", [
-          "run", "deploy", d.appName,
-          "--source", ".",
-          "--region", CLOUD_RUN_REGION,
-          "--allow-unauthenticated",
-          "--port", "3000",
-          "--min-instances", "1",
-          // One instance: the WHOOP login lives in that instance's token file,
-          // and a second instance would have none (or a competing copy).
-          "--max-instances", "1",
-          "--env-vars-file", envFile,
-          "--quiet",
-        ]),
-      },
-    ];
-    for (const step of steps) if ((await runStep(d, step)) === "cancelled") return null;
-
-    const described = await ui.task("Getting the public address", () => gcloud(d, ["run", "services", "describe", d.appName, "--region", CLOUD_RUN_REGION, "--format=value(status.url)"]));
-    let url = /^https?:\/\//.test(described.stdout.trim()) ? described.stdout.trim().replace(/\/+$/, "") : "";
-    if (url) ui.ok("Public address", url);
-    else url = await askUrl(d.io, "Cloud Run didn't report the address. Public URL of the service");
-    return await setPublicUrl(d, url, [{
-      label: "Telling the server its address", done: "PUBLIC_URL set", retries: 3,
-      run: hostCommand(d, "gcloud", ["run", "services", "update", d.appName, "--region", CLOUD_RUN_REGION, "--update-env-vars", `PUBLIC_URL=${url}`, "--quiet"]),
-    }]);
+    });
+    if (deployed !== "ok") return null;
   } finally {
-    try { rmSync(envFile); } catch { /* best-effort */ }
+    try { rmSync(secretsFile); } catch { /* best-effort */ }
   }
+  if (url) ui.ok("Public address", url);
+  else url = await askUrl(d.io, "Wrangler didn't print the address. The Worker's https address (in the Cloudflare dashboard)");
+  return url;
 }
 
 // CUSTOM ──────────────────────────────────────────────────────────────────────
@@ -887,30 +788,47 @@ async function hostAccount(io: Io, platform: Platform, already: string[]): Promi
     ui.ok("Signed in to Railway", account);
     return { cli, account };
   }
-  if (platform === "cloudrun") {
-    const cli = await ensureCli(io, ["gcloud"], "Google Cloud CLI", { brew: "--cask google-cloud-sdk", script: "curl https://sdk.cloud.google.com | bash", manual: "brew install --cask google-cloud-sdk", windows: "winget install Google.CloudSDK" });
-    if (!cli) return null;
-    let account = value(await ui.task("Checking who is signed in", () => gcloud({ io }, ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"])));
+  if (platform === "cloudflare") {
+    // npx comes with Node, which totem needs anyway; Wrangler downloads on first use.
+    const whoami = async (): Promise<string | null> => {
+      const r = await ui.task("Checking who is signed in to Cloudflare", () => sys.exec("npx", wrangler(["whoami"])), { slow: true });
+      return cloudflareAccount(`${r.stdout}\n${r.stderr}`, r.code);
+    };
+    let account = await whoami();
     if (!account) {
-      ui.info("Signing in to Google; it opens your browser.");
-      if ((await sys.run("gcloud", ["auth", "login"])) !== 0) { ui.problem("The Google sign-in didn't finish.", { fix: [["Sign in", "gcloud auth login"], ["Then", "totem cloud"]] }); return null; }
-      account = value(await gcloud({ io }, ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"])) || "your account";
+      ui.info("Signing in to Cloudflare; it opens your browser.");
+      if ((await sys.run("npx", wrangler(["login"]))) !== 0) {
+        ui.problem("The Cloudflare sign-in didn't finish.", { fix: [["Sign in", "npx wrangler login"], ["Then", "totem cloud"]] });
+        return null;
+      }
+      account = (await whoami()) ?? "your account";
     }
-    ui.ok("Signed in to Google", account);
-    // Which project, and billing on it, are choices the person must own.
-    if (!value(await gcloud({ io }, ["config", "get-value", "project"])) && !(await chooseGcloudProject(io, already))) return null;
-    if (!(await ensureGcloudBilling(io, already))) return null;
-    return { cli, account };
+    ui.ok("Signed in to Cloudflare", account);
+    return { cli: "npx", account };
   }
   return { cli: "docker", account: "" };
 }
 
+/**
+ * Who `wrangler whoami` says is signed in: the email for a browser sign-in, the
+ * account name for an API token, or null when nobody is.
+ */
+export function cloudflareAccount(output: string, code: number): string | null {
+  if (code !== 0 || /not authenticated|not logged in|wrangler login/i.test(output)) return null;
+  const email = output.match(/associated with the email\s+(\S+?@\S+?)\.?\s*$/im)?.[1];
+  if (email) return email;
+  const row = output.match(/│\s*([^│\n]+?)\s*│\s*[0-9a-f]{32}\s*│/);
+  return row?.[1]?.trim() || "your account";
+}
+
 /** Sign in to the host as someone else. Returns the new account, or null if it didn't finish. */
-async function switchAccount(io: Io, platform: Platform, cli: string, already: string[]): Promise<string | null> {
+async function switchAccount(io: Io, platform: Platform, cli: string, _already: string[]): Promise<string | null> {
   const { ui, sys } = io;
-  if (platform === "cloudrun") {
-    if (!(await chooseGcloudAccount(io)) || !(await chooseGcloudProject(io, already)) || !(await ensureGcloudBilling(io, already))) return null;
-    return value(await gcloud({ io }, ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"])) || "your account";
+  if (platform === "cloudflare") {
+    await sys.run("npx", wrangler(["logout"]));
+    if ((await sys.run("npx", wrangler(["login"]))) !== 0) { ui.fail("The sign-in didn't finish."); return null; }
+    const r = await sys.exec("npx", wrangler(["whoami"]));
+    return cloudflareAccount(`${r.stdout}\n${r.stderr}`, r.code) ?? "your account";
   }
   const [out, login, whoami] = platform === "fly" ? [["auth", "logout"], ["auth", "login"], ["auth", "whoami"]] : [["logout"], ["login"], ["whoami"]];
   await sys.run(cli, out!);
@@ -920,16 +838,25 @@ async function switchAccount(io: Io, platform: Platform, cli: string, already: s
 }
 
 /** What will be created and who pays, shown once before anything happens. */
-async function planRows(d: Deploy): Promise<Array<[string, string]>> {
+function planRows(d: Deploy): Array<[string, string]> {
   const host = HOSTS.find((h) => h.id === d.platform)!.name;
   if (d.platform === "fly") {
     return [
       ["Host", `${host}, as ${d.account}`],
       ["App", d.appName],
       ["Address", `https://${d.appName}.fly.dev`],
-      ["Region", FLY_REGION],
+      ["Machine", `${FLY_VM.size}, 512 MB, in ${FLY_REGION} (Virginia), always on`],
       ["Volume", `${FLY_VOLUME}, 1 GB: keeps the WHOOP login across restarts`],
-      ["Cost", "Fly bills your account for one small machine and the volume"],
+      ["Cost", "about $4 a month at Fly's prices, billed to your Fly account"],
+    ];
+  }
+  if (d.platform === "cloudflare") {
+    return [
+      ["Host", `${host}, as ${d.account}`],
+      ["Worker", d.appName],
+      ["Address", `https://${d.appName}.<your subdomain>.workers.dev`],
+      ["Storage", "a Durable Object keeps the WHOOP login across restarts"],
+      ["Cost", "free plan: up to 100,000 requests a day"],
     ];
   }
   if (d.platform === "railway") {
@@ -941,15 +868,7 @@ async function planRows(d: Deploy): Promise<Array<[string, string]>> {
       ["Cost", "Railway bills your account for the service and the volume"],
     ];
   }
-  const project = value(await gcloud(d, ["config", "get-value", "project"]));
-  return [
-    ["Host", `${host}, as ${d.account}`],
-    ["Project", project || "(none selected)"],
-    ["Service", `${d.appName} in ${CLOUD_RUN_REGION}, public, one instance kept warm`],
-    ["Also", "turns on the Run, Build and Artifact Registry APIs, and lets Cloud Build use the default service account"],
-    ["Storage", "none: after a restart or a new revision, log in again with totem auth"],
-    ["Cost", "Google bills the project for the service and its builds"],
-  ];
+  return [["Host", host]];
 }
 
 export interface CloudOptions {
@@ -980,8 +899,8 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   ui.step(1, TOTAL, "Host");
   const platform = HOSTS[await ui.select("Where should the server run?", HOSTS.map((h) => ({ label: h.name, hint: h.hint })))]!.id;
   if (!(await prerequisites(root, io, false))) return 1;
-  // What choosing the host's account has created before the plan is confirmed
-  // (on Cloud Run: a new project, a billing link), in words for the person.
+  // What choosing the host's account has created before the plan is confirmed,
+  // in words for the person. No host creates anything at that point today.
   const already: string[] = [];
   const host = await hostAccount(io, platform, already);
   if (!host) return 1;
@@ -1005,7 +924,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   ui.step(3, TOTAL, "Deploy");
   if (platform !== "custom") {
     for (;;) {
-      ui.rows(await planRows(d));
+      ui.rows(planRows(d));
       const pick = await ui.select("Deploy this?", [
         { label: "Deploy" },
         { label: "Change something", hint: "the name, the password, or the account" },
@@ -1037,7 +956,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
 
   const url = platform === "fly" ? await deployFly(d)
     : platform === "railway" ? await deployRailway(d)
-    : platform === "cloudrun" ? await deployCloudRun(d)
+    : platform === "cloudflare" ? await deployCloudflare(d)
     : await deployCustom(d);
   if (!url) {
     ui.problem("The server was not deployed.", { fix: [["Start over", "totem cloud"], ...(d.cleanup ? [d.cleanup] : [])] });
@@ -1049,13 +968,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   // Record the deployment before anything else can stop the flow, so auth,
   // status and logs know where it is. d.appName, not the first suggestion: a
   // name conflict may have changed it.
-  const extra: Partial<DeployRecord> = {};
-  if (platform === "cloudrun") {
-    extra.region = CLOUD_RUN_REGION;
-    const project = value(await gcloud(d, ["config", "get-value", "project"]));
-    if (project) extra.project = project;
-  }
-  writeDeployRecord(root, { platform, app: d.appName, url, ...extra, mcp_auth_token: mcpToken });
+  writeDeployRecord(root, { platform, app: d.appName, url, ...(platform === "fly" ? { region: FLY_REGION } : {}), mcp_auth_token: mcpToken });
   const mcpUrl = `${url.replace(/\/+$/, "")}/mcp`;
   // The server has had the connector password since the deploy finished, and
   // this run is the only time totem can show it. A flow that stops before the

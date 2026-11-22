@@ -4,10 +4,10 @@ Deploy your own totem server and connect your AI clients to it.
 
 1/6  Host
 ? Where should the server run?
-  › Fly.io             a small VM with a volume for the login (recommended)
-    Railway            a managed service with a dashboard
-    Google Cloud Run   serverless; no disk, so a restart needs a new login
-    My own server      any Docker host; totem prints the commands
+  › Fly.io          one small always-on machine, about $4 a month (recommended)
+    Cloudflare      Workers free plan; no card, no machine to look after
+    Railway         a managed service with a dashboard, on Railway's paid plan
+    My own server   any Docker host; totem prints the commands
   ✓ Node.js 24.3.0
   ✓ Dependencies installed
   ✓ Fly CLI installed
@@ -23,9 +23,9 @@ Deploy your own totem server and connect your AI clients to it.
   Host      Fly.io, as you@example.com
   App       totem-c0ffee
   Address   https://totem-c0ffee.fly.dev
-  Region    sjc
+  Machine   shared-cpu-1x, 512 MB, in iad (Virginia), always on
   Volume    totem_data, 1 GB: keeps the WHOOP login across restarts
-  Cost      Fly bills your account for one small machine and the volume
+  Cost      about $4 a month at Fly's prices, billed to your Fly account
 ? Deploy this?
   › Deploy
     Change something   the name, the password, or the account

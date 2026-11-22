@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { writeFileAtomic } from "../whoop/token_store.js";
 
 export interface DeployRecord {
-  platform: string;          // fly | railway | cloudrun | custom | local
+  platform: string;          // fly | railway | cloudflare | custom | local (cloudrun: deployed by totem 1.x)
   app?: string | undefined;  // app/project/service name (none for local)
   url?: string | undefined;
   region?: string | undefined;   // Cloud Run needs this to target the service
