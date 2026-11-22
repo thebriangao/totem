@@ -1,588 +1,199 @@
+<h1 align="center">totem</h1>
+
+<p align="center"><b>Your own WHOOP server for AI apps.</b><br>
+Ask Claude, ChatGPT, Cursor or any MCP app about your recovery, sleep and training, and let it log workouts, journal answers and more.</p>
+
 <p align="center">
-  <img src="assets/banner.svg" alt="totem — 55 tools, 47 microservices, 311 endpoints" width="820">
+  <a href="#get-started">Get started</a> ·
+  <a href="#connect-your-apps">Connect your apps</a> ·
+  <a href="#hosting">Hosting</a> ·
+  <a href="TOOLS.md">The 40 tools</a> ·
+  <a href="#faq">FAQ</a>
 </p>
 
 <p align="center">
-  <i><b>Totem</b> gives Claude (or any MCP-compatible AI) <b>full read + write access to your wearable data.</b> Today it speaks <b>Whoop</b> — every metric, through Whoop's private iOS API.</i>
+  English ·
+  <a href="docs/i18n/README.zh-CN.md">简体中文</a> ·
+  <a href="docs/i18n/README.ja.md">日本語</a> ·
+  <a href="docs/i18n/README.ko.md">한국어</a> ·
+  <a href="docs/i18n/README.es.md">Español</a> ·
+  <a href="docs/i18n/README.pt-BR.md">Português</a> ·
+  <a href="docs/i18n/README.fr.md">Français</a> ·
+  <a href="docs/i18n/README.de.md">Deutsch</a>
 </p>
 
 <p align="center">
-  <a href="#remote-hosting"><img src="https://img.shields.io/badge/Claude_Code-a855f7?style=for-the-badge" alt="Claude Code"></a>
-  <a href="#claude-desktop-config"><img src="https://img.shields.io/badge/Claude_Desktop-7c3aed?style=for-the-badge" alt="Claude Desktop"></a>
-  <img src="https://img.shields.io/badge/ChatGPT_Desktop-10a37f?style=for-the-badge" alt="ChatGPT Desktop">
-  <img src="https://img.shields.io/badge/Codex-000000?style=for-the-badge" alt="Codex">
-  <img src="https://img.shields.io/badge/Gemini_CLI-4285f4?style=for-the-badge" alt="Gemini CLI">
-  <img src="https://img.shields.io/badge/Any_MCP_1.x_Client-262626?style=for-the-badge" alt="any MCP 1.x client">
+  <img src="https://img.shields.io/badge/tools-40-6f6e6a?style=flat-square" alt="40 tools">
+  <img src="https://img.shields.io/badge/Node-24%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node 24+">
+  <img src="https://img.shields.io/badge/MCP-Streamable_HTTP_%2B_stdio-6f6e6a?style=flat-square" alt="MCP">
+  <img src="https://img.shields.io/badge/license-MIT-6f6e6a?style=flat-square" alt="MIT">
 </p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/tools-55-9ca3af?style=flat-square" alt="tools">
-  <img src="https://img.shields.io/badge/TypeScript-6.0-3178c6?style=flat-square&logo=typescript&logoColor=white" alt="typescript">
-  <img src="https://img.shields.io/badge/Node-24%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="node">
-  <img src="https://img.shields.io/badge/MCP-1.x%2B-9ca3af?style=flat-square" alt="mcp">
-  <img src="https://img.shields.io/badge/deploy-Fly%20%7C%20Docker%20%7C%20Railway-9ca3af?style=flat-square" alt="deploy">
-</p>
-
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/b0101d7d-24ad-4341-a88c-dc6fae075f6e" controls muted width="820"></video>
-</p>
-<p align="center">
-  <sub>▶ 2-min demo — the full <code>totem cloud</code> flow: install → Whoop login → Fly deploy → Claude connector → first query.</sub>
-</p>
-
-55 tools, structured zod-validated outputs, bundled catalogs (372 exercises, 308 behaviors, 203 sports, 311 endpoints), write-safety harness, automatic Cognito token refresh, bounded in-memory read cache. TypeScript 6, Node 24, 278 tests.
-
-> **Totem is becoming a universal wearables bridge.** Whoop is the first adapter — every metric, fully wired. Fitbit, Apple Watch, and Garmin are in progress ([contributors welcome](CONTRIBUTING.md)). The MCP + projection layer is device-agnostic; an adapter just maps its source into the same shared schemas, so everything below applies to whatever you wear.
-
-> *Note: this works through Whoop's private iOS API rather than the public OAuth API. That isn't what Whoop's terms allow — see the [FAQ](#faq) if you want the full picture before installing.*
 
 ---
 
-## Table of contents
+totem is a small open-source [MCP](https://modelcontextprotocol.io) server that talks to WHOOP the way the WHOOP app does. You run it yourself, on your computer or on a cloud server you own, and your AI apps connect to it. Your data goes only between WHOOP, your server and the apps you connect.
 
-1. [Get Started](#get-started)
-2. [Why this exists](#why-this-exists)
-3. [What it does](#what-it-does)
-4. [Architecture](#architecture)
-5. [The 55 tools](#the-55-tools)
-6. [Authentication](#authentication)
-7. [Write-safety harness](#write-safety-harness)
-8. [Bundled catalogs](#bundled-catalogs)
-9. [Configuration](#configuration)
-10. [Remote hosting](#remote-hosting)
-    - [Deploying to Hugging Face Spaces (free hosting)](#deploying-to-hugging-face-spaces-free-hosting)
-11. [The `totem` CLI](#the-totem-cli)
-12. [Privacy + security](#privacy--security)
-13. [Troubleshooting](#troubleshooting)
-14. [Comparison to alternatives](#comparison-to-alternatives)
-15. [FAQ](#faq)
-16. [Disclaimers](#disclaimers)
-17. [Acknowledgments](#acknowledgments)
+- **40 tools.** Recovery, sleep stages, strain, stress, heart rate, trends, workouts, Strength Trainer, journal, WHOOP Coach, weight, cycle tracking, Smart Alarm, profile and settings. [The full list](TOOLS.md).
+- **Writes are safe by default.** Every tool that changes something shows a preview first and does nothing until the app confirms.
+- **Small answers.** Tools return compact data (about 1.5 KB for a default call), so they don't eat your context window.
+- **One-command setup.** `totem local` or `totem cloud` logs you in to WHOOP and sets up every AI app it finds.
 
-**Other root-level docs:** [`TOOLS.md`](TOOLS.md) (full per-tool reference) · [`WHOOP.md`](WHOOP.md) (full API reference) · [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) · [`LICENSE`](LICENSE)
+> [!NOTE]
+> totem uses WHOOP's private app API, not the public developer API, and isn't affiliated with WHOOP. Read the [FAQ](#faq) before you install it.
 
----
+## Get started
 
-## Get Started
-
-**Prerequisites:** Node 24+ and a Whoop account (any membership tier).
+You need [Node.js 24](https://nodejs.org) or newer and a WHOOP account.
 
 ```bash
-git clone https://github.com/thebriangao/totem.git
-cd totem && npm install && npx tsc && npm link
+npm install -g @thebriangao/totem
 ```
 
-That puts `totem` on your PATH (the one-time `npx tsc` builds it; after that every workflow is a `totem` command — there are no `npm run` scripts). Now run **one guided command** — each handles WHOOP login (in your browser), setup, and connecting to Claude from end to end. Pick how you want to run it:
+Then pick where totem runs:
 
-### ★ Recommended — `totem cloud`
-
-Deploys the server to a host and connects it to Claude on **web, desktop, and mobile**, synced across every device on your account. One command walks through:
-
-1. **Host** — Fly (automated + tested), Railway, Google Cloud Run, or your own server (guided Docker steps). It installs the host's CLI and signs you in if needed.
-2. **Secrets** — generates `MCP_AUTH_TOKEN` (64 random characters) and a connector password. Neither is shown while it works; the password is handed to you once, at the end.
-3. **Deploy** — shows the whole plan (app, address, volume, who is billed) and asks once. Nothing is created before you say yes. Then it creates the app and a small volume for the login (Fly, Railway), sets the secrets over stdin, and deploys with a one-line progress (`--verbose` for the host's full output).
-4. **Check** — waits for `/health`, confirms the sign-in metadata is served and that `/mcp` refuses a request without a token.
-5. **WHOOP login** — a browser window opens on whoop.com; you log in there (email, password, code). totem reads WHOOP's session cookies, sends the login straight to your server, and keeps no copy on your machine.
-6. **Connect a client** — prints exactly what to paste where for **claude.ai, Claude Desktop, ChatGPT, Claude Code, Cursor, Codex and OpenCode**: one URL. Each client then opens your server's own sign-in page, which names where access is going and asks for the connector password. `totem connect` shows this again any time.
-
-```bash
-totem cloud
-```
-
-### Local only — `totem local`
-
-Runs the server on this machine over stdio — no hosting, this device only. Three steps: prerequisites (it installs dependencies and builds if needed), WHOOP login (a saved login is reused), and one question: which client. **Claude Desktop, Claude Code, Cursor, Codex, OpenCode, VS Code, Gemini CLI or Windsurf** — it writes the client's config for you (keeping a backup, and refusing to touch a config it can't read as plain JSON) or runs the client's own `mcp add`. For anything else it prints the block to paste. `totem connect <client>` adds another client later.
-
-```bash
-totem local
-```
-
-### Keeping it alive
-
-The server keeps the login fresh by itself: it refreshes the token before it expires and at least every 12 hours, and saves each new token to its token file before using it. If WHOOP ever ends the session (a password change, say), run:
-
-```bash
-totem auth           # browser login; pushed to your deployment, or saved here for a local install
-totem auth --status  # where the login lives and when it last refreshed
-```
-
-No browser on this machine? `totem auth --paste` takes the `whoop-auth-refresh-token` cookie from any browser that's logged into app.whoop.com instead.
-
-### Check it works
-
-Ask Claude: *"how am I doing today on whoop?"* — you should get structured recovery / sleep / strain back.
-
-> Prefer to wire everything up by hand? The guided commands just automate the steps documented in [The `totem` CLI](#the-totem-cli), [Remote hosting](#remote-hosting), and [Configuration](#configuration). Stuck? See [Troubleshooting](#troubleshooting).
-
----
-
-## Why this exists
-
-Whoop ships two APIs:
-
-- The **public developer API** at [`developer.whoop.com`](https://developer.whoop.com/api/) is OAuth2, read-only, and exposes **13 endpoints** under 6 scopes. You get recovery score, sleep stage totals, workout strain, body measurements (3 fields), and HRV/RHR per cycle. No journal, no Strength Trainer, no Whoop Coach, no hypnogram, no stress monitor, no trends, no writes, nothing else. Numeric `sport_id` was removed 2025-09-01.
-- The **private iOS API** is what the actual Whoop app uses — `api.prod.whoop.com` behind AWS Cognito. **311 distinct operations across 47 microservices**, including everything missing from above.
-
-This MCP wraps the iOS surface.
-
-### What the iOS API has that the public OAuth doesn't
-
-| Capability | Tool |
-|---|---|
-| HRV / RHR / respiratory / VO2 / weight time-series (25 metrics × up to 4 windows) | `whoop_trend` |
-| Hypnogram (per-stage sleep timeline) + full stage breakdown (ms + %) + in-sleep HR | `whoop_sleep` |
-| Strength Trainer — every set, every workout, full 372-exercise catalog, PRs | `whoop_lift_*` (8 tools) |
-| 308-behavior Journal + behavior impact analysis | `whoop_journal*` (5 tools) |
-| Stress monitor (intraday timeline) | `whoop_stress, whoop_live_stress` |
-| Whoop Coach AI chat | `whoop_coach_ask` |
-| Smart Alarm (read + 4 write modes) | `whoop_smart_alarm*` |
-| HR zones (read + configure max HR / 5 custom zones) | `whoop_hr_zones*` |
-| Compare-windows, sleep coach, calendar grid, performance assessment | `whoop_compare`, `whoop_sleep_need`, `whoop_calendar`, `whoop_performance_assessment` |
-| Live HR / activity state / live stress | `whoop_live_*` (3 tools) |
-| Community leaderboards, hidden metrics, women's health (cycle / symptoms / MCI) | `whoop_leaderboard`, `whoop_hidden_metric`, `whoop_cycle*` |
-| **15 write tools** — log workouts, journal entries, profile edits, smart-alarm config, edit sleep times | various |
-
-If recovery + sleep totals + workout list is enough for you, use the public OAuth API. If anything in the table is interesting, you need this. The iOS API was discovered via mitmproxy — full methodology in [`WHOOP.md`](WHOOP.md).
-
----
-
-## What it does
-
-The MCP runs as a local Node process. It speaks **Model Context Protocol** over stdio (or HTTP for remote deployments), registers 55 tools at startup, and waits for tool calls from a connected MCP client.
-
-When a tool is called:
-
-1. Authenticates via the cached Cognito access token (auto-refreshes if expired)
-2. Issues HTTP requests to `api.prod.whoop.com`
-3. Walks the response to extract a flat domain object (the **projection** step)
-4. Validates the projected object against a zod schema (catches Whoop API drift)
-5. Returns the structured JSON to the MCP client
-
-Writes follow the same path plus a **preview gate**: every write tool defaults `confirm: false`, returning a preview of what would be sent. Claude must explicitly re-call with `confirm: true` to fire.
-
-See [The 55 tools](#the-55-tools) for the full per-tool reference.
-
----
-
-## Architecture
-
-```
-Claude Desktop / Code  ──stdio──▶  src/server.ts  ──▶  49 tool handlers
-                                                          │
-                                       ┌──────────────────┼──────────────────┐
-                                       ▼                  ▼                  ▼
-                                  schemas (zod)    projections (raw→flat)  whoop/client
-                                                                              │
-                                                                              ▼ HTTPS
-                                                                       api.prod.whoop.com
-```
-
-### Three layers per tool
-
-Every tool is a schema + projection + handler:
-
-- **`src/schemas/<tool>.ts`** — zod schema. The contract Claude sees. Used at runtime to validate the projection's output before returning.
-- **`src/projections/<tool>.ts`** — pure function turning Whoop's raw BFF response into a flat object. All the "Whoop puts this data over there, not where you'd expect" knowledge lives here. Tested against captured fixtures.
-- **`src/tools/v2/<tool>.ts`** — ~25-100 lines. Registers the tool, parses input args, calls the client, runs the projection, validates with zod, returns.
-
-Almost no logic in the tool file. That's all in the projection — which makes the codebase highly testable (projections are pure transformations, tested against `tests/fixtures/*.json` without hitting the network).
-
-### Shape drift handling
-
-When Whoop changes a response shape, the projection emits unexpected data, zod's `.parse()` fails, and the MCP throws `WhoopProjectionError` instead of silently returning malformed data to Claude. Fix: use `whoop_raw` + `whoop_endpoints` to capture the new shape, update the projection, update the fixture, ship.
-
-> **Recent example:** in May 2026, Whoop migrated recovery + strain deep-dives from `GRAPHING_CARD` tiles (keyed by `content.title` like `"RECOVERY"`) to `SCORE_GAUGE` + `CONTRIBUTORS_TILE` items with stable `content.id` keys (`RECOVERY_SCORE_GAUGE`, `CONTRIBUTORS_TILE_HRV`). Other deep-dives still use the old card-based shape. The escape-hatch tools made the migration trivial to debug.
-
-
----
-
-## The 55 tools
-
-Compact summary. **Full per-tool reference (input shape · source endpoints · output shape · notes) → [`TOOLS.md`](TOOLS.md).** Tools marked ⚠️ are writes (default `confirm: false`, preview-first). Tools marked ⚡ are compact/aggregate reads that fold several source calls into one lower-token response; `whoop_weekly_plan` is ⚡ **experimental** (its endpoint shape hasn't been verified against a live account yet).
-
-| Group | Tools |
-|---|---|
-| **Snapshots & profile** (6) | `whoop_today` · `whoop_day` · `whoop_daily_brief` ⚡ · `whoop_weekly_plan` ⚡ · `whoop_profile` · `whoop_calendar` |
-| **Deep dives** (3) | `whoop_recovery` · `whoop_sleep` · `whoop_strain` |
-| **Trends** (3) | `whoop_trend` · `whoop_trend_pack` ⚡ · `whoop_compare` |
-| **Stress + sleep coach** (2) | `whoop_stress` · `whoop_sleep_need` |
-| **Live** (4) | `whoop_live_hr` · `whoop_live_state` · `whoop_live_stress` · `whoop_activity_now` ⚡ |
-| **Activities** (5) | `whoop_workouts` · `whoop_workout` · `whoop_sports_catalog` · `whoop_activity_create` ⚠️ · `whoop_activity_delete` ⚠️ |
-| **Strength reads** (7) | `whoop_lift_prs` · `whoop_lift_exercise` · `whoop_lift_progression` · `whoop_lift_history` · `whoop_lift_overview` ⚡ · `whoop_lift_library` · `whoop_lift_catalog` |
-| **Strength writes** (3) | `whoop_lift_log` ⚠️ · `whoop_lift_template_save` ⚠️ · `whoop_lift_custom_exercise` ⚠️ |
-| **Journal** (5) | `whoop_journal` · `whoop_journal_catalog` · `whoop_behavior_impact` · `whoop_journal_log` ⚠️ · `whoop_journal_autopop` ⚠️ |
-| **Women's health** (3) | `whoop_cycle` · `whoop_cycle_log` ⚠️ · `whoop_symptom_log` ⚠️ |
-| **Coach + performance** (2) | `whoop_coach_ask` ⚠️ · `whoop_performance_assessment` |
-| **Smart alarm** (2) | `whoop_smart_alarm` · `whoop_smart_alarm_set` ⚠️ |
-| **Social** (2) | `whoop_leaderboard` · `whoop_communities` |
-| **Settings** (5) | `whoop_hr_zones` · `whoop_preferences` ⚡ · `whoop_hr_zones_set` ⚠️ · `whoop_profile_update` ⚠️ · `whoop_hidden_metric` ⚠️ |
-| **Escape hatch** (2) | `whoop_raw` · `whoop_endpoints` |
-
-**Total: 55** (38 reads + 15 writes + 2 escape hatches). For each tool's input args, source endpoint(s), and output shape, see [`TOOLS.md`](TOOLS.md).
-
----
-
-## Authentication
-
-**Login happens in your browser.** `totem auth` opens Chrome, Chromium, Edge or Brave with a temporary profile on app.whoop.com, and you log in there yourself. totem watches the browser's cookie jar over the DevTools protocol (the browser target only; it never attaches to the login page, so it can't see what you type), picks up WHOOP's `whoop-auth-token` and `whoop-auth-refresh-token` cookies, checks them with one bootstrap request, then closes the browser and deletes the profile. The old email + password + SMS flow is gone: WHOOP now requires a device fingerprint with it, so a correct password fails ([#38](https://github.com/thebriangao/totem/issues/38)).
-
-**The login lives in a token file**, not `.env`: `~/.config/totem/tokens.json` by default (`TOTEM_TOKEN_FILE` to move it; `/data/tokens.json` in the Docker image). WHOOP rotates the refresh token on every refresh and the old one stops working, so totem writes each new one atomically (temp file + rename, mode 0600) before it uses the new access token, and treats a failed write as fatal. A keep-alive refreshes when less than 10 minutes of access-token life remain and every 12 hours (`TOTEM_KEEPALIVE_HOURS`).
-
-**One owner per login.** Only one process may refresh a login: a lock file next to the token file names the owner. A second local totem (say Claude Desktop and Claude Code both running the server) follows the owner's token file and never refreshes. Don't run a local server and a deployment on the same login: `totem auth` against a deployment pushes the login to it (`POST /admin/tokens`, gated by `MCP_AUTH_TOKEN`) and keeps no local copy; use `totem auth --local` to give this machine a separate login.
-
-Upgrading from 1.x: `WHOOP_IOS_BEARER_TOKEN` / `WHOOP_COGNITO_REFRESH_TOKEN` are moved into the token file on first start.
-
-Auth requests impersonate the iOS AWS Swift SDK (the proxy 403s a Node-style User-Agent), and data requests carry the **WHOOP iOS app's own identity headers** (`user-agent: iOS`, the `x-whoop-*` device set, a per-install identifier) so the traffic blends with the legitimate app rather than standing out — see [`WHOOP.md` → Headers for data requests](WHOOP.md) for the full set and the reasoning.
-
-**Error classes** (`src/whoop/errors.ts`):
-
-| Error | When | Behavior |
+| | Run it on this computer | Run it in the cloud |
 |---|---|---|
-| `WhoopAuthExpiredError` | WHOOP refused the refresh token itself (or there's no login) | Run `totem auth` |
-| `WhoopEndpointUnauthorizedError` | 401 that survived a fresh token | That endpoint isn't available to user tokens; not an expired login |
-| `WhoopApiError` | 4xx with body | Description surfaced to caller |
-| `WhoopServerError` | 5xx | Transient — retry |
-| `WhoopProjectionError` | Projection output failed zod parse | Whoop changed shape — fix the projection |
+| Command | `totem local` | `totem cloud` |
+| Works with | Desktop and terminal apps: Claude Desktop, Claude Code, ChatGPT desktop and Codex, Cursor, VS Code, OpenCode, Antigravity | Everything, including claude.ai, chatgpt.com and the phone apps |
+| Cost | Free | Free on Cloudflare, about $4 a month on Fly.io |
+| Stays on | While your computer is on | Always |
 
-When WHOOP ends a session, re-run `totem auth`. It pushes to your deployment when one is recorded, or saves on this machine.
+Both commands open a browser window on WHOOP's own site for you to log in (totem never sees your password), then find the AI apps on your computer and set each one up. Then ask your app something like *"How did I sleep last night?"*
 
----
+### One click
 
-## Write-safety harness
+If you'd rather not use a terminal for the server:
 
-Every write tool defaults `confirm: false`. The first call returns a **preview** of what would execute. Claude must explicitly re-call with `confirm: true` to fire the actual request. Without the gate, a hallucinated "log my workout" could create garbage activities on your account.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/thebriangao/totem)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/Z6CMWF)
 
-The preview shape (lives in `src/whoop/write_safety.ts`):
+- **Cloudflare** asks for two values: `MCP_AUTH_TOKEN` (64 random characters, for example from `openssl rand -hex 32`) and `AUTH_PASSWORD` (the password you'll type when an app connects). It runs on the free Workers plan.
+- **Railway** generates both for you (find them under the service's Variables). It needs Railway's paid plan.
+- Either way, finish with one command that logs you in to WHOOP and sends the login to your server:
 
-```json
-{
-  "preview": true,
-  "will_execute": {
-    "method": "POST",
-    "path": "/weightlifting-service/v2/weightlifting-workout/activity",
-    "body_summary": {
-      "exercise_count": 3, "set_count": 12,
-      "exercise_list": [{"name": "BENCHPRESS_BARBELL", "set_count": 5}, ...]
-    }
-  },
-  "set_confirm_true_to_run": true
-}
-```
+  ```bash
+  npx @thebriangao/totem auth --url https://your-server-address
+  ```
 
-Claude reads this back to you, you confirm, Claude re-calls with `confirm: true`, the actual POST fires. Every write tool's output schema is a `withPreview(ReceiptSchema)` discriminated union — preview or receipt, never both.
+**Claude Desktop only:** download [totem.mcpb](https://github.com/thebriangao/totem/releases/latest/download/totem.mcpb) and double-click it. Log in once with `npx @thebriangao/totem auth --local`.
 
----
+## Connect your apps
 
-## Bundled catalogs
+`totem connect` sets up every app it finds on your computer. A cloud server also has a **Connect page** at `https://your-server/connect`, with a button or a copy-ready step for each app, already filled in with your server's address.
 
-Four datasets compiled into the MCP at build time (not fetched at runtime):
-
-| Catalog | Entries | Catalog tool | Use |
-|---|---:|---|---|
-| `behaviors.ts` | 308 | `whoop_journal_catalog` | Journal behavior validation |
-| `exercises.ts` | 372 | `whoop_lift_catalog` | Strength Trainer exercises |
-| `sports.ts` | 203 | `whoop_sports_catalog` | `sport_id` ↔ name |
-| `endpoints.ts` | 311 | `whoop_endpoints` | API path search |
-
-**Local lookups, no prompt bloat**: the catalog tools are zero-network local searches, so the full 372-exercise / 308-behavior / 203-sport lists stay out of the system prompt (~14k tokens saved). The ID-taking write tools (`whoop_activity_create`, `whoop_lift_log`, `whoop_journal_log`, …) validate their IDs — or an exact catalog name — against these bundled datasets before any request fires, rejecting unknown values with an actionable error. (A session-scoped "must call the catalog first" gate existed through 1.4.4; it was removed in favor of this consistent local validation.)
-
----
-
-## Configuration
-
-### Environment variables
-
-| Variable | Required | Description |
+| App | On this computer | With a cloud server |
 |---|---|---|
-| `TOTEM_TOKEN_FILE` | no | Where the WHOOP login is kept. Default `~/.config/totem/tokens.json` (`%APPDATA%\totem\tokens.json` on Windows); the Docker image uses `/data/tokens.json`. Written by `totem auth`. |
-| `TOTEM_KEEPALIVE_HOURS` | no | How often an idle server refreshes the login anyway (default `12`; `0` = only before expiry). |
-| `TOTEM_BROWSER` | no | Browser executable for `totem auth` (default: the first of Chrome, Chromium, Edge, Brave). |
-| `WHOOP_USER_ID` | no | Your Whoop user ID — used by `whoop_profile`, `whoop_leaderboard`. Read from the token file when unset. |
-| `WHOOP_TIMEZONE` | no | IANA timezone (e.g., `America/Los_Angeles`). If unset, auto-detected from your Whoop profile and refreshed hourly. Set explicitly to override. |
-| `WHOOP_INSTALLATION_ID` | no (auto) | The per-install device identifier sent as `x-whoop-installation-identifier`. Generated once and written to `.env` on first run — don't set it by hand. |
-| `WHOOP_TOKEN_STORE` | no | `memory` keeps the login in memory only, for local throwaway runs. Refused in containers and HTTP deployments. |
+| claude.ai, Claude Desktop, Claude mobile | Claude Desktop's config file | A link that opens claude.ai's "Add custom connector" filled in; it then shows up in Desktop and on your phone too |
+| Claude Code | `claude mcp add` | `claude mcp add --transport http`, then `/mcp` to sign in |
+| ChatGPT desktop and Codex | `codex mcp add` (they share one config) | `codex mcp add --url` opens the sign-in itself |
+| chatgpt.com | (needs a cloud server) | Plugins → Add → Add custom MCP server |
+| Cursor | `~/.cursor/mcp.json` | An "Add to Cursor" link |
+| VS Code (Copilot) | `~/.copilot/mcp-config.json` | An "Add to VS Code" link |
+| OpenCode (1 and 2) | `opencode.json` | `opencode.json`, then `opencode mcp auth whoop` |
+| Antigravity | `~/.gemini/config/mcp_config.json` | The same file, with the server's address |
 
-### Claude Desktop config
+With a cloud server, each app sends you to totem's sign-in page once. It shows which app is asking and where access goes, and asks for your connector password.
 
-```json
-{
-  "mcpServers": {
-    "whoop": {
-      "command": "/opt/homebrew/bin/node",
-      "args": ["/absolute/path/to/totem/dist/server.js"]
-    }
-  }
-}
-```
+## Hosting
 
-The MCP loads `.env` from the repo root (relative to `server.js`). Use absolute paths — Claude Desktop doesn't inherit shell `PATH`.
+`totem cloud` deploys to any of these and checks the server afterwards:
 
----
+| Host | Cost | Notes |
+|---|---|---|
+| **Fly.io** (recommended) | About $4 a month: one 512 MB machine in Virginia and a 1 GB volume | Always on. At the time of writing Fly doesn't bill personal accounts for less than $5 a month. |
+| **Cloudflare Workers** | Free plan (100,000 requests a day) | No machine to look after. The login lives in a Durable Object. |
+| **Railway** | Railway's paid plan | A dashboard and logs in the browser. |
+| **Your own server** | Yours | Any Docker host. Use the image `ghcr.io/thebriangao/totem` or build the Dockerfile, and mount a volume at `/data`. |
 
-## Remote hosting
+After a deploy, `totem status` checks the server and its WHOOP login, `totem logs` shows its logs, and `totem deploy` sends it a new version.
 
-The MCP also speaks HTTP — deploy once, use from multiple devices. Same 55 tools, same auto-refresh, behind a bearer-token gate at a URL.
+## What you can ask
 
-```bash
-# 1. Build + run the shipped Dockerfile (Fly/Railway/Render/VPS — all work).
-#    /data holds the WHOOP login; mount a volume there so it survives restarts.
-docker build -t totem .
-docker run -d -p 3000:3000 -v totem-data:/data -e MCP_AUTH_TOKEN=$(openssl rand -hex 32) totem
+- "How did I sleep last night, and how does it compare to my month?"
+- "Why is my recovery low today?"
+- "Show my HRV and resting heart rate for the last 90 days."
+- "What was my heart rate during this morning's run?"
+- "Log a 30-minute walk at 6 pm."
+- "I had caffeine and alcohol yesterday. Add that to my journal."
+- "Log today's lift: bench press 3×5 at 80 kg, squat 3×5 at 100 kg."
+- "Set a Smart Alarm for 7:30 on weekdays."
 
-# 2. Log in on your own machine; the login is pushed to the server's /admin/tokens.
-TOTEM_ADMIN_TOKEN=<that MCP_AUTH_TOKEN> totem auth --url https://your-server
-```
+Every write comes back as a preview first. Your app shows you what will change and asks before it happens.
 
-The push carries your WHOOP session and the server's `MCP_AUTH_TOKEN`, so `totem auth` only sends it over `https://` (or to `localhost`), and never follows a redirect with it. For a server on a private network that encrypts by other means (a VPN, a tailnet), add `--allow-http`.
+## How the login works
 
-No WHOOP tokens go in the host's environment. A host without a volume works too, but loses the login on every restart (run `totem auth` again after one).
+1. `totem auth` (which `local` and `cloud` run for you) opens a fresh browser window on app.whoop.com. You log in there, with WHOOP's own page and two-factor check.
+2. totem reads only WHOOP's session cookies from that window, then closes it and deletes the temporary profile.
+3. The login is kept in one file readable only by you (`~/.config/totem/tokens.json`), or on your server: on its volume, or in Cloudflare Durable Object storage.
+4. WHOOP replaces the refresh token every time it's used, so exactly one place owns a login. totem refreshes it on its own, every 12 hours and before it expires, and saves the new one first.
 
-### Deploying to Hugging Face Spaces (free hosting)
+Logging in again is the same command: `totem auth`. On a server you can check it with `totem status`.
 
-[Hugging Face Spaces](https://huggingface.co/spaces) provides **free Docker hosting** — a zero-cost alternative to Fly or Railway. Connecting to **claude.ai web and Claude mobile** as a custom connector requires a **Claude Pro plan**, but the server itself runs for free on HuggingFace.
+## Security
 
-> **Note:** HuggingFace Spaces routes all external traffic through port **7860** only, but this repo's Dockerfile defaults to `3000`. The server reads `PORT` from the environment, so just set `PORT=7860` as a Space variable (step 2 below) — no Dockerfile edit needed, and it'll listen on the right port.
+- **Your server, your keys.** A cloud server has two secrets of its own: `MCP_AUTH_TOKEN` (the server's key, kept in `.totem-deploy.json` on your computer) and the connector password you type when an app connects.
+- **The sign-in page names the destination.** It shows the real address access goes to (claude.ai, chatgpt.com, an app on your own computer), never just the name an app claims.
+- **Nothing else is contacted.** The only outgoing traffic is to WHOOP. No telemetry, no analytics.
+- **Writes need confirmation,** and `whoop_raw` writes also need `allow_write`.
 
-#### Step-by-step
+More in [SECURITY.md](SECURITY.md).
 
-**1. Create a new Space**
+## Commands
 
-- Go to [huggingface.co/new-space](https://huggingface.co/new-space)
-- Select **Docker** as the Space SDK
-- Set the **visibility to Public** — HuggingFace Spaces must be public for Claude's connector to reach the `/mcp` endpoint
-
-**2. Add your secrets via the Space Settings UI**
-
-In your Space → **Settings → Variables and Secrets**, add the following. The token values go in as **Secrets** (hidden, never shown in logs); `PORT` and `PUBLIC_URL` aren't sensitive, so they can be plain **Variables**:
-
-| Secret name | Where to find the value |
+| Command | What it does |
 |---|---|
-| `MCP_AUTH_TOKEN` | Generate one with `openssl rand -hex 32` (or reuse the value from `.env.deploy` if you ran a deploy flow) |
-| `AUTH_PASSWORD` | A password you'll type once when adding the Claude connector |
-| `PUBLIC_URL` | Your Space's public URL — e.g. `https://<your-hf-username>-<your-space-name>.hf.space` |
-| `PORT` | `7860` — HuggingFace's required port. Without this the container listens on 3000 and is unreachable. |
+| `totem local` | Run on this computer: log in, then set up your AI apps |
+| `totem cloud` | Deploy your own server, log it in, connect your apps |
+| `totem connect [app]` | Set up your apps again, or one of them (`totem connect --print` shows the config instead) |
+| `totem auth` | Log in to WHOOP (`--local`, `--url URL`, `--paste`, `--status`) |
+| `totem status` / `ping` / `logs` | Check the server and its login |
+| `totem deploy` | Deploy this version to your server |
+| `totem update` | Update totem (`--check`, `--auto on`) |
+| `totem tools` | List the 40 tools |
 
-> **Tip:** `MCP_AUTH_TOKEN` you generate yourself (`openssl rand -hex 32`). The WHOOP login doesn't go in the Space's secrets: once the Space is running, push it with `TOTEM_ADMIN_TOKEN=<MCP_AUTH_TOKEN> totem auth --url https://<your-hf-username>-<your-space-name>.hf.space`.
-
-**3. Push your code to the Space**
-
-Clone this repo and add your HuggingFace Space as a remote, then push:
-
-```bash
-git clone https://github.com/thebriangao/totem
-cd totem
-
-# Add your HuggingFace Space as a remote
-git remote add hf https://huggingface.co/spaces/<your-hf-username>/<your-space-name>
-
-# Push the main branch
-git push hf main
-```
-
-HuggingFace will automatically build and run the Docker container. Watch the **Logs** tab in your Space to confirm it starts up and `/health` returns 200.
-
-**4. Connect to Claude**
-
-Once the Space is running, go to **claude.ai → Settings → Connectors → Add custom connector**:
-
-- **MCP Server URL:** `https://<your-hf-username>-<your-space-name>.hf.space/mcp`
-- Claude will open an OAuth flow — enter the `AUTH_PASSWORD` you set in your Space secrets
-
-> `MCP_AUTH_TOKEN` is used internally as the bearer token + JWT signing secret. You do **not** type it into Claude's connector UI — that field uses the OAuth `AUTH_PASSWORD` flow instead.
-
-**5. Keep the login across restarts**
-
-Without persistent storage, a Space restart loses the WHOOP login: push it again with the `totem auth --url …` command above. HF's persistent storage add-on mounts at `/data`, which is exactly where the image keeps it.
-
-**Claude Desktop** doesn't natively speak remote MCP — bridge through stdio with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
-
-```json
-{ "mcpServers": { "whoop": {
-  "command": "npx",
-  "args": ["-y", "mcp-remote", "https://your-app.fly.dev/mcp",
-           "--header", "Authorization:Bearer your-mcp-auth-token"]
-}}}
-```
-
-**Claude Code** speaks remote MCP natively: `claude mcp add whoop --url ... --header ...`.
-
-**claude.ai web + Claude mobile app** can't use a bearer token — their custom-connector UI only supports OAuth. The server includes an OAuth 2.1 + PKCE authorization server for exactly this. Enable it by setting two extra env vars:
-
-```bash
-AUTH_PASSWORD=<a password you'll type once when adding the connector>
-PUBLIC_URL=https://your-app.fly.dev   # your server's public origin (the OAuth issuer)
-```
-
-Then in Claude: **Settings → Connectors → Add custom connector**, paste `https://your-app.fly.dev/mcp`, and Claude walks the OAuth flow. It pops a small password page (served by your server) — enter `AUTH_PASSWORD`, approve, done. The connector then syncs across every device logged into your Claude account (web, desktop, mobile). The password gate means a stranger who finds your URL still can't connect without it. `MCP_AUTH_TOKEN` doubles as the JWT signing secret; leave `AUTH_PASSWORD` unset to disable this path.
-
-All of the above is what `totem cloud` automates for you — the manual steps here are for reference or hand-rolling.
-
-**If WHOOP ends the session**: `totem auth` from your own machine. It pushes the new login to your deployment's `/admin/tokens` (no redeploy, no platform CLI needed) and keeps no local copy.
-
-**Security**: bearer-token and OAuth paths both gate `/mcp`. Generate the token random (`openssl rand -hex 32`), HTTPS only, never commit, rotate if leaked. OAuth access/refresh tokens are stateless signed JWTs (survive restarts); auth codes are one-time + 60s-lived; PKCE S256 is enforced. `/health` is the only path without auth.
-
----
-
-## The `totem` CLI
-
-`totem` is the single entry point for everything — there are no `npm run` scripts. It works from any directory (it resolves its own install path), so `totem deploy` from `~/Desktop` does the same thing as `cd totem && fly deploy`.
-
-```bash
-# One-time, after cloning:
-npm install && npx tsc && npm link   # the only npm steps; `npx tsc` does the first build
-
-totem       # the command list
-```
-
-Commands by group:
-
-| Group | Commands |
-|---|---|
-| **Set up** | `cloud` ★ (guided server deploy) · `local` (guided local setup) · `connect [client]` (connect another client, or show what to paste where) · `auth` (browser login; saved here, or sent to your server · `--status` · `--paste` · `--local`) |
-| **Run and maintain** | `status` (install, server and login at a glance · `--host`) · `ping` · `logs` · `deploy` · `update` (version picker + auto-update) · `tools` · `token` (the server's `MCP_AUTH_TOKEN`, for `$(totem token)` in a command) |
-| **Develop** | `start [--http]` · `dev [--http]` · `build` · `test` · `typecheck` |
-
-`totem help` lists them, `totem <command> --help` explains one. Output is plain text when it isn't going to a terminal, and `--no-color` or `NO_COLOR=1` turns colour off. Older names still work: `info` is `status`, `config` is `connect`, `dev:http` is `dev --http`.
-
-Most people only ever need `cloud` or `local`, plus `auth` if WHOOP ever ends the session. Every command that fails says what went wrong and the command that fixes it. A command that asks questions stops, rather than assuming yes, when nobody can answer (`totem cloud < /dev/null`).
-
-**Staying current — `totem update`.** An interactive updater. Run it and you get a version picker — every release, newest first, with dates and notes pulled from GitHub Releases. The newest is the default; pick anything older and it warns you what you'd be behind on (you can always run it again to go forward). After you choose, it installs it step by step — git installs check out the release's tag (never `main`), reinstall deps, and rebuild; npm installs reinstall the chosen version — then redeploys to your existing host and checks `/health`. A clean working tree is required (it won't clobber local edits). If the install, the build or the deploy fails, it goes back to the version you had and rebuilds it, so the install never sits half-updated and the next run tries again.
-
-After a successful update to the latest it offers **auto-update**. Turn it on and a background job (launchd on macOS, cron on Linux) checks for new releases every 6 hours and applies them the same way, logging to `.totem-autoupdate.log`. The job carries the PATH it was scheduled with, so it can find `npm` and your host's CLI, and it leaves a checkout alone unless it is on `main` or a release tag. There's no push channel to your machine, so it's a scheduled poll, not instant. Toggle it directly anytime:
-
-```bash
-totem update              # interactive: pick a version, then optionally enable auto-update
-totem update --auto on    # turn auto-update on (and pull the newest now)
-totem update --auto off   # turn it off
-totem update --check       # non-interactive: print installed-vs-latest + auto state
-```
-
-Versions are sourced from the places that already host them — git tags + GitHub Releases for git installs, the npm registry for global installs — so there's nothing extra to maintain. Auto-update is opt-in and only ever moves you to **released** versions (every release is CI-gated), never bleeding-edge `main`.
-
----
-
-## Privacy + security
-
-- **The WHOOP login lives in one 0600 token file**, on your machine or on your server's volume. No email or password is stored anywhere. Claude can't read it (it doesn't have filesystem access unless you wire in a filesystem MCP).
-- **The only outbound traffic is HTTPS to `api.prod.whoop.com`.** No telemetry, no analytics, no third-party servers. The MCP is open source — every line that touches your data is auditable.
-- **Write safety**: every write tool defaults to `confirm: false`. The preview shape includes what would be sent. You see it in chat before any mutation. To go further, remove specific writes from `src/tools/register.ts` or use Claude Desktop's "always require approval" setting.
-- **Hardened in 1.2.3**: token files are written `0600`, your account password is wiped from `.env` after login, OAuth tokens are audience-bound and signed with a key derived from `MCP_AUTH_TOKEN`, the HTTP server sends anti-clickjacking + CSP headers, the connector-password gate has a global brute-force ceiling, and deploy secrets are pushed over stdin (not argv). Full detail in [`SECURITY.md`](SECURITY.md) and [`CHANGELOG.md`](CHANGELOG.md).
-
----
+`totem <command> --help` explains each one.
 
 ## Troubleshooting
 
-**`totem auth` says no browser was found**
-> It looks for Chrome, Chromium, Edge and Brave in their usual places. Point it at another Chromium-based browser with `TOTEM_BROWSER=/path/to/browser`, or run `totem auth --paste` and paste the `whoop-auth-refresh-token` cookie from any browser that's logged into app.whoop.com.
+**The app doesn't show any WHOOP tools.** Restart it fully. For a local setup, run `totem status`; for a server, `totem ping`.
 
-**"WHOOP token owned by pid N"**
-> Another totem process on this machine owns the login and is the only one allowed to refresh it. That's normal when two clients each start the server; this one follows the owner's token file. If you see it on a deployment, a local server and the deployment are sharing one login: run `totem auth` (it pushes a fresh login to the deployment) and `totem auth --local` for a separate local one.
+**"No WHOOP login on this server."** Run `totem auth`. It sends the login to your server when one is set up, or saves it on this computer.
 
-**"WhoopAuthExpiredError" / "No WHOOP login on this server"**
-> WHOOP refused the refresh token, or the server has no login yet. Run `totem auth`: it pushes to your deployment when one is recorded, or saves on this machine.
+**No browser was found for the login.** totem uses Chrome, Chromium, Edge or Brave. Point it at another one with `TOTEM_BROWSER=/path/to/browser`, or run `totem auth --paste` and paste the `whoop-auth-refresh-token` cookie from a browser that's logged in to app.whoop.com.
 
-**"WhoopServerError: 502" / "503" / "504"**
-> Whoop's servers are having issues. Retry in 30 seconds.
+**OpenCode or another app's config has comments.** totem doesn't rewrite files it can't read exactly. For OpenCode it lets OpenCode add the server itself; for others it prints the entry to add.
 
-**Claude says it doesn't see any whoop tools**
-> Check `claude_desktop_config.json` paths are absolute. Restart Claude Desktop fully (quit, then reopen).
-> Check the MCP server runs without errors: `totem dev` — it should start silently and wait on stdin.
-
-**"WhoopApiError: 422 on /profile-service/v1/profile"**
-> Your `whoop_profile_update` body is too partial. Send most fields (gender from {MALE,FEMALE,NON_BINARY} only, birthday as YYYY-MM-DD or ISO datetime, country ISO-2). If `country=US`, also send `state` — Whoop returns 400 `"AdminDivision (state) must be set for US"` otherwise.
-
-**"Whoop API error 409 on /weightlifting-service/v2/weightlifting-workout/activity"**
-> Time window conflicts with an existing workout. Use a different range.
-
-**"WhoopProjectionError for whoop_X"**
-> Whoop changed a response shape. Capture the new response (e.g. via `whoop_raw`), inspect, update the projection.
-
-**Tests fail after `git pull`**
-> Pull may have updated captured fixtures. Run `totem test` again to see what changed. If projections need updating, that's the work.
-
-**`totem build` (or `npx tsc`) fails with "Top-level await is currently not supported with the 'cjs' output format"**
-> You're using an old Node. Upgrade to Node 24+.
-
-**"Error: ENOENT: no such file or directory, open '.env'"**
-> Create `.env` at the repo root (or wherever `dist/server.js` is being run from — the MCP loads `.env` relative to the entry).
-
-**"Cannot find module '@modelcontextprotocol/sdk/server/mcp.js'"**
-> Run `npm install`.
-
-**"AbortError: This operation was aborted"**
-> A request to Whoop's API took longer than 30s. Either Whoop is slow or your network is slow. Retry.
-
----
-
-## Comparison to alternatives
-
-| Approach | Pros | Cons |
-|---|---|---|
-| **This MCP** | Full iOS API surface (55 total: 38 reads + 15 writes + 2 escape hatches), writes supported, structured outputs, auto-refresh, write-safety, bounded read cache | Unsupported by Whoop (see [FAQ](#faq) for what that means); reverse-engineered (Whoop could break it at any time); local install required |
-| Whoop's public OAuth API | Official, supported, 6 webhook events, scoped permissions | Only 13 endpoints; read-only; no journal/strength/stress/coach/smart-alarm/trends/hypnogram; numeric `sport_id` removed 2025-09-01; 429s exist |
-| HealthKit-based scraper | Bypass Whoop entirely; uses Apple's data sync | Loses Whoop-specific data (recovery score, journal, coach); requires iOS device involvement |
-| Direct mitmproxy capture | See everything | Manual, not programmable, doesn't scale |
-| Whoop iOS app + screenshots → Claude | Works without code | Painful, slow, no writes |
-
-This MCP is the only option for **programmatic write access** to your Whoop data right now.
-
----
+**WHOOP answers 5xx.** WHOOP is having trouble. Try again in a minute.
 
 ## FAQ
 
-**Q: Is this supported by Whoop?**
-A: No. This MCP works through Whoop's private iOS API, which isn't a public surface they intend for third-party tools. Whoop's terms reserve the right to take action against accounts they catch using unsupported integrations — realistically that means suspending API access or terminating the membership. The author has used the MCP heavily for weeks without issue, and traffic patterns look similar to normal app usage, but there's no guarantee. If losing your Whoop account would be a problem for you, don't use this.
+**Is this supported by WHOOP?**
+No. totem uses WHOOP's private app API, which WHOOP doesn't offer to third parties, and WHOOP's terms let them act against accounts that use unsupported tools. totem's requests look like the app's and stay at a person's pace, but there is no guarantee. If losing your WHOOP account would be a problem, don't use it.
 
-**Q: Why not use Whoop's public OAuth API instead?**
-A: It's 13 endpoints, all read-only, no journal, no strength, no stress, no coach, no smart alarm, no trends beyond a single recovery score per day. Whoop also pulled numeric `sport_id` past 2025-09-01 (now `sport_name` strings only). If you only need recovery score + sleep stage totals + workout list, the OAuth API is the right answer.
+**Why not WHOOP's public API?**
+It's read-only and covers a small part of the data: no journal, Strength Trainer, stress, Coach, Smart Alarm, hypnogram or trends, and no writes. If recovery, sleep totals and a workout list are enough for you, use it instead.
 
-**Q: Will this work with the Whoop 4.0 vs 5.0 strap?**
-A: Yes — the API doesn't care which strap you have. It cares about your account.
+**Can I share my server with a friend?**
+Each person needs their own server and their own WHOOP login. A login can't be shared: WHOOP replaces the refresh token on every use.
 
-**Q: What about Whoop 6.0?**
-A: When it launches and the iOS app updates, the api version may bump from 7 to 8. The MCP's `constants.ts` may need an update. Worst case, projections break and you fix them.
+**Does it work with WHOOP 4.0 and 5.0/MG?**
+Yes. The API depends on your account, not your strap.
 
-**Q: Can I run this on a server / cloud / always-on?**
-A: Sure. The MCP doesn't care where it runs. Just make sure your `.env` survives restarts.
+**Where does my data go?**
+From WHOOP to your server to the app you asked. totem keeps no copy beyond a few minutes of in-memory cache.
 
-**Q: Can I share this MCP with my friends?**
-A: Each user needs their own `.env` with their own Whoop credentials. Don't share tokens.
+## Development
 
-**Q: Is there an HTTP transport instead of stdio?**
-A: Yes — set `MCP_TRANSPORT=http` to expose the MCP over Streamable HTTP behind a bearer-token + OAuth 2.1 gate (since v1.1.0). See [Remote hosting](#remote-hosting). stdio stays the default for local Claude Desktop / Claude Code.
+```bash
+git clone https://github.com/thebriangao/totem && cd totem
+npm install && npx tsc
+totem test
+```
 
-**Q: Does this support Claude's Computer Use API?**
-A: It's MCP-compatible — anything that speaks MCP can talk to it.
-
-**Q: Why TypeScript instead of Python?**
-A: The MCP SDK is most mature in TypeScript. Also Whoop's API responses are heavily nested — zod is genuinely the best validation library for that shape work.
-
-**Q: Why Node 24 specifically?**
-A: Uses `import.meta.dirname` (added in 20.11), modern `fetch`, native ESM, `AbortController`. Node 18 might work; 16 won't.
-
-**Q: How long did this take?**
-A: ~3 weeks of evening/weekend work for v1, plus another week to rewrite as v2 with proper projections and the write-safety harness.
-
-**Q: Will you maintain this?**
-A: Best-effort. PRs welcome.
-
----
-
-## Disclaimers
-
-- **Not affiliated with Whoop.** "WHOOP" is a trademark of WHOOP, Inc. Community-built tool that interacts with surfaces Whoop has not published. See the [FAQ](#faq) for the practical implications.
-- **No warranty, use at your own discretion.** The API surface is reverse-engineered — Whoop can change response shapes at any time. The zod schemas surface drift as `WhoopProjectionError` instead of silent corruption.
-- **Respect rate limits.** Single-digit RPS in normal use. Don't be the person who triggers a backend alert that gets every user of this MCP banned.
-- **Don't share tokens.** Your `.env` is yours. Don't commit it, don't paste it anywhere.
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how the project is laid out and [WHOOP.md](WHOOP.md) for what is known about WHOOP's API.
 
 ## Acknowledgments
 
-- **WHOOP** for building a fitness platform worth reverse-engineering
-- **Anthropic** for [MCP](https://modelcontextprotocol.io) and [Claude](https://claude.ai)
-- **mitmproxy** for being the tool that made discovery possible
-- **The TypeScript + zod community** for making strict validation pleasant
-- The various API consumers + bloggers who documented bits of Whoop's private API over the years
+Thanks to everyone who opened issues and pull requests for v1 and v2, to [Anthropic](https://anthropic.com) for MCP, and to the people who documented pieces of WHOOP's API over the years.
 
-This is open source under the terms in `LICENSE`. Contributions welcome.
+"WHOOP" is a trademark of WHOOP, Inc. totem is an independent project and is not affiliated with, endorsed by or connected to WHOOP. MIT licensed.

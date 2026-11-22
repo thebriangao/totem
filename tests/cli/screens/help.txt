@@ -1,14 +1,14 @@
 
 totem 1.5.1
-Your WHOOP data in Claude, ChatGPT and other AI clients, over MCP.
+Your WHOOP data in Claude, ChatGPT and other AI apps, over MCP.
 
 Usage
   totem <command> [options]
 
 Set up
   cloud       Deploy your own server; connect claude.ai, ChatGPT and others
-  local       Run on this computer; connect a desktop or terminal client
-  connect     Connect another client, or show what to paste where
+  local       Run on this computer; set up the AI apps you have
+  connect     Connect your apps, or show what to paste where
   auth        Log in to WHOOP, in a browser window
 
 Run and maintain

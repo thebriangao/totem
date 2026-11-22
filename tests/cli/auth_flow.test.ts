@@ -207,3 +207,33 @@ describe("fly.toml", () => {
     expect(flyToml("totem-abc", false)).not.toContain("[mounts]");
   });
 });
+
+describe("platformForUrl", () => {
+  it("names the host of a server from a Deploy button by its address", async () => {
+    const { platformForUrl } = await import("../../src/cli/deploy_record.js");
+    expect(platformForUrl("https://totem.you.workers.dev")).toBe("cloudflare");
+    expect(platformForUrl("https://totem-production-1a2b.up.railway.app")).toBe("railway");
+    expect(platformForUrl("https://totem-a1b2c3.fly.dev")).toBe("fly");
+    expect(platformForUrl("https://whoop.example.com")).toBe("custom");
+    expect(platformForUrl("not a url")).toBe("custom");
+  });
+});
+
+describe("totem auth --url for a server from a Deploy button", () => {
+  it("asks for the server's token, sends the login, and remembers the server", async () => {
+    const { fakeWorld, TOKEN } = await import("./helpers.js");
+    const { runCli } = await import("../../src/cli/app.js");
+    const { readDeployRecord } = await import("../../src/cli/deploy_record.js");
+    const { join } = await import("node:path");
+    const w = fakeWorld({ answers: [["MCP_AUTH_TOKEN", TOKEN]] });
+    try {
+      const app = { root: w.root, version: "2.0.0", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
+      const code = await runCli(["auth", "--url", "https://totem.you.workers.dev"], app, w.io);
+      expect(code).toBe(0);
+      expect(readDeployRecord(w.root)).toEqual({ platform: "cloudflare", url: "https://totem.you.workers.dev", mcp_auth_token: TOKEN });
+      expect(w.transcript()).not.toContain(TOKEN);
+    } finally {
+      w.cleanup();
+    }
+  });
+});

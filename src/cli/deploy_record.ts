@@ -43,3 +43,13 @@ export function updateDeployRecord(root: string, patch: Partial<DeployRecord>): 
   const current = readDeployRecord(root);
   if (current) writeDeployRecord(root, { ...current, ...patch });
 }
+
+/** The host a server address belongs to, for a server totem didn't deploy itself (a Deploy button). */
+export function platformForUrl(url: string): string {
+  let host = "";
+  try { host = new URL(url).hostname; } catch { return "custom"; }
+  if (host.endsWith(".workers.dev")) return "cloudflare";
+  if (host.endsWith(".up.railway.app")) return "railway";
+  if (host.endsWith(".fly.dev")) return "fly";
+  return "custom";
+}

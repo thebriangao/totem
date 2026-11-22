@@ -20,7 +20,7 @@ import {
   pushLogin, readLocalStatus, readTokenFile, resolveAuthTarget, retireLegacyEnv, saveLocalLogin, validateLogin,
   type AuthTarget, type LocalStatus, type PushResult, type RemoteStatus, type WhoopLogin,
 } from "./auth_flow.js";
-import { readDeployRecord, updateDeployRecord } from "./deploy_record.js";
+import { platformForUrl, readDeployRecord, updateDeployRecord, writeDeployRecord } from "./deploy_record.js";
 import { resolveTokenFilePath } from "../whoop/token_store.js";
 import { tildify } from "./clients.js";
 import { realIo, type Io } from "./sys.js";
@@ -239,6 +239,11 @@ async function pushToDeployment(
       if (prompted && record?.url && record.url.replace(/\/+$/, "") === target.url) {
         updateDeployRecord(root, { mcp_auth_token: token });
         ui.hint("Saved the MCP_AUTH_TOKEN in .totem-deploy.json (readable only by you).");
+      } else if (!record) {
+        // A server from a Deploy button: remember it, so connect, status and
+        // the next auth know where it is.
+        writeDeployRecord(root, { platform: platformForUrl(target.url), url: target.url, mcp_auth_token: token });
+        ui.hint("Remembered this server in .totem-deploy.json (readable only by you): totem connect and totem status use it.");
       }
       return { ok: true, status: r.status };
     }

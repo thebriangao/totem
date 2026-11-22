@@ -379,7 +379,7 @@ const commands: Record<string, Command> = {
   },
   local: {
     group: "Set up",
-    summary: "Run on this computer; connect a desktop or terminal client",
+    summary: "Run on this computer; set up the AI apps you have",
     usage: "totem local",
     about: "Sets totem up on this computer: builds the server if needed, logs you in to WHOOP in a browser window, and adds totem to the client you pick (Claude Desktop, Claude Code, Cursor, Codex, OpenCode and more). The client starts the server itself; nothing is hosted.",
     examples: ["totem local"],
@@ -387,7 +387,7 @@ const commands: Record<string, Command> = {
   },
   connect: {
     group: "Set up",
-    summary: "Connect another client, or show what to paste where",
+    summary: "Connect your apps, or show what to paste where",
     usage: "totem connect [client] [--print]",
     about: `With no client, shows how to connect every client to this install. With one, sets it up (a local install) or shows its steps (a deployed server). Clients: ${CLIENTS.map((c) => c.id).join(", ")}, other.`,
     options: [["--print", "Show what to add instead of writing the client's config"]],
@@ -551,7 +551,7 @@ export function helpScreen(k: Kit, app: Pick<AppCtx, "version">): string[] {
   const lines = [
     "",
     `${k.c.bold("totem")} ${k.c.dim(app.version)}`,
-    ...k.para("Your WHOOP data in Claude, ChatGPT and other AI clients, over MCP.", 0),
+    ...k.para("Your WHOOP data in Claude, ChatGPT and other AI apps, over MCP.", 0),
     "",
     k.c.bold("Usage"),
     "  totem <command> [options]",
