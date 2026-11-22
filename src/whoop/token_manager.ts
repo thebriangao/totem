@@ -399,33 +399,31 @@ export class TokenManager {
   /** Make sure we own the login (or may take it over). */
   private claim(): boolean {
     if (!this.lock) return true;
-    if (this.lock.held) {
-      // Prove ownership and stamp a fresh heartbeat in one step. Re-reading the
-      // lock isn't enough: after a laptop sleep our heartbeat is hours old, and
-      // a follower waking beside us would take the "stale" lock over while our
-      // refresh is on the wire, spending the same refresh token twice.
-      let state: LockState;
-      try {
-        state = this.lock.confirm();
-      } catch (error) {
-        // The lock sits next to the token file. If it can't be written, the
-        // rotated refresh token couldn't be saved either: don't spend this one.
-        throw new WhoopTokenUnwritableError(this.store.description, error);
-      }
-      if (state === "held") return true;
-      if (state === "busy") {
-        this.ownerHint = this.lock.readHolder();
+    if (!this.lock.held) {
+      const result = this.lock.tryAcquire();
+      if (!result.acquired) {
+        this.ownerHint = result.holder;
         return false;
       }
-    }
-    const result = this.lock.tryAcquire();
-    if (result.acquired) {
       this.log(`took over the WHOOP login${this.ownerHint ? ` from pid ${this.ownerHint.pid}, which stopped` : ""}`);
       this.ownerHint = null;
       this.lock.startHeartbeat(() => this.log("lost the token lock to another process; this process won't refresh any more"));
-      return true;
     }
-    this.ownerHint = result.holder;
+    // Whether we held the lock all along or took it over a moment ago: prove,
+    // under the guard, that the lock file names us, and stamp a fresh heartbeat,
+    // right before the refresh token is spent. Believing isn't enough: after a
+    // laptop sleep our heartbeat is hours old and a follower waking beside us
+    // would take the "stale" lock while our refresh is on the wire.
+    let state: LockState;
+    try {
+      state = this.lock.confirm();
+    } catch (error) {
+      // The lock sits next to the token file. If it can't be written, the
+      // rotated refresh token couldn't be saved either: don't spend this one.
+      throw new WhoopTokenUnwritableError(this.store.description, error);
+    }
+    if (state === "held") return true;
+    this.ownerHint = this.lock.readHolder(); // lost, or another process is changing the lock right now
     return false;
   }
 

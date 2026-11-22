@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -501,6 +501,31 @@ describe("TokenManager: one owner per login (G8)", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
     owner.manager.stop();
     follower.manager.stop();
+  });
+
+  it("doesn't refresh on a takeover another process overwrote in the same instant", async () => {
+    // The one way two processes can still both come out of a takeover believing
+    // they own the lock: a guard left by a crashed process is cleared by both at
+    // once. Whatever the lock said a moment ago, the refresh token is only spent
+    // after confirming, under the guard, that the lock file names us.
+    alive.clear(); alive.add(1).add(2);
+    const file = join(dir, "tokens.json");
+    const now = Date.now();
+    new FileTokenStore(file).save(login(now, { access_token: jwtExpiring(now, 0) }));
+    const cognito = fakeCognito(() => Date.now());
+    const loser = processOn(1, file, { refresh: cognito.refresh });
+    const acquire = loser.lock.tryAcquire.bind(loser.lock);
+    loser.lock.tryAcquire = () => {
+      const result = acquire();
+      // The racing process deleted our new lock and created its own.
+      if (result.acquired) writeFileSync(`${file}.lock`, JSON.stringify({ pid: 2, host: "laptop", nonce: "the-racer", started_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() }));
+      return result;
+    };
+    await expect(loser.manager.getToken()).rejects.toBeInstanceOf(WhoopTokenOwnedError);
+    expect(cognito.refresh).not.toHaveBeenCalled();
+    expect(loser.manager.status().role).toBe("follower");
+    loser.manager.stop();
+    expect(JSON.parse(readFileSync(`${file}.lock`, "utf8"))).toMatchObject({ nonce: "the-racer" }); // and it left the winner's lock alone
   });
 
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
