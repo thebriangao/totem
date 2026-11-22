@@ -59,7 +59,8 @@ describe("whoop_sleep projection", () => {
     const r = projectSleepDetails(fx("sleep_details_incomplete"), "addd5396-b934-4ae8-ba4e-a511762a0d53", true)!;
     expect(r).toMatchObject({ type: "sleep", scored: false, asleep_min: null, rr: null, disturbances: null });
     expect(r.stages_min).toEqual({ awake: null, light: null, sws: null, rem: null });
-    expect(r.hypnogram!.runs).toEqual([]);
+    // No stage ranges: no hypnogram block at all (it used to be sent as a bare {start}).
+    expect(r.hypnogram).toBeUndefined();
     expect(projectSleepDetails(fx("sleep_details_incomplete_nap"), "x", false)!.type).toBe("nap");
   });
 

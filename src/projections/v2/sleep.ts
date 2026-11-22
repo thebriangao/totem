@@ -90,7 +90,11 @@ export function projectSleepDetails(raw: unknown, id: string, withHypnogram: boo
     hr: sleepHr(raw),
     coach_note: str(get(raw, "whoop_coach_vow", "vow")),
   };
-  if (withHypnogram && start && end) record.hypnogram = { start, runs: hypnogramRuns(zones, start, end) };
+  if (withHypnogram && start && end) {
+    // An unscored sleep has no stage ranges: leave the block out rather than send a bare start.
+    const runs = hypnogramRuns(zones, start, end);
+    if (runs.length) record.hypnogram = { start, runs };
+  }
   return record;
 }
 
