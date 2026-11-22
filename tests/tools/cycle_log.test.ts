@@ -194,3 +194,92 @@ describe("whoop_cycle_log symptoms", () => {
     expect(order).toEqual(["PUT", "POST"]);
   });
 });
+
+// The period log and the flow chip are two views of one thing (a flow chip logs a period
+// day; a period logged with a flow shows as that chip), and WHOOP's two requests each
+// replace what they carry. These cases are where one request undoes the other.
+describe("whoop_cycle_log: one request must not undo the other", () => {
+  it("both logged (flow chip + ovulation, as on the test account's 11-21): removing one alone is refused", async () => {
+    const put = vi.fn();
+    const get = routedGet({ [OVERVIEW]: overview(DATE, "PERIOD", true) });
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get, put })));
+    const ov = await call(client, "whoop_cycle_log", { date: DATE, ovulation: { yes: false }, confirm: true });
+    expect(ov.isError).toBe(true);
+    expect(ov.out.error).toMatch(/both a period and ovulation.*period:\{yes:true\} to keep the period/);
+    const pd = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: false }, confirm: true });
+    expect(pd.isError).toBe(true);
+    expect(pd.out.error).toMatch(/both a period and ovulation.*ovulation:\{yes:true\} to keep the ovulation/);
+    expect(put).not.toHaveBeenCalled();
+    // Saying what happens to the other one is enough.
+    const explicit = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: true }, ovulation: { yes: false } });
+    expect(explicit.out.will_execute.body_summary.period_logs[0]).toMatchObject({ period: { answered_yes: true }, ovulation: { answered_yes: false } });
+  });
+
+  it("removing the period while re-sending the day's flow chip is refused (the chip would log it right back)", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const post = vi.fn().mockResolvedValue({});
+    const get = routedGet({ [OVERVIEW]: overview(DATE, "PERIOD", false), [SCREEN]: screen({ flow: "light_flow", mucus: null }) });
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get, put, post })));
+    const { isError, out } = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: false }, symptoms: [{ name: "Headache" }], confirm: true });
+    expect(isError).toBe(true);
+    expect(out.error).toMatch(/flow chip "light_flow".*menstruation:null/);
+    expect(put).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("a full undo clears the chip first, then removes the period (the order verified live)", async () => {
+    const order: string[] = [];
+    const put = vi.fn(async () => { order.push("PUT"); });
+    const post = vi.fn(async () => { order.push("POST"); });
+    const get = routedGet({
+      [OVERVIEW]: seq(overview(DATE, "PERIOD", false), overview(DATE, "NONE", false)),
+      [SCREEN]: seq(screen({ flow: "light_flow", mucus: "vaginal-discharge---creamy" }), screen({ flow: null, mucus: "vaginal-discharge---creamy" })),
+    });
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get, put, post })));
+    const { out } = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: false }, menstruation: null, confirm: true });
+    expect(order).toEqual(["POST", "PUT"]);
+    expect(post).toHaveBeenCalledWith(POST, { tracker_inputs: [], cervical_mucus: "vaginal-discharge---creamy" }, { requestDate: DATE });
+    expect(out).toMatchObject({ verified: true, day: { period_day: false, mucus: "vaginal-discharge---creamy" } });
+  });
+
+  it("a period day that is still there after removing it is verified:false, with the flow chip named as the reason", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const get = routedGet({ [OVERVIEW]: overview(DATE, "PERIOD", false), [SCREEN]: screen({ flow: "light_flow", mucus: null }) });
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get, put })));
+    const { out } = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: false }, confirm: true });
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(out).toMatchObject({ verified: false, day: { period_day: true, flow: "light_flow" } });
+    expect(out.mismatches.join(" ")).toMatch(/period day reads back true/);
+    expect(out.warnings.join(" ")).toMatch(/flow chip "light_flow" is still set.*menstruation:null/);
+  });
+
+  it("period with a flow + symptoms: the chip the period request set is re-read and carried, not cleared", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const post = vi.fn().mockResolvedValue({});
+    const get = routedGet({
+      [OVERVIEW]: seq(overview(DATE, "NONE", false), overview(DATE, "PERIOD", false)),
+      // before anything; after the PUT (WHOOP shows the period's flow as the chip); after the POST
+      [SCREEN]: seq(screen({ flow: null, mucus: null }), screen({ flow: "heavy_flow", mucus: null }), screen({ flow: "heavy_flow", mucus: null, inputs: { 177: { yes: true } } })),
+    });
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get, put, post })));
+    const { out } = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: true, flow: 2 }, symptoms: [{ name: "Headache" }], confirm: true });
+    expect(post).toHaveBeenCalledWith(POST, { tracker_inputs: [{ behavior_tracker_id: 177, answered_yes: true, is_suggested: false }], menstruation: "heavy_flow" }, { requestDate: DATE });
+    expect(out).toMatchObject({ verified: true, day: { period_day: true, flow: "heavy_flow" } });
+  });
+
+  it("won't send a symptom log when the current flow / mucus can't be read (omitting them clears them)", async () => {
+    const post = vi.fn().mockResolvedValue({});
+    // A screen with the trackers but without the chip lists totem knows.
+    const odd = screen({});
+    for (const list of findAll(odd, (n) => n.type === "SELECTABLE_CELL_LIST")) list.type = "CHIP_GROUP_V2";
+    delete odd.lifecycle_interactions;
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get: routedGet({ [SCREEN]: odd }), post })));
+    const { isError, out } = await call(client, "whoop_cycle_log", { date: DATE, symptoms: [{ name: "Headache" }], confirm: true });
+    expect(isError).toBe(true);
+    expect(out.error).toMatch(/Couldn't read the current menstruation/);
+    expect(post).not.toHaveBeenCalled();
+    // Naming both fields makes the log explicit, so it can go out.
+    const explicit = await call(client, "whoop_cycle_log", { date: DATE, symptoms: [{ name: "Headache" }], menstruation: null, cervical_mucus: null });
+    expect(explicit.out.will_execute.body_summary).toEqual({ tracker_inputs: [{ behavior_tracker_id: 177, answered_yes: true, is_suggested: false }] });
+  });
+});

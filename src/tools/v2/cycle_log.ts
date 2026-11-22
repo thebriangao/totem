@@ -87,6 +87,8 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
     const warnings: string[] = [];
     const writes: Array<{ method: string; path: string; body: unknown }> = [];
     let before: { period_day: boolean | null; ovulation_logged: boolean | null } = { period_day: null, ovulation_logged: null };
+    /** What the period request says about the period (undefined: no period request). */
+    let sentPeriod: boolean | undefined;
 
     // Fresh pre-reads: what is logged on the date now.
     if (wantLog) {
@@ -101,6 +103,10 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
           return toolError(`No ovulation is logged on ${date}, but a period is; sending the undo would also remove the period. Use period:{yes:false} to remove the period.`);
         }
         if (o === false && before.period_day === null) return toolError(`Couldn't tell what is logged on ${date}; pass both period and ovulation explicitly.`);
+        if (o === false && before.period_day === true) {
+          // Both are logged (a flow chip plus ovulation): the one request would clear both.
+          return toolError(`${date} has both a period and ovulation logged, and WHOOP's request sets both at once. Add period:{yes:true} to keep the period, or period:{yes:false} to remove both.`);
+        }
         if (o === true && before.period_day) warnings.push(`${date} is a logged period day; logging ovulation removes the period (WHOOP allows one per date).`);
         p = false;
       }
@@ -109,6 +115,9 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
           return toolError(`No period is logged on ${date}, but ovulation is; sending the undo would also remove the ovulation. Use ovulation:{yes:false} to remove it.`);
         }
         if (p === false && before.ovulation_logged === null) return toolError(`Couldn't tell what is logged on ${date}; pass both period and ovulation explicitly.`);
+        if (p === false && before.ovulation_logged === true) {
+          return toolError(`${date} has both a period and ovulation logged, and WHOOP's request sets both at once. Add ovulation:{yes:true} to keep the ovulation, or ovulation:{yes:false} to remove both.`);
+        }
         if (p === true && before.ovulation_logged) warnings.push(`${date} has ovulation logged; logging a period replaces it.`);
         o = false;
       }
@@ -116,6 +125,7 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
         warnings.push(`If ${date} starts a new period, WHOOP creates a cycle entry that undoing the period won't remove.`);
       }
       if (!p && !o) warnings.push("Undo leaves journal rows for this date answered No.");
+      sentPeriod = p;
       writes.push({
         method: "PUT",
         path: LOG_PATH,
@@ -131,6 +141,32 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
 
     let screenBefore: SymptomScreen | null = null;
     let resolved: Resolved[] = [];
+    // menstruation and cervical_mucus REPLACE on every POST (omitted = cleared), so whichever
+    // the caller didn't set is re-sent as the screen shows it at that moment.
+    const carriedFlow = (screen: SymptomScreen) => (menstruation === undefined ? screen.menstruation : menstruation);
+    const symptomBody = (screen: SymptomScreen) => {
+      const flow = carriedFlow(screen);
+      const mucus = cervical_mucus === undefined ? screen.cervical_mucus : cervical_mucus;
+      return {
+        tracker_inputs: resolved.map((s) => ({
+          behavior_tracker_id: s.tracker.id,
+          answered_yes: s.yes,
+          ...(s.magnitude !== undefined ? { magnitude_input_value: s.magnitude } : {}),
+          is_suggested: false,
+        })),
+        ...(flow ? { menstruation: flow } : {}),
+        ...(mucus ? { cervical_mucus: mucus } : {}),
+      };
+    };
+    /** A field the caller left alone can only be carried if the screen showed its chips. */
+    const unreadable = (screen: SymptomScreen): string | null => {
+      for (const [field, value] of [["menstruation", menstruation], ["cervical_mucus", cervical_mucus]] as const) {
+        if (value === undefined && !screen.options[field].length) {
+          return `Couldn't read the current ${field} for ${date} (WHOOP's symptom screen changed), and a symptom log clears whatever isn't re-sent. Pass menstruation and cervical_mucus explicitly (null clears).`;
+        }
+      }
+      return null;
+    };
     if (wantSymptoms) {
       screenBefore = projectSymptomScreen(await client.get(SYMPTOM_SCREEN_PATH, { requestDate: date }, { fresh: true }));
       for (const [field, value] of [["menstruation", menstruation], ["cervical_mucus", cervical_mucus]] as const) {
@@ -139,29 +175,29 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
           return toolError(`${field} "${value}" isn't offered on WHOOP's symptom screen. Options: ${live.join(", ")}.`);
         }
       }
+      const lost = unreadable(screenBefore);
+      if (lost) return toolError(lost);
       const r = resolveSymptoms(symptoms ?? [], screenBefore);
       if (typeof r === "string") return toolError(r);
       resolved = r;
-      // menstruation and cervical_mucus REPLACE on every POST (omitted = cleared), so resend the current ones.
-      const flow = menstruation === undefined ? screenBefore.menstruation : menstruation;
-      const mucus = cervical_mucus === undefined ? screenBefore.cervical_mucus : cervical_mucus;
-      if (flow && flow !== "none") {
+      const flow = carriedFlow(screenBefore);
+      const flows = Boolean(flow) && flow !== "none";
+      const removesPeriod = sentPeriod === false;
+      if (flows && removesPeriod) {
+        // Re-sending the day's flow chip would log the period day right back.
+        return toolError(`${date} has the flow chip "${flow}", which marks it as a period day, and this request removes the period. Add menstruation:null to clear the chip too.`);
+      }
+      if (flows) {
         warnings.push(`Flow "${flow}" also logs a period day on ${date}; clearing the flow later doesn't remove it (use period:{yes:false}).`);
       }
-      writes.push({
-        method: "POST",
-        path: `${SYMPTOM_POST_PATH}?requestDate=${date}`,
-        body: {
-          tracker_inputs: resolved.map((s) => ({
-            behavior_tracker_id: s.tracker.id,
-            answered_yes: s.yes,
-            ...(s.magnitude !== undefined ? { magnitude_input_value: s.magnitude } : {}),
-            is_suggested: false,
-          })),
-          ...(flow ? { menstruation: flow } : {}),
-          ...(mucus ? { cervical_mucus: mucus } : {}),
-        },
-      });
+      const post = { method: "POST", path: `${SYMPTOM_POST_PATH}?requestDate=${date}`, body: symptomBody(screenBefore) };
+      // Removing a period: clear the chips first, then the period (the order verified live).
+      // Logging one: the period request goes first and the chips are read again before the POST.
+      if (removesPeriod) writes.unshift(post);
+      else writes.push(post);
+      if (sentPeriod === true && (menstruation === undefined || cervical_mucus === undefined)) {
+        warnings.push("Flow and mucus you didn't set are read again after the period request and re-sent as they stand then.");
+      }
     }
     warnings.push("These logs also write journal rows for this date (menstruation 43, ovulation 79, cervical mucus, symptoms).");
 
@@ -182,14 +218,24 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
 
     for (const w of writes) {
       const [path, query] = w.path.split("?requestDate=");
+      const done = writes.slice(0, writes.indexOf(w)).map((x) => `${x.method} ${x.path}`);
+      const applied = done.length ? `Already applied before this failed: ${done.join("; ")}.` : undefined;
       try {
         if (w.method === "PUT") await client.put(path!, w.body);
-        else await client.post(path!, w.body, { requestDate: query });
+        else {
+          if (done.length) {
+            // The period request can change the day's flow chip (a period logged with a flow
+            // shows as that chip), so carry what is there now, not what was there before it.
+            const now = projectSymptomScreen(await client.get(SYMPTOM_SCREEN_PATH, { requestDate: date }, { fresh: true }));
+            const lost = unreadable(now);
+            if (lost) return toolError(lost, applied ? { hint: applied } : {});
+            w.body = symptomBody(now);
+          }
+          await client.post(path!, w.body, { requestDate: query });
+        }
       } catch (error) {
         if (error instanceof WhoopApiError) {
-          const done = writes.slice(0, writes.indexOf(w)).map((x) => `${x.method} ${x.path}`);
-          return writeRejected(w.method === "PUT" ? "period/ovulation log" : "symptom log", path!, error,
-            done.length ? `Already applied before this failed: ${done.join("; ")}.` : undefined);
+          return writeRejected(w.method === "PUT" ? "period/ovulation log" : "symptom log", path!, error, applied);
         }
         throw error;
       }
@@ -209,19 +255,22 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
       | undefined;
     if (logBody) {
       const sent = logBody.period_logs[0]!;
-      if (after.period_day !== sent.period.answered_yes && !(sent.period.answered_yes === false && screenAfter?.menstruation && screenAfter.menstruation !== "none")) {
+      if (after.period_day !== sent.period.answered_yes) {
         mismatches.push(`period day reads back ${after.period_day}`);
+        if (sent.period.answered_yes === false && screenAfter?.menstruation && screenAfter.menstruation !== "none") {
+          warnings.push(`The flow chip "${screenAfter.menstruation}" is still set on ${date} and keeps it a period day; clear it with menstruation:null and remove the period again.`);
+        }
       }
       if (after.ovulation_logged !== null && after.ovulation_logged !== sent.ovulation.answered_yes) {
         mismatches.push(`ovulation reads back ${after.ovulation_logged}`);
       }
     }
-    const symptomBody = writes.find((w) => w.method === "POST")?.body as { menstruation?: string; cervical_mucus?: string } | undefined;
-    if (symptomBody) {
+    const sentSymptoms = writes.find((w) => w.method === "POST")?.body as { menstruation?: string; cervical_mucus?: string } | undefined;
+    if (sentSymptoms) {
       if (!screenAfter) mismatches.push("symptom screen unreadable after the write");
       else {
-        if ((symptomBody.menstruation ?? null) !== screenAfter.menstruation) mismatches.push(`menstruation reads back ${screenAfter.menstruation}`);
-        if ((symptomBody.cervical_mucus ?? null) !== screenAfter.cervical_mucus) mismatches.push(`cervical_mucus reads back ${screenAfter.cervical_mucus}`);
+        if ((sentSymptoms.menstruation ?? null) !== screenAfter.menstruation) mismatches.push(`menstruation reads back ${screenAfter.menstruation}`);
+        if ((sentSymptoms.cervical_mucus ?? null) !== screenAfter.cervical_mucus) mismatches.push(`cervical_mucus reads back ${screenAfter.cervical_mucus}`);
         for (const s of resolved) {
           const got = screenAfter.trackers.find((t) => t.id === s.tracker.id)?.input;
           if (!got || got.yes !== s.yes) mismatches.push(`${s.tracker.name} reads back ${got?.yes ?? "unanswered"}`);
