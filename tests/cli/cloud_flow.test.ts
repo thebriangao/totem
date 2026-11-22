@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { join } from "node:path";
 import { runCli, type AppCtx } from "../../src/cli/app.js";
 import { readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
+import { secretForms } from "../../src/cli/setup.js";
 import type { ExecResult } from "../../src/cli/sys.js";
 import { fakeWorld, PASSWORD, TOKEN, type FakeWorld, type WorldOptions } from "./helpers.js";
 
@@ -55,6 +56,37 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
     expect(text).toContain("The deploy finished, but the server isn't answering.");
     expect(text).not.toContain(own);
     expect(text).not.toContain(PASSWORD);
+  });
+});
+
+// totem blanks this deploy's secrets in whatever a host CLI prints. A CLI that
+// echoes its input rarely echoes it raw: it is inside JSON, or a URL.
+describe("totem cloud: a host CLI echoes a chosen password back, escaped", () => {
+  const own = 'p@ss word&"quote\\slash-1234';
+  const echoed = [
+    `Error: could not set secrets`,
+    `body={"AUTH_PASSWORD":${JSON.stringify(own)}}`,
+    `query=AUTH_PASSWORD=${encodeURIComponent(own)}`,
+    `form=AUTH_PASSWORD=${encodeURIComponent(own).replace(/%20/g, "+")}`,
+    `raw=AUTH_PASSWORD=${own}`,
+  ].join("\n");
+  const echoing: WorldOptions = {
+    answers: [["Deploy this?", 1], ["Connector password", own], ["What now?", 1]],
+    exec: (cmd, args, input, w) => (args.join(" ").startsWith("secrets import") ? { code: 1, stdout: "", stderr: `${echoed}\n` } : fly(cmd, args, input, w)),
+  };
+
+  it("blanks it in every form", async () => {
+    const { code, text } = await cloud(echoing);
+    expect(code).toBe(1);
+    for (const line of ['body={"AUTH_PASSWORD":"***"}', "query=AUTH_PASSWORD=***", "form=AUTH_PASSWORD=***", "raw=AUTH_PASSWORD=***"]) expect(text).toContain(line);
+    for (const leak of [own, JSON.stringify(own).slice(1, -1), encodeURIComponent(own), "p%40ss", "quote%5Cslash"]) expect(text).not.toContain(leak);
+  });
+
+  it("lists each form once, and none for an empty secret", () => {
+    expect(secretForms("Kq7m-Rt2x-Vb9n-Lp4w-Hd6s")).toEqual(["Kq7m-Rt2x-Vb9n-Lp4w-Hd6s"]);
+    expect(secretForms(own)).toEqual([own, 'p@ss word&\\"quote\\\\slash-1234', "p%40ss%20word%26%22quote%5Cslash-1234", "p%40ss+word%26%22quote%5Cslash-1234"]);
+    expect(secretForms("")).toEqual([]);
+    expect(secretForms("\ud800 lone surrogate")).toHaveLength(2); // no percent form, and no throw
   });
 });
 

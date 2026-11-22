@@ -337,8 +337,26 @@ const worked = (r: ExecResult | boolean): boolean => (typeof r === "boolean" ? r
  */
 function redact(d: Deploy, text: string): string {
   let out = text;
-  for (const secret of [d.env.MCP_AUTH_TOKEN, d.env.AUTH_PASSWORD]) if (secret) out = out.split(secret).join("***");
+  for (const secret of [d.env.MCP_AUTH_TOKEN, d.env.AUTH_PASSWORD]) {
+    if (!secret) continue;
+    for (const form of secretForms(secret)) out = out.split(form).join("***");
+  }
   return out;
+}
+
+/**
+ * A secret as given, and the ways a CLI writes it back: inside JSON, in a URL
+ * or a form body. The generated token and password read the same in all of
+ * them; a password the person chose (spaces, quotes, &, \) does not, and the
+ * plain text alone would let the escaped one through.
+ */
+export function secretForms(secret: string): string[] {
+  const forms = [secret, JSON.stringify(secret).slice(1, -1)];
+  try {
+    const percent = encodeURIComponent(secret);
+    forms.push(percent, percent.replace(/%20/g, "+"));
+  } catch { /* a lone surrogate has no percent form */ }
+  return [...new Set(forms)].filter(Boolean);
 }
 
 /** A host command: captured under a spinner showing its latest line, or attached with --verbose. */
