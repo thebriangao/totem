@@ -1,0 +1,13 @@
+{
+ "_comment": "Synthetic, shaped like a calibrated account's GET /home-service/v1/deep-dive/recovery (values invented). No STEPPER once calibrated.",
+ "header": { "deep_dive_score_type": "RECOVERY" },
+ "sections": [
+  { "items": [ { "type": "SCORE_GAUGE", "content": { "id": "RECOVERY_SCORE_GAUGE", "score_display": "71", "score_display_suffix": "%", "progress_fill_style": "RECOVERY_HIGH", "gauge_fill_percentage": 0.71 } } ] },
+  { "items": [ { "type": "CONTRIBUTORS_TILE", "content": { "id": "RECOVERY_CONTRIBUTORS_TILE", "metrics": [
+   { "id": "CONTRIBUTORS_TILE_HRV", "title": "Heart Rate Variability", "status": "58", "status_subtitle": "54", "metric_style": "DATA", "status_type": "HIGHER_POSITIVE" },
+   { "id": "CONTRIBUTORS_TILE_RHR", "title": "Resting Heart Rate", "status": "52", "status_subtitle": "53", "metric_style": "DATA", "status_type": "LOWER_POSITIVE" },
+   { "id": "CONTRIBUTORS_TILE_RESPIRATORY_RATE", "title": "Respiratory Rate", "status": "15.1", "status_subtitle": "15.0", "metric_style": "DATA", "status_type": "EQUAL" },
+   { "id": "CONTRIBUTORS_TILE_SLEEP_PERFORMANCE", "title": "Sleep Performance", "status": "88%", "status_subtitle": "79%", "metric_style": "DATA", "status_type": "HIGHER_POSITIVE" }
+  ] } } ] }
+ ]
+}

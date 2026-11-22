@@ -1,0 +1,18 @@
+{
+ "_comment": "Synthetic, shaped like GET /coaching-service/v1/health/bff/monitor on a calibrated account (values invented).",
+ "title": "HEALTH MONITOR",
+ "items": [
+  { "type": "KEY_METRIC_TILE", "content": { "id": "RESPIRATORY_RATE", "key_metric_tile_stat_value_display": "15.1", "key_metric_tile_suffix_display": "rpm", "key_metric_tile_trend_display": "within 14.6 - 15.4", "key_metric_tile_trend_type": "POSITIVE_RANGE" } },
+  { "type": "KEY_METRIC_TILE", "content": { "id": "BLOOD_OXYGEN", "key_metric_tile_stat_value_display": "96", "key_metric_tile_suffix_display": "%", "key_metric_tile_trend_display": "within 95% - 100%", "key_metric_tile_trend_type": "POSITIVE_RANGE" } },
+  { "type": "KEY_METRIC_TILE", "content": { "id": "RHR", "key_metric_tile_stat_value_display": "52", "key_metric_tile_suffix_display": "bpm", "key_metric_tile_trend_display": "within 50 - 55", "key_metric_tile_trend_type": "POSITIVE_RANGE" } },
+  { "type": "KEY_METRIC_TILE", "content": { "id": "HRV", "key_metric_tile_stat_value_display": "58", "key_metric_tile_suffix_display": "ms", "key_metric_tile_trend_display": "within 49 - 61", "key_metric_tile_trend_type": "POSITIVE_RANGE" } },
+  { "type": "KEY_METRIC_TILE", "content": { "id": "SKIN_TEMPERATURE_FAHRENHEIT", "key_metric_tile_stat_value_display": "-0.3", "key_metric_tile_suffix_display": "°F", "key_metric_tile_trend_display": "within -0.5 to +0.4", "key_metric_tile_trend_type": "POSITIVE_RANGE" } },
+  { "type": "MENU_ITEM", "content": { "title": "Share Your Health Report" } }
+ ],
+ "analytics": {
+  "highest_severity_status": "POSITIVE_RANGE",
+  "metrics_with_values": 5,
+  "metrics_in_range": 5,
+  "ranges": { "RESPIRATORY_RATE": "POSITIVE_RANGE", "BLOOD_OXYGEN": "POSITIVE_RANGE", "RHR": "POSITIVE_RANGE", "HRV": "POSITIVE_RANGE", "SKIN_TEMPERATURE_FAHRENHEIT": "POSITIVE_RANGE" }
+ }
+}
