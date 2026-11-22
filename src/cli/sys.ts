@@ -5,7 +5,7 @@
 // a host CLI or a WHOOP login. Presentation lives in ui.ts.
 import { spawn, spawnSync, type SpawnOptions } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { constants as osConstants, homedir } from "node:os";
@@ -201,12 +201,37 @@ export function genPassword(groups = 5): string {
   return chars.match(/.{4}/g)!.join("-");
 }
 
+/**
+ * The path of this node that is still there after node is upgraded.
+ *
+ * `process.execPath` has symlinks resolved, and under Homebrew that is the
+ * keg: /opt/homebrew/Cellar/node/25.9.0_1/bin/node. The next `brew upgrade`
+ * (a new version, or only a new revision) removes that directory. totem writes
+ * this path into other programs' files (a client's MCP config, the launchd
+ * job, the cron line), so each of them broke on that day, silently. Homebrew
+ * keeps <prefix>/opt/<formula> pointing at the current keg: use that.
+ *
+ * Any other path is returned as it is. In particular a `node` found on PATH is
+ * not preferred in general: for some version managers that entry is a symlink
+ * that lives only as long as the shell does.
+ */
+export function stableNodePath(execPath: string, realpath: (path: string) => string = realpathSync): string {
+  const keg = execPath.match(/^(.+)\/Cellar\/([^/]+)\/[^/]+\/bin\/node$/);
+  if (!keg) return execPath;
+  const stable = `${keg[1]}/opt/${keg[2]}/bin/node`;
+  try {
+    return realpath(stable) === realpath(execPath) ? stable : execPath;
+  } catch {
+    return execPath;
+  }
+}
+
 export function realSys(): Sys {
   return {
     platform: process.platform,
     home: homedir(),
     env: process.env,
-    node: process.execPath,
+    node: stableNodePath(process.execPath),
     nodeVersion: process.versions.node,
     tty: Boolean(process.stdout.isTTY),
     has,
