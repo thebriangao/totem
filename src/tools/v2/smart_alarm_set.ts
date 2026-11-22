@@ -120,6 +120,11 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
         return toolError(`No schedule ${schedule_id} (WHOOP's schedule PUT is an upsert and would create one). Use action:create.`);
       }
       const cur = current[0];
+      if (current.length > 1 && (mode === undefined || wake === null || (enabled === undefined && mode !== "NO_ALARM"))) {
+        // A half-applied write can leave one schedule's days with different settings. The PUT sets
+        // every day alike, so nothing is merged from "the current schedule": there isn't one.
+        return toolError(`Schedule ${schedule_id}'s days don't agree (${current.map((s) => `${s.days.join("+")}: ${describe(s)}`).join("; ")}). An edit sets all of them alike, so pass mode, wake_time and enabled explicitly.`);
+      }
       const m: Mode | undefined = mode ?? (cur?.mode ?? undefined);
       if (!m) return toolError(action === "create" ? "create needs mode." : `Schedule ${schedule_id} has goal ${cur?.goal}; pass mode explicitly.`);
       if (sleep_goal && m !== "SLEEP_GOAL") return toolError("sleep_goal only applies to mode SLEEP_GOAL (WHOOP requires it empty otherwise).");
@@ -127,9 +132,9 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
       if (m === "SLEEP_GOAL" && !sg) return toolError("mode SLEEP_GOAL needs sleep_goal.");
       if (m === "NO_ALARM" && enabled === true) return toolError("NO_ALARM is the off state; it can't be enabled:true (WHOOP rejects it).");
       const targetDays = days ?? [...new Set(current.flatMap((s) => s.days))];
-      const w = wake ?? (cur ? `${cur.wake}:00` : null);
+      const w = wake ?? (cur && /^\d{2}:\d{2}$/.test(cur.wake) ? `${cur.wake}:00` : null);
       if (!targetDays.length) return toolError("create needs days.");
-      if (!w) return toolError("create needs wake_time.");
+      if (!w) return toolError(action === "create" ? "create needs wake_time." : `Schedule ${schedule_id} has no readable wake time; pass wake_time.`);
       const target: Target = {
         days: targetDays,
         mode: m,

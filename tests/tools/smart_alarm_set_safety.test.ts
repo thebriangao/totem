@@ -115,7 +115,8 @@ describe("whoop_smart_alarm_set: no input can produce an unverified write", () =
 
     const sent: Record<string, number> = {};
     for (let i = 0; i < 3000; i++) {
-      rows = WIRE_DAYS.flatMap((day) => (rnd() < 0.6 ? [row(pick([A, B]), day, pick(STORED), pick(["07:35:00", "06:45:00"]), rnd() < 0.7)] : []));
+      // Rows of one schedule often disagree here, and a few have no usable time: stored state is hostile too.
+      rows = WIRE_DAYS.flatMap((day) => (rnd() < 0.6 ? [row(pick([A, B]), day, pick(STORED), pick(["07:35:00", "07:35:00", "06:45:00", "06:45:00", null, "7:35 AM"]) as string, rnd() < 0.7)] : []));
       healthy = rnd() < 0.6;
       const result = pick(["ok", "ok", "500", "422"]);
       outcome = (w) => (result === "500" ? e500(w.path) : result === "422" ? new WhoopApiError(422, w.path, "") : w.method === "POST" ? [row(B, "FRIDAY", "EXACT_TIME_PERFORM")] : []);
@@ -243,6 +244,33 @@ describe("whoop_smart_alarm_set: schedule edits can't carry a stored goal or a s
     expect(rec.writes.map((w) => (w.body as { sleep_goal: string }).sleep_goal)).toEqual(["", "", ""]);
     expect(rec.writes.map((w) => (w.body as { enabled: boolean }).enabled)).toEqual([true, true, false]);
     for (const w of rec.writes) assertSafeWrite(w);
+  });
+
+  it("a schedule whose days disagree is never merged from its first row: mode, time and enabled must be given", async () => {
+    // MON is IN_THE_GREEN 07:35, TUE is a disabled SLEEP_GOAL 06:00 under the same schedule id.
+    const split = [row(A, "MONDAY", "IN_THE_GREEN", "07:35:00", true), row(A, "TUESDAY", "SLEEP_HEALTH_PEAK", "06:00:00", false)];
+    const rec = recorder({ [ROWS]: split, [ALL]: fx("alarm_schedule_all.json"), [PREFS]: fx("alarm_preferences.json") });
+    const client = await connect((s) => registerSmartAlarmSet(s, rec.client));
+    for (const args of [{ days: ["MON", "TUE", "WED"] }, { wake_time: "07:40" }, { mode: "EXACT_TIME", wake_time: "07:40" }, { mode: "EXACT_TIME", enabled: true }]) {
+      const { isError, out } = await call(client, "whoop_smart_alarm_set", { action: "edit", schedule_id: A, ...args, confirm: true });
+      expect(isError).toBe(true);
+      expect(out.error).toMatch(/days don't agree \(MON: IN_THE_GREEN 07:35; TUE: SLEEP_GOAL PEAK 06:00 \(off\)\)/);
+    }
+    expect(rec.writes).toEqual([]);
+    await call(client, "whoop_smart_alarm_set", { action: "edit", schedule_id: A, mode: "EXACT_TIME", wake_time: "07:40", enabled: true, confirm: true });
+    expect(rec.writes).toHaveLength(1);
+    assertSafeWrite(rec.writes[0]!);
+    expect(rec.writes[0]!.body).toMatchObject({ day_of_week_list: ["MONDAY", "TUESDAY"], alarm_mode: "EXACT_TIME", latest_wake_time: "07:40:00", enabled: true });
+  });
+
+  it("a stored row without a wake time is not turned into the time \":00\"", async () => {
+    const noTime = [{ ...row(A, "MONDAY", "IN_THE_GREEN"), upper_time_bound: null }];
+    const rec = recorder({ [ROWS]: noTime, [ALL]: fx("alarm_schedule_all.json"), [PREFS]: fx("alarm_preferences.json") });
+    const client = await connect((s) => registerSmartAlarmSet(s, rec.client));
+    const { isError, out } = await call(client, "whoop_smart_alarm_set", { action: "edit", schedule_id: A, days: ["MON", "TUE"], confirm: true });
+    expect(isError).toBe(true);
+    expect(out.error).toMatch(/pass wake_time/);
+    expect(rec.writes).toEqual([]);
   });
 
   it("NO_ALARM forces enabled:false on an enabled schedule; enabled:true with NO_ALARM is refused", async () => {
