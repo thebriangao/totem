@@ -72,16 +72,16 @@ git clone https://github.com/thebriangao/totem.git
 cd totem && npm install && npx tsc && npm link
 ```
 
-That puts `totem` on your PATH (the one-time `npx tsc` builds it; after that every workflow is a `totem` command — there are no `npm run` scripts). Now run **one guided command** — each handles Whoop login (SMS included), setup, and connecting to Claude from end to end. Pick how you want to run it:
+That puts `totem` on your PATH (the one-time `npx tsc` builds it; after that every workflow is a `totem` command — there are no `npm run` scripts). Now run **one guided command** — each handles WHOOP login (in your browser), setup, and connecting to Claude from end to end. Pick how you want to run it:
 
 ### ★ Recommended — `totem cloud`
 
 Deploys the server to a host and connects it to Claude on **web, desktop, and mobile**, synced across every device on your account. One command walks through:
 
-1. **Whoop login** — email + password, plus the SMS code if your account has MFA. Tokens are saved locally and pushed to the host.
-2. **Pick a host** — Fly (automated + tested), Railway, Google Cloud Run, or your own server (guided Docker steps).
-3. **Secrets** — generates `MCP_AUTH_TOKEN` and asks you to choose a connector password.
-4. **Deploy + verify** — sets env, deploys, confirms `/health` and the OAuth endpoints are live.
+1. **Pick a host** — Fly (automated + tested), Railway, Google Cloud Run, or your own server (guided Docker steps).
+2. **Secrets** — generates `MCP_AUTH_TOKEN` and asks you to choose a connector password.
+3. **Deploy + verify** — sets env, creates a small volume for the login (Fly, Railway), deploys, confirms `/health` and the OAuth endpoints are live.
+4. **WHOOP login** — a browser window opens on whoop.com; you log in there (email, password, code). totem reads WHOOP's session cookies, sends the login straight to your server, and keeps no copy on your machine.
 5. **Connect** — prints ready-to-paste setup for **claude.ai, ChatGPT, Claude Code (remote), and Cursor / Windsurf / any HTTP MCP client** (URL + password for the OAuth connectors, a bearer-token block for the rest), and opens claude.ai's connector page.
 
 ```bash
@@ -98,13 +98,14 @@ totem local
 
 ### Keeping it alive
 
-Whoop's tokens expire roughly every 30 days. When they do, re-run the same command — it re-logs you in and (if you deployed) pushes the new tokens to your server:
+The server keeps the login fresh by itself: it refreshes the token before it expires and at least every 12 hours, and saves each new token to its token file before using it. If WHOOP ever ends the session (a password change, say), run:
 
 ```bash
-totem auth
+totem auth           # browser login; pushed to your deployment, or saved here for a local install
+totem auth --status  # where the login lives and when it last refreshed
 ```
 
-Silent if your account has no SMS MFA; prompts for the code if it does. Pushes fresh tokens to your deployment automatically.
+No browser on this machine? `totem auth --paste` takes the `whoop-auth-refresh-token` cookie from any browser that's logged into app.whoop.com instead.
 
 ### Check it works
 
@@ -222,9 +223,13 @@ Compact summary. **Full per-tool reference (input shape · source endpoints · o
 
 ## Authentication
 
-Whoop's iOS app uses **AWS Cognito** routed through a Whoop-owned proxy (`/auth-service/v3/whoop/`). The proxy fills in `ClientId` + `SECRET_HASH` server-side — no IPA extraction needed.
+**Login happens in your browser.** `totem auth` opens Chrome, Chromium, Edge or Brave with a temporary profile on app.whoop.com, and you log in there yourself. totem watches the browser's cookie jar over the DevTools protocol (the browser target only; it never attaches to the login page, so it can't see what you type), picks up WHOOP's `whoop-auth-token` and `whoop-auth-refresh-token` cookies, checks them with one bootstrap request, then closes the browser and deletes the profile. The old email + password + SMS flow is gone: WHOOP now requires a device fingerprint with it, so a correct password fails ([#38](https://github.com/thebriangao/totem/issues/38)).
 
-**Bootstrap once** (email + password + SMS MFA code if your account has it on) → tokens written to `.env`. **After that, it's hands-off**: access tokens auto-refresh every 24h via the refresh token; refresh token lives ~30 days. Single-flight refresh gate prevents thundering-herd refreshes when concurrent tool calls all see a stale token at the same time.
+**The login lives in a token file**, not `.env`: `~/.config/totem/tokens.json` by default (`TOTEM_TOKEN_FILE` to move it; `/data/tokens.json` in the Docker image). WHOOP rotates the refresh token on every refresh and the old one stops working, so totem writes each new one atomically (temp file + rename, mode 0600) before it uses the new access token, and treats a failed write as fatal. A keep-alive refreshes when less than 10 minutes of access-token life remain and every 12 hours (`TOTEM_KEEPALIVE_HOURS`).
+
+**One owner per login.** Only one process may refresh a login: a lock file next to the token file names the owner. A second local totem (say Claude Desktop and Claude Code both running the server) follows the owner's token file and never refreshes. Don't run a local server and a deployment on the same login: `totem auth` against a deployment pushes the login to it (`POST /admin/tokens`, gated by `MCP_AUTH_TOKEN`) and keeps no local copy; use `totem auth --local` to give this machine a separate login.
+
+Upgrading from 1.x: `WHOOP_IOS_BEARER_TOKEN` / `WHOOP_COGNITO_REFRESH_TOKEN` are moved into the token file on first start.
 
 Auth requests impersonate the iOS AWS Swift SDK (the proxy 403s a Node-style User-Agent), and data requests carry the **WHOOP iOS app's own identity headers** (`user-agent: iOS`, the `x-whoop-*` device set, a per-install identifier) so the traffic blends with the legitimate app rather than standing out — see [`WHOOP.md` → Headers for data requests](WHOOP.md) for the full set and the reasoning.
 
@@ -232,12 +237,13 @@ Auth requests impersonate the iOS AWS Swift SDK (the proxy 403s a Node-style Use
 
 | Error | When | Behavior |
 |---|---|---|
-| `WhoopAuthExpiredError` | 401 from Whoop | TokenManager refreshes on next call |
+| `WhoopAuthExpiredError` | WHOOP refused the refresh token itself (or there's no login) | Run `totem auth` |
+| `WhoopEndpointUnauthorizedError` | 401 that survived a fresh token | That endpoint isn't available to user tokens; not an expired login |
 | `WhoopApiError` | 4xx with body | Description surfaced to caller |
 | `WhoopServerError` | 5xx | Transient — retry |
 | `WhoopProjectionError` | Projection output failed zod parse | Whoop changed shape — fix the projection |
 
-When refresh-token lifetime expires (~30 days), re-run `totem auth`. It auto-detects local vs deployed and, for a deployment, pushes the new tokens to it. Brand-new SMS code (if your account has MFA), fresh 30-day window.
+When WHOOP ends a session, re-run `totem auth`. It pushes to your deployment when one is recorded, or saves on this machine.
 
 ---
 
@@ -287,14 +293,13 @@ Four datasets compiled into the MCP at build time (not fetched at runtime):
 
 | Variable | Required | Description |
 |---|---|---|
-| `WHOOP_EMAIL` | yes | Your Whoop login email |
-| `WHOOP_PASSWORD` | yes (bootstrap only) | Your Whoop login password (used only during bootstrap) |
-| `WHOOP_IOS_BEARER_TOKEN` | yes | Cognito access token (24h, auto-refreshed) |
-| `WHOOP_COGNITO_REFRESH_TOKEN` | yes | Cognito refresh token (~30d) |
-| `WHOOP_USER_ID` | no | Your Whoop user ID — used by `whoop_profile`, `whoop_leaderboard`. Avoids one bootstrap call per session. |
+| `TOTEM_TOKEN_FILE` | no | Where the WHOOP login is kept. Default `~/.config/totem/tokens.json` (`%APPDATA%\totem\tokens.json` on Windows); the Docker image uses `/data/tokens.json`. Written by `totem auth`. |
+| `TOTEM_KEEPALIVE_HOURS` | no | How often an idle server refreshes the login anyway (default `12`; `0` = only before expiry). |
+| `TOTEM_BROWSER` | no | Browser executable for `totem auth` (default: the first of Chrome, Chromium, Edge, Brave). |
+| `WHOOP_USER_ID` | no | Your Whoop user ID — used by `whoop_profile`, `whoop_leaderboard`. Read from the token file when unset. |
 | `WHOOP_TIMEZONE` | no | IANA timezone (e.g., `America/Los_Angeles`). If unset, auto-detected from your Whoop profile and refreshed hourly. Set explicitly to override. |
 | `WHOOP_INSTALLATION_ID` | no (auto) | The per-install device identifier sent as `x-whoop-installation-identifier`. Generated once and written to `.env` on first run — don't set it by hand. |
-| `WHOOP_TOKEN_STORE` | no | `envfile` (default — persists refreshed tokens back to `.env`) or `memory` (for read-only filesystems; re-bootstrap every ~30 days). |
+| `WHOOP_TOKEN_STORE` | no | `memory` keeps the login in memory only, for local throwaway runs. Refused in containers and HTTP deployments. |
 
 ### Claude Desktop config
 
@@ -318,15 +323,16 @@ The MCP loads `.env` from the repo root (relative to `server.js`). Use absolute 
 The MCP also speaks HTTP — deploy once, use from multiple devices. Same 55 tools, same auto-refresh, behind a bearer-token gate at a URL.
 
 ```bash
-# 1. Local bootstrap (Cognito needs an interactive MFA prompt)
-totem auth
-
-# 2. Build + deploy via the shipped Dockerfile (Fly/Railway/Render/VPS — all work)
+# 1. Build + run the shipped Dockerfile (Fly/Railway/Render/VPS — all work).
+#    /data holds the WHOOP login; mount a volume there so it survives restarts.
 docker build -t totem .
+docker run -d -p 3000:3000 -v totem-data:/data -e MCP_AUTH_TOKEN=$(openssl rand -hex 32) totem
 
-# 3. Run with env: WHOOP_EMAIL, WHOOP_IOS_BEARER_TOKEN, WHOOP_COGNITO_REFRESH_TOKEN,
-#    MCP_TRANSPORT=http, MCP_AUTH_TOKEN=$(openssl rand -hex 32)
+# 2. Log in on your own machine; the login is pushed to the server's /admin/tokens.
+TOTEM_ADMIN_TOKEN=<that MCP_AUTH_TOKEN> totem auth --url https://your-server
 ```
+
+No WHOOP tokens go in the host's environment. A host without a volume works too, but loses the login on every restart (run `totem auth` again after one).
 
 ### Deploying to Hugging Face Spaces (free hosting)
 
@@ -348,16 +354,12 @@ In your Space → **Settings → Variables and Secrets**, add the following. The
 
 | Secret name | Where to find the value |
 |---|---|
-| `WHOOP_EMAIL` | Your Whoop account email |
-| `WHOOP_IOS_BEARER_TOKEN` | From `totem auth` on your local machine (written to `.env`) |
-| `WHOOP_COGNITO_REFRESH_TOKEN` | From `totem auth` on your local machine (written to `.env`) |
-| `WHOOP_USER_ID` | From `.env` after running `totem auth` |
 | `MCP_AUTH_TOKEN` | Generate one with `openssl rand -hex 32` (or reuse the value from `.env.deploy` if you ran a deploy flow) |
 | `AUTH_PASSWORD` | A password you'll type once when adding the Claude connector |
 | `PUBLIC_URL` | Your Space's public URL — e.g. `https://<your-hf-username>-<your-space-name>.hf.space` |
 | `PORT` | `7860` — HuggingFace's required port. Without this the container listens on 3000 and is unreachable. |
 
-> **Tip:** The `WHOOP_*` token values come from your local `.env` after running `totem auth`. `MCP_AUTH_TOKEN` you generate yourself (`openssl rand -hex 32`).
+> **Tip:** `MCP_AUTH_TOKEN` you generate yourself (`openssl rand -hex 32`). The WHOOP login doesn't go in the Space's secrets: once the Space is running, push it with `TOTEM_ADMIN_TOKEN=<MCP_AUTH_TOKEN> totem auth --url https://<your-hf-username>-<your-space-name>.hf.space`.
 
 **3. Push your code to the Space**
 
@@ -385,9 +387,9 @@ Once the Space is running, go to **claude.ai → Settings → Connectors → Add
 
 > `MCP_AUTH_TOKEN` is used internally as the bearer token + JWT signing secret. You do **not** type it into Claude's connector UI — that field uses the OAuth `AUTH_PASSWORD` flow instead.
 
-**5. Re-authenticate when tokens expire (~30 days)**
+**5. Keep the login across restarts**
 
-Whoop's Cognito tokens expire roughly every 30 days. Re-run `totem auth` on your local machine, then update `WHOOP_IOS_BEARER_TOKEN` and `WHOOP_COGNITO_REFRESH_TOKEN` in your Space's Secrets UI. The Space will restart automatically and pick up the new tokens.
+Without persistent storage, a Space restart loses the WHOOP login: push it again with the `totem auth --url …` command above. HF's persistent storage add-on mounts at `/data`, which is exactly where the image keeps it.
 
 **Claude Desktop** doesn't natively speak remote MCP — bridge through stdio with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
@@ -412,7 +414,7 @@ Then in Claude: **Settings → Connectors → Add custom connector**, paste `htt
 
 All of the above is what `totem cloud` automates for you — the manual steps here are for reference or hand-rolling.
 
-**When Cognito expires (~30 days)**: `totem auth` from your Mac. Silent if your account has no SMS MFA; prompts for the code if it does. Auto-detects your deployment and pushes the new tokens to it (Fly/Railway/Cloud Run/custom), ~10s restart. Requires being at a machine with the repo + the platform CLI.
+**If WHOOP ends the session**: `totem auth` from your own machine. It pushes the new login to your deployment's `/admin/tokens` (no redeploy, no platform CLI needed) and keeps no local copy.
 
 **Security**: bearer-token and OAuth paths both gate `/mcp`. Generate the token random (`openssl rand -hex 32`), HTTPS only, never commit, rotate if leaked. OAuth access/refresh tokens are stateless signed JWTs (survive restarts); auth codes are one-time + 60s-lived; PKCE S256 is enforced. `/health` is the only path without auth.
 
@@ -434,15 +436,15 @@ Commands by group:
 | Group | Commands |
 |---|---|
 | **Get started** | `cloud` ★ (guided server deploy + Claude connect) · `local` (guided local setup) |
-| **Setup** | `auth` (log in + save tokens — re-run to re-auth; auto-detects local vs deployed and pushes new tokens to your deployment) |
+| **Setup** | `auth` (browser login; saved here, or pushed to your deployment · `--paste` · `--local` · `--status`) |
 | **Deployed** | `deploy` · `update` (interactive version picker + auto-update) · `logs` · `status` · `ping` |
 | **Local dev** | `start [--http]` · `dev` · `dev:http` · `build` · `test` · `typecheck` |
 | **Inspect** | `info` · `tools` · `config <stdio\|http>` |
 | **Help** | `help` · `version` (+ `--help`, `-v` aliases) |
 
-Most people only ever need the two **Get started** commands plus `auth` (to re-auth when tokens expire). The rest are for power users — `totem ping` ("is my deploy alive"), `totem logs`, `totem start` (drop-in for `node dist/server.js`), etc.
+Most people only ever need the two **Get started** commands plus `auth` (if WHOOP ever ends the session). The rest are for power users — `totem ping` ("is my deploy alive"), `totem logs`, `totem start` (drop-in for `node dist/server.js`), etc.
 
-**Staying current — `totem update`.** An interactive updater. Run it and you get a version picker — every release, newest first, with dates and notes pulled from GitHub Releases. The newest is the default; pick anything older and it warns you what you'd be behind on (you can always run it again to go forward). After you choose, it applies the change with a guided, animated build — git installs fast-forward `main` (or check out the pinned tag), reinstall deps, and rebuild; npm installs reinstall the chosen version — then redeploys to your existing host and health-checks `/health`. A clean working tree is required (it won't clobber local edits), and a failed deploy leaves your live server untouched.
+**Staying current — `totem update`.** An interactive updater. Run it and you get a version picker — every release, newest first, with dates and notes pulled from GitHub Releases. The newest is the default; pick anything older and it warns you what you'd be behind on (you can always run it again to go forward). After you choose, it applies the change with a guided, animated build — git installs check out the release's tag (never `main`), reinstall deps, and rebuild; npm installs reinstall the chosen version — then redeploys to your existing host and health-checks `/health`. A clean working tree is required (it won't clobber local edits), and a failed deploy leaves your live server untouched.
 
 After a successful update to the latest it offers **auto-update**. Turn it on and a background job (launchd on macOS, cron on Linux) checks for new releases every 6 hours and applies them the same way — pull, build, redeploy, health-check — logging to `.totem-autoupdate.log`. There's no push channel to your machine, so it's a scheduled poll, not instant. Toggle it directly anytime:
 
@@ -459,7 +461,7 @@ Versions are sourced from the places that already host them — git tags + GitHu
 
 ## Privacy + security
 
-- **Credentials live in `.env` on your machine.** Email, password, access token, refresh token — never leave your filesystem. Claude can't read them (it doesn't have filesystem access unless you wire in a filesystem MCP).
+- **The WHOOP login lives in one 0600 token file**, on your machine or on your server's volume. No email or password is stored anywhere. Claude can't read it (it doesn't have filesystem access unless you wire in a filesystem MCP).
 - **The only outbound traffic is HTTPS to `api.prod.whoop.com`.** No telemetry, no analytics, no third-party servers. The MCP is open source — every line that touches your data is auditable.
 - **Write safety**: every write tool defaults to `confirm: false`. The preview shape includes what would be sent. You see it in chat before any mutation. To go further, remove specific writes from `src/tools/register.ts` or use Claude Desktop's "always require approval" setting.
 - **Hardened in 1.2.3**: token files are written `0600`, your account password is wiped from `.env` after login, OAuth tokens are audience-bound and signed with a key derived from `MCP_AUTH_TOKEN`, the HTTP server sends anti-clickjacking + CSP headers, the connector-password gate has a global brute-force ceiling, and deploy secrets are pushed over stdin (not argv). Full detail in [`SECURITY.md`](SECURITY.md) and [`CHANGELOG.md`](CHANGELOG.md).
@@ -468,20 +470,14 @@ Versions are sourced from the places that already host them — git tags + GitHu
 
 ## Troubleshooting
 
-**"AUTH FAIL: Cognito InitiateAuth failed (400)"**
-> Wrong email or password. Double-check `.env`.
+**`totem auth` says no browser was found**
+> It looks for Chrome, Chromium, Edge and Brave in their usual places. Point it at another Chromium-based browser with `TOTEM_BROWSER=/path/to/browser`, or run `totem auth --paste` and paste the `whoop-auth-refresh-token` cookie from any browser that's logged into app.whoop.com.
 
-**`totem auth` / `totem cloud` seems to stall right after "Authenticating with Whoop…", or a correct password gets a 401**
-> Your password almost certainly contains `#`. Before 1.5.1, `.env` values were written unquoted and `#` starts a comment, so `#hunter2` was read back as an empty string and `abc#def` as `abc`. Fixed: values are now quoted on write, and the password prompt is drawn in raw mode so it can no longer erase itself. If you have an **existing** `.env` written by an older version, that line is still unquoted — just re-run `totem auth` and type the password when prompted (it gets rewritten correctly), or quote it by hand: `WHOOP_PASSWORD='#hunter2'`.
+**"WHOOP token owned by pid N"**
+> Another totem process on this machine owns the login and is the only one allowed to refresh it. That's normal when two clients each start the server; this one follows the owner's token file. If you see it on a deployment, a local server and the deployment are sharing one login: run `totem auth` (it pushes a fresh login to the deployment) and `totem auth --local` for a separate local one.
 
-**"AUTH FAIL: Cognito MFA challenge missing Session token"**
-> The InitiateAuth response was malformed (unusual). Re-run `totem auth` — Cognito occasionally drops sessions.
-
-**"MFA verification did not return tokens"**
-> You entered the wrong SMS code (or it timed out). Codes expire after ~3 minutes.
-
-**"WhoopAuthExpiredError" after every call**
-> Your refresh token has expired (>30 days since last login). Re-run `totem auth` — it logs you back in, saves the tokens locally, and (if you deployed) auto-detects your host and pushes the new tokens to it in one step. If your account has MFA you'll get a fresh SMS code on your phone to type in the terminal.
+**"WhoopAuthExpiredError" / "No WHOOP login on this server"**
+> WHOOP refused the refresh token, or the server has no login yet. Run `totem auth`: it pushes to your deployment when one is recorded, or saves on this machine.
 
 **"WhoopServerError: 502" / "503" / "504"**
 > Whoop's servers are having issues. Retry in 30 seconds.
