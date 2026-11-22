@@ -1,5 +1,5 @@
 
-totem update --check
+▍ totem update --check
 
   Installed     1.5.1
   Latest        1.6.0, released 2026-11-18

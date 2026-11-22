@@ -58,8 +58,8 @@ describe("every screen", () => {
   it.each(SCREENS.map((s) => [s.name, s] as const))("%s: colour only decorates", async (_name, s) => {
     const plain = (await render(s)).text;
     const coloured = (await render(s, COLOR)).text;
-    // Only bold, dim, four colours and their resets.
-    for (const code of coloured.match(/\x1b\[[^m]*m/g) ?? []) expect(code).toMatch(/^\x1b\[(1|2|22|31|32|33|36|39)m$/);
+    // Only bold, dim, five of the basic colours and their resets.
+    for (const code of coloured.match(/\x1b\[[^m]*m/g) ?? []) expect(code).toMatch(/^\x1b\[(1|2|22|31|32|33|35|36|39)m$/);
     expect(stripVTControlCharacters(coloured)).toBe(plain);
   });
 
@@ -76,7 +76,7 @@ describe("secrets", () => {
   it("the connector password appears once, in the connect card, and nowhere before it", async () => {
     const { text } = await render(screen("cloud-fly"));
     expect(text.split(PASSWORD)).toHaveLength(2);
-    expect(text.indexOf(PASSWORD)).toBeGreaterThan(text.indexOf("6/6  Connect a client"));
+    expect(text.indexOf(PASSWORD)).toBeGreaterThan(text.indexOf("6/6  Connect your apps"));
   });
 
   // "Early" is before the deploy finished. Once the server has the password it

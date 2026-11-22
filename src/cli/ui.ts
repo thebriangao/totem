@@ -2,8 +2,8 @@
 // from, so `totem local`, `totem cloud`, `totem auth`, `totem update` and the
 // rest read as one tool.
 //
-//   header      title + one-line purpose, at the top of a screen
-//   step        "2/6  Secrets": where you are in a guided flow
+//   header      title + one-line purpose behind the brand stripe, at the top
+//   step        "── 2/6  Secrets ────": a full-width rule, where you are in a flow
 //   ok/warn/fail/info   one-line results, each led by a mark
 //   para/hint   wrapped prose: what is happening, what to do now
 //   rows        aligned key/value facts
@@ -71,16 +71,18 @@ export interface Glyphs {
   arrow: string;
   pointer: string; ask: string; dot: string; ellipsis: string; dash: string;
   h: string; v: string; tl: string; tr: string; bl: string; br: string;
+  /** The brand stripe down the left of a header. */
+  stripe: string;
   spinner: string[];
 }
 const UNICODE: Glyphs = {
   ok: "✓", fail: "✗", warn: "!", info: "•", arrow: "→", pointer: "›", ask: "?", dot: "·", ellipsis: "…", dash: "–",
-  h: "─", v: "│", tl: "╭", tr: "╮", bl: "╰", br: "╯",
+  h: "─", v: "│", tl: "╭", tr: "╮", bl: "╰", br: "╯", stripe: "▍",
   spinner: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
 };
 const ASCII: Glyphs = {
   ok: "+", fail: "x", warn: "!", info: "-", arrow: ">", pointer: ">", ask: "?", dot: "-", ellipsis: "...", dash: "-",
-  h: "-", v: "|", tl: "+", tr: "+", bl: "+", br: "+",
+  h: "-", v: "|", tl: "+", tr: "+", bl: "+", br: "+", stripe: "|",
   spinner: ["-", "\\", "|", "/"],
 };
 export const glyphs = (style: Style): Glyphs => (style.unicode ? UNICODE : ASCII);
@@ -90,12 +92,14 @@ export const glyphs = (style: Style): Glyphs => (style.unicode ? UNICODE : ASCII
 export interface Paint {
   bold(s: string): string; dim(s: string): string;
   red(s: string): string; green(s: string): string; yellow(s: string): string;
-  /** The one accent: step counters, things to copy, the selected choice. */
+  /** The one accent: the brand stripe, step counters, things to copy, the selected choice. */
   accent(s: string): string;
+  /** A second colour for the brand name and the Next box, so they stand apart from things to copy. */
+  brand(s: string): string;
 }
 export function paint(style: Style): Paint {
   const sgr = (open: number, close: number) => (s: string): string => (style.color && s ? `\x1b[${open}m${s}\x1b[${close}m` : s);
-  return { bold: sgr(1, 22), dim: sgr(2, 22), red: sgr(31, 39), green: sgr(32, 39), yellow: sgr(33, 39), accent: sgr(36, 39) };
+  return { bold: sgr(1, 22), dim: sgr(2, 22), red: sgr(31, 39), green: sgr(32, 39), yellow: sgr(33, 39), accent: sgr(36, 39), brand: sgr(35, 39) };
 }
 
 // ── text ────────────────────────────────────────────────────────────────────
@@ -198,6 +202,8 @@ export interface Kit {
   rows(pairs: Array<[key: string, value: string]>, indent?: number): string[];
   code(lines: string[], indent?: number): string[];
   next(lines: string[], title?: string): string[];
+  /** A question once it is answered: what stays on screen after a choice. */
+  answered(question: string, answer: string): string;
   problem(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }, indent?: number): string[];
 }
 
@@ -228,9 +234,23 @@ export function kit(style: Style): Kit {
 
   return {
     style, g, c,
-    header: (title, subtitle) => ["", c.bold(title), ...(subtitle ? wrap(subtitle, W).map(c.dim) : []), ""],
-    step: (n, total, title) => ["", `${c.accent(`${n}/${total}`)}  ${c.bold(title)}`],
-    section: (title) => ["", c.bold(title)],
+    header: (title, subtitle) => {
+      // "totem cloud": the brand word in its colour, the command after it.
+      const [brandWord, ...rest] = title.split(" ");
+      const name = `${c.bold(c.brand(brandWord!))}${rest.length ? ` ${c.bold(rest.join(" "))}` : ""}`;
+      const bar = c.brand(g.stripe);
+      return ["", `${bar} ${name}`, ...(subtitle ? wrap(subtitle, W - 2).map((l) => `${bar} ${c.dim(l)}`) : []), ""];
+    },
+    step: (n, total, title) => {
+      const head = `${g.h}${g.h} ${n}/${total}  ${title} `;
+      const rule = g.h.repeat(Math.max(2, W - visibleWidth(head)));
+      return ["", `${c.dim(`${g.h}${g.h}`)} ${c.accent(`${n}/${total}`)}  ${c.bold(title)} ${c.dim(rule)}`];
+    },
+    section: (title) => {
+      const rule = g.h.repeat(Math.max(2, W - visibleWidth(title) - 1));
+      return ["", `${c.bold(title)} ${c.dim(rule)}`];
+    },
+    answered: (question, answer) => `${c.green(g.ok)} ${c.bold(question)} ${c.dim(g.dot)} ${c.accent(answer)}`,
     mark,
     para: (text, indent = 2) => wrapHanging(text, W - indent).map((l) => " ".repeat(indent) + l),
     hint: (text, indent = 4) => wrap(text, W - indent).map((l) => " ".repeat(indent) + c.dim(l)),
@@ -242,14 +262,14 @@ export function kit(style: Style): Kit {
       const inner = Math.max(visibleWidth(title) + 2, ...body.map(visibleWidth));
       return [
         "",
-        c.dim(`${g.tl}${g.h} `) + c.bold(title) + c.dim(` ${g.h.repeat(inner - 1 - visibleWidth(title))}${g.tr}`),
-        ...body.map((l) => `${c.dim(g.v)} ${padEnd(l, inner)} ${c.dim(g.v)}`),
-        c.dim(`${g.bl}${g.h.repeat(inner + 2)}${g.br}`),
+        c.brand(`${g.tl}${g.h} `) + c.bold(title) + c.brand(` ${g.h.repeat(inner - 1 - visibleWidth(title))}${g.tr}`),
+        ...body.map((l) => `${c.brand(g.v)} ${padEnd(l, inner)} ${c.brand(g.v)}`),
+        c.brand(`${g.bl}${g.h.repeat(inner + 2)}${g.br}`),
       ];
     },
     problem: (what, opts = {}, indent = 0) => {
       const pad = " ".repeat(indent);
-      const head = wrap(what, W - indent - 2).map((l, i) => `${pad}${i === 0 ? c.red(g.fail) : " "} ${l}`);
+      const head = wrap(what, W - indent - 2).map((l, i) => `${pad}${i === 0 ? c.red(g.fail) : " "} ${c.bold(l)}`);
       // A string is prose and wraps. An array is a command's own output, line by
       // line: a long line continues indented, so where each one starts stays
       // visible and nothing (the exit code at the end, say) is cut off.
@@ -570,7 +590,15 @@ export class Ui {
         while (i < chunk.length) {
           const rest = chunk.slice(i);
           const ch = rest[0]!;
-          if (ch === "\r" || ch === "\n") { cleanup(); render(false, false); resolve(idx); return; }
+          if (ch === "\r" || ch === "\n") {
+            // The menu folds into one line: the question and what was chosen.
+            cleanup();
+            this.write(`\x1b[${n + 1}A`);
+            for (let k = 0; k <= n; k++) this.write(`${CLEAR_LINE}\n`);
+            this.write(`\x1b[${n + 1}A${CLEAR_LINE}${this.kit.answered(question, choices[idx]!.label)}\n`);
+            resolve(idx);
+            return;
+          }
           if (ch === "\x1b") {
             if (rest === "\x1b" || rest === "\x1b[") { pending = rest; break; }
             if (rest.startsWith("\x1b[A")) { idx = (idx - 1 + n) % n; i += 3; continue; }

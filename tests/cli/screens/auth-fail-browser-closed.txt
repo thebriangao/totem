@@ -1,6 +1,6 @@
 
-totem auth
-Log in to WHOOP. The login goes to https://totem-a1b2c3.fly.dev.
+▍ totem auth
+▍ Log in to WHOOP. The login goes to https://totem-a1b2c3.fly.dev.
 
   A Google Chrome window opens on WHOOP's site with a temporary profile. Log in
   there. totem never sees what you type: it waits for WHOOP's session cookies,

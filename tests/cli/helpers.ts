@@ -38,7 +38,9 @@ export class ScriptedUi extends Ui {
 
   override async select(question: string, choices: Choice[], defaultIndex = 0): Promise<number> {
     const idx = this.take(question, defaultIndex);
-    this.lines(this.menu(question, choices, idx));
+    // The menu as it was offered, then the line it folds into once answered.
+    this.lines(this.menu(question, choices, idx, true));
+    this.line(this.kit.answered(question, choices[idx]!.label));
     return idx;
   }
 
@@ -219,7 +221,7 @@ const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;"
 
 /** The body of a terminal screenshot page: SGR colours as spans. */
 export function ansiToHtml(text: string): string {
-  const colors: Record<number, string> = { 31: "red", 32: "green", 33: "yellow", 36: "cyan" };
+  const colors: Record<number, string> = { 31: "red", 32: "green", 33: "yellow", 35: "magenta", 36: "cyan" };
   let bold = false, dim = false, color = "";
   let html = "";
   const open = (): string => {
@@ -260,7 +262,7 @@ export function terminalPage(title: string, ansi: string, columns = 80): string 
         font: 14px/1.22 Menlo, "SF Mono", Consolas, "DejaVu Sans Mono", monospace; }
   .b { font-weight: 700; color: #f2f5f8; }
   .d { color: #8b949e; }
-  .red { color: #ff7b72; } .green { color: #56d364; } .yellow { color: #e3b341; } .cyan { color: #6cc7e0; }
+  .red { color: #ff7b72; } .green { color: #56d364; } .yellow { color: #e3b341; } .cyan { color: #6cc7e0; } .magenta { color: #d2a8ff; }
   .b.d { color: #8b949e; font-weight: 400; }
 </style></head>
 <body><div class="win"><div class="bar"><i></i><i></i><i></i><span>${esc(title)}</span></div><pre>${ansiToHtml(ansi)}</pre></div></body></html>

@@ -191,6 +191,7 @@ export async function connectInstalled(io: Io, target: Target): Promise<{ done: 
     const picked = await chooseAndConnect(io, target);
     return { done: picked.done && picked.client ? [picked.client.name] : [], steps: picked.steps };
   }
+  ui.line();
   ui.para(`Found on this computer: ${listOf(found.map((cl) => cl.name))}.`);
   const all = await ui.confirm(found.length === 1 ? `Add totem to ${found[0]!.name}?` : `Add totem to all ${found.length}?`, true);
   if (!all) {
@@ -213,7 +214,7 @@ export async function connectInstalled(io: Io, target: Target): Promise<{ done: 
 
 function nextAfterConnect(io: Io, steps: string[]): void {
   const all = [...steps, `Ask it: ${FIRST_QUESTION}`];
-  io.ui.next([...all.map((s, i) => `${i + 1}. ${s}`), "", "Connect another client: totem connect"]);
+  io.ui.next([...all.map((s, i) => `${i + 1}. ${s}`), "", "Connect another app: totem connect"]);
 }
 
 /** The server's Connect page (a button or a step for every app), opened in the browser. */
@@ -242,7 +243,7 @@ export async function runConnect(root: string, args: string[], io: Io = realIo()
 
   // "stdio" and "http" are what `totem config` took before it became connect.
   if (wanted === "other" || wanted === "stdio" || wanted === "http") {
-    ui.header("totem connect", `Connect a client to ${where}.`);
+    ui.header("totem connect", `Connect an app to ${where}.`);
     printOtherClient(io, target);
     return 0;
   }
@@ -310,7 +311,7 @@ async function ensureLocalLogin(root: string, io: Io): Promise<boolean> {
 export async function runLocalSetup(root: string, io: Io = realIo()): Promise<number> {
   const { ui } = io;
   const TOTAL = 3;
-  ui.header("totem local", "Run totem on this computer and connect an AI client to it.");
+  ui.header("totem local", "Run totem on this computer and connect your AI apps to it.");
 
   // `totem local` records this install as local. If it is recorded as deployed,
   // that record (and the server's token in it) is what `totem auth`, `status`
@@ -1032,7 +1033,7 @@ export interface CloudOptions {
 export async function runCloudSetup(root: string, io: Io = realIo(), opts: CloudOptions = {}): Promise<number> {
   const { ui, sys } = io;
   const TOTAL = 6;
-  ui.header("totem cloud", "Deploy your own totem server and connect your AI clients to it.");
+  ui.header("totem cloud", "Deploy your own totem server and connect your AI apps to it.");
 
   // This flow ends by writing the new server into .totem-deploy.json, over what
   // is there. For a server that is already deployed, that record is the only

@@ -1,13 +1,13 @@
 
-totem local
-Run totem on this computer and connect an AI client to it.
+▍ totem local
+▍ Run totem on this computer and connect your AI apps to it.
 
-1/3  Prerequisites
+── 1/3  Prerequisites ──────────────────────────────────────────────────────────
   ✓ Node.js 24.3.0
   ✓ Dependencies installed
   ✓ Server built
 
-2/3  WHOOP login
+── 2/3  WHOOP login ────────────────────────────────────────────────────────────
   A Google Chrome window opens on WHOOP's site with a temporary profile. Log in
   there. totem never sees what you type: it waits for WHOOP's session cookies,
   then closes the window and deletes the profile.
@@ -15,7 +15,8 @@ Run totem on this computer and connect an AI client to it.
   ✓ Logged in to WHOOP  user 1234567
   ✓ Login saved  ~/.config/totem/tokens.json
 
-3/3  Connect your apps
+── 3/3  Connect your apps ──────────────────────────────────────────────────────
+
   Found on this computer: Claude Desktop, Claude Code, ChatGPT, OpenCode and
   Antigravity.
 ? Add totem to all 5? (Y/n)
@@ -34,5 +35,5 @@ Run totem on this computer and connect an AI client to it.
 │ 5. In Antigravity, type /mcp and check whoop is connected. │
 │ 6. Ask it: "How did I sleep last night?"                   │
 │                                                            │
-│ Connect another client: totem connect                      │
+│ Connect another app: totem connect                         │
 ╰────────────────────────────────────────────────────────────╯

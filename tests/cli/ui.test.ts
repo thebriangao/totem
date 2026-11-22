@@ -179,7 +179,11 @@ describe("primitives", () => {
   });
 
   it("step shows where you are", () => {
-    expect(kit(style()).step(2, 6, "Secrets")).toEqual(["", "2/6  Secrets"]);
+    const [blank, line] = kit(style()).step(2, 6, "Secrets");
+    expect(blank).toBe("");
+    // A full-width rule: where you are, then the step's name.
+    expect(line).toBe(`── 2/6  Secrets ${"─".repeat(64)}`);
+    expect([...line!].length).toBe(80);
   });
 });
 
@@ -198,7 +202,8 @@ describe("Ui", () => {
     ui.line();
     ui.next(["Done."]);
     expect(out.join("")).not.toMatch(/\n\n\n/);
-    expect(out.join("")).toContain("Run totem on this computer.\n\n1/3  Prerequisites\n  ✓ Node.js 24.3.0\n\n╭─ Next");
+    expect(out.join("")).toContain("▍ totem local\n▍ Run totem on this computer.\n\n── 1/3  Prerequisites ");
+    expect(out.join("")).toContain("\n  ✓ Node.js 24.3.0\n\n╭─ Next");
   });
 
   it("without a terminal, slow work gets one plain line and fast work none", async () => {
