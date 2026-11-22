@@ -2,6 +2,7 @@
 // (+ recovery-details), developer list only behind WHOOP_DEV_V2_LISTS.
 import { afterEach, describe, expect, it } from "vitest";
 import { registerWorkouts } from "../../src/tools/v2/workouts.js";
+import { WhoopServerError } from "../../src/whoop/errors.js";
 import { activityRecord, badRequest, connect, fakeWhoop, homeWith, loadFixture, notFound, textOf, unrouted, type Call } from "./activity_test_utils.js";
 
 const CAL = "/home-service/v1/calendar/overview";
@@ -182,6 +183,24 @@ describe("whoop_workouts detail", () => {
     expect(String(out.warnings)).toContain("still processing");
     // The record is the fresh second read; the pending screen isn't retried.
     expect(calls.map((c) => [c.path, c.fresh])).toEqual([[CARDIO, false], [RECORD("walk-1"), true]]);
+  });
+
+  // Live 2026-11-21: cardio-details answers a bare 500 for an id that isn't a UUID, which came
+  // back as "usually transient — try again in 30s".
+  it("says a malformed id isn't an activity id instead of calling WHOOP's 500 transient", async () => {
+    const serverError = (c: Call) => { throw new WhoopServerError(500, c.path, "Error 500 Internal Server Error"); };
+    const bad = await connect((s) => registerWorkouts(s, fakeWhoop(serverError).whoop));
+    const r = await bad.callTool({ name: "whoop_workouts", arguments: { activity_id: "70ad76a1" } });
+    expect(r.isError).toBe(true);
+    const text = JSON.stringify(r.content);
+    expect(text).toContain("isn't a WHOOP activity id");
+    expect(text).toContain("whoop_workouts");
+    expect(text).not.toContain("transient");
+    // A well-formed id that 500s is still WHOOP's problem, and says so.
+    const real = await connect((s) => registerWorkouts(s, fakeWhoop(serverError).whoop));
+    const r2 = await real.callTool({ name: "whoop_workouts", arguments: { activity_id: "70ad76a1-1e3c-4c8e-a026-903ff3175783" } });
+    expect(r2.isError).toBe(true);
+    expect(JSON.stringify(r2.content)).toContain("transient");
   });
 
   it("says the activity is still processing when even the record can't say what it is", async () => {

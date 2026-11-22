@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { body, connect, fixture, routes } from "./lift_v2_harness.js";
 import { registerLiftSessions } from "../../src/tools/v2/lift_sessions.js";
-import { WhoopApiError } from "../../src/whoop/errors.js";
+import { WhoopApiError, WhoopServerError } from "../../src/whoop/errors.js";
 
 const repoFixture = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
 const SCORED = "5364dc07-c229-481f-b92f-0d7ee402fbbf";
@@ -158,6 +158,17 @@ describe("whoop_lift_sessions", () => {
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: PENDING } }));
     expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "boxing", src: "history" });
     expect(get.mock.calls.some((c) => c[0] === "/weightlifting-service/v3/prs")).toBe(true);
+  });
+
+  it("a malformed activity_id is reported as such, not as a transient WHOOP error", async () => {
+    const get = routes({ "/core-details-bff/v1/cardio-details": new WhoopServerError(500, "/core-details-bff/v1/cardio-details", "Error 500 Internal Server Error") });
+    const client = await connect(registerLiftSessions, { get });
+    const result = await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: "not-a-uuid" } });
+    expect(result.isError).toBe(true);
+    const text = JSON.stringify(result.content);
+    expect(text).toContain("isn't a WHOOP activity id");
+    expect(text).not.toContain("transient");
+    expect(get).toHaveBeenCalledTimes(1);
   });
 
   it("caps ranges at 60 days", async () => {

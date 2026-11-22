@@ -18,7 +18,7 @@ import { WhoopApiError } from "../../whoop/errors.js";
 import { ActivityDetailOut, WorkoutsListOut, type ActivityListItemT } from "../../schemas/activities.js";
 import { projectActivityDetail, projectDeveloperWorkout, projectTile, workoutRows } from "../../projections/activities.js";
 import { daySpan, listTiles } from "../../lib/activity_list.js";
-import { CARDIO_DETAILS_V1, RECOVERY_DETAILS_V2, activityRecordPath, recordFromActivity } from "../../lib/activity_records.js";
+import { CARDIO_DETAILS_V1, RECOVERY_DETAILS_V2, activityRecordPath, badActivityIdError, recordFromActivity } from "../../lib/activity_records.js";
 import { typeForInternalName } from "../../lib/activity_types.js";
 import { errorResult } from "../../lib/activity_results.js";
 import { todayIso } from "../../lib/dates.js";
@@ -112,6 +112,8 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
             warnings: ["WHOOP is still processing this activity (just logged or edited), so its scores and HR aren't readable yet. Try again in a few seconds."],
           });
         }
+        const badId = badActivityIdError(e, activity_id);
+        if (badId) return errorResult({ error: badId.message });
         throw e;
       }
       const scoreType = str(get(cardio, "details_edit_components", "single_score_type"));
