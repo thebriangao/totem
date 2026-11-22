@@ -11,7 +11,7 @@ const PENDING = "1f27998b-95c6-4865-acdd-3d413063ce9b";
 function pendingHome(date: string) {
   return {
     pillars: [{ sections: [{ items: [{ content: { list: [{ key: "START_ACTIVITY", content: { completed: { content: { items: [{ content: {
-      activity_v2_id: PENDING, internal_name: "weightlifting_msk", title: "STRENGTH TRAINER", type: "CARDIO", status: "INCOMPLETE", score_display: "---",
+      activity_v2_id: PENDING, internal_name: "weightlifting_msk", title: "STRENGTH TRAINER", type: "CARDIO", status: "INCOMPLETE", score_display: "0.0", // live: an unscored tile prints 0.0, its detail screen "---"
       during: { lower_endpoint: `${date}T17:00:00.000+0000`, upper_endpoint: `${date}T17:20:00.000+0000` }, sport_id: -1,
     } }] } } } }] } }] }] }],
   };
@@ -72,6 +72,7 @@ describe("whoop_lift_sessions", () => {
     expect(out.sessions).toHaveLength(1);
     expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "weightlifting_msk", src: "unscored", start: expect.stringContaining("2026-11-21") });
     expect(out.sessions[0].exercises).toBeUndefined();
+    expect(out.sessions[0]).not.toHaveProperty("strain"); // not scored: the tile's "0.0" is not a measurement
     expect(out.warnings.join()).toMatch(/1 unscored session.*include \["unscored"\]/);
     // calendar + home + cardio-details only: no PR pages, no per-exercise history
     expect(get.mock.calls.map((c) => c[0])).toEqual(["/home-service/v1/calendar/overview", "/home-service/v1/home", "/core-details-bff/v1/cardio-details"]);

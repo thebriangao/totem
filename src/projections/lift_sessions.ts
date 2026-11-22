@@ -188,8 +188,11 @@ export function compactExercise(ex: ParsedExercise, withRows: boolean): SessionE
 }
 
 function strainOf(activity: HomeActivity, detail: unknown): number | null {
-  const fromDetail = parseNumber(get(detail, "horizontal_stat", "stat_main_value_display"));
+  const shown = get(detail, "horizontal_stat", "stat_main_value_display");
+  const fromDetail = parseNumber(shown);
   if (fromDetail !== null) return fromDetail;
+  // Not scored: the detail screen says "---", and an INCOMPLETE home tile still prints "0.0" (live 2026-11-21).
+  if (typeof shown === "string" || activity.status === "INCOMPLETE") return null;
   return activity.type === "CARDIO" && activity.score_display && !activity.score_display.includes(":") ? parseNumber(activity.score_display) : null;
 }
 
