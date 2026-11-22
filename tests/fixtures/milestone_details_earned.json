@@ -1,0 +1,270 @@
+{
+ "navigation_title": "Achievement",
+ "navigation_icon": "SHARE",
+ "secondary_navigation_icon": "LOOK_BETTER",
+ "background_image_url": null,
+ "sections": [
+  {
+   "items": [
+    {
+     "type": "SECTION",
+     "content": {
+      "id": "6c3ee78a-5655-4d97-afd2-26c378c9f7d8",
+      "title": null,
+      "subtitle": null,
+      "items": [
+       {
+        "type": "CELEBRATION_MEDIA",
+        "content": {
+         "content_type": "DYNAMIC_LOTTIE",
+         "text_overlay": "5",
+         "text_overlay_suffix": null,
+         "text_overlay_style": null,
+         "size": "LARGE"
+        }
+       },
+       {
+        "type": "TITLE_SUBTITLE",
+        "content": {
+         "id": "4ce404a1-f0ad-4aa7-ac18-396bcdc9a2fc",
+         "title": "Barbell Boss",
+         "subtitle": "Total Strength Trainer activities logged",
+         "title_color": null,
+         "subtitle_color": null,
+         "alignment": "CENTER",
+         "bindings": null,
+         "title_style": null,
+         "subtitle_style": null,
+         "trailing_button": null
+        }
+       }
+      ],
+      "section_top_padding": 0,
+      "section_bottom_padding": 0,
+      "section_leading_padding": 0,
+      "section_trailing_padding": 0,
+      "inter_item_padding": 16,
+      "alignment": "CENTER",
+      "is_visible": null,
+      "bindings": null,
+      "aggregate_bindings": null
+     }
+    }
+   ],
+   "id": "e49e56c4-da1e-4d90-815f-7635b2f61482",
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [
+    {
+     "type": "HORIZONTAL_DIVIDED_LIST",
+     "content": {
+      "list_items": [
+       {
+        "id": "0d390c93-e4c8-4670-92c5-098ff10545c4",
+        "title": "Top 7%",
+        "subtitle": null,
+        "icon": null,
+        "dialog_info": null,
+        "main_image": "https://app-cdn.prod.whoop.com/alwayson/achievements/rarity/step5.png",
+        "main_image_style": null,
+        "main_image_position": "LEFT"
+       }
+      ]
+     }
+    }
+   ],
+   "id": "09707080-89db-4b5d-b8b0-98c5bceea595",
+   "section_type": "NORMAL"
+  },
+  {
+   "items": [
+    {
+     "type": "MILESTONE_PROGRESS_CARD_V2",
+     "content": {
+      "title": "5 more",
+      "description": "until your next milestone.",
+      "current_milestone": {
+       "media": {
+        "content_type": "DYNAMIC_LOTTIE",
+        "text_overlay": "5",
+        "text_overlay_suffix": null,
+        "text_overlay_style": null,
+        "size": "SMALL"
+       }
+      },
+      "next_milestone": {
+       "media": {
+        "content_type": "DYNAMIC_LOTTIE",
+        "text_overlay": "10",
+        "text_overlay_suffix": null,
+        "text_overlay_style": null,
+        "size": "SMALL"
+       }
+      },
+      "progress_percent": 0,
+      "style": "ACTIVITY"
+     }
+    }
+   ],
+   "id": "59c2f33b-dbcb-4160-91c6-ff2b34233de3",
+   "section_type": "NORMAL"
+  },
+  {
+   "items": [
+    {
+     "type": "SECTION",
+     "content": {
+      "id": "454f64ef-0d26-4da5-aac2-77a0790fbf75",
+      "title": null,
+      "subtitle": null,
+      "items": [
+       {
+        "type": "CARD_BUTTON",
+        "content": {
+         "id": null,
+         "title": "SHARE ACHIEVEMENT",
+         "icon": "SHARE",
+         "icon_tint": null,
+         "icon_configuration": null,
+         "style": "DEFAULT",
+         "destination": {
+          "screen": "SHARE",
+          "parameters": {
+           "path": "milestones-service/v1/bff/milestones/ACTIVITY_WEIGHTLIFTING_MSK/details/share/progress",
+           "source": "achievement_details"
+          }
+         },
+         "dismiss_event": null,
+         "action": null,
+         "modal": null,
+         "card_name": null,
+         "size": "COMPACT",
+         "corner_radius": "MEDIUM_LARGE",
+         "bindings": null,
+         "aggregate_bindings": null,
+         "is_enabled": null,
+         "generic_interaction": null
+        }
+       },
+       {
+        "type": "CARD_BUTTON",
+        "content": {
+         "id": null,
+         "title": "VIEW ALL ACHIEVEMENTS",
+         "icon": null,
+         "icon_tint": null,
+         "icon_configuration": null,
+         "style": "TRANSPARENT_BACKGROUND",
+         "destination": {
+          "screen": "GENERIC_SCREEN",
+          "parameters": {
+           "request": {
+            "path": "milestones-service/v1/bff/milestones/hub",
+            "method": "GET",
+            "content_type": null,
+            "body": null,
+            "timeout_millis": null
+           },
+           "cache_policy": null,
+           "navigation_style": "PUSH",
+           "on_start_interaction": null,
+           "transparent_backdrop": null
+          }
+         },
+         "dismiss_event": null,
+         "action": null,
+         "modal": null,
+         "card_name": null,
+         "size": "COMPACT",
+         "corner_radius": "MEDIUM_LARGE",
+         "bindings": null,
+         "aggregate_bindings": null,
+         "is_enabled": null,
+         "generic_interaction": null
+        },
+        "primary_analytic_event": {
+         "name": "Achievements",
+         "category": "achievements",
+         "action": "click_view_all",
+         "label": "ACTIVITY_WEIGHTLIFTING_MSK",
+         "value": null,
+         "source": "achievement_details",
+         "properties": {}
+        }
+       }
+      ],
+      "section_top_padding": 0,
+      "section_bottom_padding": 0,
+      "section_leading_padding": 0,
+      "section_trailing_padding": 0,
+      "inter_item_padding": 12,
+      "alignment": "CENTER",
+      "is_visible": null,
+      "bindings": null,
+      "aggregate_bindings": null
+     }
+    }
+   ],
+   "id": "f24e4eb8-328a-4fe8-b90a-45d71d5f3b14",
+   "section_type": "NORMAL"
+  },
+  {
+   "items": [
+    {
+     "type": "HEADER",
+     "content": {
+      "title": "Milestones",
+      "title_end": null,
+      "title_alignment": null,
+      "subtitle": null,
+      "icon": null,
+      "style": null,
+      "typography": "T2",
+      "subtitle_typography": null,
+      "subtitle_location": null,
+      "destination": null,
+      "interaction": null,
+      "bindings": null,
+      "aggregate_bindings": null
+     }
+    },
+    {
+     "type": "DESIGN_ITEM_GRID",
+     "content": {
+      "id": "a37b2776-9538-4338-badd-68b3e02db833",
+      "column_width": 100,
+      "min_horizontal_spacing": 24,
+      "min_vertical_spacing": 24,
+      "min_horizontal_padding": 0,
+      "min_vertical_padding": 8,
+      "vertical_alignment": "TOP",
+      "number_of_columns": null,
+      "items": [
+       {
+        "type": "CELEBRATION_MEDIA_WITH_CAPTION",
+        "content": {
+         "media": {
+          "content_type": "DYNAMIC_LOTTIE",
+          "text_overlay": "5",
+          "text_overlay_suffix": null,
+          "text_overlay_style": null,
+          "size": "SMALL"
+         },
+         "caption_text": null,
+         "caption_typography": null,
+         "sub_caption_text": "Nov 21, 2026",
+         "sub_caption_typography": "B3",
+         "sub_caption_leading_image": null,
+         "destination": null
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "id": "16aa6a3e-6c35-47e6-8ae7-8d0cf5529707",
+   "section_type": "NORMAL"
+  }
+ ]
+}

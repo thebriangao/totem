@@ -1,0 +1,253 @@
+{
+ "plan": {
+  "date_picker": null,
+  "title_display": {
+   "display": "Select a Weekly Plan",
+   "style": "NONE"
+  },
+  "subtitle_display": null,
+  "description_display": "Choose from the list of personalized plans below or create your own. Starting a plan will customize your daily recommendations for the week ahead.",
+  "header_items": [],
+  "current_plan_tile": null,
+  "banner_tile": null,
+  "progress_bar": null,
+  "goal_section": [
+   {
+    "title_display": "RECOVERIES LOGGED 0/7",
+    "title_image": null,
+    "title_style": "LEFT",
+    "subtitle_display": null,
+    "action_display": null,
+    "icon": null,
+    "goal_cards": [
+     {
+      "type": "LOGGED_RECOVERIES",
+      "content": {
+       "items": [
+        {
+         "text_display": "1",
+         "icon": null,
+         "enabled": false
+        },
+        {
+         "text_display": "2",
+         "icon": null,
+         "enabled": false
+        },
+        {
+         "text_display": "3",
+         "icon": null,
+         "enabled": false
+        },
+        {
+         "text_display": "4",
+         "icon": null,
+         "enabled": false
+        },
+        {
+         "text_display": "5",
+         "icon": null,
+         "enabled": false
+        },
+        {
+         "text_display": "6",
+         "icon": null,
+         "enabled": false
+        },
+        {
+         "text_display": null,
+         "icon": "LOCKED",
+         "enabled": false
+        }
+       ]
+      }
+     }
+    ],
+    "callout_display": null,
+    "callout_cta_display": null,
+    "id": null,
+    "secondary_button": null
+   },
+   {
+    "title_display": "CHOOSE A PLAN",
+    "title_image": null,
+    "title_style": "LEFT",
+    "subtitle_display": null,
+    "action_display": null,
+    "icon": null,
+    "goal_cards": [
+     {
+      "type": "PLAN_TILE",
+      "content": {
+       "title_display": "Boost Fitness",
+       "subtitle_display": "Improve fitness with high-intensity training, tracking your protein, and recovering like a pro.",
+       "style": "TRAIN",
+       "icon": "LOCKED",
+       "background_image": null,
+       "locked": true,
+       "destination": {
+        "screen": "WEEKLY_PLAN_SET_UP",
+        "parameters": {
+         "plan_name": "boost_fitness_hrz",
+         "locked": true,
+         "initial_selection": null,
+         "date": null,
+         "no_plan_show_metric_selection": false,
+         "analytics_source": "CREATE_PLAN",
+         "source": null,
+         "preset_plan_category": null,
+         "explanation": null,
+         "description": null,
+         "template_id": null,
+         "plan_title": null,
+         "explanation_title": null,
+         "dismissal_type": null
+        }
+       }
+      }
+     },
+     {
+      "type": "PLAN_TILE",
+      "content": {
+       "title_display": "Feel Better",
+       "subtitle_display": "Feel your best by moving more, focusing on recovery activities, and staying hydrated.",
+       "style": "RECOVER",
+       "icon": "LOCKED",
+       "background_image": null,
+       "locked": true,
+       "destination": {
+        "screen": "WEEKLY_PLAN_SET_UP",
+        "parameters": {
+         "plan_name": "feel_better",
+         "locked": true,
+         "initial_selection": null,
+         "date": null,
+         "no_plan_show_metric_selection": false,
+         "analytics_source": "CREATE_PLAN",
+         "source": null,
+         "preset_plan_category": null,
+         "explanation": null,
+         "description": null,
+         "template_id": null,
+         "plan_title": null,
+         "explanation_title": null,
+         "dismissal_type": null
+        }
+       }
+      }
+     },
+     {
+      "type": "PLAN_TILE",
+      "content": {
+       "title_display": "Sleep Deeper",
+       "subtitle_display": "Turn great nights into a habit. Build a calming nightly routine and stick to a consistent bedtime.",
+       "style": "PRIORITIZE_SLEEP",
+       "icon": "LOCKED",
+       "background_image": null,
+       "locked": true,
+       "destination": {
+        "screen": "WEEKLY_PLAN_SET_UP",
+        "parameters": {
+         "plan_name": "sleep_specific",
+         "locked": true,
+         "initial_selection": null,
+         "date": null,
+         "no_plan_show_metric_selection": false,
+         "analytics_source": "CREATE_PLAN",
+         "source": null,
+         "preset_plan_category": null,
+         "explanation": null,
+         "description": null,
+         "template_id": null,
+         "plan_title": null,
+         "explanation_title": null,
+         "dismissal_type": null
+        }
+       }
+      }
+     },
+     {
+      "type": "PLAN_TILE",
+      "content": {
+       "title_display": "GLP-1 Companion",
+       "subtitle_display": "Protect your muscle and bone while your weight comes down. Strength train, hit your protein, and keep moving \u2014 the habits that make your results last.",
+       "style": "GLP1_COMPANION",
+       "icon": "LOCKED",
+       "background_image": null,
+       "locked": true,
+       "destination": {
+        "screen": "WEEKLY_PLAN_SET_UP",
+        "parameters": {
+         "plan_name": "glp1_companion",
+         "locked": true,
+         "initial_selection": null,
+         "date": null,
+         "no_plan_show_metric_selection": false,
+         "analytics_source": "CREATE_PLAN",
+         "source": null,
+         "preset_plan_category": null,
+         "explanation": null,
+         "description": null,
+         "template_id": null,
+         "plan_title": null,
+         "explanation_title": null,
+         "dismissal_type": null
+        }
+       }
+      }
+     }
+    ],
+    "callout_display": null,
+    "callout_cta_display": null,
+    "id": null,
+    "secondary_button": null
+   },
+   {
+    "title_display": "Custom",
+    "title_image": null,
+    "title_style": "LEFT",
+    "subtitle_display": null,
+    "action_display": null,
+    "icon": null,
+    "goal_cards": [
+     {
+      "type": "PLAN_TILE",
+      "content": {
+       "title_display": "Custom Plan",
+       "subtitle_display": "Build your personalized plan by selecting weekly metric, behavior and activity goals.",
+       "style": "NONE",
+       "icon": "LOCKED",
+       "background_image": null,
+       "locked": true,
+       "destination": {
+        "screen": "WEEKLY_PLAN_SET_UP",
+        "parameters": {
+         "plan_name": "CUSTOM",
+         "locked": true,
+         "initial_selection": null,
+         "date": null,
+         "no_plan_show_metric_selection": false,
+         "analytics_source": "CREATE_PLAN",
+         "source": null,
+         "preset_plan_category": null,
+         "explanation": null,
+         "description": null,
+         "template_id": null,
+         "plan_title": null,
+         "explanation_title": null,
+         "dismissal_type": null
+        }
+       }
+      }
+     }
+    ],
+    "callout_display": null,
+    "callout_cta_display": null,
+    "id": null,
+    "secondary_button": null
+   }
+  ],
+  "gradient_style": null
+ },
+ "summary": null
+}
