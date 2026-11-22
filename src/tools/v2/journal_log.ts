@@ -17,6 +17,7 @@ import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { runPaced } from "../../lib/concurrency.js";
+import { projectBehaviorToggles } from "../../projections/settings_v2.js";
 import {
   answeredById,
   buildRow,
@@ -36,6 +37,7 @@ const NAME = "whoop_journal_log";
 const DRAFT = (d: string) => `/journal-service/v3/journals/drafts/mobile/${d}`;
 const PARTIAL = "/journal-service/v2/journal/entry/partial";
 const FULL = (d: string) => `/journal-service/v2/journals/entries/user/date/${d}`;
+const CUSTOMIZE = "/journal-service/v3/journals/behaviors";
 
 function fail(error: string, extra: Record<string, unknown> = {}): ToolResult {
   return { content: [{ type: "text", text: jsonOut({ error, ...extra }) }], isError: true };
@@ -211,6 +213,15 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
       const send = notes !== undefined ? notes : day.notes;
       notesPlan = { before: day.notes, send };
       requests.push({ path: FULL(d), body: send === null ? { tracker_inputs } : { tracker_inputs, notes: send } });
+      // WHOOP leaves an untracked custom behaviour's answers out of the draft, so
+      // they can't be re-sent, and the full PUT deletes what it isn't sent
+      // (verified live: gone after re-tracking; kept when no full PUT ran).
+      const hidden = await client.get(CUSTOMIZE, {}, { fresh: true })
+        .then((raw) => projectBehaviorToggles(raw).toggles.filter((t) => t.custom && !t.selected).map((t) => t.title ?? `#${t.id}`))
+        .catch(() => [] as string[]);
+      if (hidden.length > 0) {
+        warnings.push(`You have untracked custom behaviours (${hidden.join(", ")}). WHOOP hides their answers from the day, so a full-day write can't keep them: any answer they have on ${d} will be deleted. Track them first to keep those answers.`);
+      }
     }
 
     const multi = dateList.length > 1;

@@ -46,8 +46,11 @@ function draft(answers: Partial<Record<Id, Input>>, notes: string | null = null)
 }
 
 /** Routes: the live catalog, and each date's draft as [before, after]. */
-function whoopFor(days: Record<string, [unknown, unknown?]>) {
-  const routes: Record<string, unknown> = { "/journal-service/v2/journals/behaviors/user/*": LIVE };
+const CUSTOMIZE = "/journal-service/v3/journals/behaviors";
+/** The customize screen with every custom behaviour tracked (nothing hidden). */
+const ALL_TRACKED = { grouped_toggles: [{ toggles: LIVE.map((t) => ({ id: String(t.id), title: t.title, selected: true, custom: t.id === 163752 })) }] };
+function whoopFor(days: Record<string, [unknown, unknown?]>, extra: Record<string, unknown> = {}) {
+  const routes: Record<string, unknown> = { "/journal-service/v2/journals/behaviors/user/*": LIVE, [CUSTOMIZE]: ALL_TRACKED, ...extra };
   for (const [d, [before, after]] of Object.entries(days)) routes[DRAFT(d)] = (n: number) => (n === 1 ? before : after ?? before);
   return mockWhoop(routes);
 }
@@ -229,6 +232,33 @@ describe("whoop_journal_log: full PUT (notes, replace_day)", () => {
     const { out } = await call(whoop, { date: D, notes: "hi" });
     expect(whoop.put).toHaveBeenCalledWith(FULL(D), { tracker_inputs: [], notes: "hi" });
     expect(out.verified).toBe(true);
+  });
+
+  it("warns that answers of untracked custom behaviours can't be carried by a full-day write", async () => {
+    // Live 2026-11-21: WHOOP leaves an untracked custom behaviour's answer out of the draft, and the
+    // full PUT then deletes it for good (re-tracking showed it gone; without the PUT it came back).
+    const stockOnly = LIVE.filter((t) => t.id !== 163752);
+    const screen = { grouped_toggles: [{ toggles: [
+      { id: "2", title: "Caffeine", internal_name: "caffeine", selected: true, custom: false },
+      { id: "163752", title: "Probe Hip Mobility", internal_name: "Probe Hip Mobility", selected: false, custom: true },
+    ] }] };
+    const day = (notes: string | null) => ({ journal: { notes, user_reviewed: true, tracked_behaviors: stockOnly.map((t) => ({ behavior_tracker: t, tracker_input: null })) } });
+    const routes = { "/journal-service/v2/journals/behaviors/user/*": stockOnly, [CUSTOMIZE]: screen };
+    const preview = await call(whoopFor({ [D]: [day("old")] }, routes), { date: D, notes: "new", confirm: false });
+    expect(preview.out.will_execute.body_summary.warnings.join(" ")).toMatch(/Probe Hip Mobility.*deleted/);
+    const written = await call(whoopFor({ [D]: [day("old"), day("new")] }, routes), { date: D, notes: "new" });
+    expect(written.out.verified).toBe(true);
+    expect(written.out.warnings.join(" ")).toMatch(/Probe Hip Mobility/);
+  });
+
+  it("doesn't read the customize screen for a merge, and stays quiet when every custom behaviour is tracked", async () => {
+    const merge = whoopFor({ [D]: [draft({}), draft({ 79: { answered_yes: true } })] });
+    await call(merge, { date: D, behaviors: [{ id: 79 }] });
+    expect(merge.get).not.toHaveBeenCalledWith(CUSTOMIZE, expect.anything(), expect.anything());
+    const full = whoopFor({ [D]: [draft({}, "old"), draft({}, "new")] });
+    const { out } = await call(full, { date: D, notes: "new" });
+    expect(full.get).toHaveBeenCalledWith(CUSTOMIZE, {}, { fresh: true });
+    expect(out).not.toHaveProperty("warnings");
   });
 
   it("refuses replace_day + notes too when the draft can't be read (it couldn't show what it removes)", async () => {
