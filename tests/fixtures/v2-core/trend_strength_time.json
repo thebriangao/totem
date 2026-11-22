@@ -1,0 +1,171 @@
+{
+ "_comment": "Live GET /progression-service/v3/trends/STRENGTH_ACTIVITY_TIME?endDate=2026-11-21 on the throwaway account (reads-review probe), trimmed. Month and six months plot one bar per week, labelled with the week's range.",
+ "week_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "NOV 15 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "STRENGTH_ACTIVITY_TIME",
+    "metric_name_display": "WEEKLY TOTAL",
+    "metric_value_display": "0:02",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "current_metric_value": 174038.0,
+    "previous_metric_value": 0.0,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "plots": [
+    {
+     "type": "BAR_PLOT",
+     "plot": {
+      "id": "80742667",
+      "bar_groups": [
+       {
+        "top_label": {
+         "label": "0:00",
+         "label_style": "NONE"
+        },
+        "bars": [
+         {
+          "style": "STRAIN",
+          "data_scrubber_details": {
+           "primary_contextual_display": "FRI, NOV 20",
+           "value_display": "0:00",
+           "secondary_contextual_display": null,
+           "unit_display": "hr"
+          }
+         }
+        ]
+       },
+       {
+        "top_label": {
+         "label": "0:02",
+         "label_style": "NONE"
+        },
+        "bars": [
+         {
+          "style": "STRAIN",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:02",
+           "secondary_contextual_display": null,
+           "unit_display": "hr"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "breakdown_bar": null,
+  "is_hidden": false
+ },
+ "month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "OCT 25 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "STRENGTH_ACTIVITY_TIME",
+    "metric_name_display": "AVG. WEEKLY TOTAL",
+    "metric_value_display": "0:02",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "current_metric_value": 174038.0,
+    "previous_metric_value": 0.0,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "plots": [
+    {
+     "type": "BAR_PLOT",
+     "plot": {
+      "id": "1582631886",
+      "bar_groups": [
+       {
+        "top_label": null,
+        "bars": [
+         {
+          "style": "STRAIN",
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "value_display": "0:02",
+           "secondary_contextual_display": null,
+           "unit_display": "hr"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "breakdown_bar": null,
+  "is_hidden": false
+ },
+ "six_month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "MAY 31 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "STRENGTH_ACTIVITY_TIME",
+    "metric_name_display": "AVG. WEEKLY TOTAL",
+    "metric_value_display": "0:02",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "current_metric_value": 174038.0,
+    "previous_metric_value": 0.0,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "plots": [
+    {
+     "type": "BAR_PLOT",
+     "plot": {
+      "id": "522070341",
+      "bar_groups": [
+       {
+        "top_label": null,
+        "bars": [
+         {
+          "style": "STRAIN",
+          "data_scrubber_details": {
+           "primary_contextual_display": "NOV 15 - 21, 26",
+           "value_display": "0:02",
+           "secondary_contextual_display": null,
+           "unit_display": "hr"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "TREND_PLOT",
+     "plot": {
+      "id": "TREND_PLOT_ID",
+      "segments": []
+     }
+    }
+   ]
+  },
+  "breakdown_bar": null,
+  "is_hidden": false
+ }
+}

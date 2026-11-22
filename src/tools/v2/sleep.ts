@@ -1,37 +1,69 @@
+// whoop_sleep (v2): replaces whoop_sleep and whoop_sleep_need, and covers the
+// proposed sleep_details (any past sleep or nap by id). App-native only (D1).
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
-import { SleepOut } from "../../schemas/sleep.js";
-import { projectSleep } from "../../projections/sleep.js";
-import { WhoopProjectionError } from "../../whoop/errors.js";
-import { jsonOut } from "../../whoop/json_out.js";
+import { defineTool, respond } from "../define.js";
+import { READ_ONLY } from "../annotations.js";
 import { todayIso } from "../../lib/dates.js";
-import { projectActivitySleepSummary } from "../../projections/today.js";
+import { SleepV2Out } from "../../schemas/v2/sleep.js";
+import { mainSleepId, projectSleepV2, type SleepInclude } from "../../projections/v2/sleep.js";
+import { projectSleepNeedV2 } from "../../projections/v2/core_sleep_need.js";
+import { activityRecordPath, recordFromActivity } from "../../lib/activity_records.js";
+
+const NAME = "whoop_sleep";
+const INCLUDES = ["hypnogram", "need", "naps"] as const;
 
 export function registerSleep(server: McpServer, client: WhoopClient): void {
-  server.tool(
-    "whoop_sleep",
-    "Last night's sleep deep-dive: all 4 stages (REM/light/SWS/wake) with durations + percentages, the full per-stage hypnogram, efficiency, performance, consistency, disturbances, and in-sleep heart rate. (Sleep HRV, respiratory rate, debt, and latency aren't exposed by this endpoint and return null.)",
-    { date: z.iso.date().optional() },
-    async ({ date }) => {
-      const d = date ?? todayIso();
-      const [raw, activitySleep] = await Promise.all([
-        client.get("/home-service/v1/deep-dive/sleep/last-night", { date: d }),
-        // This is WHOOP's scored per-sleep record, the authoritative source
-        // for sleep performance. The deep-dive's "Hours vs. Needed" card is a
-        // related but distinct, sometimes different metric.
-        client.get("/developer/v2/activity/sleep", { limit: "5" }).catch(() => null),
-      ]);
-      const projected = projectSleep(raw, d);
-      const performance = projectActivitySleepSummary(activitySleep, d)?.performance_pct;
-      if (performance !== null && performance !== undefined) projected.performance_pct = performance;
-      try {
-        const out = SleepOut.parse(projected);
-        return { content: [{ type: "text", text: jsonOut(out) }] };
-      } catch (e) {
-        if (e instanceof z.ZodError) throw new WhoopProjectionError("whoop_sleep", e);
-        throw e;
+  defineTool(
+    server,
+    {
+      name: NAME,
+      description:
+        "Sleep for a cycle day (default today = last night's main sleep), or any sleep or nap by activity_id. Returns window, type " +
+        "(sleep/nap), scored, minutes asleep and in bed, efficiency, latency, respiratory rate, wake events (disturbances = total), " +
+        "restorative time, stage minutes and %, sleep HR, performance and consistency; the day's naps (ids for activity_id); and " +
+        "tonight's sleep need in minutes (today only, null when WHOOP's sleep coach errors). include hypnogram adds the stage " +
+        "sequence as [stage, minutes] runs. Unscored sleeps have no metrics.",
+      input: {
+        date: z.iso.date().optional().describe("Cycle day YYYY-MM-DD; defaults to today"),
+        activity_id: z.string().uuid().optional().describe("A sleep or nap id; overrides date"),
+        include: z.array(z.enum(INCLUDES)).optional().describe("Default naps and need; add hypnogram for the stage sequence"),
+      },
+      annotations: READ_ONLY,
+    },
+    async ({ date, activity_id, include }) => {
+      const inc = new Set<SleepInclude>(include ?? ["naps", "need"]);
+      const baseline = client.get("/sleep-service/v1/heart-rate/baseline").catch(() => null);
+      if (activity_id) {
+        // One sleep or nap by id: no date context, so no naps list or sleep need.
+        inc.delete("naps");
+        inc.delete("need");
+        // WHOOP's sleep-details answers 200 for ANY activity id: a workout comes back as an
+        // empty "SLEEP" screen. The activity record says what the id really is.
+        const [details, record] = await Promise.all([
+          client.get(`/core-details-bff/v2/sleep-details/${activity_id}`),
+          client.get(activityRecordPath(activity_id)).then(recordFromActivity).catch(() => null),
+        ]);
+        if (record?.score_type && record.score_type !== "SLEEP") {
+          throw new Error(`Activity ${activity_id} is a ${record.type ?? record.score_type} activity, not a sleep or nap. Use whoop_workouts for it.`);
+        }
+        return respond(NAME, SleepV2Out, projectSleepV2({ date: null, activityId: activity_id, include: inc, details, baseline: await baseline }));
       }
+      const today = todayIso();
+      const d = date ?? today;
+      const [home, lastNight, need] = await Promise.all([
+        client.get("/home-service/v1/home", { date: d }),
+        client.get("/home-service/v1/deep-dive/sleep/last-night", { date: d }).catch(() => null),
+        // sleepneed is tonight's plan and 500s when Smart Alarm preferences are broken: degrade to null.
+        inc.has("need") && d === today
+          ? client.get("/coaching-service/v2/sleepneed").then(projectSleepNeedV2).catch(() => null)
+          : null,
+      ]);
+      const id = mainSleepId(lastNight, home);
+      // A pending sleep's details 400; the projection falls back to the tile/last-night window.
+      const details = id ? await client.get(`/core-details-bff/v2/sleep-details/${id}`).catch(() => null) : null;
+      return respond(NAME, SleepV2Out, projectSleepV2({ date: d, include: inc, details, lastNight, home, need, baseline: await baseline }));
     },
   );
 }

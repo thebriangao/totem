@@ -1,0 +1,215 @@
+{
+ "week_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "NOV 15 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "VO2_MAX",
+    "metric_name_display": "AVERAGE",
+    "metric_value_display": "---",
+    "metric_units_display": "mL/kg/min",
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": null,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "title": null,
+      "subtitle": null,
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null,
+      "id": "empty"
+     },
+     "type": "EMPTY_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": null,
+  "breakdown_bars": [],
+  "whoop_coach_vow": {
+   "header": null,
+   "icon": null,
+   "entrypoint": {
+    "entry_text": "Teach me more about VO\u2082 Max",
+    "signature": "<redacted>"
+   },
+   "destination": {
+    "screen": "AI_CHAT",
+    "parameters": {
+     "fingerprint": "<redacted>",
+     "source": null,
+     "screen_id": null,
+     "source_type": "CHAT_WITH_AGENT",
+     "source_id": "coach-everywhere-vo2-max-page",
+     "agent_id": "coach-everywhere-vo2-max-page",
+     "preset_question_key": null,
+     "static_initial_message": null,
+     "user_message": null,
+     "education_type": null,
+     "should_open_full_size": false,
+     "args": {}
+    }
+   }
+  },
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": true
+ },
+ "month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "OCT 23 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "VO2_MAX",
+    "metric_name_display": "AVERAGE",
+    "metric_value_display": "---",
+    "metric_units_display": "mL/kg/min",
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": null,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "title": null,
+      "subtitle": null,
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null,
+      "id": "empty"
+     },
+     "type": "EMPTY_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": null,
+  "breakdown_bars": [],
+  "whoop_coach_vow": {
+   "header": null,
+   "icon": null,
+   "entrypoint": {
+    "entry_text": "Teach me more about VO\u2082 Max",
+    "signature": "<redacted>"
+   },
+   "destination": {
+    "screen": "AI_CHAT",
+    "parameters": {
+     "fingerprint": "<redacted>",
+     "source": null,
+     "screen_id": null,
+     "source_type": "CHAT_WITH_AGENT",
+     "source_id": "coach-everywhere-vo2-max-page",
+     "agent_id": "coach-everywhere-vo2-max-page",
+     "preset_question_key": null,
+     "static_initial_message": null,
+     "user_message": null,
+     "education_type": null,
+     "should_open_full_size": false,
+     "args": {}
+    }
+   }
+  },
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ },
+ "six_month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "MAY 26 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "VO2_MAX",
+    "metric_name_display": "AVERAGE",
+    "metric_value_display": "---",
+    "metric_units_display": "mL/kg/min",
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": null,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "title": null,
+      "subtitle": null,
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null,
+      "id": "empty"
+     },
+     "type": "EMPTY_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": null,
+  "breakdown_bars": [],
+  "whoop_coach_vow": {
+   "header": null,
+   "icon": null,
+   "entrypoint": {
+    "entry_text": "Teach me more about VO\u2082 Max",
+    "signature": "<redacted>"
+   },
+   "destination": {
+    "screen": "AI_CHAT",
+    "parameters": {
+     "fingerprint": "<redacted>",
+     "source": null,
+     "screen_id": null,
+     "source_type": "CHAT_WITH_AGENT",
+     "source_id": "coach-everywhere-vo2-max-page",
+     "agent_id": "coach-everywhere-vo2-max-page",
+     "preset_question_key": null,
+     "static_initial_message": null,
+     "user_message": null,
+     "education_type": null,
+     "should_open_full_size": false,
+     "args": {}
+    }
+   }
+  },
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ }
+}

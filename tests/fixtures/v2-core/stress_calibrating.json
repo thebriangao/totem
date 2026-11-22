@@ -1,0 +1,1135 @@
+{
+ "stress_state": "CALIBRATING",
+ "gauge": {
+  "gauge_score_display": "1.4",
+  "gauge_subtext_display": "MEDIUM",
+  "gauge_min_display": "0.0",
+  "gauge_max_display": "3.0",
+  "gauge_fill_percentage": 0.4666666666666666
+ },
+ "progress_stepper": {
+  "title": "Wear WHOOP to sleep for 4 nights to unlock",
+  "close_icon": null,
+  "style": "ONBOARDING",
+  "progress_bar": {
+   "type": "DISCRETE",
+   "discrete_step_total": 4,
+   "discrete_filled_total": 0,
+   "continuous_progress": null
+  }
+ },
+ "calibration_text_display": null,
+ "last_updated_display": "5:18 PM",
+ "trend_list": null,
+ "stress_graph": {
+  "graph": {
+   "plots": [
+    {
+     "plot": {
+      "segments": [
+       {
+        "points": [
+         {
+          "position_x": 0.7560398642605557,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:37 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6009168417005231,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7584532959734104,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:38 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5320232276142767,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7608667276862652,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:39 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.46312961352803017,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7632801593991199,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:40 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.2",
+           "value": 0.3942359994417837,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7656935911119745,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:41 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "1.0",
+           "value": 0.3253423853555373,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7681070228248293,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:42 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.25644877126929083,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.770520454537684,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:43 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.26196802637198124,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7729338862505387,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:44 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.2674872814746717,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7753473179633935,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:45 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.2730065365773621,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7777607496762482,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:46 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.27852579168005254,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7779220473623907,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:46 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.27889466189608236,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7803354790752454,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:47 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.2801884746348023,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7827489107881,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:48 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.2814822873735222,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7851623425009548,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:49 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.8",
+           "value": 0.28277610011224213,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7875757742138095,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:50 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.28406991285096206,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7899892059266642,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:51 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.285363725589682,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.792402637639519,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:52 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.2866575383284019,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7948160693523737,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:53 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.28795135106712183,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7972295010652284,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:54 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.28924516380584175,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.7996429327780832,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:55 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.2905389765445617,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8020563644909379,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:56 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.2918327892832816,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8043089007562689,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:57 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.2930403478394202,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8067223324691236,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:58 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "1.0",
+           "value": 0.3316084746773509,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8091357641819784,
+          "data_scrubber_details": {
+           "primary_contextual_display": "3:59 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.1",
+           "value": 0.37017660151528164,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8115491958948331,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:00 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.2",
+           "value": 0.4087447283532123,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8139626276076878,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:01 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.3",
+           "value": 0.44731285519114306,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8163760593205426,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:02 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.48588098202907376,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8187894910333973,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:03 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.48374533249522944,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.821202922746252,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:04 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.48160968296138507,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8236163544591067,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:05 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.47947403342754075,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8260297861719614,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:06 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.47733838389369637,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8284432178848161,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:07 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.47520273435985205,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.828443620123435,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:07 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.47520237841826307,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8308570518362897,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:08 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.49594331604197667,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8332704835491445,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:09 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5166842536656903,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8356839152619991,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:10 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5374251912894039,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8380973469748538,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:11 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.7",
+           "value": 0.5581661289131175,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8405107786877086,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:12 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.7",
+           "value": 0.5789070665368311,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8429242104005633,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:13 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.7",
+           "value": 0.5606125672643769,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.845337642113418,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:14 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5423180679919227,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8477510738262727,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:15 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5240235687194685,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8501645055391275,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:16 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.5057290694470143,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8525779372519822,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:17 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.4874345701745602,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8549913689648369,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:18 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.4512579642517986,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8574048006776916,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:19 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.2",
+           "value": 0.415081358329037,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8598182323905463,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:20 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.1",
+           "value": 0.37890475240627536,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.862231664103401,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:21 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.0",
+           "value": 0.3427281464835138,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8646450958162558,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:22 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.3065515405607522,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8646454980548746,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:22 PM",
+           "secondary_contextual_display": "LOW",
+           "value_display": "0.9",
+           "value": 0.3065455111264317,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8670589297677294,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:23 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.0",
+           "value": 0.34672872536028926,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.869472361480584,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:24 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.2",
+           "value": 0.3869119395941468,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8718857931934387,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:25 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.3",
+           "value": 0.42709515382800445,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8742992249062935,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:26 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.467278368061862,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8767126566191482,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:27 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.5074615822957196,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8791260883320029,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:28 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.5151252763579304,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8815395200448577,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:29 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.522788970420141,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8839529517577124,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:30 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5304526644823518,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8847574289953306,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:30 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.6",
+           "value": 0.5330072291697554,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8871708607081853,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:31 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.5133341570528462,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8895842924210401,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:32 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.49366108493593713,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8919977241338948,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:33 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.473988012819028,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8944111558467495,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:34 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.45431494070211886,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8968245875596043,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:35 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.3",
+           "value": 0.43464186858520976,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.8992380192724589,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:36 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.2",
+           "value": 0.4149687964683006,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9008473759863143,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:37 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.2",
+           "value": 0.40185013621167504,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9032608076991689,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:38 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.45805811045877837,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9056742394120236,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:39 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.5",
+           "value": 0.5142660847058816,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9080876711248784,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:40 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.7",
+           "value": 0.570474058952985,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9105011028377331,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:41 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6266820332000883,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9129145345505878,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:42 PM",
+           "secondary_contextual_display": "HIGH",
+           "value_display": "2.0",
+           "value": 0.6828900074471916,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9153279662634426,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:43 PM",
+           "secondary_contextual_display": "HIGH",
+           "value_display": "2.0",
+           "value": 0.6701591585697321,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9177413979762973,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:44 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.6574283096922725,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.920154829689152,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:45 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6446974608148129,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9225682614020068,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:46 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6319666119373534,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9249816931148614,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:47 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6192357630598938,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9273951248277161,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:48 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6145317862452804,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9298085565405709,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:49 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6098278094306671,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9322219882534256,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:50 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6051238326160536,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9346354199662803,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:51 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6004198558014403,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9370488516791351,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:52 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.5957158789868269,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9394622833919898,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:53 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6146802036397765,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9418757151048445,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:54 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6336445282927261,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9442891468176993,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:55 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.6526088529456757,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.946702578530554,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:56 PM",
+           "secondary_contextual_display": "HIGH",
+           "value_display": "2.0",
+           "value": 0.6715731775986253,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9491160102434086,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:57 PM",
+           "secondary_contextual_display": "HIGH",
+           "value_display": "2.1",
+           "value": 0.690537502251575,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9491164124820275,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:57 PM",
+           "secondary_contextual_display": "HIGH",
+           "value_display": "2.1",
+           "value": 0.6905406629723504,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9515298441948822,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:58 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.6644460446732467,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9539432759077369,
+          "data_scrubber_details": {
+           "primary_contextual_display": "4:59 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6383514263741431,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9563567076205917,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:00 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6122568080750396,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9587701393334463,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:01 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.5861621897759359,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.961183571046301,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:02 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.7",
+           "value": 0.5600675714768323,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9635970027591558,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:03 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.7",
+           "value": 0.5807112299324316,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9660104344720105,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:04 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.601354888388031,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9684238661848652,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:05 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6219985468436303,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.97083729789772,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:06 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6426422052992297,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9732507296105747,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:07 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.663285863754829,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9756641613234294,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:08 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.660077331981743,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9780775930362842,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:09 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.656868800208657,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9804910247491389,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:10 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.653660268435571,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9829044564619935,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:11 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "2.0",
+           "value": 0.650451736662485,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9853178881748483,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:12 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.647243204889399,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9853182904134671,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:12 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6472426701341035,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9877317221263219,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:13 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6408313066916486,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9901451538391766,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:14 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6344199432491935,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9925585855520312,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:15 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6280085798067385,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.994972017264886,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:16 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.9",
+           "value": 0.6215972163642834,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9973854489777407,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:17 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.8",
+           "value": 0.6151858529218285,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 0.9997988806905954,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:18 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.4651308064824722,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         },
+         {
+          "position_x": 1,
+          "data_scrubber_details": {
+           "primary_contextual_display": "5:18 PM",
+           "secondary_contextual_display": "MEDIUM",
+           "value_display": "1.4",
+           "value": 0.4526262192791925,
+           "scrubber_style": "RESTORATIVE_HR_ZONE"
+          }
+         }
+        ]
+       }
+      ],
+      "diagonal_points": null,
+      "id": "stress",
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null
+     },
+     "type": "LINE_PLOT"
+    }
+   ]
+  }
+ }
+}
