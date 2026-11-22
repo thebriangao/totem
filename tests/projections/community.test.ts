@@ -13,13 +13,18 @@ import { load } from "../tools/helpers_coach.js";
 
 describe("community projections", () => {
   it("memberships: compact community rows with your rank", () => {
+    // user_rank is a bare integer in the captures that have one (2026-05
+    // baseline) and null on the throwaway account; no capture shows an object.
     const out = projectMemberships(load("community/memberships.json"));
     expect(out).toEqual({
       view: "communities",
       total: 1,
-      communities: [{ id: 900001, name: "Synthetic Runners", type: "COMMUNITY", members: 455, private: true, your_rank: { rank: 518, score: 0 } }],
+      communities: [{ id: 900001, name: "Synthetic Runners", type: "COMMUNITY", members: 455, private: true, your_rank: { rank: 518, score: null } }],
     });
     expect(projectMemberships({ offset: 0, records: [], total_count: 0 }).communities).toEqual([]);
+    // No rank yet (the throwaway account's shape): the row has none, not a zero.
+    const unranked = projectMemberships({ offset: 1, total_count: 1, records: [{ id: 900002, name: "Synthetic Walkers", team_type: "COMMUNITY", private: true, metadata: { member_count: 1 }, user_rank: null }] });
+    expect(unranked.communities[0]!.your_rank).toBeNull();
     expect(() => CommunityOut.parse(out)).not.toThrow();
   });
 
