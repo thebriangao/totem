@@ -1,0 +1,591 @@
+{
+ "content": {
+  "navigation_bar": {
+   "title": "ONE REP MAX",
+   "subtitle": "PROBE-STRENGTH CUSTOM BENCH A (EDITED)",
+   "left_button": {
+    "icon": "CARET_BACKWARD",
+    "icon_url": null,
+    "text": null,
+    "accessibility_label": null,
+    "destination": null,
+    "analytic_event": null,
+    "action": null,
+    "dismiss_event": {
+     "type": "POP_CURRENT",
+     "pop_up_to": null,
+     "pop_back_count": null
+    },
+    "dismiss_modal": null,
+    "generic_interaction": null,
+    "bindings": null,
+    "aggregate_bindings": null,
+    "deselect_action": null,
+    "glow_style": null,
+    "glow_pulse": false,
+    "glow": null,
+    "menu": null
+   },
+   "right_button": null,
+   "style": null,
+   "tag": null,
+   "icon": null,
+   "fixed_header": [],
+   "header": null
+  },
+  "items": [
+   {
+    "type": "TITLE_SUBTITLE",
+    "content": {
+     "id": "one-rep-max-history-title",
+     "title": "All Past Results",
+     "subtitle": "When you log an eligible activity, WHOOP estimates your One Rep Max (1RM) using your training history and past entries. Add 1RM assessment results to improve accuracy.",
+     "title_color": "BRAND_WHITE",
+     "subtitle_color": "WHITE_70",
+     "alignment": "LEADING",
+     "bindings": null,
+     "title_style": "T3",
+     "subtitle_style": "B1",
+     "trailing_button": null
+    }
+   },
+   {
+    "type": "MENU_ITEM",
+    "content": {
+     "title": "ADD MANUAL ENTRY",
+     "subtitle": null,
+     "suffix_title": null,
+     "suffix_subtitle": null,
+     "suffix_type": null,
+     "left_icon": "ADD",
+     "right_icon": null,
+     "right_image_url": null,
+     "menu_item_state": null,
+     "style": null,
+     "destination": null,
+     "type": null,
+     "generic_interaction": {
+      "modal": {
+       "content": {
+        "navigation_bar": {
+         "title": "ADD MANUAL ENTRY",
+         "subtitle": null,
+         "left_button": {
+          "icon": "CROSS",
+          "icon_url": null,
+          "text": null,
+          "accessibility_label": null,
+          "destination": null,
+          "analytic_event": null,
+          "action": null,
+          "dismiss_event": {
+           "type": "AUTO",
+           "pop_up_to": null,
+           "pop_back_count": null
+          },
+          "dismiss_modal": null,
+          "generic_interaction": null,
+          "bindings": null,
+          "aggregate_bindings": null,
+          "deselect_action": null,
+          "glow_style": null,
+          "glow_pulse": false,
+          "glow": null,
+          "menu": null
+         },
+         "right_button": null,
+         "style": null,
+         "tag": null,
+         "icon": null,
+         "fixed_header": [],
+         "header": null
+        },
+        "items": [
+         {
+          "type": "ONE_REP_MAX_MEASUREMENT",
+          "content": {
+           "id": "one_rep_max_measurement",
+           "exercise_summary": {
+            "name": "probe-strength Custom Bench A (edited)",
+            "title_display": "EXERCISE"
+           },
+           "date_section": {
+            "title": "WHEN",
+            "date_prompt": "When was your One Rep Max?",
+            "date": null,
+            "minimum_date": "2026-05-21"
+           },
+           "value_section": {
+            "title": "VALUE",
+            "value_title": "ONE REP MAX",
+            "unit": "lbs",
+            "min_value": 1,
+            "max_value": 999,
+            "error_message": "Enter a value between 1 and 999 lbs.",
+            "value": null
+           },
+           "footer": {
+            "save_button_title": "SAVE",
+            "save_confirm_dialog": {
+             "id": "confirmation_dialog",
+             "title": "Confirm One Rep Max",
+             "value_prompt": "You entered %1$d %2$s. Is that correct?",
+             "description": "This value will guide your One Rep Max estimates and insights from the date of your assessment.",
+             "primary_button": "CONFIRM ENTRY",
+             "secondary_button": "GO BACK",
+             "primary_action": {
+              "parameters": {
+               "actions": [
+                {
+                 "action": {
+                  "parameters": {
+                   "request": {
+                    "path": "weightlifting-service/v3/one-rep-max/520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+                    "method": "PUT",
+                    "content_type": null,
+                    "body": {
+                     "date": "",
+                     "value": 0
+                    },
+                    "timeout_millis": null
+                   },
+                   "completion_destination": null,
+                   "metric_events": null,
+                   "dismiss_event": null,
+                   "loading_treatment": null,
+                   "refresh_scopes": "<redacted>",
+                   "bindings": null,
+                   "aggregate_bindings": null
+                  },
+                  "type": "UPDATE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "state": {},
+                   "dismiss_modal": true
+                  },
+                  "type": "STATE_UPDATE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "scopes": [
+                    "exercise-details"
+                   ]
+                  },
+                  "type": "REFRESH_SCOPE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "request": {
+                    "path": "weightlifting-service/v3/one-rep-max/520AB719-E8B0-45CD-AE63-2F78A1877BDF/history",
+                    "method": "GET",
+                    "content_type": null,
+                    "body": null,
+                    "timeout_millis": null
+                   },
+                   "reload_mode": "PERSISTENT",
+                   "cache_policy": null
+                  },
+                  "type": "RELOAD"
+                 },
+                 "full_screen": null
+                }
+               ],
+               "terminal_interaction": null
+              },
+              "type": "ACTION_SEQUENCE"
+             },
+             "analytic_event": {
+              "name": "Workout Builder",
+              "category": "one_rep_max",
+              "action": "save",
+              "label": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+              "value": "",
+              "source": null,
+              "properties": {
+               "entry_date": ""
+              }
+             }
+            },
+            "caption": "Please enter the weight for the combined weight lifted. If you lifted with a dumbbell in each hand, enter the total weight of both dumbbells.\n\nOnly perform One Rep Max tests if you’re an experienced weightlifter or being supervised by a qualified professional.",
+            "delete_button_title": null,
+            "delete_confirm_dialog": null
+           },
+           "bindings": {
+            "footer.save_confirm_dialog.analytic_event.value": "$one_rep_max_value",
+            "footer.save_confirm_dialog.primary_action.parameters.actions.0.action.parameters.request.body.date": "$selected_date",
+            "footer.save_confirm_dialog.primary_action.parameters.actions.0.action.parameters.request.body.value": "$one_rep_max_value",
+            "footer.save_confirm_dialog.analytic_event.properties.entry_date": "$selected_date"
+           }
+          }
+         }
+        ],
+        "height": "FULL",
+        "fixed_header": null,
+        "fixed_footer": null,
+        "id": "one-rep-max-entry-add"
+       },
+       "type": "BOTTOM_SHEET",
+       "modal_lifecycle_interactions": null,
+       "analytic_events": null
+      },
+      "action": null,
+      "navigation": null,
+      "dismiss_event": null,
+      "analytic_event": {
+       "name": "Workout Builder",
+       "category": "one_rep_max",
+       "action": "add",
+       "label": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+       "value": null,
+       "source": "one_rep_max_history",
+       "properties": {}
+      }
+     }
+    }
+   },
+   {
+    "type": "DIVIDER",
+    "content": {
+     "id": null,
+     "title": "2026",
+     "header_position": null,
+     "style": null,
+     "divider_type": "SOLID"
+    }
+   },
+   {
+    "type": "MEASUREMENT_ENTRY_ITEM",
+    "content": {
+     "id": "ESTIMATED-2026-11-21",
+     "title": "150",
+     "title_suffix": "lbs",
+     "subtitle": "Estimated",
+     "subtitle_suffix": "· Nov 21, 2026",
+     "subtitle_color": "RECOVERY",
+     "leading_icon": "NOTES_AI",
+     "leading_icon_color": "RECOVERY",
+     "trailing_icon": null,
+     "trailing_icon_color": null,
+     "generic_interaction": null
+    }
+   },
+   {
+    "type": "MEASUREMENT_ENTRY_ITEM",
+    "content": {
+     "id": "MANUAL-2026-11-20",
+     "title": "150",
+     "title_suffix": "lbs",
+     "subtitle": "Manual",
+     "subtitle_suffix": "· Nov 20, 2026",
+     "subtitle_color": null,
+     "leading_icon": "NOTES_EDIT",
+     "leading_icon_color": "WHITE_70",
+     "trailing_icon": "PENCIL",
+     "trailing_icon_color": "WHITE_70",
+     "generic_interaction": {
+      "modal": {
+       "content": {
+        "navigation_bar": {
+         "title": "EDIT MANUAL ENTRY",
+         "subtitle": null,
+         "left_button": {
+          "icon": "CROSS",
+          "icon_url": null,
+          "text": null,
+          "accessibility_label": null,
+          "destination": null,
+          "analytic_event": null,
+          "action": null,
+          "dismiss_event": {
+           "type": "AUTO",
+           "pop_up_to": null,
+           "pop_back_count": null
+          },
+          "dismiss_modal": null,
+          "generic_interaction": null,
+          "bindings": null,
+          "aggregate_bindings": null,
+          "deselect_action": null,
+          "glow_style": null,
+          "glow_pulse": false,
+          "glow": null,
+          "menu": null
+         },
+         "right_button": null,
+         "style": null,
+         "tag": null,
+         "icon": null,
+         "fixed_header": [],
+         "header": null
+        },
+        "items": [
+         {
+          "type": "ONE_REP_MAX_MEASUREMENT",
+          "content": {
+           "id": "one_rep_max_measurement",
+           "exercise_summary": {
+            "name": "probe-strength Custom Bench A (edited)",
+            "title_display": "EXERCISE"
+           },
+           "date_section": {
+            "title": "WHEN",
+            "date_prompt": "When was your One Rep Max?",
+            "date": "2026-11-20",
+            "minimum_date": "2026-05-21"
+           },
+           "value_section": {
+            "title": "VALUE",
+            "value_title": "ONE REP MAX",
+            "unit": "lbs",
+            "min_value": 1,
+            "max_value": 999,
+            "error_message": "Enter a value between 1 and 999 lbs.",
+            "value": 150
+           },
+           "footer": {
+            "save_button_title": "SAVE",
+            "save_confirm_dialog": {
+             "id": "confirmation_dialog",
+             "title": "Confirm One Rep Max",
+             "value_prompt": "You entered %1$d %2$s. Is that correct?",
+             "description": "This value will guide your One Rep Max estimates and insights from the date of your assessment.",
+             "primary_button": "CONFIRM ENTRY",
+             "secondary_button": "GO BACK",
+             "primary_action": {
+              "parameters": {
+               "actions": [
+                {
+                 "action": {
+                  "parameters": {
+                   "request": {
+                    "path": "weightlifting-service/v3/one-rep-max/520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+                    "method": "PUT",
+                    "content_type": null,
+                    "body": {
+                     "id": "cc8e19b0-fc1a-4fe8-8cb4-e1174dc255f9",
+                     "date": "",
+                     "value": 0
+                    },
+                    "timeout_millis": null
+                   },
+                   "completion_destination": null,
+                   "metric_events": null,
+                   "dismiss_event": null,
+                   "loading_treatment": null,
+                   "refresh_scopes": "<redacted>",
+                   "bindings": null,
+                   "aggregate_bindings": null
+                  },
+                  "type": "UPDATE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "state": {},
+                   "dismiss_modal": true
+                  },
+                  "type": "STATE_UPDATE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "scopes": [
+                    "exercise-details"
+                   ]
+                  },
+                  "type": "REFRESH_SCOPE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "request": {
+                    "path": "weightlifting-service/v3/one-rep-max/520AB719-E8B0-45CD-AE63-2F78A1877BDF/history",
+                    "method": "GET",
+                    "content_type": null,
+                    "body": null,
+                    "timeout_millis": null
+                   },
+                   "reload_mode": "PERSISTENT",
+                   "cache_policy": null
+                  },
+                  "type": "RELOAD"
+                 },
+                 "full_screen": null
+                }
+               ],
+               "terminal_interaction": null
+              },
+              "type": "ACTION_SEQUENCE"
+             },
+             "analytic_event": {
+              "name": "Workout Builder",
+              "category": "one_rep_max",
+              "action": "edit_save",
+              "label": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+              "value": "",
+              "source": null,
+              "properties": {
+               "entry_date": "",
+               "previous_1rm_value": "68.0388"
+              }
+             }
+            },
+            "caption": "Please enter the weight for the combined weight lifted. If you lifted with a dumbbell in each hand, enter the total weight of both dumbbells.\n\nOnly perform One Rep Max tests if you’re an experienced weightlifter or being supervised by a qualified professional.",
+            "delete_button_title": "DELETE",
+            "delete_confirm_dialog": {
+             "id": "delete_dialog",
+             "title": "Delete One Rep Max",
+             "value_prompt": null,
+             "description": "This cannot be undone and future One Rep Max estimates will be updated to reflect the change.",
+             "primary_button": "DELETE",
+             "secondary_button": "GO BACK",
+             "primary_action": {
+              "parameters": {
+               "actions": [
+                {
+                 "action": {
+                  "parameters": {
+                   "request": {
+                    "path": "weightlifting-service/v3/one-rep-max/manual-entry/cc8e19b0-fc1a-4fe8-8cb4-e1174dc255f9",
+                    "method": "DELETE",
+                    "content_type": null,
+                    "body": null,
+                    "timeout_millis": null
+                   },
+                   "completion_destination": null,
+                   "metric_events": null,
+                   "dismiss_event": null,
+                   "loading_treatment": null,
+                   "refresh_scopes": "<redacted>",
+                   "bindings": null,
+                   "aggregate_bindings": null
+                  },
+                  "type": "UPDATE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "state": {},
+                   "dismiss_modal": true
+                  },
+                  "type": "STATE_UPDATE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "scopes": [
+                    "exercise-details"
+                   ]
+                  },
+                  "type": "REFRESH_SCOPE"
+                 },
+                 "full_screen": null
+                },
+                {
+                 "action": {
+                  "parameters": {
+                   "request": {
+                    "path": "weightlifting-service/v3/one-rep-max/520AB719-E8B0-45CD-AE63-2F78A1877BDF/history",
+                    "method": "GET",
+                    "content_type": null,
+                    "body": null,
+                    "timeout_millis": null
+                   },
+                   "reload_mode": "PERSISTENT",
+                   "cache_policy": null
+                  },
+                  "type": "RELOAD"
+                 },
+                 "full_screen": null
+                }
+               ],
+               "terminal_interaction": null
+              },
+              "type": "ACTION_SEQUENCE"
+             },
+             "analytic_event": {
+              "name": "Workout Builder",
+              "category": "one_rep_max",
+              "action": "delete",
+              "label": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+              "value": null,
+              "source": null,
+              "properties": {
+               "entry_date": "2026-11-20"
+              }
+             }
+            }
+           },
+           "bindings": {
+            "footer.save_confirm_dialog.analytic_event.value": "$one_rep_max_value",
+            "footer.save_confirm_dialog.primary_action.parameters.actions.0.action.parameters.request.body.date": "$selected_date",
+            "footer.save_confirm_dialog.primary_action.parameters.actions.0.action.parameters.request.body.value": "$one_rep_max_value",
+            "footer.save_confirm_dialog.analytic_event.properties.entry_date": "$selected_date"
+           }
+          }
+         }
+        ],
+        "height": "FULL",
+        "fixed_header": null,
+        "fixed_footer": null,
+        "id": "one-rep-max-entry-edit"
+       },
+       "type": "BOTTOM_SHEET",
+       "modal_lifecycle_interactions": null,
+       "analytic_events": null
+      },
+      "action": null,
+      "navigation": null,
+      "dismiss_event": null,
+      "analytic_event": {
+       "name": "Workout Builder",
+       "category": "one_rep_max",
+       "action": "edit",
+       "label": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+       "value": null,
+       "source": null,
+       "properties": {}
+      }
+     }
+    }
+   }
+  ],
+  "screen_metadata": null,
+  "footer": null,
+  "background_image_url": null,
+  "background_theme": null,
+  "background": null,
+  "bindings": null,
+  "lifecycle_interactions": null,
+  "pull_to_refresh_enabled": null,
+  "pull_to_refresh_behavior": null,
+  "pagination": null,
+  "padding": null,
+  "render_mode": null,
+  "horizontal_alignment": null
+ },
+ "type": "LIST",
+ "refresh_behavior": null,
+ "prefetch_list": null,
+ "lifecycle_interactions": null
+}

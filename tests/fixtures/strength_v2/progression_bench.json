@@ -1,0 +1,535 @@
+{
+ "id": "exercise_progress",
+ "time_segments": [
+  {
+   "date_picker": {
+    "current_date_range_display": "OCT 23 - NOV 21, 26",
+    "next_date_time": null,
+    "previous_date_time": null
+   },
+   "metrics": [
+    {
+     "trend_key": "EXERCISE_PROGRESS_BY_EXERCISE",
+     "metric_name_display": "AVG VOLUME LOAD",
+     "metric_value_display": "2,094",
+     "metric_units_display": "lb",
+     "trend_direction": "NONE",
+     "trend_style": "NONE",
+     "metric_value_color": null,
+     "trend_text_display": null,
+     "current_metric_value": 2094,
+     "previous_metric_value": null,
+     "metric_change": null
+    }
+   ],
+   "graph": {
+    "id": null,
+    "plane": {
+     "lines": [
+      {
+       "position": 0.05,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      },
+      {
+       "position": 0.3635,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      },
+      {
+       "position": 0.6865,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      },
+      {
+       "position": 1,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      }
+     ],
+     "accessibility_info": {
+      "label": "null"
+     },
+     "start_yaxis": {
+      "type": "STANDARD",
+      "style": null,
+      "labels": [
+       {
+        "label": "0",
+        "position": 0.05,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "1,000",
+        "position": 0.3635,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "2,000",
+        "position": 0.6865,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "3,000",
+        "position": 1,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       }
+      ],
+      "offset": 0,
+      "axis_description": null,
+      "scrim_present": false,
+      "theme": null
+     },
+     "end_yaxis": null,
+     "bottom_xaxis": {
+      "type": "STANDARD",
+      "style": null,
+      "labels": [
+       {
+        "label": "Oct",
+        "position": 0.05,
+        "style": "STANDARD",
+        "sub_label": "24",
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Oct",
+        "position": 0.28333,
+        "style": "STANDARD",
+        "sub_label": "31",
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Nov",
+        "position": 0.51667,
+        "style": "STANDARD",
+        "sub_label": "7",
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Nov",
+        "position": 0.75,
+        "style": "STANDARD",
+        "sub_label": "14",
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Nov",
+        "position": 0.98333,
+        "style": "STANDARD",
+        "sub_label": "21",
+        "id": null,
+        "icon": null
+       }
+      ],
+      "offset": 0,
+      "axis_description": null,
+      "scrim_present": false,
+      "theme": null
+     },
+     "enable_advanced_haptics": null,
+     "top_xaxis": null
+    },
+    "plots": [
+     {
+      "plot": {
+       "bar_groups": [
+        {
+         "position_x": 0.98333,
+         "width": 0.025,
+         "bars": [
+          {
+           "position_y": 0.05,
+           "height": 0.6649999999999999,
+           "style": "STRAIN",
+           "data_scrubber_details": {
+            "primary_contextual_display": "SAT, NOV 21",
+            "value": null,
+            "value_display": "2,094",
+            "unit_display": "lb",
+            "secondary_contextual_display": null,
+            "scrubber_style": "STRAIN",
+            "data_context": null,
+            "advanced_haptic": null,
+            "phase_label": null,
+            "supplemental_data_scrubber_details": null,
+            "graph_legends": null,
+            "callout": null
+           },
+           "theme": null
+          }
+         ],
+         "accessibility_label": "todo",
+         "details": null,
+         "data_scrubber_details": null,
+         "top_label": null,
+         "bottom_label": null
+        }
+       ],
+       "id": "32323869",
+       "hide_while_scrubbing": false,
+       "skip_scrubbing": null
+      },
+      "type": "BAR_PLOT"
+     },
+     {
+      "plot": {
+       "style": "INACTIVE",
+       "range_min": 0,
+       "range_max": 0.2975,
+       "current_value": 0.2975,
+       "show_annotation": false,
+       "height": 0.02,
+       "id": "INACTIVE-0",
+       "hide_while_scrubbing": false,
+       "skip_scrubbing": null,
+       "yposition": 0
+      },
+      "type": "PROGRESS_PLOT"
+     },
+     {
+      "plot": {
+       "style": "MCI_MENSTRUAL",
+       "range_min": 0.3025,
+       "range_max": 0.9641666666666667,
+       "current_value": 0.9641666666666667,
+       "show_annotation": false,
+       "height": 0.02,
+       "id": "MCI_MENSTRUAL-1",
+       "hide_while_scrubbing": false,
+       "skip_scrubbing": null,
+       "yposition": 0
+      },
+      "type": "PROGRESS_PLOT"
+     },
+     {
+      "plot": {
+       "style": "INACTIVE",
+       "range_min": 0.9691666666666666,
+       "range_max": 1,
+       "current_value": 1,
+       "show_annotation": false,
+       "height": 0.02,
+       "id": "INACTIVE-2",
+       "hide_while_scrubbing": false,
+       "skip_scrubbing": null,
+       "yposition": 0
+      },
+      "type": "PROGRESS_PLOT"
+     }
+    ],
+    "graph_title_display": null,
+    "graph_buttons": null,
+    "layout_direction": "LEFT_TO_RIGHT",
+    "spotlight_target_id": null
+   },
+   "vow": null,
+   "breakdown_bar": null,
+   "breakdown_bars": [],
+   "legend": [
+    {
+     "graph_legend_style": "MENSTRUAL_PHASE",
+     "icon": null,
+     "legend_text": "MENSTRUAL",
+     "theme": null
+    }
+   ],
+   "whoop_coach_vow": null,
+   "segmental_body_comp_trends": null,
+   "last_updated": null,
+   "is_hidden": false
+  },
+  {
+   "date_picker": {
+    "current_date_range_display": "MAY 26 - NOV 21, 26",
+    "next_date_time": null,
+    "previous_date_time": null
+   },
+   "metrics": [
+    {
+     "trend_key": "EXERCISE_PROGRESS_BY_EXERCISE",
+     "metric_name_display": "AVG VOLUME LOAD",
+     "metric_value_display": "2,094",
+     "metric_units_display": "lb",
+     "trend_direction": "NONE",
+     "trend_style": "NONE",
+     "metric_value_color": null,
+     "trend_text_display": null,
+     "current_metric_value": 2094,
+     "previous_metric_value": null,
+     "metric_change": null
+    }
+   ],
+   "graph": {
+    "id": null,
+    "plane": {
+     "lines": [
+      {
+       "position": 0,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      },
+      {
+       "position": 0.33,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      },
+      {
+       "position": 0.67,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      },
+      {
+       "position": 1,
+       "axis": "X_AXIS",
+       "type": "STANDARD",
+       "style": "STANDARD",
+       "label": null,
+       "label_style": null,
+       "theme": null
+      }
+     ],
+     "accessibility_info": {
+      "label": "null"
+     },
+     "start_yaxis": {
+      "type": "STANDARD",
+      "style": null,
+      "labels": [
+       {
+        "label": "0",
+        "position": 0,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "1,000",
+        "position": 0.33,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "2,000",
+        "position": 0.67,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "3,000",
+        "position": 1,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       }
+      ],
+      "offset": 0,
+      "axis_description": null,
+      "scrim_present": false,
+      "theme": null
+     },
+     "end_yaxis": null,
+     "bottom_xaxis": {
+      "type": "STANDARD",
+      "style": null,
+      "labels": [
+       {
+        "label": "Jun",
+        "position": 0.03611,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Jul",
+        "position": 0.20278,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Aug",
+        "position": 0.375,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Sep",
+        "position": 0.54722,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Oct",
+        "position": 0.71389,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       },
+       {
+        "label": "Nov",
+        "position": 0.88611,
+        "style": "STANDARD",
+        "sub_label": null,
+        "id": null,
+        "icon": null
+       }
+      ],
+      "offset": 0,
+      "axis_description": null,
+      "scrim_present": false,
+      "theme": null
+     },
+     "enable_advanced_haptics": null,
+     "top_xaxis": null
+    },
+    "plots": [
+     {
+      "plot": {
+       "segments": [
+        {
+         "points": [
+          {
+           "id": null,
+           "visible": true,
+           "position_x": 0.99722,
+           "position_y": 0.7,
+           "style": "STRAIN",
+           "accessibility_label": null,
+           "details": null,
+           "data_scrubber_details": {
+            "primary_contextual_display": "SAT, NOV 21",
+            "value": null,
+            "value_display": "2,094",
+            "unit_display": "lb",
+            "secondary_contextual_display": null,
+            "scrubber_style": "STRAIN",
+            "data_context": null,
+            "advanced_haptic": null,
+            "phase_label": null,
+            "supplemental_data_scrubber_details": null,
+            "graph_legends": null,
+            "callout": null
+           },
+           "graph_label": {
+            "label": "2,094",
+            "label_style": "STRAIN",
+            "rendered_below": false,
+            "show_background_gradient": true
+           },
+           "theme": null
+          }
+         ],
+         "style": null,
+         "theme": null
+        }
+       ],
+       "style": "STRAIN",
+       "diagonal_points": null,
+       "theme": null,
+       "id": "STRAIN",
+       "hide_while_scrubbing": false,
+       "skip_scrubbing": null
+      },
+      "type": "LINE_PLOT"
+     },
+     {
+      "plot": {
+       "segments": [
+        {
+         "top_label": "2,094",
+         "bottom_label": null,
+         "style": "NONE",
+         "position_x": 0.84167,
+         "position_y": 0.7,
+         "width_percent": 0.15554999999999997
+        }
+       ],
+       "style": "NONE",
+       "id": "TREND_PLOT_ID",
+       "hide_while_scrubbing": true,
+       "skip_scrubbing": null
+      },
+      "type": "TREND_PLOT"
+     }
+    ],
+    "graph_title_display": null,
+    "graph_buttons": null,
+    "layout_direction": "LEFT_TO_RIGHT",
+    "spotlight_target_id": null
+   },
+   "vow": null,
+   "breakdown_bar": null,
+   "breakdown_bars": [],
+   "legend": [],
+   "whoop_coach_vow": null,
+   "segmental_body_comp_trends": null,
+   "last_updated": null,
+   "is_hidden": false
+  }
+ ],
+ "segment_controller": {
+  "initial_index": 0,
+  "element_names": [
+   "M",
+   "6M"
+  ]
+ }
+}

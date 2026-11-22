@@ -1,0 +1,159 @@
+{
+ "tiles": [
+  {
+   "exercise_id": "BENCHPRESS_BARBELL",
+   "name": "Bench Press - Barbell",
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "209",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "OVERHANDGRIPPULLUPS",
+   "name": "Pull Up",
+   "muscle_groups": [
+    "BACK"
+   ],
+   "equipment": "BODY",
+   "volume_input_format": "REPS",
+   "volume_input_value": "6",
+   "volume_input_units": "reps",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "BACKSQUAT_BARBELL",
+   "name": "Back Squat - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "95",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "DEADLIFT_BARBELL",
+   "name": "Deadlift - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "135",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "OVERHEADPRESS_BARBELL",
+   "name": "Overhead Press - Barbell",
+   "muscle_groups": [
+    "SHOULDERS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "50",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "POWERCLEAN_BARBELL",
+   "name": "Power Clean - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "ASSAULT_AIRBIKE",
+   "name": "Assault Bike",
+   "muscle_groups": [
+    "FULL_BODY"
+   ],
+   "equipment": "BODY",
+   "volume_input_format": "TIME",
+   "volume_input_value": "5:00",
+   "volume_input_units": "min",
+   "custom_exercise": false,
+   "e1rm_eligible": false,
+   "trackable": false,
+   "deleted": false
+  },
+  {
+   "exercise_id": "BACKWARDLUNGESRIGHT_DUMBBELL",
+   "name": "Backward Lunge - R - Dumbbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "200",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "BURPEE",
+   "name": "Burpees",
+   "muscle_groups": [
+    "FULL_BODY"
+   ],
+   "equipment": "BODY",
+   "volume_input_format": "REPS",
+   "volume_input_value": "10000",
+   "volume_input_units": "reps",
+   "custom_exercise": false,
+   "e1rm_eligible": false,
+   "trackable": false,
+   "deleted": false
+  },
+  {
+   "exercise_id": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+   "name": "probe-strength Custom Bench A (edited)",
+   "muscle_groups": [
+    "CHEST",
+    "ARMS"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "REPS",
+   "volume_input_value": "8",
+   "volume_input_units": "reps",
+   "custom_exercise": true,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": true
+  }
+ ],
+ "show_more": true,
+ "next_exercise_offset": 10,
+ "next_end_date": "2026-11-22",
+ "next_start_date": "2026-11-22"
+}

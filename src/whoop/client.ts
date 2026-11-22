@@ -27,6 +27,8 @@ export interface WhoopClientConfig {
 
 /** Backoff for WHOOP's 412 "User's cycle is concurrently being updated" on writes. */
 const RETRY_412_DELAYS_MS = [2_000, 10_000] as const;
+/** How long lift reads stay uncached after a write that changes them. */
+const LIFT_SETTLE_MS = 2 * 60_000;
 
 type QueryValue = string | number | boolean | undefined | null;
 
@@ -53,6 +55,7 @@ class RequestCache {
   private generation = 0;
   private loadSeq = 0;
   private readonly latestLoad = new Map<string, number>();
+  private readonly unsettledUntil = new Map<string, number>();
 
   constructor(private readonly now: () => number) {}
 
@@ -89,10 +92,12 @@ class RequestCache {
         const latest = this.latestLoad.get(key) === seq;
         if (latest && generation === this.generation) {
           // The newest read replaces what was cached even when it can't be kept
-          // itself (a pending record, an oversized body). Otherwise a fresh read
-          // that came back pending left the older entry in place, and the next
-          // ordinary read served data from before the one just returned.
-          const kept = policy !== null && !containsPendingState(value) && this.store(key, value, policy);
+          // itself (a pending record, an oversized body, or a tag WHOOP is still
+          // catching up on after a write). Otherwise a fresh read that came back
+          // pending left the older entry in place, and the next ordinary read
+          // served data from before the one just returned.
+          const kept = policy !== null && !containsPendingState(value) && !this.unsettled(policy.tags) &&
+            this.store(key, value, policy);
           if (!kept) this.evict(key);
         }
         return value;
@@ -121,6 +126,15 @@ class RequestCache {
   private evict(key: string): void {
     const entry = this.values.get(key);
     if (entry) this.delete(key, entry);
+  }
+
+  /** Serve reads tagged `tag` live, without retaining them, for the next `ms`: WHOOP is still catching up with a write. */
+  holdOff(tag: string, ms: number): void {
+    this.unsettledUntil.set(tag, this.now() + ms);
+  }
+
+  private unsettled(tags: readonly string[]): boolean {
+    return tags.some((tag) => (this.unsettledUntil.get(tag) ?? 0) > this.now());
   }
 
   /** Returns whether the value was kept. */
@@ -304,7 +318,10 @@ function writeInvalidationTags(path: string): readonly string[] {
   ) {
     return ["journal", "daily", "recovery", "sleep", "trend", "settings"];
   }
-  if (path.includes("weightlifting-service")) return ["lift", "activity", "daily", "trend", "milestones"];
+  if (path.includes("weightlifting-service")) {
+    // A custom exercise is a row of the 24 h exercise catalog, which lifts send verbatim.
+    return path.includes("/custom-exercise") ? ["lift", "activity", "daily", "trend", "milestones", "catalog"] : ["lift", "activity", "daily", "trend", "milestones"];
+  }
   if (
     path.includes("profile-service") || path.includes("hr-zones") || path.includes("smart-alarm") ||
     path.includes("hidden-metrics") || path.includes("stealth-mode") || path.startsWith("/users-service/") ||
@@ -379,7 +396,11 @@ export class WhoopClient {
     try {
       return await this.send<T>(method, path, query, body);
     } finally {
-      this.cache.invalidate(writeInvalidationTags(path));
+      const tags = writeInvalidationTags(path);
+      this.cache.invalidate(tags);
+      // Exercise history, PRs and e1RM lag a lift or activity write (live: seconds,
+      // up to ~30 s). A page read in that gap must not be replayed for its 5-min TTL.
+      if (tags.includes("lift")) this.cache.holdOff("lift", LIFT_SETTLE_MS);
     }
   }
 

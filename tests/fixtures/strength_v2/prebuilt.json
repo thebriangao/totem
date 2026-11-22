@@ -1,0 +1,397 @@
+{
+ "details_page_title": "WORKOUT DETAILS",
+ "prebuilt_template_details_header": {
+  "background_image_url": "https://dh6o7n168ts9.cloudfront.net/prebuilt/500x445_Soccer.jpg",
+  "workout_title_display": "Virgil van Dijk's Pitch Power",
+  "workout_subtitle_display": "By WHOOP",
+  "title_metric_tiles": [
+   {
+    "metric_value_display": "60",
+    "metric_subtitle_display": "EST DURATION",
+    "metric_unit_display": "min"
+   },
+   {
+    "metric_value_display": "7",
+    "metric_subtitle_display": "EXERCISES",
+    "metric_unit_display": null
+   },
+   {
+    "metric_value_display": "21",
+    "metric_subtitle_display": "TOTAL SETS",
+    "metric_unit_display": null
+   }
+  ]
+ },
+ "workout_summary_display": "Virgil van Dijk's routine combines lower body strength and explosiveness with core stability and upper body power, giving him the perfect combination of speed and power to dominate the defensive line.",
+ "workout_template": {
+  "parent_template_key": 430069,
+  "workout_template_key": null,
+  "name": "Virgil van Dijk's Pitch Power",
+  "workout_groups": [
+   {
+    "workout_exercises": [
+     {
+      "sets": [
+       {
+        "number_of_reps": 8,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 8,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 8,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Grasp a dumbbell in each hand. Place one leg back behind you on a bench. Squat with the leg that's on the ground and extend your leg to the starting position. Repeat."
+       ],
+       "muscle_groups": [
+        "LEGS"
+       ],
+       "translated_muscle_groups": "Legs",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2026-09-02T15:57:09.962Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "BULGARIANSQUATLEFT_DUMBBELL",
+       "name": "Split Squat - Rear Foot Elevated - L - Dumbbell",
+       "push_core_name": "BULGARIANSQUATLEFT_DUMBBELL",
+       "trackable": true,
+       "equipment": "DUMBBELL",
+       "translated_equipment": "Dumbbell",
+       "exercise_type": "STRENGTH",
+       "laterality": "LEFT",
+       "movement_pattern": "SQUAT",
+       "translated_movement_pattern": "Squat",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/BULGARIANSQUATLEFT_DUMBBELL.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/BULGARIANSQUATLEFT_DUMBBELL.mp4",
+       "volume_input_format": "WEIGHT",
+       "e1rm_eligible": true,
+       "custom_exercise": false
+      }
+     },
+     {
+      "sets": [
+       {
+        "number_of_reps": 8,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 8,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 8,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Grasp a dumbbell in each hand. Place one leg back behind you on a bench. Squat with the leg that's on the ground and extend your leg to the starting position. Repeat."
+       ],
+       "muscle_groups": [
+        "LEGS"
+       ],
+       "translated_muscle_groups": "Legs",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2026-09-02T15:57:09.962Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "BULGARIANSQUATRIGHT_DUMBBELL",
+       "name": "Split Squat - Rear Foot Elevated - R - Dumbbell",
+       "push_core_name": "BULGARIANSQUATRIGHT_DUMBBELL",
+       "trackable": true,
+       "equipment": "DUMBBELL",
+       "translated_equipment": "Dumbbell",
+       "exercise_type": "STRENGTH",
+       "laterality": "RIGHT",
+       "movement_pattern": "SQUAT",
+       "translated_movement_pattern": "Squat",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/BULGARIANSQUATRIGHT_DUMBBELL.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/BULGARIANSQUATRIGHT_DUMBBELL.mp4",
+       "volume_input_format": "WEIGHT",
+       "e1rm_eligible": true,
+       "custom_exercise": false
+      }
+     },
+     {
+      "sets": [
+       {
+        "number_of_reps": 6,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 6,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 6,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Stand in a half squat position with your hands on your waist. Jump explosively and land in the same starting position. Repeat."
+       ],
+       "muscle_groups": [
+        "LEGS"
+       ],
+       "translated_muscle_groups": "Legs",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2023-07-17T21:31:22.877Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "JUMPSQUAT",
+       "name": "Squat Jump",
+       "push_core_name": "JUMPSQUAT",
+       "trackable": true,
+       "equipment": "BODY",
+       "translated_equipment": "Bodyweight",
+       "exercise_type": "STRENGTH",
+       "laterality": "BILATERAL",
+       "movement_pattern": "JUMP",
+       "translated_movement_pattern": "Jump",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/JUMPSQUAT.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/JUMPSQUAT.mp4",
+       "volume_input_format": "REPS",
+       "e1rm_eligible": false,
+       "custom_exercise": false
+      }
+     }
+    ]
+   },
+   {
+    "workout_exercises": [
+     {
+      "sets": [
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Lie on the bench with your back and head resting on it, with your feet planted on the floor. Unrack the barbell and center it with the middle of your chest. Lower the barbell until it touches your mid-chest and then press the bar upwards. Repeat."
+       ],
+       "muscle_groups": [
+        "CHEST"
+       ],
+       "translated_muscle_groups": "Chest",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2026-09-02T15:57:09.962Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "BENCHPRESS_BARBELL",
+       "name": "Bench Press - Barbell",
+       "push_core_name": "BENCHPRESS_BARBELL",
+       "trackable": true,
+       "equipment": "BARBELL",
+       "translated_equipment": "Barbell",
+       "exercise_type": "STRENGTH",
+       "laterality": "BILATERAL",
+       "movement_pattern": "HORIZONTAL_PRESS",
+       "translated_movement_pattern": "Horizontal Press",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/BENCHPRESS_BARBELL.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/BENCHPRESS_BARBELL.mp4",
+       "volume_input_format": "WEIGHT",
+       "e1rm_eligible": true,
+       "custom_exercise": false
+      }
+     },
+     {
+      "sets": [
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Stand upright while holding a med ball at chest level. Throw the ball explosively against a wall. Catch it and repeat."
+       ],
+       "muscle_groups": [
+        "CHEST"
+       ],
+       "translated_muscle_groups": "Chest",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2025-09-25T14:07:28.273Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "STANDINGCHESTTHROW_MEDBALL",
+       "name": "Standing Chest Throw - Med Ball",
+       "push_core_name": "STANDINGCHESTTHROW_MEDBALL",
+       "trackable": true,
+       "equipment": "MEDICINE_BALL",
+       "translated_equipment": "Medicine Ball",
+       "exercise_type": "STRENGTH",
+       "laterality": "BILATERAL",
+       "movement_pattern": "OTHER",
+       "translated_movement_pattern": "Other",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/STANDINGCHESTTHROW_MEDBALL.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/STANDINGCHESTTHROW_MEDBALL.mp4",
+       "volume_input_format": "WEIGHT",
+       "e1rm_eligible": false,
+       "custom_exercise": false
+      }
+     },
+     {
+      "sets": [
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 10,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Stand on one leg with the barbell hanging in front of your body. Bend at the waist, keep the barbell close and stretch the hamstrings with a slight knee bend. Come back up until you are back at your starting position. Repeat on other leg."
+       ],
+       "muscle_groups": [
+        "LEGS"
+       ],
+       "translated_muscle_groups": "Legs",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2026-09-02T15:57:09.962Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "ALTERNATINGSINGLELEGROMANIANDEADLIFT_BARBELL",
+       "name": "Romanian Deadlift - Single Leg - Alternating - Barbell",
+       "push_core_name": "ALTERNATINGSINGLELEGROMANIANDEADLIFT_BARBELL",
+       "trackable": true,
+       "equipment": "BARBELL",
+       "translated_equipment": "Barbell",
+       "exercise_type": "STRENGTH",
+       "laterality": "ALTERNATING",
+       "movement_pattern": "HINGE",
+       "translated_movement_pattern": "Hinge",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/ALTERNATINGSINGLELEGROMANIANDEADLIFT_BARBELL.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/ALTERNATINGSINGLELEGROMANIANDEADLIFT_BARBELL.mp4",
+       "volume_input_format": "WEIGHT",
+       "e1rm_eligible": true,
+       "custom_exercise": false
+      }
+     }
+    ]
+   },
+   {
+    "workout_exercises": [
+     {
+      "sets": [
+       {
+        "number_of_reps": 5,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 5,
+        "weight": 0,
+        "time_in_seconds": null
+       },
+       {
+        "number_of_reps": 5,
+        "weight": 0,
+        "time_in_seconds": null
+       }
+      ],
+      "exercise_details": {
+       "training_types": [],
+       "instructions": [
+        "Hold a barbell across your shoulders with your fingertips while pointing your elbows forward. Squat down while maintaining a rigid back. Extend upwards by pushing with your heels until your legs are straight. Repeat."
+       ],
+       "muscle_groups": [
+        "LEGS"
+       ],
+       "translated_muscle_groups": "Legs",
+       "created_at": "2022-03-03T19:45:51.740Z",
+       "updated_at": "2026-09-02T15:57:09.962Z",
+       "custom_exercise_info": null,
+       "volume_input_value": null,
+       "volume_input_units": null,
+       "exercise_id": "FRONTSQUAT_BARBELL",
+       "name": "Front Squat - Barbell",
+       "push_core_name": "FRONTSQUAT_BARBELL",
+       "trackable": true,
+       "equipment": "BARBELL",
+       "translated_equipment": "Barbell",
+       "exercise_type": "STRENGTH",
+       "laterality": "BILATERAL",
+       "movement_pattern": "SQUAT",
+       "translated_movement_pattern": "Squat",
+       "deleted": false,
+       "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/FRONTSQUAT_BARBELL.jpg",
+       "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/FRONTSQUAT_BARBELL.mp4",
+       "volume_input_format": "WEIGHT",
+       "e1rm_eligible": true,
+       "custom_exercise": false
+      }
+     }
+    ]
+   }
+  ],
+  "is_draft": false,
+  "source": null
+ }
+}

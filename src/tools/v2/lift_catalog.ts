@@ -7,14 +7,14 @@ import { jsonOut } from "../../whoop/json_out.js";
 export function registerLiftCatalog(server: McpServer, _client: unknown): void {
   server.tool(
     "whoop_lift_catalog",
-    "Search the 372-exercise Strength Trainer catalog to get the exact exercise_id for whoop_lift_log, lift_exercise, or lift_progression. Filter by name substring, muscle, equipment, movement_pattern, or laterality (BILATERAL, LEFT, RIGHT, ALTERNATING), and read the id from the result.",
+    "Search the 371-exercise Strength Trainer catalog to get the exact exercise_id for whoop_lift_log, lift_exercise, or lift_progression. Filter by name substring, muscle, equipment, movement_pattern, or laterality (BILATERAL, LEFT, RIGHT, ALTERNATING), and read the id from the result.",
     {
       search: z.string().optional(),
       muscle: z.string().optional(),
       equipment: z.string().optional(),
       movement_pattern: z.string().optional(),
       laterality: z.enum(["BILATERAL", "LEFT", "RIGHT", "ALTERNATING"]).optional(),
-      limit: z.number().int().min(1).max(372).default(50),
+      limit: z.number().int().min(1).max(371).default(50),
     },
     async ({ search, muscle, equipment, movement_pattern, laterality, limit }) => {
       const s = search?.toLowerCase();
@@ -27,7 +27,7 @@ export function registerLiftCatalog(server: McpServer, _client: unknown): void {
         return true;
       });
       const out = LiftCatalogOut.parse({
-        total_in_catalog: 372,
+        total_in_catalog: 371,
         matched: matches.length,
         truncated: matches.length > limit,
         exercises: matches.slice(0, limit).map((e) => ({

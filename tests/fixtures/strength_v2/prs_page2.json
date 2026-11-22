@@ -1,0 +1,98 @@
+{
+ "tiles": [
+  {
+   "exercise_id": "BENTOVERROW_DUMBBELL",
+   "name": "Bent Over Row - Dumbbell",
+   "muscle_groups": [
+    "BACK"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "OVERHEADSLAM_MEDBALL",
+   "name": "Overhead Slam - Med Ball",
+   "muscle_groups": [
+    "ARMS"
+   ],
+   "equipment": "MEDICINE_BALL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": false,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "SPLITSQUATLEFT_DUMBBELL",
+   "name": "Split Squat - L - Dumbbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "STEPUPSRIGHT_BARBELL",
+   "name": "Step Up - R - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "SEATEDLEGEXTENSION_PULLEYMACHINE",
+   "name": "Seated Machine Leg Extension",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "MACHINE",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "656",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "BOXJUMP",
+   "name": "Box Jump",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "PLYO_BOX",
+   "volume_input_format": "REPS",
+   "volume_input_value": "6",
+   "volume_input_units": "reps",
+   "custom_exercise": false,
+   "e1rm_eligible": false,
+   "trackable": false,
+   "deleted": false
+  }
+ ],
+ "show_more": false,
+ "next_exercise_offset": 26,
+ "next_end_date": "2026-11-22",
+ "next_start_date": "2026-11-22"
+}
