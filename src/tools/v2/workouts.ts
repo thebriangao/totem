@@ -18,7 +18,8 @@ import { WhoopApiError } from "../../whoop/errors.js";
 import { ActivityDetailOut, WorkoutsListOut, type ActivityListItemT } from "../../schemas/activities.js";
 import { projectActivityDetail, projectDeveloperWorkout, projectTile, workoutRows } from "../../projections/activities.js";
 import { daySpan, listTiles } from "../../lib/activity_list.js";
-import { CARDIO_DETAILS_V1, RECOVERY_DETAILS_V2 } from "../../lib/activity_records.js";
+import { CARDIO_DETAILS_V1, RECOVERY_DETAILS_V2, activityRecordPath, badActivityIdError, recordFromActivity } from "../../lib/activity_records.js";
+import { typeForInternalName } from "../../lib/activity_types.js";
 import { errorResult } from "../../lib/activity_results.js";
 import { todayIso } from "../../lib/dates.js";
 import { wallClockIso } from "../../lib/timezone.js";
@@ -84,9 +85,35 @@ export function registerWorkouts(server: McpServer, client: WhoopClient): void {
           return errorResult({ error: `No activity ${activity_id} (deleted, or not an activity id).` });
         }
         if (e instanceof WhoopApiError && e.status === 400) {
-          // cardio-details refuses pending sleeps (SPEC.md C1).
-          return errorResult({ error: `${activity_id} is a sleep or nap that WHOOP hasn't scored yet.`, hint: "Use whoop_sleep with this activity_id." });
+          // "Cannot view activity details for a pending activity": cardio-details refuses
+          // ANY activity WHOOP is still processing, a workout seconds after a log or an
+          // edit as much as a pending sleep (live 2026-11-21: a just-edited walk). The raw
+          // record answers in every state and says which it is. Calling every 400 a sleep
+          // sent a workout to whoop_sleep, which sends it straight back here.
+          const record = await client.get(activityRecordPath(activity_id), {}, { fresh: true }).then(recordFromActivity).catch(() => null);
+          if (record?.score_type === "SLEEP") {
+            return errorResult({ error: `${activity_id} is a sleep or nap that WHOOP hasn't scored yet.`, hint: "Use whoop_sleep with this activity_id." });
+          }
+          if (!record?.type) {
+            return errorResult({
+              error: `WHOOP is still processing ${activity_id}, so its details aren't readable yet.`,
+              hint: "Try again in a few seconds. If it is a sleep or nap, use whoop_sleep.",
+            });
+          }
+          return respond("whoop_workouts", ActivityDetailOut, {
+            type: record.score_type,
+            internal_name: record.type,
+            sport_id: typeForInternalName(record.type)?.sport_id ?? null,
+            start: record.start,
+            end: record.end,
+            duration_ms: record.start && record.end ? Date.parse(record.end) - Date.parse(record.start) : null,
+            strain: null, calories: null, avg_hr_bpm: null, max_hr_bpm: null, zones_min: null, distance_m: null,
+            strength_trainer_linkable: null,
+            warnings: ["WHOOP is still processing this activity (just logged or edited), so its scores and HR aren't readable yet. Try again in a few seconds."],
+          });
         }
+        const badId = badActivityIdError(e, activity_id);
+        if (badId) return errorResult({ error: badId.message });
         throw e;
       }
       const scoreType = str(get(cardio, "details_edit_components", "single_score_type"));

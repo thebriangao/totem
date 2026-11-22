@@ -2,9 +2,12 @@
 // (+ recovery-details), developer list only behind WHOOP_DEV_V2_LISTS.
 import { afterEach, describe, expect, it } from "vitest";
 import { registerWorkouts } from "../../src/tools/v2/workouts.js";
-import { badRequest, connect, fakeWhoop, homeWith, loadFixture, notFound, textOf, unrouted, type Call } from "./activity_test_utils.js";
+import { WhoopServerError } from "../../src/whoop/errors.js";
+import { activityRecord, badRequest, connect, fakeWhoop, homeWith, loadFixture, notFound, textOf, unrouted, type Call } from "./activity_test_utils.js";
 
 const CAL = "/home-service/v1/calendar/overview";
+const RECORD = (id: string): string => `/activities-service/v2/activities/${id}`;
+const PENDING_400 = "Cannot view activity details for a pending activity";
 const HOME = "/home-service/v1/home";
 const CARDIO = "/core-details-bff/v1/cardio-details";
 const RECOVERY = "/core-details-bff/v2/recovery-details";
@@ -140,7 +143,11 @@ describe("whoop_workouts detail", () => {
   });
 
   it("points sleeps to whoop_sleep and maps a missing id", async () => {
-    const pendingSleep = fakeWhoop((c: Call) => { throw badRequest(c.path, "Cannot view activity details for a pending activity"); });
+    const pendingSleep = fakeWhoop((c: Call) => {
+      if (c.path === CARDIO) throw badRequest(c.path, PENDING_400);
+      if (c.path === RECORD("sleep-1")) return activityRecord({ id: "sleep-1", type: "nap", score_type: "SLEEP" }, false);
+      return unrouted(c);
+    });
     const c1 = await connect((s) => registerWorkouts(s, pendingSleep.whoop));
     const r1 = await c1.callTool({ name: "whoop_workouts", arguments: { activity_id: "sleep-1" } });
     expect(r1.isError).toBe(true);
@@ -150,5 +157,63 @@ describe("whoop_workouts detail", () => {
     const r2 = await c2.callTool({ name: "whoop_workouts", arguments: { activity_id: "gone" } });
     expect(r2.isError).toBe(true);
     expect(JSON.stringify(r2.content)).toContain("No activity gone");
+  });
+
+  // Live 2026-11-21: seconds after whoop_activity_edit moved a walk, cardio-details answered
+  // 400 "Cannot view activity details for a pending activity". That was reported as "a sleep
+  // or nap ... use whoop_sleep", and whoop_sleep answers "a walking activity ... use whoop_workouts".
+  it("answers a workout WHOOP is still processing from its record, never as a sleep", async () => {
+    const { whoop, calls } = fakeWhoop((c: Call) => {
+      if (c.path === CARDIO) throw badRequest(c.path, PENDING_400);
+      if (c.path === RECORD("walk-1")) {
+        return activityRecord({ id: "walk-1", type: "walking", translated_type: "Walking", version: 1, during: "['2026-11-21T14:10:00.000Z','2026-11-21T14:25:00.000Z')" }, false);
+      }
+      return unrouted(c);
+    });
+    const client = await connect((s) => registerWorkouts(s, whoop));
+    const r = await client.callTool({ name: "whoop_workouts", arguments: { activity_id: "walk-1" } });
+    expect(r.isError).not.toBe(true);
+    expect(JSON.stringify(r.content)).not.toContain("whoop_sleep");
+    const out = textOf(r);
+    expect(out).toMatchObject({ type: "CARDIO", internal_name: "walking", sport_id: 63, duration_ms: 900_000 });
+    expect(Date.parse(String(out.start))).toBe(Date.parse("2026-11-21T14:10:00.000Z"));
+    expect(Date.parse(String(out.end))).toBe(Date.parse("2026-11-21T14:25:00.000Z"));
+    // Nothing is invented for the scores it couldn't read.
+    for (const k of ["strain", "calories", "avg_hr_bpm", "max_hr_bpm", "zones_min"]) expect(out).not.toHaveProperty(k);
+    expect(String(out.warnings)).toContain("still processing");
+    // The record is the fresh second read; the pending screen isn't retried.
+    expect(calls.map((c) => [c.path, c.fresh])).toEqual([[CARDIO, false], [RECORD("walk-1"), true]]);
+  });
+
+  // Live 2026-11-21: cardio-details answers a bare 500 for an id that isn't a UUID, which came
+  // back as "usually transient — try again in 30s".
+  it("says a malformed id isn't an activity id instead of calling WHOOP's 500 transient", async () => {
+    const serverError = (c: Call) => { throw new WhoopServerError(500, c.path, "Error 500 Internal Server Error"); };
+    const bad = await connect((s) => registerWorkouts(s, fakeWhoop(serverError).whoop));
+    const r = await bad.callTool({ name: "whoop_workouts", arguments: { activity_id: "70ad76a1" } });
+    expect(r.isError).toBe(true);
+    const text = JSON.stringify(r.content);
+    expect(text).toContain("isn't a WHOOP activity id");
+    expect(text).toContain("whoop_workouts");
+    expect(text).not.toContain("transient");
+    // A well-formed id that 500s is still WHOOP's problem, and says so.
+    const real = await connect((s) => registerWorkouts(s, fakeWhoop(serverError).whoop));
+    const r2 = await real.callTool({ name: "whoop_workouts", arguments: { activity_id: "70ad76a1-1e3c-4c8e-a026-903ff3175783" } });
+    expect(r2.isError).toBe(true);
+    expect(JSON.stringify(r2.content)).toContain("transient");
+  });
+
+  it("says the activity is still processing when even the record can't say what it is", async () => {
+    const { whoop } = fakeWhoop((c: Call) => {
+      if (c.path === CARDIO) throw badRequest(c.path, PENDING_400);
+      throw new Error("record read failed");
+    });
+    const client = await connect((s) => registerWorkouts(s, whoop));
+    const r = await client.callTool({ name: "whoop_workouts", arguments: { activity_id: "act-9" } });
+    expect(r.isError).toBe(true);
+    const out = textOf(r);
+    expect(String(out.error)).toContain("still processing act-9");
+    expect(String(out.error)).not.toContain("is a sleep");
+    expect(String(out.hint)).toContain("Try again");
   });
 });

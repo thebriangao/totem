@@ -20,7 +20,7 @@ import {
 } from "../../projections/lift_sessions.js";
 import type { LiftCard } from "../../projections/lift_cards.js";
 import { walkHistory } from "../../lib/lift_history.js";
-import { readActivityAs } from "../../lib/activity_records.js";
+import { badActivityIdError, readActivityAs } from "../../lib/activity_records.js";
 import { WhoopApiError } from "../../whoop/errors.js";
 import { get } from "../../whoop/bff.js";
 import { runPaced } from "../../lib/concurrency.js";
@@ -162,7 +162,7 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
         detail = await client.get("/core-details-bff/v1/cardio-details", { activityId: activity_id });
       } catch (e) {
         // WHOOP sometimes answers 400 "Cannot view activity details for a pending activity" for a few seconds after a log.
-        if (!(e instanceof WhoopApiError && e.status === 400)) throw e;
+        if (!(e instanceof WhoopApiError && e.status === 400)) throw badActivityIdError(e, activity_id) ?? e;
         warnings.push("Activity details unavailable while pending; sets come from exercise history.");
       }
       let activity = activityFromDetail(activity_id, detail, today);
@@ -174,6 +174,9 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
       if (activity.start) activity.date = isoDay(new Date(activity.start));
       let session: Session | null;
       if (hasLiftData(detail)) session = buildSession(activity, detail, parseCardioDetails(detail), "details", withRows);
+      // A scored activity of another sport with no lift block has no sets: the list applies the
+      // same rule. Sweeping every exercise's history to say so cost 28 requests for a boxing id.
+      else if (detail !== null && !unscored(activity, detail)) session = null;
       else {
         session = fromIndex(activity, detail, await historyIndex(client, new Set([activity_id]), sweepFloor([activity], addDays(today, -MAX_SPAN_DAYS)), recent([activity]), warnings), withRows);
       }

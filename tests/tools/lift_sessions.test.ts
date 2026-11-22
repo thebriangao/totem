@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { body, connect, fixture, routes } from "./lift_v2_harness.js";
 import { registerLiftSessions } from "../../src/tools/v2/lift_sessions.js";
-import { WhoopApiError } from "../../src/whoop/errors.js";
+import { WhoopApiError, WhoopServerError } from "../../src/whoop/errors.js";
 
 const repoFixture = (name: string) => JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), "utf8"));
 const SCORED = "5364dc07-c229-481f-b92f-0d7ee402fbbf";
@@ -134,6 +134,40 @@ describe("whoop_lift_sessions", () => {
     const client = await connect(registerLiftSessions, { get });
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: SCORED } }));
     expect(out.sessions[0]).toMatchObject({ id: SCORED, src: "details", start: expect.stringContaining("2026-05-23") });
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  // Live 2026-11-21: a scored boxing id read 3 PR pages and 24 exercise histories (28 requests)
+  // to answer "no Strength Trainer sets". The list skips such an activity without any sweep.
+  it("a scored activity of another sport by id answers from its details alone", async () => {
+    const get = routes({ "/core-details-bff/v1/cardio-details": repoFixture("cardio_details_nonstrength") });
+    const client = await connect(registerLiftSessions, { get });
+    const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: "70ad76a1-1e3c-4c8e-a026-903ff3175783" } }));
+    expect(out.sessions ?? []).toEqual([]);
+    expect(out.warnings.join()).toContain("no Strength Trainer sets");
+    expect(get.mock.calls.map((c) => c[0])).toEqual(["/core-details-bff/v1/cardio-details"]);
+  });
+
+  it("an unscored activity of another sport by id is still looked up in history (sets may be attached)", async () => {
+    const get = routes({
+      "/core-details-bff/v1/cardio-details": repoFixture("activities/cardio_details_pending_boxing"),
+      "/weightlifting-service/v3/prs": { tiles: [{ exercise_id: "BENCHPRESS_BARBELL", name: "Bench Press - Barbell" }], show_more: false },
+      "/weightlifting-service/v3/exercise/BENCHPRESS_BARBELL/exercise_history": fixture("history_bench"),
+    });
+    const client = await connect(registerLiftSessions, { get });
+    const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: PENDING } }));
+    expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "boxing", src: "history" });
+    expect(get.mock.calls.some((c) => c[0] === "/weightlifting-service/v3/prs")).toBe(true);
+  });
+
+  it("a malformed activity_id is reported as such, not as a transient WHOOP error", async () => {
+    const get = routes({ "/core-details-bff/v1/cardio-details": new WhoopServerError(500, "/core-details-bff/v1/cardio-details", "Error 500 Internal Server Error") });
+    const client = await connect(registerLiftSessions, { get });
+    const result = await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: "not-a-uuid" } });
+    expect(result.isError).toBe(true);
+    const text = JSON.stringify(result.content);
+    expect(text).toContain("isn't a WHOOP activity id");
+    expect(text).not.toContain("transient");
     expect(get).toHaveBeenCalledTimes(1);
   });
 

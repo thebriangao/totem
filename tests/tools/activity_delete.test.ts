@@ -2,6 +2,7 @@
 // fresh read (WHOOP answers 204 even for ids that don't exist).
 import { describe, expect, it } from "vitest";
 import { registerActivityDelete } from "../../src/tools/v2/activity_delete.js";
+import { WhoopServerError } from "../../src/whoop/errors.js";
 import { activityRecord, badRequest, cardioDetails, connect, fakeWhoop, notFound, sleepDetails, textOf, unrouted, type Call } from "./activity_test_utils.js";
 
 const CARDIO_V1 = "/core-details-bff/v1/cardio-details";
@@ -94,6 +95,22 @@ describe("whoop_activity_delete", () => {
     const t = await deleteTool((c) => { throw notFound(c.path); });
     const r = await t.call({ activity_id: "nope", confirm: true });
     expect(r.isError).toBe(true);
+    expect(t.writes()).toHaveLength(0);
+  });
+
+  // Live 2026-11-21: the record 404s for a non-UUID id and cardio-details then answers a bare
+  // 500, which was reported as "usually transient — try again in 30s".
+  it("a malformed id is reported as not an activity id, and nothing is deleted", async () => {
+    const t = await deleteTool((c) => {
+      if (c.method === "GET" && c.path === "/activities-service/v2/activities/not-a-uuid") throw notFound(c.path);
+      if (c.method === "GET" && c.path === CARDIO_V1) throw new WhoopServerError(500, c.path, "Error 500 Internal Server Error");
+      return unrouted(c);
+    });
+    const r = await t.call({ activity_id: "not-a-uuid", confirm: true });
+    expect(r.isError).toBe(true);
+    const text = JSON.stringify(r.content);
+    expect(text).toContain("isn't a WHOOP activity id");
+    expect(text).not.toContain("transient");
     expect(t.writes()).toHaveLength(0);
   });
 });

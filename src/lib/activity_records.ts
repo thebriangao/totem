@@ -8,7 +8,7 @@
 // - CARDIO/RECOVERY reads go to GET cd/v1/cardio-details (200 in every state).
 // Every read here is fresh: pre-reads and read-backs must never see the cache.
 import type { WhoopClient } from "../whoop/client.js";
-import { WhoopApiError, WhoopConflictError } from "../whoop/errors.js";
+import { WhoopApiError, WhoopConflictError, WhoopServerError } from "../whoop/errors.js";
 import { get, str } from "../whoop/bff.js";
 import { parsePgRange } from "./dates.js";
 import { typeForInternalName } from "./activity_types.js";
@@ -116,6 +116,19 @@ export function recordFromCardioDetails(raw: unknown, id: string): ActivityRecor
 
 const isStatus = (e: unknown, ...statuses: number[]): boolean => e instanceof WhoopApiError && statuses.includes(e.status);
 
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+/**
+ * WHOOP's detail screens answer a bare 500 for an id that isn't a UUID (a
+ * truncated or made-up one), which reads as "usually transient, try again in
+ * 30s". Returns the error to raise for that case, or null when `e` is anything
+ * else (a real id that 500s stays a server error).
+ */
+export function badActivityIdError(e: unknown, id: string): Error | null {
+  if (!(e instanceof WhoopServerError) || UUID.test(id.trim())) return null;
+  return new Error(`${JSON.stringify(id)} isn't a WHOOP activity id (ids are UUIDs like 70ad76a1-1e3c-4c8e-a026-903ff3175783). Take the id from whoop_workouts, whoop_day or whoop_sleep.`);
+}
+
 /**
  * Read an activity of unknown kind: the activities-service record first, then
  * cardio-details (200 for CARDIO/RECOVERY in any state, 400 for a pending
@@ -136,7 +149,7 @@ export async function readActivity(client: WhoopClient, id: string): Promise<Act
     if (rec.score_type !== "SLEEP" && rec.type) return rec;
   } catch (e) {
     if (isStatus(e, 404)) return null;
-    if (!isStatus(e, 400)) throw e; // 400 = a pending sleep, or any activity right after a write
+    if (!isStatus(e, 400)) throw badActivityIdError(e, id) ?? e; // 400 = a pending sleep, or any activity right after a write
     cardioPending = true;
   }
   // sleep-details answers 200 for ANY existing activity id, workouts included
@@ -150,7 +163,7 @@ export async function readActivity(client: WhoopClient, id: string): Promise<Act
     return recordFromSleepDetails(await client.get(sleepDetailsPath(id), {}, { fresh: true }), id);
   } catch (e) {
     if (isStatus(e, 404)) return null;
-    throw e;
+    throw badActivityIdError(e, id) ?? e;
   }
 }
 
@@ -178,7 +191,7 @@ export async function readActivityAs(client: WhoopClient, id: string, scoreType:
     return recordFromCardioDetails(await client.get(CARDIO_DETAILS_V1, { activityId: id }, { fresh: true }), id);
   } catch (e) {
     if (isStatus(e, 404)) return null;
-    throw e;
+    throw badActivityIdError(e, id) ?? e;
   }
 }
 
