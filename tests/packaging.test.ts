@@ -39,3 +39,14 @@ describe("package.json", () => {
     }
   });
 });
+
+describe("the version", () => {
+  it("is the same in package.json, the MCP server and server.json", async () => {
+    const { VERSION } = await import("../src/version.js");
+    const registry = JSON.parse(readFileSync(resolve(root, "server.json"), "utf8")) as { version: string; packages: Array<{ version: string }> };
+    const version = (JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { version: string }).version;
+    expect(VERSION).toBe(version);
+    expect(registry.version).toBe(version);
+    expect(registry.packages.map((p) => p.version)).toEqual([version]);
+  });
+});

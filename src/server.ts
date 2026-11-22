@@ -22,6 +22,7 @@ import { startTimezoneAutoDetect } from "./whoop/init_timezone.js";
 import { resolveInstallationId } from "./whoop/installation.js";
 import { getInstallationId, versionStaleWarning } from "./whoop/device.js";
 import { BUILD_ID } from "./build_info.js";
+import { VERSION } from "./version.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH = resolve(__dirname, "../.env");
@@ -173,7 +174,7 @@ async function main(): Promise<void> {
   // handler skips 'exit' handlers, so route signals through process.exit to
   // release the token lock.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.once(signal, () => process.exit(0));
-  const server = new McpServer({ name: "totem", version: "1.5.1" });
+  const server = new McpServer({ name: "totem", version: VERSION });
   registerTools(server, whoop);
   await server.connect(new StdioServerTransport());
 }

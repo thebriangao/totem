@@ -1,52 +1,31 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.thebriangao/totem",
-  "description": "Totem — talk to your wearables with AI. Today: full Whoop access (40 tools).",
+  "description": "Your own WHOOP server for AI apps: recovery, sleep, strain, workouts, journal and more (40 tools).",
   "repository": {
     "url": "https://github.com/thebriangao/totem",
     "source": "github"
   },
-  "version": "1.5.1",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@thebriangao/totem",
-      "version": "1.5.1",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "name": "WHOOP_IOS_BEARER_TOKEN",
-          "description": "Whoop Cognito access token. Obtain via `totem auth` from the repo, which prompts for your Whoop email + password + SMS MFA code, then writes both tokens to a local .env. Auto-refreshes every ~24h.",
-          "isRequired": true,
-          "isSecret": true,
-          "format": "string"
-        },
-        {
-          "name": "WHOOP_COGNITO_REFRESH_TOKEN",
-          "description": "Whoop Cognito refresh token (~30 day lifetime). Obtained alongside the bearer token from `totem auth`. When this expires, run `totem auth` to get a fresh pair.",
-          "isRequired": true,
-          "isSecret": true,
-          "format": "string"
-        },
-        {
-          "name": "WHOOP_EMAIL",
-          "description": "Your Whoop account email. Used only by `totem auth` — the running server reads tokens, not credentials.",
-          "isRequired": true,
-          "isSecret": false,
-          "format": "string"
-        },
-        {
-          "name": "WHOOP_USER_ID",
-          "description": "Your numeric Whoop user ID. Optional — used by whoop_profile and whoop_leaderboard. Avoids one redundant bootstrap call per session if set.",
+          "name": "TOTEM_TOKEN_FILE",
+          "description": "Where the WHOOP login is kept. Default: ~/.config/totem/tokens.json, written by `npx @thebriangao/totem auth --local`.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"
         },
         {
           "name": "WHOOP_TIMEZONE",
-          "description": "IANA timezone (e.g., America/Los_Angeles) for response timestamps. Optional — if unset, the server auto-detects from your Whoop profile's timezone_offset field (refreshed hourly).",
+          "description": "IANA timezone (e.g. America/Los_Angeles) for times in answers. Default: the timezone in your WHOOP profile.",
           "isRequired": false,
           "isSecret": false,
           "format": "string"

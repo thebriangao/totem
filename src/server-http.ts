@@ -34,6 +34,7 @@ import { timezoneSettled } from "./whoop/init_timezone.js";
 import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
 import { mountAdminTokens, type AdminTokensOptions } from "./server-admin.js";
+import { VERSION } from "./version.js";
 
 export interface HttpServerOptions {
   /** Bearer token clients must present + JWT signing secret. Required, ≥32 chars. */
@@ -170,7 +171,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   async function createSession(): Promise<Session> {
     while (sessions.size >= MAX_SESSIONS) evictLeastRecentlyUsed();
     const newId = randomUUID();
-    const newServer = new McpServer({ name: "totem", version: "1.5.1" });
+    const newServer = new McpServer({ name: "totem", version: VERSION });
     registerTools(newServer, client);
     const newTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => newId,
