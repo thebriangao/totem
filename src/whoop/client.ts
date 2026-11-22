@@ -187,7 +187,8 @@ function cacheKey(path: string, query: Record<string, QueryValue>): string {
   const params = Object.entries(query)
     .filter(([, value]) => value !== undefined && value !== null)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${String(value)}`)
+    // Encoded, so {a: "1&b=2"} and {a: "1", b: "2"} (different requests) don't share a key.
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
     .join("&");
   return `${path}?${params}`;
 }

@@ -233,6 +233,18 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps different queries apart when a value contains & or =", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ which: "one param" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ which: "two params" }), { status: 200 }));
+    const client = makeClient();
+    const path = "/home-service/v1/home";
+    // Sent as ?a=1%26b%3D2 and ?a=1&b=2: two requests that used to share the key "…?a=1&b=2".
+    expect(await client.get(path, { a: "1&b=2" })).toEqual({ which: "one param" });
+    expect(await client.get(path, { a: "1", b: "2" })).toEqual({ which: "two params" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("stops serving the older cached value after a fresh read that can't itself be cached", async () => {
     const workouts = (records: unknown[]) => new Response(JSON.stringify({ records }), { status: 200 });
     fetchMock
