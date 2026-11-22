@@ -1015,11 +1015,15 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
       }
       d.appName = (await ui.text("Name", d.appName)).trim() || d.appName;
       for (;;) {
-        const typed = await ui.hidden("Connector password (Enter keeps the generated one)");
+        const typed = await ui.hidden(`Connector password (Enter keeps ${ownPassword ? "yours" : "the generated one"})`);
         if (typed === "") break;
         const why = weakPassword(typed);
-        if (!why) { password = typed; ownPassword = true; d.env.AUTH_PASSWORD = typed; break; }
-        ui.hint(why, 2);
+        if (why) { ui.hint(why, 2); continue; }
+        // It is typed blind and totem never shows it afterwards: a slip of the
+        // finger would set a password on the server that nobody knows.
+        if ((await ui.hidden("The same password again")) !== typed) { ui.hint("Those two are not the same. Nothing changed.", 2); continue; }
+        password = typed; ownPassword = true; d.env.AUTH_PASSWORD = typed;
+        break;
       }
       if (await ui.confirm(`Sign in to ${HOSTS.find((h) => h.id === platform)!.name} as someone else?`, false)) {
         const account = await switchAccount(io, platform, d.cli, already);

@@ -53,10 +53,51 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
 
   it("shows nothing for a password the person chose themselves", async () => {
     const own = "my own passphrase 42";
-    const { text } = await cloud({ ...notAnswering, answers: [["Deploy this?", 1], ["Connector password", own]] });
+    const { text } = await cloud({ ...notAnswering, answers: [["Deploy this?", 1], ["Connector password", own], ["The same password again", own]] });
     expect(text).toContain("The deploy finished, but the server isn't answering.");
     expect(text).not.toContain(own);
     expect(text).not.toContain(PASSWORD);
+  });
+});
+
+// "Change something" lets the person type their own connector password. It is
+// typed blind and totem never shows it again, so it is asked for twice: a slip
+// would otherwise put a password on the server that nobody knows.
+describe("totem cloud: choosing your own connector password", () => {
+  const own = "my own passphrase 42";
+  /** Run the flow and return what `fly secrets import` was given on stdin. */
+  async function secretsSentWith(answers: NonNullable<WorldOptions["answers"]>): Promise<{ sent: string; text: string }> {
+    let sent = "";
+    const { text } = await cloud({
+      answers: [["Deploy this?", 1], ...answers],
+      exec: (cmd, args, input, w) => {
+        if (args.join(" ").startsWith("secrets import")) sent = input ?? "";
+        return fly(cmd, args, input, w);
+      },
+    });
+    return { sent, text };
+  }
+
+  it("sets it when both entries match, and doesn't show it", async () => {
+    const { sent, text } = await secretsSentWith([["Connector password", own], ["The same password again", own]]);
+    expect(sent).toContain(`AUTH_PASSWORD=${own}\n`);
+    expect(text).not.toContain(own);
+    expect(text).not.toContain(PASSWORD);
+  });
+
+  it("keeps the generated one when the second entry differs", async () => {
+    const { sent, text } = await secretsSentWith([["Connector password", own], ["The same password again", "my own passphrase 43"]]);
+    expect(text).toContain("Those two are not the same. Nothing changed.");
+    expect(sent).toContain(`AUTH_PASSWORD=${PASSWORD}\n`);
+    expect(sent).not.toContain(own);
+    // …and the generated one is what the last screen hands over.
+    expect(text.split(PASSWORD)).toHaveLength(2);
+  });
+
+  it("asks again, saying it would keep yours, once you have set one", async () => {
+    const { text } = await secretsSentWith([["Connector password", own], ["The same password again", own], ["Deploy this?", 1]]);
+    expect(text).toContain("? Connector password (Enter keeps the generated one) (hidden):");
+    expect(text).toContain("? Connector password (Enter keeps yours) (hidden):");
   });
 });
 
@@ -131,7 +172,7 @@ describe("totem cloud: a host CLI echoes a chosen password back, escaped", () =>
     `raw=AUTH_PASSWORD=${own}`,
   ].join("\n");
   const echoing: WorldOptions = {
-    answers: [["Deploy this?", 1], ["Connector password", own], ["What now?", 1]],
+    answers: [["Deploy this?", 1], ["Connector password", own], ["The same password again", own], ["What now?", 1]],
     exec: (cmd, args, input, w) => (args.join(" ").startsWith("secrets import") ? { code: 1, stdout: "", stderr: `${echoed}\n` } : fly(cmd, args, input, w)),
   };
 
