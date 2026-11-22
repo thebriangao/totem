@@ -15,8 +15,10 @@
 //   AUTH_PASSWORD=<password>  (optional; enables the OAuth/web-connector path)
 //   PUBLIC_URL=https://...    (optional; the server's public origin, used as the
 //                              OAuth issuer. Defaults to http://localhost:<port>)
-import express, { type Request, type Response } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { randomUUID, createHmac } from "node:crypto";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
@@ -25,6 +27,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { WhoopClient } from "./whoop/client.js";
 import { registerTools } from "./tools/register.js";
 import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
+import { timezoneSettled } from "./whoop/init_timezone.js";
 import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
 
@@ -58,13 +61,36 @@ export function releaseSettledJsonStreams(transport: StreamableHTTPServerTranspo
   return released;
 }
 
-export async function startHttpServer(client: WhoopClient, opts: HttpServerOptions): Promise<void> {
+/**
+ * The port from PORT, then MCP_HTTP_PORT, then 3000. `||`, not `??`: a host
+ * that injects PORT="" for an unset variable used to get Number("") = 0, a
+ * random port nothing was pointed at (same reasoning as PUBLIC_URL below). A
+ * value that isn't a port fails here with its name, not as a bare RangeError
+ * from listen().
+ */
+export function resolvePort(env: Record<string, string | undefined>): number {
+  const raw = env.PORT || env.MCP_HTTP_PORT || "3000";
+  const port = Number(raw);
+  if (!/^\d+$/.test(raw.trim()) || port > 65535) {
+    throw new Error(`Invalid port ${JSON.stringify(raw)} (from PORT / MCP_HTTP_PORT): expected a number from 0 to 65535.`);
+  }
+  return port;
+}
+
+export interface HttpServerHandle {
+  /** The port actually bound (the OS picks one when 0 was requested). */
+  port: number;
+  /** Stop listening and wait for open connections to finish. */
+  close(): Promise<void>;
+}
+
+export async function startHttpServer(client: WhoopClient, opts: HttpServerOptions): Promise<HttpServerHandle> {
   if (!opts.authToken || opts.authToken.length < 16) {
     throw new Error(
       "MCP_AUTH_TOKEN must be set and at least 16 chars. Generate one with `openssl rand -hex 32`.",
     );
   }
-  const port = opts.port ?? Number(process.env.PORT ?? process.env.MCP_HTTP_PORT ?? 3000);
+  const port = opts.port ?? resolvePort(process.env);
   const host = opts.host ?? "0.0.0.0";
   const password = process.env.AUTH_PASSWORD ?? "";
   // `||` not `??`: an empty PUBLIC_URL (e.g. a host that injects "" for an unset
@@ -107,7 +133,25 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   }, 5 * 60_000);
   sweep.unref();
 
+  // A session holds its own McpServer with every tool registered: ~2.7 MB of
+  // heap each (measured, idle, after GC). The sweep above only bounds how long
+  // one lives, not how many there are, so a client that re-initializes instead
+  // of reusing its session id could still exhaust a small VM inside the idle
+  // window. Past the cap the least recently used session is dropped; its client
+  // gets 404 "Session not found" on its next call and re-initializes.
+  const MAX_SESSIONS = 32;
+  function evictLeastRecentlyUsed(): void {
+    let oldest: [string, Session] | undefined;
+    for (const candidate of sessions) {
+      if (!oldest || candidate[1].lastSeen < oldest[1].lastSeen) oldest = candidate;
+    }
+    if (!oldest) return;
+    sessions.delete(oldest[0]);
+    void oldest[1].transport.close().catch(() => undefined);
+  }
+
   async function createSession(): Promise<Session> {
+    while (sessions.size >= MAX_SESSIONS) evictLeastRecentlyUsed();
     const newId = randomUUID();
     const newServer = new McpServer({ name: "totem", version: "1.5.1" });
     registerTools(newServer, client);
@@ -209,31 +253,33 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       res.status(429).json({ error: "too_many_requests", error_description: "Too many attempts — wait 15 minutes." });
       return;
     }
-    const body = req.body as Record<string, string>;
-    const redirect = provider.consent({
-      clientId: body.client_id ?? "",
-      redirectUri: body.redirect_uri ?? "",
-      codeChallenge: body.code_challenge ?? "",
-      state: body.state ?? "",
-      scopes: body.scope ?? "",
-      resource: body.resource ?? "",
-      password: body.password ?? "",
-    });
+    // This route is reachable without credentials, so take nothing about the
+    // body on trust: it is undefined when the content type isn't a form, and a
+    // repeated field arrives as an array. Either one used to throw (500, with a
+    // stack trace outside NODE_ENV=production). Anything but a string is "".
+    const form: unknown = req.body;
+    const field = (name: string): string => {
+      const value = isObject(form) ? form[name] : undefined;
+      return typeof value === "string" ? value : "";
+    };
+    const fields = {
+      clientId: field("client_id"),
+      redirectUri: field("redirect_uri"),
+      codeChallenge: field("code_challenge"),
+      state: field("state"),
+      scopes: field("scope"),
+      resource: field("resource"),
+    };
+    const password = field("password");
+    const redirect = provider.consent({ ...fields, password });
     if (!redirect) {
       // Wrong password (or bad client) — re-render the form with an error. Only a
       // wrong password counts toward the global ceiling.
-      if (!provider.checkPassword(body.password ?? "")) globalFails++;
+      if (!provider.checkPassword(password)) globalFails++;
       setConsentSecurityHeaders(res);
+      res.setHeader("cache-control", "no-store");
       res.status(401).setHeader("content-type", "text/html; charset=utf-8");
-      res.end(renderConsentForm({
-        clientId: body.client_id ?? "",
-        redirectUri: body.redirect_uri ?? "",
-        codeChallenge: body.code_challenge ?? "",
-        state: body.state ?? "",
-        scopes: body.scope ?? "",
-        resource: body.resource ?? "",
-        error: true,
-      }));
+      res.end(renderConsentForm({ ...fields, error: true }));
       return;
     }
     res.redirect(302, redirect);
@@ -271,12 +317,22 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
         res.status(400).json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: No valid session ID provided" }, id: null });
         return;
       }
+      // Hold the first requests after a cold start (bounded, then a no-op) until
+      // the member's timezone has been read from their profile: this host's
+      // clock is UTC, and a tool that ran first would report the UTC day.
+      await timezoneSettled();
       const session = existing ?? (await createSession());
       session.lastSeen = Date.now();
       try {
         await session.transport.handleRequest(req, res, req.body);
       } finally {
         releaseSettledJsonStreams(session.transport);
+        // An initialize the transport turned down (wrong Accept header, bad
+        // protocol version header) never assigns the session id, so no client
+        // can ever address this session: drop it now, not at the idle sweep.
+        if (!existing && session.transport.sessionId === undefined) {
+          void session.transport.close().catch(() => undefined);
+        }
       }
     } catch (err) {
       console.error("[totem] request error:", err);
@@ -284,20 +340,71 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     }
   };
 
+  // GET /mcp is the long-lived server→client event stream; tracked so shutdown can end it.
+  const eventStreams = new Set<Response>();
   app.post("/mcp", bearer, express.json(), (req, res) => void mcpHandler(req, res));
-  app.get("/mcp", bearer, (req, res) => void mcpHandler(req, res));
+  app.get("/mcp", bearer, (req, res) => {
+    eventStreams.add(res);
+    res.on("close", () => eventStreams.delete(res));
+    void mcpHandler(req, res);
+  });
   app.delete("/mcp", bearer, (req, res) => void mcpHandler(req, res));
 
-  const httpServer = app.listen(port, host, () => {
-    console.error(`[totem] listening on ${publicUrl} (bound ${host}:${port})`);
-    console.error(`[totem] health: GET /health`);
-    console.error(`[totem] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
+  // Last-resort error handler. Express's default answers with an HTML page that
+  // includes the stack trace (file paths) unless NODE_ENV=production; an MCP
+  // client can't read HTML either. Body-parser failures carry their own 4xx.
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+    const claimed = isObject(err) && typeof err.status === "number" ? err.status : 500;
+    const status = claimed >= 400 && claimed < 500 ? claimed : 500;
+    const badJson = isObject(err) && err.type === "entity.parse.failed";
+    if (status === 500) console.error("[totem] request error:", err);
+    const message = badJson ? "Parse error: the request body is not valid JSON"
+      : status === 413 ? "Request body too large"
+      : status === 500 ? "Internal server error"
+      : "Bad request";
+    res.status(status).json({ jsonrpc: "2.0", error: { code: badJson ? -32700 : status === 500 ? -32603 : -32600, message }, id: null });
   });
 
-  const close = (): void => {
-    httpServer.close(() => process.exit(0));
+  // Express 5 hands a failed listen (EADDRINUSE, EACCES) to this same callback as
+  // its argument. Ignoring it logged "listening on …" for a server that never
+  // bound, and the process then exited 0 with nothing to keep it alive.
+  const httpServer = await new Promise<Server>((resolve, reject) => {
+    const server = app.listen(port, host, (error?: Error) => {
+      if (!error) return resolve(server);
+      const code = (error as NodeJS.ErrnoException).code;
+      reject(code === "EADDRINUSE"
+        ? new Error(`Port ${port} on ${host} is already in use — is another totem server running? Set PORT to a free port.`, { cause: error })
+        : error);
+    });
+  }).catch((error: unknown) => {
+    clearInterval(sweep);
+    throw error;
+  });
+  const boundPort = (httpServer.address() as AddressInfo).port;
+  console.error(`[totem] listening on ${publicUrl} (bound ${host}:${boundPort})`);
+  console.error(`[totem] health: GET /health`);
+  console.error(`[totem] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
+
+  let closing: Promise<void> | undefined;
+  const close = (): Promise<void> => {
+    closing ??= new Promise<void>((resolve) => {
+      clearInterval(sweep);
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
+      httpServer.close(() => resolve());
+      // close() waits for every connection, and each connected client holds an
+      // event stream open for good — so a SIGTERM with anyone connected sat out
+      // the 5s grace and exited 1. End the streams; requests in flight finish.
+      for (const stream of eventStreams) stream.destroy();
+    });
+    return closing;
+  };
+  const onSignal = (): void => {
+    void close().then(() => process.exit(0));
     setTimeout(() => process.exit(1), 5000).unref();
   };
-  process.on("SIGINT", close);
-  process.on("SIGTERM", close);
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  return { port: boundPort, close };
 }

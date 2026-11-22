@@ -7,8 +7,9 @@
 // the write is skipped and device.ts falls back to a per-process random ID,
 // which is stable for that process's lifetime.
 
-import { readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { randomUUID, createHash } from "node:crypto";
+import { readEnvFile, upsertEnvFile } from "../lib/env_file.js";
 
 /**
  * Ensure `WHOOP_INSTALLATION_ID` exists in the environment, generating and
@@ -33,21 +34,11 @@ export function resolveInstallationId(envPath: string): string {
   // Usually dotenv has already populated process.env, but reading the persisted
   // value here makes the helper independently idempotent and protects callers
   // that invoke it before loading the env file.
-  try {
-    if (existsSync(envPath)) {
-      const persistedId = readFileSync(envPath, "utf8")
-        .split("\n")
-        .filter((candidate) => candidate.startsWith("WHOOP_INSTALLATION_ID="))
-        .map((candidate) => candidate.slice("WHOOP_INSTALLATION_ID=".length).trim())
-        .filter(Boolean)
-        .at(-1);
-      if (persistedId) {
-        process.env.WHOOP_INSTALLATION_ID = persistedId;
-        return persistedId;
-      }
-    }
-  } catch {
-    // Fall through to generation + best-effort persistence.
+  // Read with the same parser dotenv uses at boot (quotes, `export`, comments).
+  const persistedId = readEnvFile(envPath).WHOOP_INSTALLATION_ID?.trim();
+  if (persistedId) {
+    process.env.WHOOP_INSTALLATION_ID = persistedId;
+    return persistedId;
   }
 
   // The app sends an uppercase UUID; match its shape.
@@ -55,13 +46,10 @@ export function resolveInstallationId(envPath: string): string {
   let persisted = false;
   try {
     if (existsSync(envPath)) {
-      const lines = readFileSync(envPath, "utf8")
-        .split("\n")
-        .filter((line) => !line.startsWith("WHOOP_INSTALLATION_ID="));
-      const entry = `WHOOP_INSTALLATION_ID=${id}`;
-      lines.push(entry);
-      writeFileSync(envPath, lines.join("\n"), { mode: 0o600 });
-      try { chmodSync(envPath, 0o600); } catch { /* best-effort */ }
+      // The shared writer, not a second hand-rolled one: this file also holds
+      // the tokens, and rewriting it in place (truncate, then write) could leave
+      // it empty for a concurrent reader, or for good if the write failed.
+      upsertEnvFile(envPath, { WHOOP_INSTALLATION_ID: id });
       persisted = true;
     }
   } catch {

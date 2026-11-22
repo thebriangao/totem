@@ -146,6 +146,18 @@ describe("toLocalIso", () => {
 });
 
 describe("localizeTimestamps", () => {
+  // JSON.stringify alone writes a Date as its ISO string; the walk rebuilt it
+  // from its (zero) own keys, so jsonOut emitted {} for it.
+  it("localizes a Date object instead of turning it into {}", () => {
+    const input = { at: new Date("2026-05-25T22:00:00Z"), list: [new Date("2026-05-25T05:00:00.250Z")], bad: new Date(Number.NaN) };
+    expect(localizeTimestamps(input, "America/Los_Angeles")).toEqual({
+      at: "2026-05-25T15:00:00.000-07:00",
+      list: ["2026-05-24T22:00:00.250-07:00"],
+      bad: null, // what JSON.stringify writes for an invalid Date
+    });
+    expect(JSON.stringify(localizeTimestamps({ at: new Date("2026-05-25T22:00:00Z") }, "+0530"))).toBe('{"at":"2026-05-26T03:30:00.000+05:30"}');
+  });
+
   it("walks nested objects and converts UTC strings", () => {
     const input = {
       date: "2026-05-25",
