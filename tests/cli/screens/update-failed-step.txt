@@ -17,6 +17,4 @@ Install 1.6.0
     npm error network request to https://registry.npmjs.org/zod failed,
       reason: getaddrinfo ENOTFOUND registry.npmjs.org
   ✓ Back on 1.5.1; nothing changed
-
-  ✗ Still on 1.5.1.
     Try again   totem update

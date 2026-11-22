@@ -132,16 +132,22 @@ async function fetchVersions(ctx: UpdateCtx, io: Io): Promise<VersionInfo[]> {
 const tail = (r: ExecResult, lines = 6): string[] =>
   `${r.stdout}\n${r.stderr}`.split("\n").map((l) => l.trimEnd()).filter((l) => l.trim() !== "").slice(-lines);
 
-/** One captured step: spinner while it runs, then ✓ with how long it took, or why it failed. */
-async function staged(io: Io, label: string, done: string, run: (onLine: (l: string) => void) => Promise<ExecResult>, slow = false): Promise<boolean> {
+const RETRY: [string, string] = ["Try again", "totem update"];
+
+/**
+ * One captured step: spinner while it runs, then ✓ with how long it took, or
+ * why it failed. `retry` adds the command to run again (left off when a
+ * rollback follows and says it after).
+ */
+async function staged(io: Io, label: string, done: string, run: (onLine: (l: string) => void) => Promise<ExecResult>, opts: { slow?: boolean; retry?: boolean } = {}): Promise<boolean> {
   const { ui, sys } = io;
   const started = sys.now();
-  const r = await ui.task(label, run, { slow });
+  const r = await ui.task(label, run, { slow: Boolean(opts.slow) });
   if (r.code === 0) {
     ui.ok(done, duration(sys.now() - started));
     return true;
   }
-  ui.problem(`${label} failed.`, { detail: tail(r) });
+  ui.problem(`${label} failed.`, { detail: tail(r), fix: opts.retry ? [RETRY] : undefined });
   return false;
 }
 
@@ -181,7 +187,7 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
       });
       return "failed";
     }
-    if (!(await staged(io, "Fetching releases", "Releases fetched", () => sys.exec("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root })))) return "failed";
+    if (!(await staged(io, "Fetching releases", "Releases fetched", () => sys.exec("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root }), { retry: true }))) return "failed";
     // Where to go back to if the update doesn't finish: the branch when on one,
     // else the commit (a release tag is a detached checkout).
     const previous = (await sys.exec("git", ["symbolic-ref", "--short", "-q", "HEAD"], { cwd: ctx.root })).stdout.trim()
@@ -207,16 +213,17 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
       const rebuilt = await ui.task(`Rebuilding ${ctx.version}`, async () => (await install()).code === 0 && (await build()).code === 0);
       if (rebuilt) ui.ok(`Back on ${ctx.version}; nothing changed`);
       else ui.warn(`Back on ${ctx.version}'s source, but it didn't rebuild.`, "run: npm install && totem build");
+      ui.rows([[RETRY[0], ui.kit.c.accent(RETRY[1])]], 4);
     };
     // Every version, the latest included, is its release tag: a detached
     // checkout. Never `main`: that is unreleased code, and on a fork's clone
     // origin/main can be older than the release being installed.
-    if (!(await staged(io, `Checking out ${target.tag}`, `Checked out ${target.tag}`, () => sys.exec("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root })))) return "failed";
-    if (!(await staged(io, "Installing dependencies", "Dependencies installed", install, true))) { await rollback(); return "failed"; }
-    if (!(await staged(io, "Building", "Built", build, true))) { await rollback(); return "failed"; }
+    if (!(await staged(io, `Checking out ${target.tag}`, `Checked out ${target.tag}`, () => sys.exec("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root }), { retry: true }))) return "failed";
+    if (!(await staged(io, "Installing dependencies", "Dependencies installed", install, { slow: true }))) { await rollback(); return "failed"; }
+    if (!(await staged(io, "Building", "Built", build, { slow: true }))) { await rollback(); return "failed"; }
   } else {
     const spec = `${ctx.pkgName}@${target.version}`;
-    if (!(await staged(io, `Installing ${spec}`, `Installed ${spec}`, (onLine) => sys.exec("npm", ["install", "-g", spec], { onLine }), true))) return "failed";
+    if (!(await staged(io, `Installing ${spec}`, `Installed ${spec}`, (onLine) => sys.exec("npm", ["install", "-g", spec], { onLine }), { slow: true, retry: true }))) return "failed";
   }
 
   // Bring the server along. What that takes depends on where it runs:
@@ -416,11 +423,8 @@ async function disableAuto(io: Io): Promise<boolean> {
 
 function finish(io: Io, ctx: UpdateCtx, target: VersionInfo, applied: Applied): number {
   const { ui } = io;
-  if (applied === "failed") {
-    ui.line();
-    ui.problem(`Still on ${ctx.version}.`, { fix: [["Try again", "totem update"]] });
-    return 1;
-  }
+  // The step that failed has said why, what version this is back on, and what to run.
+  if (applied === "failed") return 1;
   const d = ctx.detectDeploy();
   if (applied === "local-only") {
     ui.next([`This install is on ${target.version}. The server is not yet: finish the steps above.`]);
