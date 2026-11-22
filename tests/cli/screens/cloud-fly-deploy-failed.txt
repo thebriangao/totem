@@ -1,0 +1,49 @@
+
+totem cloud
+Deploy your own totem server and connect your AI clients to it.
+
+1/6  Host
+? Where should the server run?
+  › Fly.io             a small VM with a volume for the login (recommended)
+    Railway            a managed service with a dashboard
+    Google Cloud Run   serverless; no disk, so a restart needs a new login
+    My own server      any Docker host; totem prints the commands
+  ✓ Node.js 24.3.0
+  ✓ Dependencies installed
+  ✓ Fly CLI installed
+  ✓ Signed in to Fly  you@example.com
+
+2/6  Secrets
+  ✓ MCP_AUTH_TOKEN generated  64 random characters; the server's own key
+  ✓ Connector password generated  you get it at the end, once
+    Both are set on the server. The token is also kept in .totem-deploy.json
+    (readable only by you), so totem auth can reach the server.
+
+3/6  Deploy
+  Host      Fly.io, as you@example.com
+  App       totem-c0ffee
+  Address   https://totem-c0ffee.fly.dev
+  Region    sjc
+  Volume    totem_data, 1 GB: keeps the WHOOP login across restarts
+  Cost      Fly bills your account for one small machine and the volume
+? Deploy this?
+  › Deploy
+    Change something   the name, the password, or the account
+    Cancel             nothing has been created
+  ✓ App created  totem-c0ffee
+  ✓ Volume created  4s
+  ✓ Secrets set
+  • Building and deploying on Fly…
+  ✗ Building and deploying on Fly failed.
+    ==> Building image
+    #8 [builder 4/6] RUN npm ci
+    #8 ERROR: process "/bin/sh -c npm ci" did not complete successfully: exit
+      code 1
+    Error: failed to fetch an image or build from source: error building: exit
+      code 1
+? What now?
+    Try again
+  › Stop here
+  ✗ The server was not deployed.
+    Start over                  totem cloud
+    Remove the unfinished app   fly apps destroy totem-c0ffee

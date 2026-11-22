@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnArgs, quoteCmdArg, pkgBin, appConfigDir, claudeDesktopConfigPath, vscodeUserMcpPath } from "../../src/cli/spawn.js";
-import { capture } from "../../src/cli/ui.js";
+import { exec } from "../../src/cli/sys.js";
 
 const root = resolve(import.meta.dirname, "..", "..");
 const isWin = process.platform === "win32";
@@ -18,8 +18,8 @@ describe("pkgBin", () => {
     expect(pkgBin(root, "definitely-not-installed-pkg")).toBeNull();
     expect(pkgBin(root, "typescript", "nope")).toBeNull();
   });
-  it("the tsc entry runs under node", () => {
-    const r = capture(process.execPath, [pkgBin(root, "typescript", "tsc")!, "--version"]);
+  it("the tsc entry runs under node", async () => {
+    const r = await exec(process.execPath, [pkgBin(root, "typescript", "tsc")!, "--version"]);
     expect(r.code).toBe(0);
     expect(r.stdout).toMatch(/Version \d+\./);
   });
@@ -43,7 +43,7 @@ describe("spawnArgs", () => {
       expect(args.slice(0, 3)).toEqual(["/d", "/s", "/c"]);
       expect(args[3]!.toLowerCase()).toContain("fake.cmd");
       expect(args[3]).toContain('^^^"a^^^ b^^^"');
-      expect(opts.windowsVerbatimArguments).toBe(true);
+      expect((opts as { windowsVerbatimArguments?: boolean }).windowsVerbatimArguments).toBe(true);
       expect(spawnArgs("real", ["x"], { env }, "win32")).toEqual(["real", ["x"], { env }]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -56,13 +56,13 @@ describe("spawnArgs", () => {
   });
 });
 
-describe.runIf(isWin)("Windows .cmd shims via capture()", () => {
-  it("runs npm (a .cmd shim) without a shell", () => {
-    const r = capture("npm", ["--version"]);
+describe.runIf(isWin)("Windows .cmd shims via exec()", () => {
+  it("runs npm (a .cmd shim) without a shell", async () => {
+    const r = await exec("npm", ["--version"]);
     expect(r.code).toBe(0);
     expect(r.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   });
-  it("passes tricky args through a .cmd unchanged", () => {
+  it("passes tricky args through a .cmd unchanged", async () => {
     const dir = mkdtempSync(join(tmpdir(), "totem-spawn-"));
     try {
       const script = join(dir, "argv.js");
@@ -71,7 +71,7 @@ describe.runIf(isWin)("Windows .cmd shims via capture()", () => {
       const tricky = ["a b", "--format=value(account)", "x&y", "100%", "k=v,w=z", "a^b", "<in>", "trail\\", "", 'pw"&echo INJECTED&"x', 'q"uote', "pct%PATH%", "bang!x", 'say "hi"'];
       const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
       const env = { ...process.env, [pathKey]: `${dir};${process.env[pathKey] ?? ""}` };
-      const r = capture("echoargs", tricky, { env });
+      const r = await exec("echoargs", tricky, { env });
       expect(r.code).toBe(0);
       expect(JSON.parse(r.stdout)).toEqual(tricky);
     } finally {

@@ -53,7 +53,7 @@ describe("whoop_lift_exercise", () => {
 
   it("no exercise: the PR list as compact rows, paged by offset", async () => {
     const pages = [fixture("prs_page0"), fixture("prs_page1"), fixture("prs_page2")];
-    const get = routes({ "/weightlifting-service/v3/prs": (q) => pages[((q.offset as number | undefined) ?? 0) / 10] });
+    const get = routes({ "/weightlifting-service/v3/prs": (q: Record<string, unknown>) => pages[((q.offset as number | undefined) ?? 0) / 10] });
     const client = await connect(registerLiftExercise, { get });
     const out = body(await client.callTool({ name: "whoop_lift_exercise", arguments: {} }));
     expect(out.cols).toEqual(["id", "name", "value", "unit"]);
@@ -71,7 +71,7 @@ describe("whoop_lift_exercise", () => {
       show_more: true,
       next_exercise_offset: offset + 10,
     });
-    const get = routes({ "/weightlifting-service/v3/prs": (q) => page((q.offset as number | undefined) ?? 0) });
+    const get = routes({ "/weightlifting-service/v3/prs": (q: Record<string, unknown>) => page((q.offset as number | undefined) ?? 0) });
     const client = await connect(registerLiftExercise, { get });
     const result = await client.callTool({ name: "whoop_lift_exercise", arguments: {} });
     const out = body(result);

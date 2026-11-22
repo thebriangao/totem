@@ -4,6 +4,25 @@ All notable changes to this project. Format roughly follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+### Changed
+
+- **The `totem` CLI is redesigned.** One visual language across every command (steps `n/total`, ✓ / ! / ✗ marks, aligned rows, a boxed "Next" block, a spinner with elapsed time), at most 80 columns, plain when colour is off (`NO_COLOR`, `--no-color`, `TERM=dumb`, a pipe) and ASCII where Unicode can't be trusted. Every failure says what went wrong and the command that fixes it. The block-letter banner is gone.
+  - `totem local` asks one question (which client). `totem cloud` asks for the host and then one confirmation of the whole plan before anything is created; the connector password is generated and shown once, at the end, and `MCP_AUTH_TOKEN` is never shown.
+  - New: `totem connect [client]` (what to paste where for claude.ai, Claude Desktop, ChatGPT, Claude Code, Cursor, Codex and OpenCode, or set one up for a local install) and `totem token` (the server's token for `$(totem token)` in a command). `totem status` now covers what `info` did; `info`, `config` and `dev:http` remain as aliases.
+  - `totem tools` lists the tools from the real registry.
+- **The consent page** (the page a connecting client sends you to) is a single card with light and dark modes, the destination ahead of the password, a labelled field that works with password managers, and an error state that keeps the form. It is served with a Content-Security-Policy that allows nothing but its own stylesheet.
+
+### Fixed
+
+- `totem local` could replace a client's whole MCP config with only its own entry when the file wasn't strict JSON (comments, a trailing comma). It now refuses, leaves the file untouched, and keeps a backup whenever it does write.
+- Auto-update: the scheduled job now carries a PATH that can find `npm` and the host's CLI (launchd and cron start with a bare one); an update that fails at install, build or deploy goes back to the version it started from instead of leaving the new source on the old build and reporting "up to date"; the job no longer moves a checkout that isn't on `main` or a release tag; the cron line quotes every word and escapes `%`.
+- A prompt that gets end-of-input (`totem cloud < /dev/null`) stops the command instead of taking the default, which was "yes" for every deploy confirmation. Answers piped in together now reach the right questions.
+- `totem start` / `dev` pass SIGTERM and SIGHUP on to the server instead of leaving it running after the wrapper exits.
+- Health checks (`totem status`, `ping`, the post-deploy check, the updater) follow an `http://` deployment URL instead of always speaking TLS.
+- The Railway deploy sets `MCP_AUTH_TOKEN` and the connector password over stdin, not on the `railway` command line.
+- The Docker `HEALTHCHECK` probes `PORT` / `MCP_HTTP_PORT` instead of a fixed 3000.
+- Tests are typechecked in CI (`tsconfig.test.json`).
+
 ## [1.5.1] — 2026-09-08
 
 ### Fixed

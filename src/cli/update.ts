@@ -1,49 +1,46 @@
-// `totem update` — the interactive updater.
+// `totem update`: the updater.
 //
-// Three entry points, all dispatched from runUpdate():
-//   totem update              → interactive: pick a version (newest default, older
-//                               warns), apply with an animated build, then offer to
-//                               turn on auto-update.
-//   totem update --auto on    → install a background job that auto-pulls new releases
-//   totem update --auto off   → remove it
-//   totem update --check      → non-interactive: print installed-vs-latest + auto state
-//   totem update --auto-run   → internal: the scheduled job's non-interactive apply
+//   totem update              pick a version (newest first), install it, redeploy
+//   totem update --check      installed vs latest, and whether auto-update is on
+//   totem update --auto on    install new releases automatically (launchd / cron)
+//   totem update --auto off   stop doing that
+//   totem update --auto-run   internal: what the scheduled job runs
 //
-// Version index: every release is a git tag (git installs) + an npm version (npm
-// installs); GitHub Releases supplies the notes/dates shown in the picker. No
-// separate hosting — the tags / registry / releases ARE the index.
-import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
-import {
-  c, capture, captureAsync, spin, withSpinner, select, promptYesNo, ping, httpGet, commandExists,
-} from "./ui.js";
+// Version index: every release is a git tag (git installs) and an npm version
+// (npm installs); GitHub Releases supplies the dates and notes in the picker.
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { delimiter as pathDelimiter, dirname, resolve } from "node:path";
+import { lastLine, tildify } from "./clients.js";
 import { pkgBin } from "./spawn.js";
+import { realIo, type ExecResult, type Io } from "./sys.js";
+import { duration, listOf, shellLines } from "./ui.js";
 
-// What index.ts hands us so this module stays free of the command registry.
+// What the dispatcher hands over, so this module doesn't know the commands.
 export interface UpdateCtx {
   root: string;
-  version: string;        // current version (PKG.version)
+  version: string;        // the installed version
   pkgPath: string;        // path to package.json
   pkgName: string;        // @thebriangao/totem
-  cliEntry: string;       // absolute path to the running dist/cli/index.js (for the scheduler)
+  cliEntry: string;       // the running dist/cli/index.js (for the scheduler)
   isGit: boolean;         // git checkout vs npm-global install
   detectDeploy: () => DeployInfo | null;
-  redeploy: () => Promise<number>;   // = `totem deploy`
+  /** `totem deploy`, captured: each line it prints goes to `onLine`. */
+  redeploy: (onLine: (line: string) => void) => Promise<ExecResult>;
 }
-interface DeployInfo { platform: string; app?: string; url?: string; region?: string; project?: string; }
+interface DeployInfo { platform: string; app?: string | undefined; url?: string | undefined; region?: string | undefined; project?: string | undefined }
 
-interface VersionInfo {
+export interface VersionInfo {
   version: string;              // "1.4.2"
-  tag: string;                 // "v1.4.2"
-  date?: string | undefined;   // "2026-06-07"
-  notes?: string | undefined;  // release name / first body line
+  tag: string;                  // "v1.4.2"
+  date?: string | undefined;    // "2026-06-07"
+  notes?: string | undefined;   // release name / first body line
 }
 
 const AUTO_LABEL = "com.totem.autoupdate";
-const AUTO_INTERVAL_SEC = 6 * 60 * 60; // poll every 6h — there's no push channel to a user's machine
+const AUTO_INTERVAL_SEC = 6 * 60 * 60; // there is no push channel to a user's machine: poll
 const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
-const home = (): string => process.env.HOME ?? process.env.USERPROFILE ?? "~";
 const autoLogPath = (root: string): string => resolve(root, ".totem-autoupdate.log");
+const HOST_NAME: Record<string, string> = { fly: "Fly", railway: "Railway", cloudrun: "Cloud Run" };
 
 // ── semver ────────────────────────────────────────────────────────────────
 // Compare two x.y.z[-pre] strings (leading "v" ignored). -1 / 0 / 1. A
@@ -69,12 +66,6 @@ export function isNewer(candidate: string, current: string): boolean {
   return compareSemver(candidate, current) > 0;
 }
 
-// The last meaningful line of captured output, for surfacing a failure reason.
-function lastLine(r: { stdout: string; stderr: string }): string {
-  const lines = (r.stderr + "\n" + r.stdout).split("\n").map((l) => l.trim()).filter(Boolean);
-  return lines.length ? lines[lines.length - 1]! : "";
-}
-
 // owner/repo for the GitHub Releases API, parsed from package.json repository.url.
 function repoSlug(pkgPath: string): string | null {
   try {
@@ -87,8 +78,8 @@ function repoSlug(pkgPath: string): string | null {
   }
 }
 
-// Best-effort notes/date index from the GitHub Releases API (works for both
-// install types; failure just means the picker shows versions without notes).
+// Notes and dates from the GitHub Releases API. Best-effort: without them the
+// picker shows bare versions.
 export function parseReleases(json: string): Map<string, { date?: string | undefined; notes?: string | undefined }> {
   const out = new Map<string, { date?: string | undefined; notes?: string | undefined }>();
   try {
@@ -104,36 +95,29 @@ export function parseReleases(json: string): Map<string, { date?: string | undef
   return out;
 }
 
-async function fetchReleaseNotes(ctx: UpdateCtx): Promise<Map<string, { date?: string | undefined; notes?: string | undefined }>> {
+// The installable versions for THIS install type, newest first, with notes.
+async function fetchVersions(ctx: UpdateCtx, io: Io): Promise<VersionInfo[]> {
+  const { sys } = io;
   const slug = repoSlug(ctx.pkgPath);
-  if (!slug) return new Map();
-  // GitHub's API requires a User-Agent — httpGet sends one ("totem-setup").
-  const r = await httpGet(`https://api.github.com/repos/${slug}/releases?per_page=100`, 8000);
-  return r.status === 200 ? parseReleases(r.body) : new Map();
-}
-
-// The installable versions for THIS install type, newest first, enriched with notes.
-async function fetchVersions(ctx: UpdateCtx): Promise<VersionInfo[]> {
-  const notes = await fetchReleaseNotes(ctx);
+  const releases = slug ? await sys.httpGet(`https://api.github.com/repos/${slug}/releases?per_page=100`, 8000) : null;
+  const notes = releases?.status === 200 ? parseReleases(releases.body) : new Map<string, { date?: string | undefined; notes?: string | undefined }>();
   let versions: string[] = [];
   const commitDates = new Map<string, string>();
   if (ctx.isGit) {
-    await captureAsync("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root });
-    const out = capture("git", ["tag", "--sort=-v:refname"], { cwd: ctx.root }).stdout;
+    await sys.exec("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root });
+    const out = (await sys.exec("git", ["tag", "--sort=-v:refname"], { cwd: ctx.root })).stdout;
     versions = out.split("\n").map((s) => s.trim()).filter((t) => /^v\d+\.\d+\.\d+$/.test(t)).map((t) => t.replace(/^v/, ""));
-    // Date a version by when its CODE was committed, not the GitHub release's
-    // published_at — backfilled tags (e.g. v1.1.0, tagged days after v1.2.0) would
-    // otherwise show the wrong, out-of-order date. `*committerdate` dereferences an
-    // annotated tag to its commit; the trailing `committerdate` covers a lightweight
-    // tag. The regex just grabs the first YYYY-MM-DD after the ref, which is the
-    // commit date in both shapes.
-    const dates = capture("git", ["for-each-ref", "--format=%(refname:short) %(*committerdate:short) %(committerdate:short)", "refs/tags"], { cwd: ctx.root }).stdout;
+    // Date a version by when its code was committed, not when the GitHub
+    // release was published: a tag added later would show out of order.
+    // `*committerdate` dereferences an annotated tag; the plain one covers a
+    // lightweight tag. The first date after the ref is the commit's either way.
+    const dates = (await sys.exec("git", ["for-each-ref", "--format=%(refname:short) %(*committerdate:short) %(committerdate:short)", "refs/tags"], { cwd: ctx.root })).stdout;
     for (const line of dates.split("\n")) {
       const m = line.trim().match(/^v(\d+\.\d+\.\d+)\s+(\d{4}-\d{2}-\d{2})/);
       if (m) commitDates.set(m[1]!, m[2]!);
     }
   } else {
-    const out = capture("npm", ["view", ctx.pkgName, "versions", "--json"]).stdout.trim();
+    const out = (await sys.exec("npm", ["view", ctx.pkgName, "versions", "--json"])).stdout.trim();
     try {
       const parsed = JSON.parse(out) as string[] | string;
       versions = (Array.isArray(parsed) ? parsed : [parsed]).filter(isRelease);
@@ -143,129 +127,184 @@ async function fetchVersions(ctx: UpdateCtx): Promise<VersionInfo[]> {
   return versions.map((v) => ({ version: v, tag: `v${v}`, date: commitDates.get(v) ?? notes.get(v)?.date, notes: notes.get(v)?.notes }));
 }
 
-// ── animated apply ──────────────────────────────────────────────────────────
-// Run one captured step under a spinner; ✓ on success, ✗ + reason on failure.
-async function staged(label: string, fn: () => Promise<{ code: number; stdout: string; stderr: string }>): Promise<boolean> {
-  const s = spin(label);
-  const r = await fn();
-  if (r.code === 0) { s.stop(`  ${c.green("✓")} ${label}`); return true; }
-  s.stop(`  ${c.red("✗")} ${label}`);
-  const why = lastLine(r);
-  if (why) console.log(c.gray(`      ${why}`));
+// ── applying a version ───────────────────────────────────────────────────────
+
+const tail = (r: ExecResult, lines = 6): string[] =>
+  `${r.stdout}\n${r.stderr}`.split("\n").map((l) => l.trimEnd()).filter((l) => l.trim() !== "").slice(-lines);
+
+const RETRY: [string, string] = ["Try again", "totem update"];
+
+/**
+ * One captured step: spinner while it runs, then ✓ with how long it took, or
+ * why it failed. `retry` adds the command to run again (left off when a
+ * rollback follows and says it after).
+ */
+async function staged(io: Io, label: string, done: string, run: (onLine: (l: string) => void) => Promise<ExecResult>, opts: { slow?: boolean; retry?: boolean } = {}): Promise<boolean> {
+  const { ui, sys } = io;
+  const started = sys.now();
+  const r = await ui.task(label, run, { slow: Boolean(opts.slow) });
+  if (r.code === 0) {
+    ui.ok(done, duration(sys.now() - started));
+    return true;
+  }
+  ui.problem(`${label} failed.`, { detail: tail(r), fix: opts.retry ? [RETRY] : undefined });
   return false;
 }
 
-// Check out/install `target`, rebuild, and (if deployed) redeploy + health-check.
-// Returns 0 on success.
-export async function applyVersion(ctx: UpdateCtx, target: VersionInfo): Promise<number> {
-  console.log(c.bold(`\n  Updating to v${target.version}`) + c.gray("  ────────────────────────────"));
+/** What the update left this install and its server on. */
+export type Applied =
+  /** Everything is on the new version. */
+  | "done"
+  /** This install is updated; a server exists that totem couldn't update from here. */
+  | "local-only"
+  /** Nothing changed (or it was put back). */
+  | "failed";
 
-  if (ctx.isGit) {
-    // Never clobber tracked local edits (a dev checkout). Untracked files (.env,
-    // dist/, fly.toml) don't block a checkout, so we ignore them.
-    const dirty = capture("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: ctx.root }).stdout.trim();
-    if (dirty) {
-      console.log(c.red("\n  Local changes to tracked files present — commit or stash them first:"));
-      console.log(c.gray("    " + dirty.split("\n").slice(0, 5).join("\n    ")));
-      return 1;
-    }
-    if (!(await staged("fetching releases from GitHub", () => captureAsync("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root })))) return 1;
-    // Every version — latest included — is its release tag → detached checkout.
-    // Never `main`: that's unreleased code, and on a fork clone origin/main can
-    // even be older than the release we're claiming to install.
-    if (!(await staged(`checking out ${target.tag}`, () => captureAsync("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root })))) return 1;
-    if (!(await staged("installing dependencies", () => captureAsync("npm", ["install"], { cwd: ctx.root })))) return 1;
-    const tsc = pkgBin(ctx.root, "typescript", "tsc");
-    if (!(await staged("building", async () => tsc
-      ? captureAsync(process.execPath, [tsc], { cwd: ctx.root })
-      : { code: 1, stdout: "", stderr: "typescript isn't installed in node_modules" }))) return 1;
-  } else {
-    if (!(await staged(`installing ${ctx.pkgName}@${target.version}`, () => captureAsync("npm", ["install", "-g", `${ctx.pkgName}@${target.version}`])))) return 1;
-  }
-
-  // Propagate the new code to wherever the server actually runs. What that takes
-  // depends entirely on the user's RECORDED deploy state — branch on it, never
-  // assume:
-  //   • no record        → nothing remote exists; local code is already updated.
-  //   • local (stdio)     → just restart the MCP client to pick up the new build.
-  //   • fly/railway/cloudrun → rebuild-from-source on deploy; fully automatic.
-  //   • custom / self-host → a container on a box we can't reach; we must NOT fake
-  //     a deploy or health-check (it'd pass against the OLD container) — print the
-  //     exact rebuild/restart steps instead.
+/**
+ * Install `target`, rebuild, and bring the server along. A git install checks
+ * out the release tag (never `main`); an npm install reinstalls that version.
+ */
+export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io = realIo()): Promise<Applied> {
+  const { ui, sys } = io;
   const d = ctx.detectDeploy();
-  const AUTO_DEPLOY = new Set(["fly", "railway", "cloudrun"]);
-  if (!d || d.platform === "local") {
-    console.log(c.gray(d?.platform === "local"
-      ? "\n  Local install — restart your MCP client to load the new build."
-      : "\n  No deployment recorded — local code is updated (run `totem cloud` to deploy a server)."));
-  } else if (AUTO_DEPLOY.has(d.platform)) {
-    // The platform CLI must be present to push from here. If it's gone (a fresh
-    // machine, or you ran update from a different box than you deployed from),
-    // don't surface a cryptic `spawn fly ENOENT` + "server unchanged" — the local
-    // code IS updated; say plainly the redeploy needs the CLI.
-    const cliMissing = d.platform === "fly" ? !(commandExists("fly") || commandExists("flyctl"))
-      : d.platform === "railway" ? !commandExists("railway")
-      : !commandExists("gcloud");
-    if (cliMissing) {
-      const cli = d.platform === "fly" ? "flyctl" : d.platform === "railway" ? "railway" : "gcloud";
-      console.log(c.yellow(`\n  Local code updated — but the ${d.platform} CLI (${cli}) isn't installed here, so the deployment wasn't pushed.`));
-      console.log(c.gray(`    Install ${cli} and run \`totem deploy\`, or re-run \`totem cloud\`.`));
-      return 0;
+  const remote = d && d.platform !== "local" ? d : null;
+  const total = remote ? 2 : 1;
+  const heading = (n: number, title: string): void => (total > 1 ? ui.step(n, total, title) : ui.section(title));
+
+  // Undo for a git install (set once the checkout is about to move). An npm
+  // install has nothing to undo: a failed `npm install -g` leaves the old one.
+  let rollback: () => Promise<void> = async () => {};
+
+  heading(1, `Install ${target.version}`);
+  if (ctx.isGit) {
+    // Never clobber local edits to tracked files (a dev checkout). Untracked
+    // files (.env, dist/, fly.toml) don't block a checkout.
+    const dirty = (await sys.exec("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: ctx.root })).stdout.trim();
+    if (dirty) {
+      ui.problem("This checkout has uncommitted changes to tracked files.", {
+        detail: dirty.split("\n").slice(0, 5),
+        fix: [["Commit or stash them, then", "totem update"]],
+      });
+      return "failed";
     }
-    console.log(c.bold(`\n  Redeploying to ${d.platform}${d.app ? ` (${d.app})` : ""}…`));
-    if ((await ctx.redeploy()) !== 0) { console.log(c.red("  ✗ deploy failed — your live server is unchanged.")); return 1; }
-    if (d.url) {
-      const url = `${cleanUrl(d.url)}/health`;
-      console.log(c.gray(`  health check → ${url}`));
-      if ((await ping(url)) !== 0) {
-        console.log(c.red("  ⚠ /health didn't return 200 — the server may be unhealthy."));
-        console.log(c.gray(d.platform === "fly" ? `    Roll back: fly releases -a ${d.app} → redeploy the prior release.` : "    Roll back to the previous version on your host."));
-        return 1;
+    if (!(await staged(io, "Fetching releases", "Releases fetched", () => sys.exec("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root }), { retry: true }))) return "failed";
+    // Where to go back to if the update doesn't finish: the branch when on one,
+    // else the commit (a release tag is a detached checkout).
+    const previous = (await sys.exec("git", ["symbolic-ref", "--short", "-q", "HEAD"], { cwd: ctx.root })).stdout.trim()
+      || (await sys.exec("git", ["rev-parse", "HEAD"], { cwd: ctx.root })).stdout.trim();
+    const install = (onLine?: (l: string) => void): Promise<ExecResult> => sys.exec("npm", ["install"], { cwd: ctx.root, onLine });
+    const build = async (onLine?: (l: string) => void): Promise<ExecResult> => {
+      const tsc = pkgBin(ctx.root, "typescript", "tsc");
+      return tsc ? sys.exec(sys.node, [tsc], { cwd: ctx.root, onLine }) : { code: 1, stdout: "", stderr: "typescript isn't installed in node_modules" };
+    };
+    // A half-applied update must not stay: the checkout has already moved
+    // package.json to the new version, so the next check would read that, find
+    // nothing newer and report "up to date" on top of the old build. Going back
+    // (the tracked tree was clean, so this only moves HEAD) means the next run
+    // tries again.
+    rollback = async (): Promise<void> => {
+      if (!previous) return;
+      const back = await ui.task(`Going back to ${ctx.version}`, () => sys.exec("git", ["checkout", "--quiet", previous], { cwd: ctx.root }));
+      if (back.code !== 0) {
+        ui.problem(`Couldn't go back to ${ctx.version}.`, { detail: lastLine(back), fix: [["Do it by hand", `git checkout ${previous} && npm install && totem build`]] });
+        return;
       }
-    }
-    // A redeploy restarts the server. This is a code-only update — secrets persist
-    // on the host, so tokens carry over. But /health passing doesn't prove Whoop
-    // auth survived the restart (cloud uses the in-memory token store, which can
-    // strand a rotated refresh token), so point at the fix if calls start failing.
-    console.log(c.gray("  Tokens persist across the redeploy. If Whoop calls start failing afterward, run `totem auth` to refresh + re-push them."));
+      // Put the old build back too. Whatever broke the update may break this.
+      const rebuilt = await ui.task(`Rebuilding ${ctx.version}`, async () => (await install()).code === 0 && (await build()).code === 0);
+      if (rebuilt) ui.ok(`Back on ${ctx.version}; nothing changed`);
+      else ui.warn(`Back on ${ctx.version}'s source, but it didn't rebuild.`, "run: npm install && totem build");
+      ui.rows([[RETRY[0], ui.kit.c.accent(RETRY[1])]], 4);
+    };
+    // Every version, the latest included, is its release tag: a detached
+    // checkout. Never `main`: that is unreleased code, and on a fork's clone
+    // origin/main can be older than the release being installed.
+    if (!(await staged(io, `Checking out ${target.tag}`, `Checked out ${target.tag}`, () => sys.exec("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root }), { retry: true }))) return "failed";
+    if (!(await staged(io, "Installing dependencies", "Dependencies installed", install, { slow: true }))) { await rollback(); return "failed"; }
+    if (!(await staged(io, "Building", "Built", build, { slow: true }))) { await rollback(); return "failed"; }
   } else {
-    printSelfHostUpdate(ctx, d);
+    const spec = `${ctx.pkgName}@${target.version}`;
+    if (!(await staged(io, `Installing ${spec}`, `Installed ${spec}`, (onLine) => sys.exec("npm", ["install", "-g", spec], { onLine }), { slow: true, retry: true }))) return "failed";
   }
-  return 0;
+
+  // Bring the server along. What that takes depends on where it runs:
+  //   - nowhere / this computer: the client loads the new build when it restarts;
+  //   - Fly, Railway, Cloud Run: redeploy from here and check /health;
+  //   - a self-hosted container: totem can't reach it, so it must not pretend
+  //     to (a health check would pass against the OLD container). Print the steps.
+  if (!remote) return "done";
+  const host = HOST_NAME[remote.platform];
+  if (!host) {
+    heading(2, "Your server");
+    selfHostSteps(io, ctx, remote);
+    return "local-only";
+  }
+  heading(2, `Deploy to ${host}`);
+  // The host's CLI has to be on this machine to deploy from it.
+  const cli = remote.platform === "fly" ? ["fly", "flyctl"] : remote.platform === "railway" ? ["railway"] : ["gcloud"];
+  if (!cli.some((c) => sys.has(c))) {
+    ui.warn(`The ${host} CLI (${cli[cli.length - 1]}) isn't installed on this machine, so the server still runs ${ctx.version}.`);
+    ui.hint(`Install it, then: totem deploy`);
+    return "local-only";
+  }
+  const started = sys.now();
+  const deploy = await ui.task(`Deploying${remote.app ? ` ${remote.app}` : ""}`, (set) => ctx.redeploy(set), { slow: true });
+  if (deploy.code !== 0) {
+    ui.problem("The deploy failed. The server is unchanged.", { detail: tail(deploy) });
+    // Keep this install on the version the server runs, so the next check sees
+    // the release as still to do instead of "up to date".
+    await rollback();
+    return "failed";
+  }
+  ui.ok(`Deployed${remote.app ? ` ${remote.app}` : ""}`, duration(sys.now() - started));
+  if (remote.url) {
+    const health = await ui.task("Checking the server", () => sys.httpGet(`${cleanUrl(remote.url!)}/health`, 10_000));
+    if (health.status < 200 || health.status >= 300) {
+      ui.problem("The new version is deployed, but the server isn't answering /health.", {
+        detail: health.status ? `HTTP ${health.status}` : health.error ?? "no answer",
+        fix: [["Read its logs", "totem logs"], ...(remote.platform === "fly" && remote.app ? [["See earlier releases", `fly releases -a ${remote.app}`] as [string, string]] : [])],
+      });
+      return "failed";
+    }
+    ui.ok("The server is up", "/health answered");
+  }
+  if (remote.platform === "cloudrun") ui.warn("A new Cloud Run revision starts without a WHOOP login.", "log in again: totem auth");
+  else ui.hint("The WHOOP login lives on the server's volume and carries over. If tools start failing: totem auth");
+  return "done";
 }
 
-// Self-hosted (Docker on a VPS / Render / a home box / …) — totem can't reach the
-// container, and the run command varies per user (compose, ports, restart policy,
-// remote host), so we never hardcode it: print the canonical rebuild/restart recipe
-// + the env file we wrote at deploy time, and let the user adapt it to their host.
-function printSelfHostUpdate(ctx: UpdateCtx, d: DeployInfo): void {
-  const hasEnv = existsSync(resolve(ctx.root, ".env.deploy"));
-  console.log(c.yellow(`\n  Self-hosted (${d.platform}) — finish the update where your container runs (totem can't reach it):`));
-  console.log(`  ${c.violet("1")}  Get this updated code onto that host  ${c.gray("(git pull your checkout there, or copy the build over)")}`);
-  console.log(`  ${c.violet("2")}  Rebuild:  ${c.cyan("docker build -t totem .")}`);
-  console.log(`  ${c.violet("3")}  Restart:  ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 --env-file ${hasEnv ? ".env.deploy" : "<your-env-file>"} totem`)}`);
-  console.log(`      ${c.gray("or: docker compose up -d --build  ·  or your host's redeploy (Render/Coolify/etc.)")}`);
-  if (d.url) console.log(`  ${c.violet("4")}  Verify:   ${c.gray(`curl ${cleanUrl(d.url)}/health`)}`);
-  console.log(c.gray("\n  Your local code + build are already on the new version — only the remote container is left."));
-}
-
-function printDone(version: string): void {
-  console.log("");
-  console.log(`  ${c.green("✓")} ${c.bold(`Now on v${version}`)}`);
-  console.log(c.brandDim("   ▁▁▂▂▆▂▁▁▁▁▂▂▆▂▁▁▁▁▂▂▆▂▁▁▁▁▂▂▆▂▁▁"));
-  console.log("");
+// Self-hosted (Docker on a VPS, a home server, …): totem can't reach the
+// container, and how it is run varies, so print the recipe to adapt.
+function selfHostSteps(io: Io, ctx: UpdateCtx, d: DeployInfo): void {
+  const { ui, sys } = io;
+  const envFile = existsSync(resolve(ctx.root, ".env.deploy")) ? ".env.deploy" : "<your env file>";
+  ui.para("totem can't reach a self-hosted container. This install is updated; on the host that runs the server:");
+  ui.line();
+  ui.para("1. Get this version there (git pull the checkout, or copy it over).");
+  ui.para("2. Rebuild the image:");
+  ui.code(["docker build -t totem ."], 5);
+  ui.para("3. Stop the old container, then start the new image the way you did before:");
+  ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", envFile, "totem"], ui.style.width - 7, sys.platform), 5);
+  if (d.url) {
+    ui.para("4. Check it:");
+    ui.code([`curl ${cleanUrl(d.url)}/health`], 5);
+  }
 }
 
 // ── auto-update scheduler (launchd on macOS, cron on Linux) ──────────────────
-function plistPath(): string { return resolve(home(), "Library", "LaunchAgents", `${AUTO_LABEL}.plist`); }
+const plistPath = (home: string): string => resolve(home, "Library", "LaunchAgents", `${AUTO_LABEL}.plist`);
 
 function xmlEscape(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // A launchd LaunchAgent that runs `totem update --auto-run` every intervalSec.
-export function launchdPlist(programArgs: string[], intervalSec: number, workingDir: string, logPath: string): string {
+// `path` becomes the job's PATH: launchd starts jobs with /usr/bin:/bin:/usr/sbin:/sbin,
+// where npm and the deploy CLIs usually aren't.
+export function launchdPlist(programArgs: string[], intervalSec: number, workingDir: string, logPath: string, path?: string): string {
   const args = programArgs.map((a) => `    <string>${xmlEscape(a)}</string>`).join("\n");
+  const env = path
+    ? `  <key>EnvironmentVariables</key>\n  <dict>\n    <key>PATH</key>\n    <string>${xmlEscape(path)}</string>\n  </dict>\n`
+    : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -282,7 +321,7 @@ ${args}
   <false/>
   <key>WorkingDirectory</key>
   <string>${xmlEscape(workingDir)}</string>
-  <key>StandardOutPath</key>
+${env}  <key>StandardOutPath</key>
   <string>${xmlEscape(logPath)}</string>
   <key>StandardErrorPath</key>
   <string>${xmlEscape(logPath)}</string>
@@ -291,160 +330,236 @@ ${args}
 `;
 }
 
-// One cron line, tagged so we can find + remove exactly ours.
-export function cronLine(programArgs: string[], root: string, logPath: string): string {
-  const cmd = programArgs.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(" ");
-  const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
-  return `0 */6 * * * cd ${shq(root)} && ${cmd} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
+// One cron line, tagged so we can find + remove exactly ours. Every word is
+// quoted for sh (cron hands the line to `sh -c`), and `%` is escaped: cron ends
+// the command at a bare `%` and feeds the rest to it as stdin.
+// `path`, when given, is exported first: cron's own PATH is /usr/bin:/bin.
+export function cronLine(programArgs: string[], root: string, logPath: string, path?: string): string {
+  const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`.replace(/%/g, "\\%");
+  const word = (s: string): string => (/^[A-Za-z0-9_/.:=@+-]+$/.test(s) ? s : shq(s));
+  const setPath = path ? `export PATH=${shq(path)}; ` : "";
+  return `0 */6 * * * ${setPath}cd ${shq(root)} && ${programArgs.map(word).join(" ")} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
 }
 
-export function isAutoOn(): boolean {
-  if (process.platform === "darwin") return existsSync(plistPath());
-  if (process.platform === "linux") {
-    const r = capture("crontab", ["-l"]);
+/**
+ * The PATH a scheduled run gets: this node's directory (where npm lives) ahead
+ * of the PATH `totem update --auto on` was run with, which can see git and the
+ * deploy CLI. launchd and cron would otherwise start the job with a bare system
+ * PATH, where `npm install` and `fly deploy` fail with ENOENT.
+ */
+export function schedulerPath(
+  execPath: string = process.execPath,
+  envPath: string = process.env.PATH ?? "",
+  delimiter: string = pathDelimiter,
+): string {
+  const dirs = [dirname(execPath), ...envPath.split(delimiter)].map((d) => d.trim()).filter(Boolean);
+  return [...new Set(dirs)].join(delimiter);
+}
+
+export async function isAutoOn(io: Io): Promise<boolean> {
+  const { sys } = io;
+  if (sys.platform === "darwin") return existsSync(plistPath(sys.home));
+  if (sys.platform === "linux") {
+    const r = await sys.exec("crontab", ["-l"]);
     return r.code === 0 && r.stdout.includes(AUTO_LABEL);
   }
   return false;
 }
 
-function autoRunArgs(ctx: UpdateCtx): string[] {
-  return [process.execPath, ctx.cliEntry, "update", "--auto-run"];
-}
-
-async function enableAuto(ctx: UpdateCtx): Promise<boolean> {
-  const args = autoRunArgs(ctx);
+async function enableAuto(ctx: UpdateCtx, io: Io): Promise<boolean> {
+  const { ui, sys } = io;
+  const args = [sys.node, ctx.cliEntry, "update", "--auto-run"];
   const log = autoLogPath(ctx.root);
-  if (process.platform === "darwin") {
-    const p = plistPath();
-    mkdirSync(resolve(home(), "Library", "LaunchAgents"), { recursive: true });
-    writeFileSync(p, launchdPlist(args, AUTO_INTERVAL_SEC, ctx.root, log));
-    await captureAsync("launchctl", ["unload", p]); // ignore if not loaded
-    const load = await captureAsync("launchctl", ["load", p]);
-    if (load.code !== 0) { console.log(c.red(`  ✗ couldn't load the launchd agent: ${lastLine(load)}`)); return false; }
-    console.log(c.green("  ✓ auto-update on") + c.gray(`  — checks every 6h via launchd (${p})`));
-  } else if (process.platform === "linux") {
-    const existing = capture("crontab", ["-l"]).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
-    existing.push(cronLine(args, ctx.root, log));
-    const set = await captureAsync("crontab", ["-"], { input: existing.join("\n") + "\n" });
-    if (set.code !== 0) { console.log(c.red(`  ✗ couldn't write crontab: ${lastLine(set)}`)); return false; }
-    console.log(c.green("  ✓ auto-update on") + c.gray("  — checks every 6h via cron"));
+  const path = schedulerPath(sys.node, sys.env.PATH ?? "");
+  let via: string;
+  if (sys.platform === "darwin") {
+    const p = plistPath(sys.home);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, launchdPlist(args, AUTO_INTERVAL_SEC, ctx.root, log, path));
+    await sys.exec("launchctl", ["unload", p]); // fine if it wasn't loaded
+    const load = await sys.exec("launchctl", ["load", p]);
+    if (load.code !== 0) {
+      ui.problem("launchd wouldn't load the auto-update job.", { detail: lastLine(load), fix: [["Try again", "totem update --auto on"]] });
+      return false;
+    }
+    via = "launchd";
+  } else if (sys.platform === "linux") {
+    const existing = (await sys.exec("crontab", ["-l"])).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
+    existing.push(cronLine(args, ctx.root, log, path));
+    const set = await sys.exec("crontab", ["-"], { input: existing.join("\n") + "\n" });
+    if (set.code !== 0) {
+      ui.problem("cron wouldn't take the auto-update job.", { detail: lastLine(set), fix: [["Try again", "totem update --auto on"]] });
+      return false;
+    }
+    via = "cron";
   } else {
-    console.log(c.yellow("  Auto-update isn't wired for this OS. Schedule this command every 6h yourself:"));
-    console.log(c.gray(`    ${args.join(" ")}`));
+    ui.warn("Auto-update isn't available on this system.");
+    ui.para("To get the same, schedule this command every 6 hours:", 4);
+    ui.code([args.join(" ")]);
     return false;
   }
-  console.log(c.gray(`  Log: ${log}   ·   turn off: totem update --auto off`));
+  ui.ok("Auto-update is on", `checks every 6 hours, through ${via}`);
+  ui.rows([["Log", tildify(log, sys.home)], ["Turn it off", "totem update --auto off"]], 4);
   return true;
 }
 
-async function disableAuto(ctx: UpdateCtx): Promise<boolean> {
-  if (process.platform === "darwin") {
-    const p = plistPath();
-    if (existsSync(p)) { await captureAsync("launchctl", ["unload", p]); rmSync(p, { force: true }); }
-    console.log(c.green("  ✓ auto-update off"));
-  } else if (process.platform === "linux") {
-    const kept = capture("crontab", ["-l"]).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
-    await captureAsync("crontab", ["-"], { input: kept.length ? kept.join("\n") + "\n" : "\n" });
-    console.log(c.green("  ✓ auto-update off"));
+async function disableAuto(io: Io): Promise<boolean> {
+  const { ui, sys } = io;
+  if (sys.platform === "darwin") {
+    const p = plistPath(sys.home);
+    if (existsSync(p)) { await sys.exec("launchctl", ["unload", p]); rmSync(p, { force: true }); }
+  } else if (sys.platform === "linux") {
+    const kept = (await sys.exec("crontab", ["-l"])).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
+    await sys.exec("crontab", ["-"], { input: kept.length ? kept.join("\n") + "\n" : "\n" });
   } else {
-    console.log(c.yellow("  Nothing scheduled by us on this OS — remove any manual schedule yourself."));
+    ui.warn("totem schedules nothing on this system. If you scheduled it yourself, remove that.");
+    return true;
   }
+  ui.ok("Auto-update is off", "update by hand with: totem update");
   return true;
 }
 
 // ── flows ────────────────────────────────────────────────────────────────────
-async function runInteractive(ctx: UpdateCtx): Promise<number> {
-  console.log(c.bold("\ntotem update") + c.gray(`  — you're on v${ctx.version}\n`));
-  const versions = await withSpinner("checking available versions", () => fetchVersions(ctx));
+
+function finish(io: Io, ctx: UpdateCtx, target: VersionInfo, applied: Applied): number {
+  const { ui } = io;
+  // The step that failed has said why, what version this is back on, and what to run.
+  if (applied === "failed") return 1;
+  const d = ctx.detectDeploy();
+  if (applied === "local-only") {
+    ui.next([`This install is on ${target.version}. The server is not yet: finish the steps above.`]);
+    return 0;
+  }
+  if (!d || d.platform === "local") ui.next([`totem is now ${target.version}.`, "Restart your AI client so it starts the new version."]);
+  else { ui.line(); ui.ok(`totem is now ${target.version}, here and on the server`); }
+  return 0;
+}
+
+async function runInteractive(ctx: UpdateCtx, io: Io): Promise<number> {
+  const { ui } = io;
+  const { g } = ui.kit;
+  ui.header("totem update", `Version ${ctx.version} is installed.`);
+  const versions = await ui.task("Looking up releases", () => fetchVersions(ctx, io));
   if (!versions.length) {
-    console.log(c.red("  Couldn't list versions (offline, or no releases found)."));
+    ui.problem("Couldn't get the list of releases.", { detail: "Is this machine online?", fix: [["Try again", "totem update"]] });
     return 1;
   }
   const latest = versions[0]!;
   const choices = versions.map((v) => {
-    const tags: string[] = [];
-    if (v.version === latest.version) tags.push(c.green("latest"));
-    if (v.version === ctx.version) tags.push(c.cyan("current"));
-    if (v.date) tags.push(c.dim(v.date));
-    const note = v.notes ? c.dim("· " + (v.notes.length > 44 ? v.notes.slice(0, 43) + "…" : v.notes)) : "";
-    return { label: `v${v.version}`, hint: [tags.join(" "), note].filter(Boolean).join("  ") };
+    const facts = [v.version === latest.version ? "latest" : "", v.version === ctx.version ? "installed" : "", v.date ?? "", v.notes ?? ""].filter(Boolean);
+    return { label: v.version, hint: facts.join(` ${g.dot} `) };
   });
-  const idx = await select("Update to which version?  (newest is default)", choices, { defaultIndex: 0 });
-  const target = versions[idx]!;
-  const onLatest = target.version === latest.version;
+  const target = versions[await ui.select("Which version?", choices, 0)]!;
 
-  if (!onLatest) {
-    const ahead = versions.filter((v) => compareSemver(v.version, target.version) > 0).map((v) => "v" + v.version);
-    console.log(c.yellow(`\n  ⚠ v${target.version} is NOT the newest — you'd be behind: ${ahead.join(", ")}.`));
-    if (!(await promptYesNo("  Install this older version anyway?", false))) { console.log(c.gray("  Cancelled.")); return 0; }
+  if (target.version !== latest.version) {
+    const ahead = versions.filter((v) => compareSemver(v.version, target.version) > 0).map((v) => v.version);
+    ui.warn(`${target.version} is older than ${listOf(ahead.length > 3 ? [...ahead.slice(0, 3), `${ahead.length - 3} more`] : ahead)}.`);
+    if (!(await ui.confirm(`Install ${target.version} anyway?`, false))) { ui.hint("Nothing changed.", 2); return 0; }
   } else if (target.version === ctx.version) {
-    if (!(await promptYesNo(`\n  You're already on v${ctx.version} (the latest). Re-apply anyway?`, false))) { console.log(c.gray("  Nothing to do.")); return 0; }
+    ui.ok(`${ctx.version} is the latest, and it is installed`);
+    if (!(await ui.confirm("Install it again anyway?", false))) return 0;
   }
 
-  const code = await applyVersion(ctx, target);
-  if (code !== 0) return code;
-
-  // After a successful apply, manage the auto-update toggle.
-  const autoOn = isAutoOn();
-  if (onLatest) {
-    if (!autoOn) {
-      console.log("");
-      if (await promptYesNo("  Turn on auto-update? (auto-pulls + sets up every new release)", false)) await enableAuto(ctx);
-    } else {
-      console.log(c.gray("\n  Auto-update is on — new releases install themselves."));
+  const applied = await applyVersion(ctx, target, io);
+  if (applied !== "failed") {
+    // The auto-update switch has to agree with the choice just made.
+    const autoOn = await isAutoOn(io);
+    if (target.version === latest.version && !autoOn && (io.sys.platform === "darwin" || io.sys.platform === "linux")) {
+      ui.line();
+      if (await ui.confirm("Install new releases automatically from now on?", false)) await enableAuto(ctx, io);
+    } else if (target.version !== latest.version && autoOn) {
+      ui.line();
+      ui.warn(`Auto-update is on: at its next check it would move you back to ${latest.version}.`);
+      if (await ui.confirm(`Turn it off to stay on ${target.version}?`, true)) await disableAuto(io);
     }
-  } else if (autoOn) {
-    console.log(c.yellow("\n  ⚠ Auto-update is ON — it'll move you back to the latest on the next check."));
-    if (await promptYesNo("  Turn auto-update OFF to stay pinned to this version?", true)) await disableAuto(ctx);
   }
-
-  printDone(target.version);
-  return 0;
+  return finish(io, ctx, target, applied);
 }
 
-async function runCheck(ctx: UpdateCtx): Promise<number> {
-  console.log(c.bold("\ntotem update --check") + c.gray(`  — installed v${ctx.version}\n`));
-  const versions = await withSpinner("checking available versions", () => fetchVersions(ctx));
-  if (!versions.length) { console.log(c.red("  Couldn't list versions (offline?).")); return 1; }
+async function runCheck(ctx: UpdateCtx, io: Io): Promise<number> {
+  const { ui } = io;
+  ui.header("totem update --check");
+  const versions = await ui.task("Looking up releases", () => fetchVersions(ctx, io));
+  if (!versions.length) {
+    ui.problem("Couldn't get the list of releases.", { detail: "Is this machine online?", fix: [["Try again", "totem update --check"]] });
+    return 1;
+  }
   const latest = versions[0]!;
-  console.log(`  installed:   v${ctx.version}`);
-  console.log(`  latest:      v${latest.version}${latest.date ? c.gray("  " + latest.date) : ""}`);
-  console.log(isNewer(latest.version, ctx.version)
-    ? c.green(`  ▲ update available — run \`totem update\``)
-    : c.green(`  ✓ up to date`));
-  console.log(c.gray(`  auto-update: ${isAutoOn() ? "on" : "off"}   ·   ${versions.length} versions available`));
+  ui.rows([
+    ["Installed", ctx.version],
+    ["Latest", `${latest.version}${latest.date ? `, released ${latest.date}` : ""}`],
+    ["Auto-update", (await isAutoOn(io)) ? "on" : "off"],
+  ]);
+  ui.line();
+  if (isNewer(latest.version, ctx.version)) {
+    ui.warn(`An update is available: ${latest.version}.`);
+    ui.rows([["Install it", ui.kit.c.accent("totem update")]], 4);
+  } else {
+    ui.ok("Up to date");
+  }
   return 0;
 }
 
-// The scheduled job: non-interactive, pull-to-latest-if-newer, log everything.
-async function runAuto(ctx: UpdateCtx): Promise<number> {
-  const stamp = new Date().toISOString();
-  const versions = await fetchVersions(ctx);
-  const latest = versions[0];
-  if (!latest) { console.log(`[totem auto-update ${stamp}] no version list (offline?) — skipping`); return 0; }
-  if (!isNewer(latest.version, ctx.version)) { console.log(`[totem auto-update ${stamp}] up to date on v${ctx.version}`); return 0; }
-  console.log(`[totem auto-update ${stamp}] new release v${latest.version} (was v${ctx.version}) — applying`);
-  const code = await applyVersion(ctx, latest);
-  console.log(`[totem auto-update ${stamp}] ${code === 0 ? `done → v${latest.version}` : `FAILED (exit ${code})`}`);
-  return code;
+/**
+ * Whether an unattended update may move this checkout: `git rev-parse
+ * --abbrev-ref HEAD` says `main`, or `HEAD` when detached (at a release tag).
+ * An empty answer (git failed) is not a yes.
+ */
+export function followsReleases(branch: string): boolean {
+  return branch === "main" || branch === "HEAD";
 }
 
-export async function runUpdate(args: string[], ctx: UpdateCtx): Promise<number> {
+// The scheduled job: no questions, install the latest if it is newer, and leave
+// one dated line per outcome in the log.
+async function runAuto(ctx: UpdateCtx, io: Io): Promise<number> {
+  const { ui, sys } = io;
+  const log = (message: string): void => ui.line(`[totem auto-update ${new Date(sys.now()).toISOString()}] ${message}`);
+  if (ctx.isGit) {
+    // An update checks out the release tag. Only do that unattended to a
+    // checkout that is following releases: on `main`, or already detached at a
+    // tag. Anything else is someone's work in progress (a feature branch whose
+    // tracked tree happens to be clean), and silently moving it off its branch
+    // loses their place.
+    const branch = (await sys.exec("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: ctx.root })).stdout.trim();
+    if (!followsReleases(branch)) {
+      log(`on branch '${branch}', not main or a release tag: skipped (update it yourself with \`totem update\`)`);
+      return 0;
+    }
+  }
+  const latest = (await fetchVersions(ctx, io))[0];
+  if (!latest) { log("couldn't get the list of releases (offline?): skipped"); return 0; }
+  if (!isNewer(latest.version, ctx.version)) { log(`up to date on ${ctx.version}`); return 0; }
+  log(`${latest.version} is out (installed: ${ctx.version}): installing`);
+  const applied = await applyVersion(ctx, latest, io);
+  if (applied === "done") log(`now on ${latest.version}`);
+  else if (applied === "local-only") log(`this install is on ${latest.version}; the server was NOT updated (see above)`);
+  else log(`FAILED: still on ${ctx.version}; the next check tries again`);
+  return applied === "failed" ? 1 : 0;
+}
+
+export async function runUpdate(args: string[], ctx: UpdateCtx, io: Io = realIo()): Promise<number> {
+  const { ui } = io;
   const autoIdx = args.indexOf("--auto");
   if (autoIdx !== -1) {
     const val = (args[autoIdx + 1] ?? "").toLowerCase();
     if (val === "on") {
-      console.log(c.bold("\ntotem update --auto on\n"));
-      if (!(await enableAuto(ctx))) return 1;
-      // Enabling implies "I want newest" — do one check/pull right now.
-      console.log("");
-      return runAuto(ctx);
+      ui.header("totem update --auto on", "Install new releases automatically.");
+      if (!(await enableAuto(ctx, io))) return 1;
+      // Turning it on means "I want the newest": check once now.
+      const latest = (await ui.task("Looking up releases", () => fetchVersions(ctx, io)))[0];
+      if (!latest) { ui.warn("Couldn't check for a release right now; the first scheduled check will."); return 0; }
+      if (!isNewer(latest.version, ctx.version)) { ui.ok("Up to date", `${ctx.version} is the latest`); return 0; }
+      ui.info(`${latest.version} is out: installing it now.`);
+      return finish(io, ctx, latest, await applyVersion(ctx, latest, io));
     }
-    if (val === "off") { console.log(c.bold("\ntotem update --auto off\n")); return (await disableAuto(ctx)) ? 0 : 1; }
-    console.log(c.red("Usage: totem update --auto <on|off>"));
+    if (val === "off") {
+      ui.header("totem update --auto off");
+      return (await disableAuto(io)) ? 0 : 1;
+    }
+    ui.error(`--auto takes "on" or "off"${val ? `, not "${val}"` : ""}.`, { fix: [["Turn it on", "totem update --auto on"], ["Turn it off", "totem update --auto off"]] });
     return 1;
   }
-  if (args.includes("--auto-run")) return runAuto(ctx);
-  if (args.includes("--check")) return runCheck(ctx);
-  return runInteractive(ctx);
+  if (args.includes("--auto-run")) return runAuto(ctx, io);
+  if (args.includes("--check")) return runCheck(ctx, io);
+  return runInteractive(ctx, io);
 }

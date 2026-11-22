@@ -93,3 +93,34 @@ describe.skipIf(process.platform === "win32")("Docker entrypoint", () => {
     expect(run(1000, join(data, "tokens.json"), ["true"])).toEqual([]);
   });
 });
+
+// The HEALTHCHECK runs in the container's shell, so it has to probe the port the
+// server listens on (PORT, else MCP_HTTP_PORT, else 3000), not a fixed 3000.
+describe.skipIf(process.platform === "win32")("Docker HEALTHCHECK", () => {
+  const command = (): string => {
+    const m = readFileSync(DOCKERFILE, "utf8").match(/^HEALTHCHECK[^\n]*\\\n\s+CMD (.+)$/m);
+    expect(m).not.toBeNull();
+    return m![1]!;
+  };
+  const probed = (env: Record<string, string>): string => {
+    const bin = mkdtempSync(join(tmpdir(), "totem-health-"));
+    try {
+      writeFileSync(join(bin, "wget"), '#!/bin/sh\nfor a in "$@"; do last="$a"; done\necho "$last"\n');
+      chmodSync(join(bin, "wget"), 0o755);
+      return execFileSync("/bin/sh", ["-c", command()], { env: { PATH: `${bin}:/usr/bin:/bin`, ...env }, encoding: "utf8" }).trim();
+    } finally {
+      rmSync(bin, { recursive: true, force: true });
+    }
+  };
+
+  it("probes 3000 by default", () => {
+    expect(probed({})).toBe("http://127.0.0.1:3000/health");
+    expect(probed({ PORT: "" })).toBe("http://127.0.0.1:3000/health");
+  });
+
+  it("follows PORT, then MCP_HTTP_PORT, like the server does", () => {
+    expect(probed({ PORT: "8080" })).toBe("http://127.0.0.1:8080/health");
+    expect(probed({ MCP_HTTP_PORT: "9090" })).toBe("http://127.0.0.1:9090/health");
+    expect(probed({ PORT: "8080", MCP_HTTP_PORT: "9090" })).toBe("http://127.0.0.1:8080/health");
+  });
+});

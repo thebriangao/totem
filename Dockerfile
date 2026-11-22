@@ -73,8 +73,10 @@ ENV PORT=3000
 
 EXPOSE 3000
 
+# Probe the port the server actually listens on: PORT, else MCP_HTTP_PORT, else
+# 3000 (the same order as resolvePort in src/server-http.ts).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/health || exit 1
+  CMD wget -qO- "http://127.0.0.1:${PORT:-${MCP_HTTP_PORT:-3000}}/health" || exit 1
 
 ENTRYPOINT ["/usr/local/bin/totem-entrypoint"]
 CMD ["node", "dist/server.js"]

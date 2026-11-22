@@ -1,0 +1,12 @@
+{
+  // Typechecks the tests along with the source (tsconfig.json covers src/ only,
+  // because it is also what builds dist/). Never emits. Run:
+  //   npx tsc -p tsconfig.test.json
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src/**/*", "tests/**/*.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}
