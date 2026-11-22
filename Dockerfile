@@ -30,6 +30,12 @@ WORKDIR /app
 # Volumes mount owned by root, so the container starts as root, hands the token
 # directory to the unprivileged `node` user (uid 1000), and drops to it with
 # su-exec before the server starts. The server itself never runs as root.
+#
+# That directory belongs to the server afterwards, so the root step must not
+# follow anything found in it: chown -h changes a symlink itself, never its
+# target, and chmod (which has no -h) is skipped for a symlinked directory.
+# Without this, a link planted at tokens.json would get a root-owned file
+# handed to `node` at the next start. "/" is never touched.
 RUN apk add --no-cache su-exec \
  && mkdir -p /data && chown node:node /data && chmod 700 /data \
  && printf '%s\n' \
@@ -39,8 +45,10 @@ RUN apk add --no-cache su-exec \
     'dir="$(dirname "$file")"' \
     'if [ "$(id -u)" = "0" ]; then' \
     '  mkdir -p "$dir"' \
-    '  for p in "$dir" "$file" "$file.lock"; do if [ -e "$p" ]; then chown node:node "$p" || true; fi; done' \
-    '  chmod 700 "$dir" 2>/dev/null || true' \
+    '  if [ "$dir" != "/" ]; then' \
+    '    for p in "$dir" "$file" "$file.lock"; do if [ -e "$p" ] || [ -L "$p" ]; then chown -h node:node "$p" || true; fi; done' \
+    '    if [ ! -L "$dir" ]; then chmod 700 "$dir" 2>/dev/null || true; fi' \
+    '  fi' \
     '  exec su-exec node "$@"' \
     'fi' \
     'exec "$@"' \
