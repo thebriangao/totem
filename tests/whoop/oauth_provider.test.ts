@@ -242,6 +242,21 @@ describe("WhoopOAuthProvider — /token answers invalid_grant for a dead grant",
     }
   });
 
+  it("a refresh can narrow the granted scope but not widen it", async () => {
+    const p = provider();
+    const { client, code } = await issue(p, "read write");
+    const tokens = await p.exchangeAuthorizationCode(client, code);
+    const { post, close } = await tokenEndpoint(p);
+    try {
+      const grant = { grant_type: "refresh_token", client_id: client.client_id, refresh_token: tokens.refresh_token! };
+      expect(await post({ ...grant, scope: "read admin" })).toEqual({ status: 400, body: expect.objectContaining({ error: "invalid_scope" }) });
+      expect(await post({ ...grant, scope: "read" })).toEqual({ status: 200, body: expect.objectContaining({ scope: "read" }) });
+      expect(await post(grant)).toEqual({ status: 200, body: expect.objectContaining({ scope: "read write" }) });
+    } finally {
+      await close();
+    }
+  });
+
   it("an expired refresh token or authorization code rejects with invalid_grant", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const p = provider();

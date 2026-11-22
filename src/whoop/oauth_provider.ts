@@ -29,7 +29,7 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { InvalidGrantError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { InvalidGrantError, InvalidScopeError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { redirectUriMatches } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
 
 const ACCESS_TTL_S = 3600;            // 1 hour
@@ -258,8 +258,15 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     if (!payload || payload.typ !== "refresh" || payload.cid !== client.client_id) {
       throw new InvalidGrantError("invalid or expired refresh token");
     }
-    const grantScopes = scopes ?? ((payload.scopes as string[]) ?? []);
-    return this.issueTokens(client.client_id, grantScopes, payload.resource as string | undefined);
+    // RFC 6749 §6: a refresh may narrow the scope, never widen it. Taking the
+    // requested list as given let any refresh mint a token claiming scopes the
+    // user never approved.
+    const granted = Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [];
+    const requested = scopes?.filter(Boolean);
+    if (requested?.some((scope) => !granted.includes(scope))) {
+      throw new InvalidScopeError("requested scope exceeds the scope originally granted");
+    }
+    return this.issueTokens(client.client_id, requested ?? granted, payload.resource as string | undefined);
   }
 
   private issueTokens(clientId: string, scopes: string[], resource: string | undefined): OAuthTokens {
