@@ -6,7 +6,7 @@
 // the resulting URL, sets PUBLIC_URL, and verifies /health + OAuth are live — no
 // copy-paste. Custom is a printed Docker guide for any other host or your own
 // server. Either way it's one command to a working, Claude-connected deployment.
-import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, chmodSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { resolve, dirname } from "node:path";
@@ -334,17 +334,58 @@ interface LocalClient {
   wire: (node: string, serverJs: string) => Promise<boolean>;
 }
 
+/** A client config that totem won't rewrite, with the reason to show the user. */
+export class ConfigNotMergeableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConfigNotMergeableError";
+  }
+}
+
 // Merge { [key]: { [name]: entry } } into a JSON config without clobbering the
 // user's other servers/settings. Idempotent.
-function mergeJsonConfig(cfgPath: string, key: string, name: string, entry: Record<string, unknown>): void {
+//
+// The file belongs to another app, and it is read strictly: when it isn't a
+// plain JSON object (VS Code's mcp.json allows comments; hand-edited configs
+// pick up trailing commas) totem can't tell what is in it, so it throws
+// ConfigNotMergeableError and leaves the file exactly as it was. It used to
+// treat that as an empty config and write one back holding only its own entry,
+// deleting every other server. Before a file is changed, the previous contents
+// are copied to `<file>.totem-backup`.
+export function mergeJsonConfig(cfgPath: string, key: string, name: string, entry: Record<string, unknown>): { changed: boolean; backup?: string } {
   let merged: Record<string, unknown> = {};
+  let previous: string | null = null;
   if (existsSync(cfgPath)) {
-    try { merged = JSON.parse(readFileSync(cfgPath, "utf8")) as Record<string, unknown>; } catch { merged = {}; }
+    previous = readFileSync(cfgPath, "utf8");
+    if (previous.trim() !== "") {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(previous);
+      } catch {
+        throw new ConfigNotMergeableError(`${cfgPath} isn't plain JSON (comments or a trailing comma?), so totem left it untouched.`);
+      }
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new ConfigNotMergeableError(`${cfgPath} doesn't hold a JSON object, so totem left it untouched.`);
+      }
+      merged = parsed as Record<string, unknown>;
+    }
   }
-  const bucket = (merged[key] as Record<string, unknown> | undefined) ?? {};
+  const existing = merged[key];
+  if (existing !== undefined && (typeof existing !== "object" || existing === null || Array.isArray(existing))) {
+    throw new ConfigNotMergeableError(`"${key}" in ${cfgPath} isn't an object, so totem left the file untouched.`);
+  }
+  const bucket = (existing as Record<string, unknown> | undefined) ?? {};
   merged[key] = { ...bucket, [name]: entry };
+  const next = JSON.stringify(merged, null, 2) + "\n";
+  if (previous !== null && previous.trim() === next.trim()) return { changed: false };
   mkdirSync(dirname(cfgPath), { recursive: true });
-  writeFileSync(cfgPath, JSON.stringify(merged, null, 2));
+  let backup: string | undefined;
+  if (previous !== null && previous.trim() !== "") {
+    backup = `${cfgPath}.totem-backup`;
+    copyFileSync(cfgPath, backup);
+  }
+  writeFileSync(cfgPath, next);
+  return backup ? { changed: true, backup } : { changed: true };
 }
 
 // A client wired by merging a JSON config file (most of them). `key` is the
@@ -363,7 +404,16 @@ function jsonClient(label: string, hint: string, configPath: () => string, key: 
         console.log(JSON.stringify({ [key]: { whoop: entry } }, null, 2));
         return false;
       }
-      mergeJsonConfig(cfgPath, key, "whoop", entry);
+      try {
+        const { backup } = mergeJsonConfig(cfgPath, key, "whoop", entry);
+        if (backup) console.log(c.gray(`  (previous config kept at ${backup})`));
+      } catch (error) {
+        if (!(error instanceof ConfigNotMergeableError)) throw error;
+        console.log(c.yellow(`  ${error.message}`));
+        console.log(c.gray(`  Add this under "${key}" in that file yourself:`));
+        console.log(JSON.stringify({ whoop: entry }, null, 2));
+        return false;
+      }
       console.log(c.green(`  ✓ ${label} updated`) + c.gray(`  ${cfgPath}`));
       console.log(c.yellow(`  → ${restart}`));
       return true;
