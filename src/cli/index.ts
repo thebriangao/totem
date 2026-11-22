@@ -14,18 +14,18 @@
 //   - Banner uses 24-bit truecolor ANSI escapes (RGB); honors NO_COLOR and
 //     skips colors if stdout is not a TTY.
 
-import { spawn, type SpawnOptions } from "node:child_process";
+import type { SpawnOptions } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
 import { runUpdate } from "./update.js";
-import { runScript, ping } from "./ui.js";
+import { runScript, ping, run as runInherit } from "./ui.js";
 import { runAuth } from "./auth.js";
 import { readLocalStatus } from "./auth_flow.js";
 import { resolveTokenFilePath } from "../whoop/token_store.js";
 import { readEnvFile } from "../lib/env_file.js";
-import { spawnArgs, pkgBin, claudeDesktopConfigPath } from "./spawn.js";
+import { pkgBin, claudeDesktopConfigPath } from "./spawn.js";
 
 // ── locate package root ──────────────────────────────────────────────────
 // This file lives at one of:
@@ -480,22 +480,10 @@ function detectDeploy(): DeployInfo | null {
 }
 const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
 
+// One runner for every subprocess (ui.ts), so they all pass SIGTERM / SIGHUP on
+// to the child. Commands here run from the install directory.
 function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
-  return new Promise((res) => {
-    const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts }));
-    child.on("exit", (code, signal) => {
-      if (signal) {
-        console.error(c.red(`\nKilled by signal ${signal}`));
-        res(128);
-        return;
-      }
-      res(code ?? 1);
-    });
-    child.on("error", (err) => {
-      console.error(c.red("Failed to spawn:"), err.message);
-      res(1);
-    });
-  });
+  return runInherit(cmd, args, { cwd: ROOT, ...opts });
 }
 
 function printHelp(): void {

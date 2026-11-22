@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { existsSync } from "node:fs";
+import { constants as osConstants } from "node:os";
 import { resolve } from "node:path";
 import { spawnArgs, pkgBin } from "./spawn.js";
 
@@ -47,20 +48,37 @@ export const c = {
 };
 
 // Spawn a command, inheriting stdio. Resolves with the exit code.
+//
+// SIGTERM and SIGHUP are passed on to the child. A supervisor (systemd, a
+// container runtime, a closed terminal) signals this process, not the one it
+// started: without the hand-off this wrapper died and `totem start` left the
+// server running, orphaned, still holding its port. The wrapper then waits for
+// the child and exits with its result.
 export function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
   return new Promise((res) => {
     const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", ...opts }));
+    let forwarded = false;
+    const onTerm = (): void => { forwarded = true; child.kill("SIGTERM"); };
+    const onHup = (): void => { forwarded = true; child.kill("SIGHUP"); };
+    process.on("SIGTERM", onTerm);
+    process.on("SIGHUP", onHup);
+    const done = (code: number): void => {
+      process.off("SIGTERM", onTerm);
+      process.off("SIGHUP", onHup);
+      res(code);
+    };
     child.on("exit", (code, signal) => {
       if (signal) {
-        console.error(c.red(`\nKilled by signal ${signal}`));
-        res(128);
+        // A signal we passed on is a normal shutdown, not a crash to report.
+        if (!forwarded) console.error(c.red(`\nKilled by signal ${signal}`));
+        done(128 + (osConstants.signals[signal] ?? 0));
         return;
       }
-      res(code ?? 1);
+      done(code ?? 1);
     });
     child.on("error", (err) => {
       console.error(c.red("Failed to spawn:"), (err as Error).message);
-      res(1);
+      done(1);
     });
   });
 }
