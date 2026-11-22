@@ -5,7 +5,6 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { defineTool, respond } from "../define.js";
 import { READ_ONLY } from "../annotations.js";
 import { todayIso } from "../../lib/dates.js";
-import { liveFreshness } from "../../lib/live_freshness.js";
 import { NowV2Out } from "../../schemas/v2/now.js";
 import { projectNow } from "../../projections/v2/now.js";
 
@@ -18,8 +17,8 @@ export function registerNow(server: McpServer, client: WhoopClient): void {
       name: NAME,
       description:
         "Live snapshot right now: activity state (idle, workout, sleep…) with sport, start and minutes so far when active; " +
-        "tracked_sleep; when WHOOP last processed strap data; current stress level and label; and today's recovery %, sleep %, " +
-        "strain, calories and HRV. Never cached. There is no live heart-rate (BPM) source.",
+        "tracked_sleep; when WHOOP last processed strap data and how many minutes ago; current stress level and label; and " +
+        "today's recovery %, sleep %, strain, calories and HRV. Never cached. There is no live heart-rate (BPM) source.",
       input: {},
       annotations: READ_ONLY,
     },
@@ -30,8 +29,15 @@ export function registerNow(server: McpServer, client: WhoopClient): void {
         client.get(`/health-service/v2/stress-bff/${todayIso()}`).catch(() => null),
         client.get("/home-service/v1/widget/overview", { widgetSize: "MEDIUM" }).catch(() => null),
       ]);
-      const projected = projectNow(state, stress, widget);
-      return respond(NAME, NowV2Out, { ...projected, freshness: liveFreshness(projected.latest_metrics_at) });
+      const fetchedAt = Date.now();
+      const projected = projectNow(state, stress, widget, fetchedAt);
+      const metricsAt = projected.latest_metrics_at ? Date.parse(projected.latest_metrics_at) : NaN;
+      return respond(NAME, NowV2Out, {
+        ...projected,
+        fetched_at: new Date(fetchedAt).toISOString(),
+        // How stale the strap data is (a strap that has not synced for hours makes "now" old).
+        metrics_age_min: Number.isFinite(metricsAt) ? Math.max(0, Math.round((fetchedAt - metricsAt) / 60_000)) : null,
+      });
     },
   );
 }

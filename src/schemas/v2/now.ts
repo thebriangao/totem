@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LiveFreshnessOut } from "../live.js";
+import { IsoDateTime } from "../primitives.js";
 import { InstantOrNull, NumOrNull, StrOrNull } from "./core_common.js";
 
 export const NowV2Out = z.object({
@@ -18,5 +18,6 @@ export const NowV2Out = z.object({
     calories: NumOrNull,
     hrv_ms: NumOrNull,
   }).nullable(),
-  freshness: LiveFreshnessOut,
+  fetched_at: IsoDateTime,
+  metrics_age_min: z.number().int().nonnegative().nullable(),
 });
