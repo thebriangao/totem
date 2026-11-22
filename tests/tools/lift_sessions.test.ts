@@ -137,6 +137,29 @@ describe("whoop_lift_sessions", () => {
     expect(get).toHaveBeenCalledTimes(1);
   });
 
+  // Live 2026-11-21: a scored boxing id read 3 PR pages and 24 exercise histories (28 requests)
+  // to answer "no Strength Trainer sets". The list skips such an activity without any sweep.
+  it("a scored activity of another sport by id answers from its details alone", async () => {
+    const get = routes({ "/core-details-bff/v1/cardio-details": repoFixture("cardio_details_nonstrength") });
+    const client = await connect(registerLiftSessions, { get });
+    const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: "70ad76a1-1e3c-4c8e-a026-903ff3175783" } }));
+    expect(out.sessions ?? []).toEqual([]);
+    expect(out.warnings.join()).toContain("no Strength Trainer sets");
+    expect(get.mock.calls.map((c) => c[0])).toEqual(["/core-details-bff/v1/cardio-details"]);
+  });
+
+  it("an unscored activity of another sport by id is still looked up in history (sets may be attached)", async () => {
+    const get = routes({
+      "/core-details-bff/v1/cardio-details": repoFixture("activities/cardio_details_pending_boxing"),
+      "/weightlifting-service/v3/prs": { tiles: [{ exercise_id: "BENCHPRESS_BARBELL", name: "Bench Press - Barbell" }], show_more: false },
+      "/weightlifting-service/v3/exercise/BENCHPRESS_BARBELL/exercise_history": fixture("history_bench"),
+    });
+    const client = await connect(registerLiftSessions, { get });
+    const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: PENDING } }));
+    expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "boxing", src: "history" });
+    expect(get.mock.calls.some((c) => c[0] === "/weightlifting-service/v3/prs")).toBe(true);
+  });
+
   it("caps ranges at 60 days", async () => {
     const get = routes({});
     const client = await connect(registerLiftSessions, { get });

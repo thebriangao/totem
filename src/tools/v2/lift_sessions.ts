@@ -174,6 +174,9 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
       if (activity.start) activity.date = isoDay(new Date(activity.start));
       let session: Session | null;
       if (hasLiftData(detail)) session = buildSession(activity, detail, parseCardioDetails(detail), "details", withRows);
+      // A scored activity of another sport with no lift block has no sets: the list applies the
+      // same rule. Sweeping every exercise's history to say so cost 28 requests for a boxing id.
+      else if (detail !== null && !unscored(activity, detail)) session = null;
       else {
         session = fromIndex(activity, detail, await historyIndex(client, new Set([activity_id]), sweepFloor([activity], addDays(today, -MAX_SPAN_DAYS)), recent([activity]), warnings), withRows);
       }
