@@ -269,6 +269,26 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("drops cached reads on a coach turn, but not on a conversation open, an image file or AI settings", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    const home = () => client.get("/home-service/v1/home", { date: "2026-05-23" });
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // whoop_coach_history opens a conversation only to read it; that, an upload
+    // and its cleanup, and the memory switch change nothing that is cached.
+    await client.post("/ai-conversation-bff/v1/conversation", { fingerprint: "totem-HOME-2026-05-23", source_type: "UNKNOWN" });
+    await client.post("/ai-conversation-bff/v1/files", {});
+    await client.delete("/ai-conversation-bff/v1/files/f.png");
+    await client.put("/ai-conversation-service/v1/settings", { setting_key: "WHOOP_COACH_MEMORY", active: true });
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // A chat turn is where the coach creates, edits and deletes activities.
+    await client.post("/ai-conversation-bff/v1/conversation/totem-HOME-2026-05-23/turn", { role: "user", content: "Yes, log the walk" });
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+  });
+
   it("refreshes the token once and retries after a 401", async () => {
     let token = "old";
     const onUnauthorized = vi.fn(() => { token = "new"; });
