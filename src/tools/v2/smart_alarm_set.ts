@@ -64,8 +64,8 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
     name: "whoop_smart_alarm_set",
     description:
       "WRITE Smart Alarm. create/edit a recurring schedule (days, mode, sleep_goal only for SLEEP_GOAL, wake_time 24h, enabled; NO_ALARM means off); edit merges onto the current schedule; " +
-      "a day belongs to one schedule, so claiming it moves it off another. delete removes a schedule. enable/disable flip the recurring master switch. " +
-      "single_alarm sets just the next alarm and turns the recurring schedules off. Changes reach the strap only after the WHOOP app syncs. Preview unless confirm:true.",
+      "a day belongs to one schedule, so claiming it moves it off another. delete removes a schedule. enable/disable flip the recurring master switch; disable also turns the next alarm off. " +
+      "single_alarm sets just the next alarm (on) and turns the recurring schedules off. Changes reach the strap only after the WHOOP app syncs. Preview unless confirm:true.",
     input: {
       action: z.enum(["create", "edit", "delete", "enable", "disable", "single_alarm"]),
       schedule_id: z.string().regex(/^[0-9a-fA-F-]{8,64}$/).optional().describe("edit/delete: from whoop_smart_alarm."),
@@ -73,7 +73,7 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
       mode: z.enum(ALARM_MODES).optional(),
       sleep_goal: z.enum(SLEEP_GOALS).optional().describe("Only with mode SLEEP_GOAL."),
       wake_time: z.string().optional().describe("Latest wake time, e.g. 06:45."),
-      enabled: z.boolean().optional(),
+      enabled: z.boolean().optional().describe("create/edit: the schedule's own on/off flag."),
       goal: z.enum(SAFE_ALARM_GOALS).optional().describe("single_alarm goal (default EXACT_TIME_PERFORM)."),
       confirm: z.boolean().default(false),
     },
@@ -89,6 +89,11 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
     if (goal && action !== "single_alarm") return toolError("goal is only for single_alarm; schedules use mode (+ sleep_goal).");
     if ((action === "delete" || action === "enable" || action === "disable") && (wake_time || enabled !== undefined)) {
       return toolError(`action:${action} takes no wake_time or enabled.`);
+    }
+    if (action === "single_alarm" && enabled === false) {
+      // The only preferences body verified on a healthy account has enabled:true; the app's own
+      // turn-off form adds `default:true`, which S1 bans. alarm-schedule/disable is the verified off.
+      return toolError("single_alarm sets an alarm that is on. To turn the alarm off use action:disable.");
     }
     if (days && new Set(days).size !== days.length) return toolError("days has duplicates.");
     let wake: string | null = null;
@@ -185,7 +190,9 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
 
     if (action === "enable" || action === "disable") {
       const want = action === "enable";
-      if (before.master_switch === want) return respondReceipt(null, true, true);
+      const alarmOn = (state: typeof before): boolean => state.next_alarm !== "unavailable" && state.next_alarm.enabled === true;
+      // disable also turns the next alarm off, so it still has work to do while a single alarm is on.
+      if (before.master_switch === want && !(action === "disable" && alarmOn(before))) return respondReceipt(null, true, true);
       warnings.push(want
         ? "Turning the master switch on resets the next alarm from tomorrow's schedule."
         : "Turning the master switch off also turns off the next alarm; each schedule keeps its own enabled flag.");
@@ -200,14 +207,16 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
       }
       const after = await readSmartAlarm(client, true);
       if (after.master_switch === "unavailable") warnings.push("The master switch couldn't be read back (WHOOP error).");
-      return respondReceipt(null, after.master_switch === want, false, after);
+      const stillOn = action === "disable" && alarmOn(after);
+      if (stillOn) warnings.push("The next alarm still reads as on.");
+      return respondReceipt(null, after.master_switch === want && !stillOn, false, after);
     }
 
     // single_alarm: the next alarm only, via preferences. S1: allowlisted goals only, never anything else.
     if (!wake) return toolError("single_alarm needs wake_time.");
     const g = goal ?? "EXACT_TIME_PERFORM";
     if (!(SAFE_ALARM_GOALS as readonly string[]).includes(g)) return toolError(`goal ${g} isn't allowed.`);
-    const on = enabled ?? true;
+    const on = true;
     const body = { upper_time_bound: wake, goal: g, time_zone_offset: tzOffset(), schedule_enabled: false, enabled: on };
     warnings.push("This turns the recurring master switch off: schedules stop setting alarms until you enable it again.");
     if (before.next_alarm === "unavailable") warnings.push("WHOOP can't currently read this account's alarm preferences (error); the write may fail. If so, fix Smart Alarm in the app.");

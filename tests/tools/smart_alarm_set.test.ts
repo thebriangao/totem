@@ -176,11 +176,13 @@ describe("whoop_smart_alarm_set master switch and single alarm", () => {
   it("disable PUTs with no body; already-on enable is a no-op", async () => {
     const put = vi.fn().mockResolvedValue(undefined);
     const offAll = { ...(fx("alarm_schedule_all.json") as object), schedule_enabled: false };
-    const get = routedGet({ [ROWS]: baseRows(), [ALL]: seq(fx("alarm_schedule_all.json"), offAll), [PREFS]: fx("alarm_preferences.json") });
+    // settings §2.1: disable sets preferences schedule_enabled:false AND enabled:false.
+    const offPrefs = { ...(fx("alarm_preferences.json") as object), schedule_enabled: false, enabled: false, day_of_week: null };
+    const get = routedGet({ [ROWS]: baseRows(), [ALL]: seq(fx("alarm_schedule_all.json"), offAll), [PREFS]: seq(fx("alarm_preferences.json"), offPrefs) });
     const client = await connect((s) => registerSmartAlarmSet(s, mockClient({ get, put })));
     const { out } = await call(client, "whoop_smart_alarm_set", { action: "disable", confirm: true });
     expect(put).toHaveBeenCalledWith(`${SA}/alarm-schedule/disable`, undefined);
-    expect(out).toMatchObject({ verified: true, master_switch: false });
+    expect(out).toMatchObject({ verified: true, master_switch: false, next_alarm: { enabled: false } });
     expect(out.warnings.join(" ")).toMatch(/also turns off the next alarm/);
 
     const again = await connect((s) => registerSmartAlarmSet(s, mockClient({ get: healthy(baseRows()), put: vi.fn() })));
