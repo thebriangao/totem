@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, statSync } from "node:fs";
+import {
+  mkdtempSync, rmSync, readFileSync, writeFileSync, statSync, lstatSync, readdirSync,
+  openSync, readSync, closeSync, symlinkSync, chmodSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { parse } from "dotenv";
@@ -185,6 +188,70 @@ describe("upsertEnvFile", () => {
     upsertEnvFile(envPath, { WHOOP_PASSWORD: "#hunter2" });
     upsertEnvFile(envPath, { WHOOP_IOS_BEARER_TOKEN: "eyJ.abc" });
     expect(readEnvFile(envPath).WHOOP_PASSWORD).toBe("#hunter2");
+  });
+});
+
+// The file is swapped in whole, never truncated and rewritten: a second totem
+// process reading mid-write used to see an empty file (measured: ~1 read in 6
+// while another process was rewriting it).
+describe("the .env is replaced atomically", () => {
+  const readAll = (fd: number): string => {
+    const buffer = Buffer.alloc(4096);
+    return buffer.subarray(0, readSync(fd, buffer, 0, buffer.length, 0)).toString("utf8");
+  };
+
+  it("a reader holding the old file still sees all of it, and the new file is complete", () => {
+    const before = "WHOOP_EMAIL=a@b.com\nWHOOP_IOS_BEARER_TOKEN=old\n";
+    writeFileSync(envPath, before);
+    const fd = openSync(envPath, "r");
+    try {
+      upsertEnvFile(envPath, { WHOOP_IOS_BEARER_TOKEN: "new" });
+      expect(readAll(fd)).toBe(before); // written in place, this handle read the new text (or none)
+    } finally {
+      closeSync(fd);
+    }
+    expect(readFileSync(envPath, "utf8")).toBe("WHOOP_EMAIL=a@b.com\nWHOOP_IOS_BEARER_TOKEN=new\n");
+  });
+
+  it("does the same for deleteEnvKeys", () => {
+    const before = "WHOOP_PASSWORD=pw\nWHOOP_EMAIL=a@b.com\n";
+    writeFileSync(envPath, before);
+    const fd = openSync(envPath, "r");
+    try {
+      deleteEnvKeys(envPath, ["WHOOP_PASSWORD"]);
+      expect(readAll(fd)).toBe(before);
+    } finally {
+      closeSync(fd);
+    }
+    expect(readFileSync(envPath, "utf8")).toBe("WHOOP_EMAIL=a@b.com\n");
+  });
+
+  it("leaves no temp file behind and keeps the file 0600", () => {
+    writeFileSync(envPath, "A=1\n", { mode: 0o644 });
+    upsertEnvFile(envPath, { B: "2" });
+    deleteEnvKeys(envPath, ["A"]);
+    expect(readdirSync(dir)).toEqual([".env"]);
+    expect(statSync(envPath).mode & 0o777).toBe(0o600);
+  });
+
+  it("writes through a symlinked .env and leaves the link in place", () => {
+    const real = resolve(dir, "secrets.env");
+    writeFileSync(real, "A=1\n");
+    symlinkSync(real, envPath);
+    upsertEnvFile(envPath, { B: "2" });
+    expect(lstatSync(envPath).isSymbolicLink()).toBe(true);
+    expect(readFileSync(real, "utf8")).toBe("A=1\nB=2\n");
+  });
+
+  it("falls back to writing in place where a sibling file can't be created", () => {
+    writeFileSync(envPath, "A=1\n");
+    chmodSync(dir, 0o500); // e.g. a read-only config dir, or a single bind-mounted file
+    try {
+      upsertEnvFile(envPath, { B: "2" });
+      expect(readEnvFile(envPath)).toEqual({ A: "1", B: "2" });
+    } finally {
+      chmodSync(dir, 0o700);
+    }
   });
 });
 

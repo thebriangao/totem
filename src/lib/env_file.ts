@@ -18,7 +18,11 @@
 //             swallows the lines between (see assertReadsBack)
 //   CR        dotenv turns every CR / CRLF in the file into LF before parsing,
 //             so only "..." (as the escape \r) can hold one
-import { readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
+import {
+  readFileSync, writeFileSync, existsSync, chmodSync,
+  openSync, writeSync, fsyncSync, closeSync, renameSync, rmSync, realpathSync,
+} from "node:fs";
+import { randomBytes } from "node:crypto";
 import { parse } from "dotenv";
 
 /** Characters that make an unquoted value parse back as something else. */
@@ -96,6 +100,48 @@ export function readEnvFile(path: string): Record<string, string> {
   }
 }
 
+/** Errors that mean "can't swap a new file in here", not "the disk is failing". */
+const NO_SWAP = new Set(["EACCES", "EPERM", "EROFS", "EBUSY", "EXDEV", "ENOTSUP"]);
+
+/**
+ * Replace the file's contents in one step, 0600. The text goes to a sibling
+ * temp file that is then renamed over the target, so the file is always either
+ * the old version or the new one.
+ *
+ * Writing in place truncates first. Several totem processes share this file
+ * (one per MCP client, plus `totem auth`) and refresh tokens at the same moment,
+ * since they hold the same access token. A process reading during another's
+ * rewrite saw an empty file about one read in six when measured, which at boot
+ * is "Missing WHOOP_EMAIL"; and a crash or a full disk mid-write left every
+ * credential gone.
+ *
+ * Where a sibling can't be created or renamed in (a read-only directory, a
+ * single file bind-mounted into a container) it falls back to the in-place
+ * write. Any other failure is rethrown with the original file untouched.
+ */
+function replaceFile(path: string, text: string): void {
+  // Follow a symlinked .env so the link stays a link and its target is replaced.
+  let target = path;
+  try { target = realpathSync(path); } catch { /* doesn't exist yet */ }
+  const temp = `${target}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+  try {
+    const fd = openSync(temp, "wx", 0o600);
+    try {
+      writeSync(fd, text);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(temp, target);
+  } catch (error) {
+    try { rmSync(temp, { force: true }); } catch { /* nothing to clean up */ }
+    if (!NO_SWAP.has((error as NodeJS.ErrnoException).code ?? "")) throw error;
+    writeFileSync(target, text, { mode: 0o600 });
+  }
+  // The in-place path keeps an existing file's mode, so repair files written by older versions.
+  try { chmodSync(target, 0o600); } catch { /* best-effort on exotic filesystems */ }
+}
+
 /**
  * Update keys in place, preserving comments, blank lines and unrelated
  * entries. Duplicate assignments of an updated key collapse to one; keys not
@@ -126,9 +172,7 @@ export function upsertEnvFile(path: string, updates: Record<string, string>): vo
 
   const text = out.join("\n") + "\n";
   assertReadsBack(raw, text, updates);
-  writeFileSync(path, text, { mode: 0o600 });
-  // mode only applies on create, so repair files written by older versions.
-  try { chmodSync(path, 0o600); } catch { /* best-effort on exotic filesystems */ }
+  replaceFile(path, text);
 }
 
 /** Remove keys entirely (used to wipe the one-time password after bootstrap). */
@@ -143,6 +187,5 @@ export function deleteEnvKeys(path: string, keys: readonly string[]): void {
   });
   const text = kept.join("\n") + "\n";
   assertReadsBack(raw, text, {}, keys);
-  writeFileSync(path, text, { mode: 0o600 });
-  try { chmodSync(path, 0o600); } catch { /* best-effort */ }
+  replaceFile(path, text);
 }
