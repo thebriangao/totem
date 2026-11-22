@@ -8,7 +8,7 @@
 // or accept a cycle id.
 import { randomInt, randomUUID } from "node:crypto";
 import type { WhoopClient } from "../whoop/client.js";
-import { WhoopApiError } from "../whoop/errors.js";
+import { WhoopApiError, WhoopServerError } from "../whoop/errors.js";
 import { get, str } from "../whoop/bff.js";
 import {
   AGENT_SOURCES,
@@ -56,6 +56,13 @@ type Turn = Record<string, unknown>;
  */
 export const FAILED = "FAILED";
 
+/** A 5xx, a network failure or a request timeout: worth another poll. */
+function isTransient(e: unknown): boolean {
+  if (e instanceof WhoopServerError) return true;
+  if (!(e instanceof Error)) return false;
+  return e.name === "AbortError" || e.name === "TimeoutError" || (e instanceof TypeError && /fetch failed|network/i.test(e.message));
+}
+
 /** Poll GET …/conversation/{fingerprint}/turn/{id} until COMPLETE, FAILED or the deadline. */
 export async function waitForTurn(
   client: WhoopClient,
@@ -73,8 +80,14 @@ export async function waitForTurn(
   // is the only other state that ends the wait.
   while (timing.now() < deadline) {
     await timing.sleep(Math.min(timing.pollDelayMs(), Math.max(0, deadline - timing.now())));
-    turn = await client.get<Turn>(`${conversationPath(fingerprint)}/turn/${encodeURIComponent(turnId)}`, {}, { fresh: true });
     polls++;
+    try {
+      turn = await client.get<Turn>(`${conversationPath(fingerprint)}/turn/${encodeURIComponent(turnId)}`, {}, { fresh: true });
+    } catch (e) {
+      // One failed poll says nothing about the turn, which keeps running on WHOOP's side.
+      if (!isTransient(e)) throw e;
+      continue;
+    }
     status = turnStatus(turn) ?? status;
     if (status === "COMPLETE" || status === FAILED) return { turn, status, timedOut: false, polls };
   }
@@ -280,6 +293,9 @@ function describeTurn(receipt: CoachAskReceiptT, turn: Turn | null): void {
   }
 }
 
+/** Local marker (never a WHOOP status): the turn was posted but could not be polled. */
+const UNREAD = "UNREAD";
+
 const notDone = (s: number, what: string, view: string) =>
   `The ${what} wasn't COMPLETE after ${s} s; read it later with whoop_coach_history ${view}.`;
 
@@ -358,12 +374,21 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
     };
     const posted = await postTurn(client, fingerprint, turnBody, open, timing);
     if (posted.retries) receipt.warnings.push("The thread was busy with another message; totem waited for it and resent.");
-    const polled = await waitForTurn(client, fingerprint, posted.id, timing.replyTimeoutMs, timing);
-    status = polled.status;
-    describeTurn(receipt, polled.turn);
+    try {
+      const polled = await waitForTurn(client, fingerprint, posted.id, timing.replyTimeoutMs, timing);
+      status = polled.status;
+      describeTurn(receipt, polled.turn);
+    } catch (e) {
+      // The message is already with the coach (and it may be acting on it): an
+      // error here must not read as "nothing was sent", or the caller resends.
+      status = UNREAD;
+      receipt.warnings.push(
+        `Your message was sent, but its reply couldn't be read (${e instanceof Error ? e.message : String(e)}). Don't resend it: read the thread with whoop_coach_history {view:"transcript", fingerprint:"${fingerprint}"}.`,
+      );
+    }
     // The client dropped its cache when the turn was POSTed, but the coach wrote
     // the data afterwards: anything read (by another call) in between is stale.
-    if (receipt.actions.length) client.invalidateAll();
+    if (receipt.actions.length || status === UNREAD) client.invalidateAll();
   } finally {
     if (fileId) {
       receipt.image_deleted = await client.delete(`${AI}/files/${encodeURIComponent(fileId)}`).then(() => true, () => false);
@@ -378,7 +403,7 @@ export async function askCoach(client: WhoopClient, plan: AskPlan, timing: Coach
     receipt.warnings.push(
       "WHOOP reports this turn FAILED: the coach produced no reply and none will arrive. Ask again, or use new_thread:true if this thread keeps failing.",
     );
-  } else {
+  } else if (status !== UNREAD) {
     receipt.warnings.push(notDone(Math.round(timing.replyTimeoutMs / 1000), "reply", `{view:"transcript", fingerprint:"${fingerprint}"}`));
   }
   return receipt;

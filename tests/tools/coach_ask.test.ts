@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WhoopClient } from "../../src/whoop/client.js";
-import { WhoopConflictError } from "../../src/whoop/errors.js";
+import { WhoopApiError, WhoopConflictError, WhoopServerError } from "../../src/whoop/errors.js";
 import { askCoach, type CoachTiming } from "../../src/lib/coach_session.js";
 import { planAsk, registerCoachAsk } from "../../src/tools/v2/coach_ask.js";
 import { PNG_1PX, body, closeAll, connect, errorText, load } from "./helpers_coach.js";
@@ -212,6 +212,42 @@ describe("askCoach send path", () => {
     expect(out.text).toBe("I'll pull your data…");
     expect(out.warnings.join(" ")).toMatch(/whoop_coach_history \{view:"transcript"/);
     expect(out.suggestions).toEqual([]);
+  });
+
+  it("keeps polling through a transient poll failure instead of losing a turn that was sent", async () => {
+    let polls = 0;
+    const m = mockClient({
+      post: (path) => (path === `${AI}/conversation` ? { turns: [] } : { id: "turn-1" }),
+      get: (path) => {
+        if (path.endsWith("/suggestions")) return { suggestions: [] };
+        if (++polls === 1) throw new WhoopServerError(502, path, "Bad Gateway");
+        if (polls === 2) throw new TypeError("fetch failed");
+        return load("coach/turn_logged_walk.json");
+      },
+    });
+    const out = await askCoach(m.client, planAsk({ ...base, message: "Yes, log the walk" }, DAY), fakeTiming());
+    expect(polls).toBe(3);
+    expect(out.verified).toBe(true);
+    expect(out.actions).toEqual(["Logged Walk"]);
+    // The message went out once.
+    expect(m.post.mock.calls.filter((c) => String(c[0]).endsWith("/turn"))).toHaveLength(1);
+  });
+
+  it("when the reply can't be read, returns a receipt saying the message was sent (no bare error to retry on)", async () => {
+    const m = mockClient({
+      post: (path) => (path === `${AI}/conversation` ? { turns: [] } : { id: "turn-1" }),
+      get: (path) => { throw new WhoopApiError(403, path, "", "Forbidden"); },
+    });
+    const out = await askCoach(m.client, planAsk({ ...base, message: "Yes, log the walk" }, DAY), fakeTiming());
+    expect(out.thread).toBe(`totem-HOME-${DAY}`);
+    expect(out.verified).toBe(false);
+    expect(out.text).toBeNull();
+    const warnings = out.warnings.join(" ");
+    expect(warnings).toMatch(/was sent/);
+    expect(warnings).toMatch(/Don't resend/);
+    expect(warnings).toContain(`whoop_coach_history {view:"transcript", fingerprint:"totem-HOME-${DAY}"}`);
+    expect(warnings).toMatch(/403/);
+    expect(m.get).toHaveBeenCalledTimes(1);
   });
 
   it("drops cached reads again once the coach's write has landed", async () => {
