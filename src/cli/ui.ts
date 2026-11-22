@@ -5,6 +5,7 @@ import { spawn, spawnSync, type SpawnOptions } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { randomBytes } from "node:crypto";
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -258,11 +259,15 @@ export function openUrl(url: string): void {
 }
 
 // GET a URL, resolve with {status, body}. Used for health + OAuth metadata checks.
+// Follows the URL's scheme: a self-hosted or local deployment may be plain
+// http, and an https request to it never gets an answer.
 export function httpGet(url: string, timeoutMs = 12_000): Promise<{ status: number; body: string }> {
   return new Promise((res) => {
-    const u = new URL(url);
-    const req = httpsRequest(
-      { method: "GET", hostname: u.hostname, port: u.port || 443, path: u.pathname + u.search, headers: { "user-agent": "totem-setup" } },
+    let u: URL;
+    try { u = new URL(url); } catch { res({ status: 0, body: "" }); return; }
+    const plain = u.protocol === "http:";
+    const req = (plain ? httpRequest : httpsRequest)(
+      { method: "GET", hostname: u.hostname.replace(/^\[|\]$/g, ""), port: u.port || (plain ? 80 : 443), path: u.pathname + u.search, headers: { "user-agent": "totem-setup" } },
       (response) => {
         let body = "";
         response.setEncoding("utf8");

@@ -18,10 +18,9 @@ import { spawn, type SpawnOptions } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { request as httpsRequest } from "node:https";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
 import { runUpdate } from "./update.js";
-import { runScript } from "./ui.js";
+import { runScript, ping } from "./ui.js";
 import { runAuth } from "./auth.js";
 import { readLocalStatus } from "./auth_flow.js";
 import { resolveTokenFilePath } from "../whoop/token_store.js";
@@ -496,46 +495,6 @@ function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<numb
       console.error(c.red("Failed to spawn:"), err.message);
       res(1);
     });
-  });
-}
-
-function ping(url: string, timeoutMs = 10_000): Promise<number> {
-  return new Promise((res) => {
-    const u = new URL(url);
-    const req = httpsRequest(
-      {
-        method: "GET",
-        hostname: u.hostname,
-        port: u.port || 443,
-        path: u.pathname + u.search,
-        headers: { "user-agent": `totem/${VERSION}` },
-      },
-      (response) => {
-        let body = "";
-        response.setEncoding("utf8");
-        response.on("data", (chunk: string) => {
-          body += chunk;
-        });
-        response.on("end", () => {
-          const status = response.statusCode ?? 0;
-          const ok = status >= 200 && status < 300;
-          const label = ok ? c.green(`✓ ${status}`) : c.red(`✗ ${status}`);
-          const preview = body.length > 120 ? body.slice(0, 117) + "..." : body;
-          console.log(`${label}  ${url}  ${c.gray("→ " + preview.replace(/\s+/g, " ").trim())}`);
-          res(ok ? 0 : 1);
-        });
-      },
-    );
-    req.setTimeout(timeoutMs, () => {
-      req.destroy();
-      console.error(c.red(`✗ timeout after ${timeoutMs}ms:`), url);
-      res(1);
-    });
-    req.on("error", (err) => {
-      console.error(c.red("✗ network error:"), err.message);
-      res(1);
-    });
-    req.end();
   });
 }
 
