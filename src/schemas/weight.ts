@@ -7,8 +7,10 @@ export interface WeightReadingT {
   id: string;
   timestamp: string;
   weight_kg: number;
-  /** Percent (WHOOP stores a fraction). */
+  /** Percent (WHOOP stores a fraction), rounded for display. */
   body_fat_pct: number | null;
+  /** The stored fraction (float32 noise removed), for re-sending on a full-replace edit. */
+  fat_fraction: number | null;
   lean_kg: number | null;
   source: string | null;
   /** False for integration readings (Apple Health…): deletable, not editable. */

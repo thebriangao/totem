@@ -153,6 +153,28 @@ describe("whoop_weight_log edit / delete", () => {
     expect(out).toMatchObject({ action: "edit", id: "r-1", verified: true, profile_kg: 82 });
   });
 
+  it("an edit that only moves the time re-sends the stored values as they are (the PUT replaces everything)", async () => {
+    // What a reading really looks like: float32 noise, body fat to 2 decimals, and a lean mass
+    // WHOOP never checks against weight (health §2.1), so it needn't equal weight × (1 − fat).
+    const stored: R = { id: "r-1", ts: "2026-11-21T22:05:00.000Z", kg: 78.5, fat: 0.18549999594688416, lean: 60 };
+    const moved: R = { ...stored, ts: "2026-11-21T22:30:00.000Z" };
+    const put = vi.fn().mockResolvedValue({});
+    const get = routedGet({ [PATH]: seq(page([stored]), page([moved])), [BOOT]: { profile: { weight: 78.5 } } });
+    const client = await connect((s) => registerWeightLog(s, mockClient({ get, put })));
+    const { out } = await call(client, "whoop_weight_log", { action: "edit", reading_id: "r-1", at: "2026-11-21T14:30:00-08:00", confirm: true });
+    expect(put).toHaveBeenCalledWith(`${PATH}/r-1`, { timestamp: "2026-11-21T14:30:00.000-0800", weight_kg: 78.5, body_fat_percent: 0.1855, lean_body_mass_kg: 60 });
+    expect(out).toMatchObject({ verified: true, reading: { kg: 78.5, fat_pct: 18.5, lean_kg: 60 } });
+  });
+
+  it("a new weight keeps the stored body fat at full precision (lean follows the new weight)", async () => {
+    const stored: R = { id: "r-1", ts: "2026-11-21T22:05:00.000Z", kg: 78.5, fat: 0.18549999594688416, lean: 63.94 };
+    const put = vi.fn().mockResolvedValue({});
+    const get = routedGet({ [PATH]: seq(page([stored]), page([{ ...stored, kg: 80, lean: 65.16 }])), [BOOT]: { profile: { weight: 80 } } });
+    const client = await connect((s) => registerWeightLog(s, mockClient({ get, put })));
+    await call(client, "whoop_weight_log", { action: "edit", reading_id: "r-1", weight: 80, unit: "kg", confirm: true });
+    expect(put.mock.calls[0]![1]).toEqual({ timestamp: "2026-11-21T14:05:00.000-0800", weight_kg: 80, body_fat_percent: 0.1855, lean_body_mass_kg: 65.16 });
+  });
+
   it("body_fat_pct:null clears body composition", async () => {
     const put = vi.fn().mockResolvedValue({});
     const get = routedGet({ [PATH]: seq(page([withFat]), page([{ ...withFat, fat: null, lean: null }])), [BOOT]: { profile: { weight: 80 } } });

@@ -127,12 +127,15 @@ export function registerWeightLog(server: McpServer, client: WhoopClient): void 
     }
     let fatPct: number | undefined;
     let leanKg: number | undefined;
+    // An edit that changes neither weight nor body composition (a new time only) re-sends the
+    // stored values exactly: the PUT replaces everything, and WHOOP never ties lean to weight.
+    const verbatim = action === "edit" && weight === undefined && body_fat_pct === undefined && lean_mass === undefined;
     if (body_fat_pct !== undefined || lean_mass !== undefined) {
       fatPct = body_fat_pct ?? undefined;
       leanKg = lean_mass !== undefined ? toKg(lean_mass, unit!) : undefined;
-    } else if (action === "edit" && target) {
-      // Keep the reading's body composition: body fat % carries over (lean follows a new weight).
-      if (target.body_fat_pct !== null) fatPct = target.body_fat_pct;
+    } else if (action === "edit" && target && !verbatim) {
+      // A new weight keeps the stored body fat (at its stored precision); lean follows the new weight.
+      if (target.fat_fraction !== null) fatPct = target.fat_fraction * 100;
       else if (target.lean_kg !== null) leanKg = target.lean_kg;
     }
     let body: MeasurementBody;
@@ -144,6 +147,7 @@ export function registerWeightLog(server: McpServer, client: WhoopClient): void 
         body_fat_percent: fatPct,
         lean_body_mass_kg: leanKg,
       });
+      if (verbatim) body = { ...body, body_fat_percent: target!.fat_fraction, lean_body_mass_kg: target!.lean_kg };
     } catch (e) {
       return toolError((e as Error).message);
     }

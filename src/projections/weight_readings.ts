@@ -37,6 +37,7 @@ export function projectWeightReadings(raw: unknown): WeightPageT {
         timestamp,
         weight_kg: round(weight, 4),
         body_fat_pct: fat === null ? null : fatFractionToPercent(fat),
+        fat_fraction: fat === null ? null : round(fat, 4),
         lean_kg: lean === null ? null : round(lean, 4),
         source: asString(details.source ?? content.source),
         editable: details.save_title !== null && details.save_title !== undefined,
