@@ -126,7 +126,7 @@ const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
  */
 export function badActivityIdError(e: unknown, id: string): Error | null {
   if (!(e instanceof WhoopServerError) || UUID.test(id.trim())) return null;
-  return new Error(`${JSON.stringify(id)} isn't a WHOOP activity id (ids are UUIDs like 70ad76a1-1e3c-4c8e-a026-903ff3175783). Take the id from whoop_workouts, whoop_day or whoop_sleep.`);
+  return new Error(`${JSON.stringify(id)} isn't a WHOOP activity id (ids are UUIDs: 8-4-4-4-12 hex characters). Take the id from whoop_workouts, whoop_day or whoop_sleep.`);
 }
 
 /**

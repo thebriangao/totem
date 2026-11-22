@@ -73,7 +73,7 @@ describe("v2 tool registry", () => {
     // Every MCP client sends this to the model on every turn. v1 was 45,283
     // characters for 55 tools and v2 started at 50,318 for 40; the budget is 20%
     // under v1 (36,226). It was 36,000 until whoop_day gained the heart-rate
-    // series and the day table (+366 characters). Measured now: 36,092.
+    // series and the day table (+366 characters). Measured now: 36,177.
     const { tools } = await (await connect()).listTools();
     expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_200);
     // Write tools say once, the same way, that they preview by default.
