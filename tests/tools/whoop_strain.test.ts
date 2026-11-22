@@ -14,14 +14,15 @@ describe("whoop_strain projection", () => {
     expect(out.steps).toEqual({ value: 9412, baseline: 8105, trend: "HIGHER_POSITIVE" });
     // workouts_count = CARDIO tiles (the deep dive lists no RECOVERY activities).
     expect(out.workouts_count).toBe(2);
-    expect(out.activities.map((a) => [a.name, a.strain ?? null])).toEqual([["running", 8.4], ["walking", null]]);
+    expect(out.activities.columns).toEqual(["id", "name", "status", "start", "min", "strain"]);
+    expect(out.activities.rows.map((a) => [a[1], a[5]])).toEqual([["running", 8.4], ["walking", null]]);
   });
 
   it("has no target while calibrating and counts every CARDIO tile, pending included", () => {
     const out = projectStrainV2(fx("strain_dd_calibrating"), "2026-11-21");
     expect(out).toMatchObject({ score: 20.9, calibrating: true, target: null, calibration: { filled: 0, total: 4 } });
-    expect(out.workouts_count).toBe(out.activities.length);
-    expect(out.activities.some((a) => a.status === "PENDING")).toBe(true);
+    expect(out.workouts_count).toBe(out.activities.rows.length);
+    expect(out.activities.rows.some((a) => a[2] === "PENDING")).toBe(true);
     expect(out.zones_1_3_min.value).toBe(1);
     expect(out.strength_min.value).toBe(2);
     expect(out.steps.value).toBe(597);

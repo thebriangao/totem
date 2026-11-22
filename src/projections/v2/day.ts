@@ -3,8 +3,8 @@
 // coach tiles; the recovery and strain deep dives; the main sleep's
 // sleep-details; sleepneed (today, may 500 → null); user-state (today).
 import {
-  activityRow, activityTiles, coachRecommendations, homeCycle, keyStats, kinds, liveCalories, recoveryStateFromStyle,
-  stickyGauge, type CoachRecommendation, type HomeCycle, type KeyStat,
+  activityColumns, activityRow, activityTiles, coachRecommendations, homeCycle, keyStats, kinds, liveCalories, recoveryStateFromStyle,
+  stickyGauge, type ActivityRow, type CoachRecommendation, type HomeCycle, type KeyStat,
 } from "./core_home.js";
 import { projectRecoveryDeepDive } from "./recovery.js";
 import { mainSleepTile, napsFromTiles, projectSleepDetails } from "./sleep.js";
@@ -65,7 +65,7 @@ export interface DayV2 {
     stages_min: StageMap | null;
     naps: number;
   } | null;
-  activities?: { cardio: Array<Record<string, unknown>>; recovery: Array<Record<string, unknown>>; sleep: Array<Record<string, unknown>> };
+  activities?: { columns: ReturnType<typeof activityColumns>; cardio: ActivityRow[]; recovery: ActivityRow[]; sleep: ActivityRow[] };
   /** CARDIO activities only (RECOVERY and SLEEP tiles are listed, not counted). */
   workouts_count: number;
   recommendations: CoachRecommendation[];
@@ -143,11 +143,12 @@ export function projectDay(input: DayInput): DayV2 {
   if (include.has("activities")) {
     // The main sleep is already the `sleep` section when that is included.
     const mainId = include.has("sleep") ? mainSleepTile(tiles)?.id : undefined;
-    out.activities = {
+    const rows = {
       cardio: cardio.map(activityRow),
       recovery: kinds(tiles, "RECOVERY").map(activityRow),
       sleep: kinds(tiles, "SLEEP").filter((t) => t.id !== mainId).map(activityRow),
     };
+    out.activities = { columns: activityColumns(rows.cardio, rows.recovery, rows.sleep), ...rows };
   }
 
   if (include.has("sleep_plan")) out.sleep_plan = input.isToday ? input.sleepNeed ?? null : null;

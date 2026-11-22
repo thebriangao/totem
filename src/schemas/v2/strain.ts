@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ActivityRowOut, Calibration, IsoDate, NumOrNull, VsBaselineOut } from "./core_common.js";
+import { ActivityColumnsOut, ActivityRowOut, Calibration, IsoDate, NumOrNull, VsBaselineOut } from "./core_common.js";
 
 export const StrainV2Out = z.object({
   date: IsoDate,
@@ -11,6 +11,6 @@ export const StrainV2Out = z.object({
   zones_4_5_min: VsBaselineOut,
   strength_min: VsBaselineOut,
   steps: VsBaselineOut,
-  activities: z.array(ActivityRowOut),
+  activities: z.object({ columns: ActivityColumnsOut, rows: z.array(ActivityRowOut) }),
   workouts_count: z.number().int(),
 });

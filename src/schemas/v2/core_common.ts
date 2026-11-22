@@ -23,15 +23,9 @@ export const SleepNeedOut = z.object({
 });
 
 /** Compact activity row: CARDIO carries strain, RECOVERY/SLEEP carry minutes. */
-export const ActivityRowOut = z.object({
-  id: z.string(),
-  name: StrOrNull,
-  status: StrOrNull,
-  start: InstantOrNull,
-  end: InstantOrNull,
-  strain: NumOrNull.optional(),
-  min: NumOrNull.optional(),
-});
+/** Positional: id, name, status, start, min, strain (projections/v2/core_home.ts ACTIVITY_COLUMNS). */
+export const ActivityRowOut = z.tuple([z.string(), StrOrNull, StrOrNull, InstantOrNull, NumOrNull, NumOrNull]);
+export const ActivityColumnsOut = z.array(z.enum(["id", "name", "status", "start", "min", "strain"]));
 
 export const CycleOut = z.object({
   id: z.number().int().nullable(),

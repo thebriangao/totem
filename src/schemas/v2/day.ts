@@ -2,7 +2,7 @@ import { z } from "zod";
 import { IsoDateTime } from "../primitives.js";
 import { HISTORY_COLUMNS } from "../../projections/v2/history.js";
 import {
-  ActivityRowOut, CoachRecommendationOut, CycleOut, InstantOrNull, IntOrNull, IsoDate, KeyStatOut, NumOrNull,
+  ActivityColumnsOut, ActivityRowOut, CoachRecommendationOut, CycleOut, InstantOrNull, IntOrNull, IsoDate, KeyStatOut, NumOrNull,
   RecoveryStateOut, SleepNeedOut, StageMapOut, StrOrNull,
 } from "./core_common.js";
 
@@ -65,6 +65,7 @@ export const DayOut = z.object({
     naps: z.number().int(),
   }).nullable().optional(),
   activities: z.object({
+    columns: ActivityColumnsOut,
     cardio: z.array(ActivityRowOut),
     recovery: z.array(ActivityRowOut),
     sleep: z.array(ActivityRowOut),

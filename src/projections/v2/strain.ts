@@ -4,7 +4,7 @@
 import {
   contentById, contributor, displayMinutes, displayNumber, stepperCalibration, str, type Calibration, type Node,
 } from "./core_common.js";
-import { activityRow, activityTiles, kinds } from "./core_home.js";
+import { activityColumns, activityRow, activityTiles, kinds, type ActivityRow } from "./core_home.js";
 
 const MAX_STRAIN = 21;
 
@@ -22,7 +22,7 @@ export interface StrainV2 {
   zones_4_5_min: ContributorPair;
   strength_min: ContributorPair;
   steps: ContributorPair;
-  activities: Array<Record<string, unknown>>;
+  activities: { columns: ReturnType<typeof activityColumns>; rows: ActivityRow[] };
   workouts_count: number;
 }
 
@@ -57,7 +57,7 @@ export function projectStrainV2(raw: unknown, date: string): StrainV2 {
     zones_4_5_min: pair(contributor(tile, "HR_ZONES_4_5"), displayMinutes),
     strength_min: pair(contributor(tile, "STRENGTH_TRAINING_TIME"), displayMinutes),
     steps: pair(contributor(tile, "STEPS"), displayNumber),
-    activities: cardio.map(activityRow),
+    activities: { columns: activityColumns(cardio.map(activityRow)), rows: cardio.map(activityRow) },
     workouts_count: cardio.length,
   };
 }

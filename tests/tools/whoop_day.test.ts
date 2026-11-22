@@ -37,16 +37,29 @@ describe("whoop_day projection", () => {
   it("counts CARDIO tiles only and lists the rest by type (issue #4)", () => {
     const out = populated(DEFAULT);
     expect(out.workouts_count).toBe(2);
-    expect(out.activities!.cardio.map((a) => [a.name, a.status, a.strain])).toEqual([["running", "COMPLETE", 8.4], ["walking", "PENDING", null]]);
-    expect(out.activities!.recovery).toEqual([expect.objectContaining({ name: "sauna", min: 20 })]);
+    // Rows are positional (columns say what is what): name, status and strain are 1, 2 and 5.
+    expect(out.activities!.columns).toEqual(["id", "name", "status", "start", "min", "strain"]);
+    expect(out.activities!.cardio.map((a) => [a[1], a[2], a[5]])).toEqual([["running", "COMPLETE", 8.4], ["walking", "PENDING", null]]);
+    expect(out.activities!.recovery.map((a) => [a[1], a[4], a[5]])).toEqual([["sauna", 20, null]]);
     // The main sleep is the `sleep` section; only the nap stays in activities.sleep.
-    expect(out.activities!.sleep.map((a) => a.name)).toEqual(["nap"]);
+    expect(out.activities!.sleep.map((a) => a[1])).toEqual(["nap"]);
     expect(out.recommendations).toEqual([{ title: "WALKING", recommended_min: 25, est_strain: 5.5 }]);
+  });
+
+  it("lists activities as positional rows: CARDIO minutes are the window's length, others WHOOP's shown duration", () => {
+    const out = populated(DEFAULT);
+    const [running] = out.activities!.cardio;
+    // [id, name, status, start, min, strain]
+    expect(running).toEqual([expect.any(String), "running", "COMPLETE", expect.stringMatching(/^2026-11-1\dT/), expect.any(Number), 8.4]);
+    expect(running![4]).toBeGreaterThan(0);
+    // A day with no activities sends no column names either (both compact away).
+    const empty = projectDay({ date: "2026-11-10", isToday: false, include: new Set<DaySection>(["activities"]), home: {} });
+    expect(empty.activities).toEqual({ columns: [], cardio: [], recovery: [], sleep: [] });
   });
 
   it("keeps the main sleep tile in activities when the sleep section is not requested", () => {
     const out = populated(new Set<DaySection>(["activities"]));
-    expect(out.activities!.sleep.map((a) => a.name)).toEqual(["sleep", "nap"]);
+    expect(out.activities!.sleep.map((a) => a[1])).toEqual(["sleep", "nap"]);
     expect(out.scores).toBeUndefined();
     expect(out.sleep).toBeUndefined();
   });

@@ -60,12 +60,24 @@ function collectWithActivityId(root: unknown): Node[] {
   return out;
 }
 
-/** Compact activity row for outputs: CARDIO carries strain, others carry minutes. */
-export function activityRow(t: ActivityTile): Record<string, unknown> {
-  const row: Record<string, unknown> = { id: t.id, name: t.name, status: t.status, start: t.start, end: t.end };
-  if (t.type === "CARDIO") row.strain = t.strain;
-  else row.min = t.min;
-  return row;
+/** Column names for activityRow, sent once beside the rows. */
+export const ACTIVITY_COLUMNS = ["id", "name", "status", "start", "min", "strain"] as const;
+export type ActivityRow = [string, string | null, string | null, string | null, number | null, number | null];
+
+/**
+ * Positional activity row (see ACTIVITY_COLUMNS): a keyed object per activity
+ * cost about 165 characters, a row about 95. `min` is the duration WHOOP shows
+ * for RECOVERY and SLEEP tiles and the window's length for CARDIO; `strain` is
+ * CARDIO only.
+ */
+export function activityRow(t: ActivityTile): ActivityRow {
+  const windowMin = t.start && t.end ? Math.round((Date.parse(t.end) - Date.parse(t.start)) / 60_000) : null;
+  return [t.id, t.name, t.status, t.start, t.type === "CARDIO" ? windowMin : t.min ?? windowMin, t.type === "CARDIO" ? t.strain : null];
+}
+
+/** Rows plus their column names; no names when there is nothing to name. */
+export function activityColumns(...lists: ActivityRow[][]): Array<(typeof ACTIVITY_COLUMNS)[number]> {
+  return lists.some((l) => l.length > 0) ? [...ACTIVITY_COLUMNS] : [];
 }
 
 export interface CoachRecommendation {
