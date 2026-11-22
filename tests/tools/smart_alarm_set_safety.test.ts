@@ -271,6 +271,18 @@ describe("whoop_smart_alarm_set: schedule edits can't carry a stored goal or a s
 });
 
 describe("whoop_smart_alarm_set: a 500 is read back, never retried", () => {
+  it("create that saved the rows and then answered 500 reports the new schedule from the rows", async () => {
+    const NEW = "11111111-2222-4333-8444-555555555555";
+    const saved = [...(fx("alarm_schedule_rows.json") as unknown[]), row(NEW, "FRIDAY", "EXACT_TIME_PERFORM", "06:15:00")];
+    const rec = recorder({ [ROWS]: seq(fx("alarm_schedule_rows.json"), saved), [ALL]: e500(ALL), [PREFS]: e500(PREFS) }, (w) => e500(w.path));
+    const client = await connect((s) => registerSmartAlarmSet(s, rec.client));
+    const { out, isError } = await call(client, "whoop_smart_alarm_set", { action: "create", days: ["FRI"], mode: "EXACT_TIME", wake_time: "06:15", confirm: true });
+    expect(isError).toBe(false);
+    expect(rec.writes).toHaveLength(1);
+    expect(out).toMatchObject({ action: "create", schedule_id: NEW, verified: true });
+    expect(out.warnings.join(" ")).toMatch(/never retries/);
+  });
+
   it("create that answered 500 and saved nothing is verified:false, sent once", async () => {
     const rec = recorder({ [ROWS]: fx("alarm_schedule_rows.json"), [ALL]: e500(ALL), [PREFS]: e500(PREFS) }, (w) => e500(w.path));
     const client = await connect((s) => registerSmartAlarmSet(s, rec.client));

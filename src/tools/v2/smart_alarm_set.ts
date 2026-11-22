@@ -164,6 +164,14 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
         else throw error;
       }
       const after = await readSmartAlarm(client, true);
+      if (action === "create" && created === null) {
+        // No response body (WHOOP can save the rows and then answer 500): the new schedule is
+        // the one id that wasn't there before and reads back as requested.
+        const known = new Set(before.schedules.map((s) => s.id));
+        const fresh = [...new Set(after.schedules.map((s) => s.id))]
+          .filter((x) => !known.has(x) && scheduleMatches(after.schedules.filter((s) => s.id === x), target));
+        if (fresh.length === 1) created = fresh[0]!;
+      }
       const id = action === "edit" ? schedule_id! : created;
       const verified = id !== null && scheduleMatches(after.schedules.filter((s) => s.id === id), target);
       if (!verified) warnings.push("The schedule didn't read back as requested; see schedules.");
