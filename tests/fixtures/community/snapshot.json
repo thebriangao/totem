@@ -1,0 +1,57 @@
+{
+ "type": "FLOW",
+ "lifecycle_interactions": null,
+ "prefetch_list": ["entries"],
+ "refresh_behavior": null,
+ "content": {
+  "aggregate_bindings": null,
+  "bindings": {"current_step_list": "$current_step_list"},
+  "current_step_list": ["everyday_stats_sleep"],
+  "flow_id": "daily_stats:700001:2026-11-21",
+  "steps": {
+   "everyday_stats_recovery": {
+    "back_behavior": "POP", "required_keys": [], "step_transition": "INSTANT",
+    "template": {"type": "SINGLE_ITEM", "content": {"fill_mode": "FILL", "item": {"type": "COMMUNITY_SNAPSHOT_CONTAINER", "content": {
+     "id": "everyday_stats_recovery",
+     "active_segment_index": 0,
+     "progress_segment_count": 3,
+     "header_overlay_items": [{"type": "SNAPSHOT_HEADER", "content": {"avatar": "https://example.com/a.png", "subtitle": null, "title": "Avery Example", "action": {"navigation": {"screen": "PROFILE", "parameters": {"source": "snapshot", "target_user_id": 700001}}}, "trailing_buttons": []}}],
+     "footer_overlay_items": [{"type": "REACTIONS_ARCH_MINI", "content": {"fetch_delay_ms": 2, "path": "followers-service/v1/snapshots/33c44c51-1111-4222-9b29-9e4fdfbc870b/comments?analytics_category=recovery&emoji_set=RECOVERY_YELLOW"}}],
+     "items": [
+      {"type": "VERTICAL_SPACER", "content": {"size": 16}},
+      {"type": "SCORE_GAUGE", "content": {"id": "everyday_stats_recovery_gauge", "gauge_fill_percentage": 0.63, "progress_fill_style": "RECOVERY_MEDIUM", "score_display": "63", "score_display_suffix": "%", "score_display_title": "RECOVERY"}},
+      {"type": "CONTRIBUTORS_TILE", "content": {"id": "RECOVERY_CONTRIBUTORS_TILE", "legend": null, "metrics": [
+       {"id": "CONTRIBUTORS_TILE_HRV", "icon": "HRV", "metric_style": "DATA", "status": "42", "status_icon": "ARROW_DOWN", "status_subtitle": "43", "status_type": "LOWER_NEGATIVE", "title": "HEART RATE VARIABILITY"},
+       {"id": "CONTRIBUTORS_TILE_RHR", "icon": "RHR", "metric_style": "DATA", "status": "66", "status_icon": "EQUAL", "status_subtitle": "66", "status_type": "EQUAL", "title": "RESTING HEART RATE"}
+      ]}}
+     ]
+    }}}}
+   },
+   "everyday_stats_sleep": {
+    "back_behavior": "POP", "required_keys": [], "step_transition": "INSTANT",
+    "template": {"type": "SINGLE_ITEM", "content": {"item": {"type": "COMMUNITY_SNAPSHOT_CONTAINER", "content": {
+     "id": "everyday_stats_sleep",
+     "header_overlay_items": [{"type": "SNAPSHOT_HEADER", "content": {"title": "Avery Example", "trailing_buttons": []}}],
+     "footer_overlay_items": [{"type": "REACTIONS_ARCH_MINI", "content": {"path": "followers-service/v1/snapshots/44d55d62-2222-4333-8c3a-0f5e0e0e0e0e/comments?analytics_category=sleep"}}],
+     "items": [
+      {"type": "SCORE_GAUGE", "content": {"id": "everyday_stats_sleep_gauge", "gauge_fill_percentage": 0.8, "progress_fill_style": "SLEEP", "score_display": "80", "score_display_suffix": "%", "score_display_title": "SLEEP"}},
+      {"type": "CONTRIBUTORS_TILE", "content": {"id": "SLEEP_CONTRIBUTORS_TILE", "metrics": [
+       {"id": "CONTRIBUTORS_TILE_HOURS_V_NEEDED", "metric_style": "DATA", "status": "99%", "status_subtitle": null, "status_type": null, "title": "HOURS VS. NEEDED"}
+      ]}}
+     ]
+    }}}}
+   },
+   "everyday_stats_strain": {
+    "back_behavior": "POP", "required_keys": [], "step_transition": "INSTANT",
+    "template": {"type": "SINGLE_ITEM", "content": {"item": {"type": "COMMUNITY_SNAPSHOT_CONTAINER", "content": {
+     "id": "everyday_stats_strain",
+     "header_overlay_items": [{"type": "SNAPSHOT_HEADER", "content": {"title": "Avery Example", "trailing_buttons": []}}],
+     "footer_overlay_items": [{"type": "REACTIONS_ARCH_MINI", "content": {"path": "followers-service/v1/snapshots/55e66e73-3333-4444-9d4b-1a6f1f1f1f1f/comments?analytics_category=strain"}}],
+     "items": [
+      {"type": "SCORE_GAUGE", "content": {"id": "everyday_stats_strain_gauge", "gauge_fill_percentage": 0.05, "progress_fill_style": "STRAIN", "score_display": "1.0", "score_display_suffix": null, "score_display_title": "STRAIN"}}
+     ]
+    }}}}
+   }
+  }
+ }
+}

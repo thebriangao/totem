@@ -1,0 +1,116 @@
+{
+ "id": "e062c033-dc50-4daa-b987-02dfd5f9580b",
+ "turn_status": "COMPLETE",
+ "messages": [
+  {
+   "id": "589e9b02-a5cd-4cb3-b9c1-ddcc76a27752",
+   "role": "user",
+   "items": [
+    {
+     "content": {
+      "text": "Build me a 3-exercise upper body strength workout (bench press, pull-ups, overhead press; 3 sets each) and save it to my workout library as a template named 'Probe AI Upper'.",
+      "text_hash": 1162784246
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "589e9b02-a5cd-4cb3-b9c1-ddcc76a27752_0"
+    }
+   ]
+  },
+  {
+   "id": "b24363ac-9b06-4a34-b093-777bcd16ed91",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "I’ll build “Probe AI Upper” with your three exercises and three sets each, checking your recent training first.",
+      "text_hash": 1878103342
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "b24363ac-9b06-4a34-b093-777bcd16ed91_0"
+    }
+   ]
+  },
+  {
+   "id": "2d0b7add-36b7-4403-9acb-0348610d41ba",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "text": "Built **“Probe AI Upper”** with your three exercises and three sets each. Tap **Review Workout → Save Workout** below to add the template to your library; weights are placeholders for you to set.",
+      "text_hash": 1176639344
+     },
+     "type": "MARKDOWN_CHAT_TEXT",
+     "id": "2d0b7add-36b7-4403-9acb-0348610d41ba_0"
+    }
+   ]
+  },
+  {
+   "id": "e062c033-dc50-4daa-b987-02dfd5f9580b",
+   "role": "assistant",
+   "items": [
+    {
+     "content": {
+      "title": "Probe AI Upper",
+      "subtitle": "3 exercises, 9 sets total",
+      "workout_list": [
+       {
+        "superset": false,
+        "workouts": [
+         {
+          "title": "Bench Press - Barbell",
+          "subtitle": "3 sets, 5 reps, bodyweight"
+         }
+        ]
+       },
+       {
+        "superset": false,
+        "workouts": [
+         {
+          "title": "Pull Up",
+          "subtitle": "3 sets, 6 reps, bodyweight"
+         }
+        ]
+       },
+       {
+        "superset": false,
+        "workouts": [
+         {
+          "title": "Overhead Press - Barbell",
+          "subtitle": "3 sets, 5 reps, bodyweight"
+         }
+        ]
+       }
+      ],
+      "navigation_button": {
+       "text": "REVIEW WORKOUT",
+       "action": {
+        "screen": "WORKOUT_BUILDER",
+        "parameters": {
+         "starting_id": 18085225,
+         "show_save": true,
+         "shared_id": null,
+         "activity_type": "weightlifting",
+         "link_activity_id": null,
+         "entry_point": "ai_coach",
+         "id": "Workout_Builder_Screen",
+         "expand_on_appear": true
+        }
+       }
+      }
+     },
+     "type": "AI_WEIGHTLIFTING_SUGGESTION",
+     "id": "e062c033-dc50-4daa-b987-02dfd5f9580b_0"
+    }
+   ]
+  },
+  {
+   "id": "622b1243-f0ba-4607-b34f-5659f497f9b6",
+   "role": "assistant",
+   "items": []
+  }
+ ],
+ "turn_number": 10,
+ "feedback": null,
+ "should_show_suggested_chips": true,
+ "should_show_feedback_actions": true
+}

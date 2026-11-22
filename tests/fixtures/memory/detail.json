@@ -1,0 +1,476 @@
+{
+ "content": {
+  "navigation_bar": {
+   "title": "MEMORY DETAIL",
+   "subtitle": null,
+   "left_button": {
+    "icon": "CARET_LEFT",
+    "icon_url": null,
+    "text": null,
+    "accessibility_label": null,
+    "destination": null,
+    "action": null,
+    "dismiss_event": {
+     "type": "POP_CURRENT",
+     "pop_up_to": null,
+     "pop_back_count": null
+    },
+    "dismiss_modal": null,
+    "generic_interaction": null,
+    "bindings": null,
+    "aggregate_bindings": null,
+    "deselect_action": null,
+    "glow_style": null,
+    "glow_pulse": false,
+    "glow": null
+   },
+   "right_button": {
+    "icon": "DELETE",
+    "icon_url": null,
+    "text": null,
+    "accessibility_label": null,
+    "destination": null,
+    "action": null,
+    "dismiss_event": null,
+    "dismiss_modal": {
+     "content": {
+      "title": "Permanently delete this memory?",
+      "subtitle": null,
+      "description": "This memory will be removed from your profile and will no longer influence your coaching and insights.\n\nYou will not be able to restore it.",
+      "primary_button": {
+       "title": "YES, DELETE",
+       "action": {
+        "parameters": {
+         "request": {
+          "path": "context-hub-bff/v1/context-hub/context-detail/7d744bf9-9665-4382-bfe0-b3499491d84b",
+          "method": "DELETE",
+          "content_type": null,
+          "body": null,
+          "timeout_millis": null
+         },
+         "completion_destination": null,
+         "dismiss_event": {
+          "type": "POP_CURRENT",
+          "pop_up_to": null,
+          "pop_back_count": null
+         },
+         "refresh_scopes": "<redacted>",
+         "bindings": null,
+         "aggregate_bindings": null
+        },
+        "type": "UPDATE"
+       },
+       "destination": null,
+       "modal": null,
+       "dismiss_event": null
+      },
+      "secondary_button": {
+       "title": "CANCEL",
+       "action": null,
+       "destination": null,
+       "modal": null,
+       "dismiss_event": null
+      },
+      "items": [],
+      "title_alignment": null,
+      "subtitle_alignment": null,
+      "show_close_button": false,
+      "id": "context_delete_dialog"
+     },
+     "type": "DIALOG",
+     "modal_lifecycle_interactions": null
+    },
+    "generic_interaction": null,
+    "bindings": null,
+    "aggregate_bindings": null,
+    "deselect_action": null,
+    "glow_style": null,
+    "glow_pulse": false,
+    "glow": null
+   },
+   "style": "NONE",
+   "tag": null,
+   "icon": null,
+   "fixed_header": [],
+   "header": null
+  },
+  "items": [
+   {
+    "type": "SECTION",
+    "content": {
+     "id": "context_detail_header",
+     "title": null,
+     "subtitle": null,
+     "items": [
+      {
+       "type": "CONTEXT_DETAIL_HEADER",
+       "content": {
+        "id": "context_detail_header",
+        "title": "Training for a 10k race",
+        "subtitle": "You want to run a 10k race in March 2027.",
+        "description": {
+         "text": "You want to run a 10k race in March 2027.",
+         "style": "B1",
+         "color": "WHITE_70",
+         "alignment": "LEADING",
+         "icon": null,
+         "icon_position": null,
+         "max_lines": null,
+         "min_lines": null,
+         "fill_width": true,
+         "bindings": null,
+         "aggregate_bindings": null
+        },
+        "tags": [
+         {
+          "title": "Goals",
+          "tag_style": "CONTEXT_DEFAULT"
+         }
+        ]
+       }
+      }
+     ],
+     "section_top_padding": 8,
+     "section_bottom_padding": 8,
+     "section_leading_padding": 0,
+     "section_trailing_padding": 0,
+     "inter_item_padding": 8,
+     "alignment": null,
+     "is_visible": null,
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   },
+   {
+    "type": "SECTION",
+    "content": {
+     "id": "context_status_section",
+     "title": null,
+     "subtitle": null,
+     "items": [
+      {
+       "type": "CONTEXT_STATUS_TOGGLE",
+       "content": {
+        "id": "context_status_toggle",
+        "current_state": "ACTIVE",
+        "active_state": {
+         "title": "Active",
+         "subtitle": "Expected to last 129 more days",
+         "request": {
+          "path": "context-hub-bff/v1/context-hub/context-detail/7d744bf9-9665-4382-bfe0-b3499491d84b/status",
+          "method": "PUT",
+          "content_type": "application/json",
+          "body": {
+           "target_state": "INACTIVE"
+          },
+          "timeout_millis": null
+         }
+        },
+        "inactive_state": {
+         "title": "Inactive",
+         "subtitle": "This is not actively influencing your coaching.",
+         "request": {
+          "path": "context-hub-bff/v1/context-hub/context-detail/7d744bf9-9665-4382-bfe0-b3499491d84b/status",
+          "method": "PUT",
+          "content_type": "application/json",
+          "body": {
+           "target_state": "ACTIVE"
+          },
+          "timeout_millis": null
+         }
+        },
+        "error_state": {
+         "error_message_text": "Unable to update status. Please try again."
+        }
+       }
+      }
+     ],
+     "section_top_padding": 8,
+     "section_bottom_padding": 8,
+     "section_leading_padding": 0,
+     "section_trailing_padding": 0,
+     "inter_item_padding": 8,
+     "alignment": null,
+     "is_visible": null,
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   },
+   {
+    "type": "SECTION",
+    "content": {
+     "id": "share_input_section",
+     "title": null,
+     "subtitle": null,
+     "items": [
+      {
+       "type": "TALK_TEXT_WIDGET",
+       "content": {
+        "title": "Share something new",
+        "title_text_alignment": "LEADING",
+        "title_icon": "sparkle",
+        "subtitle": "",
+        "subtitle_text_alignment": "LEADING",
+        "small_buttons": [],
+        "large_buttons": [
+         {
+          "icon": "keyboard",
+          "title": "TEXT",
+          "voiceover_text": "Open the keyboard to chat quickly",
+          "is_emphasized": false,
+          "ai_action": {
+           "source": "CONTEXT_HUB",
+           "screen_id": "CONTEXT_HUB",
+           "source_type": "CHAT_WITH_AGENT",
+           "source_id": "fast-share-something-new-context-hub",
+           "args": {},
+           "should_open_full_size": false,
+           "drawer_presentation": null,
+           "education_type": null,
+           "fingerprint": "<redacted>",
+           "agent_id": "fast-share-something-new-context-hub",
+           "static_initial_message": null,
+           "user_message": null,
+           "entry_text": null,
+           "include_initial_message": null,
+           "conversation_seed_id": null,
+           "preset_question": null,
+           "onboarding_analytic_source": null,
+           "entrypoint_experience": "QUICK_KEYBOARD",
+           "bindings": null,
+           "aggregate_bindings": null
+          },
+          "modal": {
+           "content": {
+            "ai_action": {
+             "source": "CONTEXT_HUB",
+             "screen_id": "CONTEXT_HUB",
+             "source_type": "CHAT_WITH_AGENT",
+             "source_id": "fast-share-something-new-context-hub",
+             "args": {},
+             "should_open_full_size": false,
+             "drawer_presentation": null,
+             "education_type": null,
+             "fingerprint": "<redacted>",
+             "agent_id": "fast-share-something-new-context-hub",
+             "static_initial_message": null,
+             "user_message": null,
+             "entry_text": null,
+             "include_initial_message": null,
+             "conversation_seed_id": null,
+             "preset_question": null,
+             "onboarding_analytic_source": null,
+             "entrypoint_experience": "QUICK_KEYBOARD",
+             "bindings": null,
+             "aggregate_bindings": null
+            },
+            "id": "coach-context-hub"
+           },
+           "type": "COACH",
+           "modal_lifecycle_interactions": null
+          }
+         },
+         {
+          "icon": "microphone",
+          "title": "TALK",
+          "voiceover_text": "Capture your voice using your microphone to chat quickly",
+          "is_emphasized": true,
+          "ai_action": {
+           "source": "CONTEXT_HUB",
+           "screen_id": "CONTEXT_HUB",
+           "source_type": "CHAT_WITH_AGENT",
+           "source_id": "fast-share-something-new-context-hub",
+           "args": {},
+           "should_open_full_size": false,
+           "drawer_presentation": null,
+           "education_type": null,
+           "fingerprint": "<redacted>",
+           "agent_id": "fast-share-something-new-context-hub",
+           "static_initial_message": null,
+           "user_message": null,
+           "entry_text": null,
+           "include_initial_message": null,
+           "conversation_seed_id": null,
+           "preset_question": null,
+           "onboarding_analytic_source": null,
+           "entrypoint_experience": "QUICK_VOICE",
+           "bindings": null,
+           "aggregate_bindings": null
+          },
+          "modal": {
+           "content": {
+            "ai_action": {
+             "source": "CONTEXT_HUB",
+             "screen_id": "CONTEXT_HUB",
+             "source_type": "CHAT_WITH_AGENT",
+             "source_id": "fast-share-something-new-context-hub",
+             "args": {},
+             "should_open_full_size": false,
+             "drawer_presentation": null,
+             "education_type": null,
+             "fingerprint": "<redacted>",
+             "agent_id": "fast-share-something-new-context-hub",
+             "static_initial_message": null,
+             "user_message": null,
+             "entry_text": null,
+             "include_initial_message": null,
+             "conversation_seed_id": null,
+             "preset_question": null,
+             "onboarding_analytic_source": null,
+             "entrypoint_experience": "QUICK_VOICE",
+             "bindings": null,
+             "aggregate_bindings": null
+            },
+            "id": "coach-context-hub"
+           },
+           "type": "COACH",
+           "modal_lifecycle_interactions": null
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "section_top_padding": 8,
+     "section_bottom_padding": 8,
+     "section_leading_padding": 0,
+     "section_trailing_padding": 0,
+     "inter_item_padding": 8,
+     "alignment": null,
+     "is_visible": null,
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   },
+   {
+    "type": "SECTION",
+    "content": {
+     "id": "changelog_section",
+     "title": null,
+     "subtitle": null,
+     "items": [
+      {
+       "type": "MARKDOWN_TEXT",
+       "content": {
+        "text": "Relevant Conversations",
+        "style": "B1",
+        "color": "WHITE",
+        "alignment": "LEADING",
+        "icon": null,
+        "icon_position": null,
+        "max_lines": null,
+        "min_lines": null,
+        "fill_width": true,
+        "bindings": null,
+        "aggregate_bindings": null
+       }
+      },
+      {
+       "type": "MARKDOWN_TEXT",
+       "content": {
+        "text": "- **Nov 21, 2026**  Training for a 10k race in March 2027",
+        "style": "B2",
+        "color": "WHITE_70",
+        "alignment": "LEADING",
+        "icon": null,
+        "icon_position": null,
+        "max_lines": null,
+        "min_lines": null,
+        "fill_width": true,
+        "bindings": null,
+        "aggregate_bindings": null
+       }
+      }
+     ],
+     "section_top_padding": 8,
+     "section_bottom_padding": 8,
+     "section_leading_padding": 0,
+     "section_trailing_padding": 0,
+     "inter_item_padding": 8,
+     "alignment": null,
+     "is_visible": null,
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   }
+  ],
+  "screen_metadata": {
+   "ai_context_metadata": {
+    "is_wce_enabled": true,
+    "screen_identifier": "CONTEXT_DETAILS",
+    "destination": {
+     "screen": "AI_CHAT",
+     "parameters": {
+      "fingerprint": "<redacted>",
+      "source": "CONTEXT_DETAILS",
+      "screen_id": "CONTEXT_DETAILS",
+      "source_type": "CHAT_WITH_AGENT",
+      "source_id": "memory-detail-context-hub",
+      "agent_id": "memory-detail-context-hub",
+      "preset_question_key": null,
+      "static_initial_message": null,
+      "user_message": null,
+      "education_type": null,
+      "should_open_full_size": false,
+      "args": {
+       "context": "context_detail",
+       "concept_id": "7d744bf9-9665-4382-bfe0-b3499491d84b"
+      },
+      "bindings": null,
+      "aggregate_bindings": null
+     }
+    },
+    "coach_entry": null,
+    "ai_action": {
+     "source": "CONTEXT_DETAILS",
+     "screen_id": "CONTEXT_DETAILS",
+     "source_type": "CHAT_WITH_AGENT",
+     "source_id": "memory-detail-context-hub",
+     "args": {
+      "context": "context_detail",
+      "concept_id": "7d744bf9-9665-4382-bfe0-b3499491d84b"
+     },
+     "should_open_full_size": false,
+     "drawer_presentation": null,
+     "education_type": null,
+     "fingerprint": "<redacted>",
+     "agent_id": "memory-detail-context-hub",
+     "static_initial_message": null,
+     "user_message": null,
+     "entry_text": null,
+     "include_initial_message": null,
+     "conversation_seed_id": null,
+     "preset_question": null,
+     "onboarding_analytic_source": null,
+     "entrypoint_experience": "STANDARD",
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   },
+   "bindings": null,
+   "aggregate_bindings": null
+  },
+  "footer": null,
+  "background_image_url": null,
+  "background_theme": "AI_COACH",
+  "lifecycle_interactions": {
+   "on_start": {
+    "modal": null,
+    "action": null,
+    "navigation": null,
+    "dismiss_event": null
+   },
+   "system_back_disabled": false,
+   "bindings": null,
+   "aggregate_bindings": null
+  },
+  "pull_to_refresh_enabled": null,
+  "pull_to_refresh_behavior": null,
+  "pagination": null,
+  "padding": null
+ },
+ "type": "LIST",
+ "refresh_behavior": null,
+ "prefetch_list": null,
+ "lifecycle_interactions": null
+}

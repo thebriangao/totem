@@ -1,0 +1,15 @@
+{
+ "average": 57.995604395604396,
+ "last_updated_at": "2026-11-21T20:00:00.000+0000",
+ "name": "Score",
+ "offset": 3,
+ "total_count": 455,
+ "total_compliant": null,
+ "total_empty": 12,
+ "total_non_compliant": null,
+ "records": [
+  {"avatar_url": "https://example.com/a.png", "created_at": "2026-11-21T12:00:00.000+0000", "cycle_day": "2026-11-21", "cycle_day_joined": "2025-02-01", "deleted": false, "first_name": "Avery", "has_data": true, "hrv": 0.11098397523164749, "last_name": "Example", "name": "Avery Example", "rank": 1, "rhr": 47, "score": 98, "updated_at": "2026-11-21T12:00:00.000+0000", "user_id": 700001, "waiting_for_data": true},
+  {"avatar_url": null, "created_at": "2026-11-21T12:00:00.000+0000", "cycle_day": "2026-11-21", "cycle_day_joined": "2025-03-01", "deleted": false, "first_name": "Blake", "has_data": true, "hrv": 0.0921, "last_name": "Sample", "name": "Blake Sample", "rank": 2, "rhr": 51, "score": 95, "updated_at": "2026-11-21T12:00:00.000+0000", "user_id": 700002, "waiting_for_data": false},
+  {"avatar_url": "https://example.com/c.png", "created_at": "2026-11-21T12:00:00.000+0000", "cycle_day": "2026-11-21", "cycle_day_joined": "2025-04-01", "deleted": false, "first_name": "Casey", "has_data": true, "hrv": 0.0644, "last_name": "Placeholder", "rank": 3, "rhr": 55, "score": 91.25, "updated_at": "2026-11-21T12:00:00.000+0000", "user_id": 700003, "waiting_for_data": false}
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "conversations": [
+  {
+   "group_id": 0,
+   "title": "TODAY",
+   "conversation_metadata_list": [
+    {"id": "740ea7b3-c837-4036-9543-3de6e7c93818", "fingerprint": "totem-HOME-2026-11-21", "source_type": "UNKNOWN", "source_id": "coach-chat", "title": "Can you chart my strain this week?", "turn_status": "COMPLETE", "icon": null, "scroll_to_turn_id": null},
+    {"id": "e960e037-ee7b-424b-a97e-79b5b00652c3", "fingerprint": "JOURNAL___WCE___2026-11-21___INTRADAY", "source_type": "UNKNOWN", "source_id": "journal-agent", "title": "Logging caffeine and reviewing today's activities", "turn_status": "COMPLETE", "icon": null, "scroll_to_turn_id": null},
+    {"id": "b6ec241c-afdd-4c70-9192-73bdd5c0e035", "fingerprint": "day-in-review___cycle___1974268448", "source_type": "UNKNOWN", "source_id": "day-in-review", "title": "Day In Review", "turn_status": "COMPLETE", "icon": "BEDTIME", "scroll_to_turn_id": null},
+    {"id": "1ff7aacd-edd2-4256-b373-93864d437563", "fingerprint": "daily-outlook___cycle___1974049188", "source_type": "UNKNOWN", "source_id": "daily-outlook", "title": "Daily Outlook", "turn_status": "COMPLETE", "icon": "WAKETIME", "scroll_to_turn_id": null}
+   ]
+  },
+  {
+   "group_id": 1,
+   "title": "YESTERDAY",
+   "conversation_metadata_list": [
+    {"id": "a61fdd1c-4392-43c8-be9a-2ea3007c7ee7", "fingerprint": "totem-SLEEP-2026-11-20", "source_type": "UNKNOWN", "source_id": "sleep-deep-dive-agent", "title": "Why was my sleep short?", "turn_status": "COMPLETE", "icon": null, "scroll_to_turn_id": null}
+   ]
+  }
+ ],
+ "next_token": "eyIkIjoib0AxIiwibyI6NX0="
+}

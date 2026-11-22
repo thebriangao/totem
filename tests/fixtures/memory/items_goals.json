@@ -1,0 +1,307 @@
+{
+ "filters": {
+  "type": "FLOW_ROW",
+  "content": {
+   "id": "context_hub_filters",
+   "items": [
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Timeline",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "DEFAULT",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": {
+       "parameters": {
+        "request": {
+         "path": "context-hub-bff/v1/context-hub/items?category=timeline",
+         "method": "GET",
+         "content_type": null,
+         "body": null,
+         "timeout_millis": null
+        },
+        "completion_destination": null,
+        "dismiss_event": null,
+        "refresh_scopes": "<redacted>",
+        "bindings": null,
+        "aggregate_bindings": null
+       },
+       "type": "UPDATE"
+      }
+     }
+    },
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Goals",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "SELECTED",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": null
+     }
+    },
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Health Conditions",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "DEFAULT",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": {
+       "parameters": {
+        "request": {
+         "path": "context-hub-bff/v1/context-hub/items?category=health_conditions",
+         "method": "GET",
+         "content_type": null,
+         "body": null,
+         "timeout_millis": null
+        },
+        "completion_destination": null,
+        "dismiss_event": null,
+        "refresh_scopes": "<redacted>",
+        "bindings": null,
+        "aggregate_bindings": null
+       },
+       "type": "UPDATE"
+      }
+     }
+    },
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Identity",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "DEFAULT",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": {
+       "parameters": {
+        "request": {
+         "path": "context-hub-bff/v1/context-hub/items?category=identity",
+         "method": "GET",
+         "content_type": null,
+         "body": null,
+         "timeout_millis": null
+        },
+        "completion_destination": null,
+        "dismiss_event": null,
+        "refresh_scopes": "<redacted>",
+        "bindings": null,
+        "aggregate_bindings": null
+       },
+       "type": "UPDATE"
+      }
+     }
+    },
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Lifestyle",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "DEFAULT",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": {
+       "parameters": {
+        "request": {
+         "path": "context-hub-bff/v1/context-hub/items?category=lifestyle",
+         "method": "GET",
+         "content_type": null,
+         "body": null,
+         "timeout_millis": null
+        },
+        "completion_destination": null,
+        "dismiss_event": null,
+        "refresh_scopes": "<redacted>",
+        "bindings": null,
+        "aggregate_bindings": null
+       },
+       "type": "UPDATE"
+      }
+     }
+    },
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Training",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "DEFAULT",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": {
+       "parameters": {
+        "request": {
+         "path": "context-hub-bff/v1/context-hub/items?category=training",
+         "method": "GET",
+         "content_type": null,
+         "body": null,
+         "timeout_millis": null
+        },
+        "completion_destination": null,
+        "dismiss_event": null,
+        "refresh_scopes": "<redacted>",
+        "bindings": null,
+        "aggregate_bindings": null
+       },
+       "type": "UPDATE"
+      }
+     }
+    },
+    {
+     "type": "TAG",
+     "content": {
+      "title": "Work",
+      "value": null,
+      "left_icon": null,
+      "right_icon": null,
+      "icon_size": null,
+      "tag_style": "DEFAULT",
+      "background_color": null,
+      "text_color": null,
+      "destination": null,
+      "image_url": null,
+      "action": {
+       "parameters": {
+        "request": {
+         "path": "context-hub-bff/v1/context-hub/items?category=work",
+         "method": "GET",
+         "content_type": null,
+         "body": null,
+         "timeout_millis": null
+        },
+        "completion_destination": null,
+        "dismiss_event": null,
+        "refresh_scopes": "<redacted>",
+        "bindings": null,
+        "aggregate_bindings": null
+       },
+       "type": "UPDATE"
+      }
+     }
+    }
+   ],
+   "vertical_alignment": null,
+   "horizontal_spacing": null
+  }
+ },
+ "items": [
+  {
+   "type": "CONTEXT_CARD",
+   "content": {
+    "id": "7d744bf9-9665-4382-bfe0-b3499491d84b",
+    "icon": null,
+    "title": "Training for a 10k race",
+    "subtitle": "You want to run a 10k race in March 2027.",
+    "description": null,
+    "is_new_text": "New",
+    "status": "ACTIVE",
+    "is_update_seen": false,
+    "last_updated_at_text": "Start date: Nov 22, 2026",
+    "expires_at_text": "Expires: Mar 31, 2027",
+    "tags": [
+     {
+      "title": "Active",
+      "tag_style": "CONTEXT_ACTIVE"
+     },
+     {
+      "title": "Goals",
+      "tag_style": "CONTEXT_DEFAULT"
+     }
+    ],
+    "destination": {
+     "screen": "GENERIC_SCREEN",
+     "parameters": {
+      "request": {
+       "path": "context-hub-bff/v1/context-hub/context-detail/7d744bf9-9665-4382-bfe0-b3499491d84b",
+       "method": "GET",
+       "content_type": null,
+       "body": null,
+       "timeout_millis": null
+      },
+      "cache_policy": null,
+      "navigation_style": "PUSH",
+      "on_start_interaction": null,
+      "loading_top_items": [],
+      "error_top_items": []
+     }
+    }
+   }
+  },
+  {
+   "type": "CONTEXT_CARD",
+   "content": {
+    "id": "0b7f343f-8784-4ec3-b357-e364de4dcda1",
+    "icon": null,
+    "title": "Building power",
+    "subtitle": "Main strength-training goal is to build power.",
+    "description": null,
+    "is_new_text": "New",
+    "status": "ACTIVE",
+    "is_update_seen": false,
+    "last_updated_at_text": "Start date: Nov 21, 2026",
+    "expires_at_text": null,
+    "tags": [
+     {
+      "title": "Active",
+      "tag_style": "CONTEXT_ACTIVE"
+     },
+     {
+      "title": "Goals",
+      "tag_style": "CONTEXT_DEFAULT"
+     }
+    ],
+    "destination": {
+     "screen": "GENERIC_SCREEN",
+     "parameters": {
+      "request": {
+       "path": "context-hub-bff/v1/context-hub/context-detail/0b7f343f-8784-4ec3-b357-e364de4dcda1",
+       "method": "GET",
+       "content_type": null,
+       "body": null,
+       "timeout_millis": null
+      },
+      "cache_policy": null,
+      "navigation_style": "PUSH",
+      "on_start_interaction": null,
+      "loading_top_items": [],
+      "error_top_items": []
+     }
+    }
+   }
+  }
+ ],
+ "pagination": null
+}
