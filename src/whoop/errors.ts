@@ -31,23 +31,37 @@ export interface OverlappingActivity {
   type?: string | undefined;
   start?: string | undefined;
   end?: string | undefined;
+  /** Human-readable form, e.g. "Rowing 7:45 AM – 7:55 AM" (the member's local clock). */
+  label?: string | undefined;
 }
 
-/** Parse the structured 409 overlap body from create/edit-activity writes. */
+/**
+ * Parse the 409 overlap body from create/edit-activity writes. WHOOP's app-facing
+ * endpoints list overlaps as display strings ("**Rowing** - 7:45 AM - 7:55 AM",
+ * the member's local clock, no ids); object entries are accepted too. Text-only
+ * 409s (cardio-details edit, lift log) list nothing.
+ */
 export function parseOverlaps(body: string): OverlappingActivity[] {
   try {
     const parsed = JSON.parse(body) as Record<string, unknown>;
     const list = (parsed.overlapping_activities ?? (parsed.error as Record<string, unknown> | undefined)?.overlapping_activities) as unknown;
     if (!Array.isArray(list)) return [];
-    return list.map((raw) => {
+    return list.map((raw): OverlappingActivity => {
+      if (typeof raw === "string") {
+        const text = raw.replace(/\*\*/g, "").trim();
+        const m = text.match(/^(.*?)\s+-\s+(.+?)\s+-\s+(.+)$/);
+        return m ? { type: m[1]!.trim(), start: m[2]!.trim(), end: m[3]!.trim(), label: `${m[1]!.trim()} ${m[2]!.trim()} – ${m[3]!.trim()}` } : { label: text };
+      }
       const a = (raw ?? {}) as Record<string, unknown>;
       const during = typeof a.during === "string" ? a.during.match(/'([^']+)','([^']*)'/) : null;
-      return {
+      const o: OverlappingActivity = {
         id: (a.activity_id ?? a.id ?? a.activity_v2_id) as string | undefined,
         type: (a.activity_internal_name ?? a.internal_name ?? a.type ?? a.activity_type) as string | undefined,
         start: (a.start_time ?? a.start ?? during?.[1]) as string | undefined,
         end: (a.end_time ?? a.end ?? during?.[2]) as string | undefined,
       };
+      o.label = [o.type, o.id, o.start && o.end ? `${o.start} – ${o.end}` : o.start].filter(Boolean).join(" ") || undefined;
+      return o;
     });
   } catch {
     return [];

@@ -7,7 +7,8 @@ import { localizeTimestamps } from "../lib/timezone.js";
 //     "not available"); array elements are never dropped (position can matter)
 //   - floats are rounded to 3 decimals (WHOOP sends float32 noise such as
 //     0.8726999759674072)
-//   - UTC timestamps are rewritten as local ISO with an explicit offset
+//   - UTC timestamps are rewritten as local ISO with an explicit offset, and a
+//     zero milliseconds part (".000") is dropped
 // Zod validation runs on the full shape BEFORE this (see tools/define.ts), so
 // schemas stay strict while the wire stays small.
 //
@@ -24,7 +25,10 @@ function isEmpty(v: unknown): boolean {
   return false;
 }
 
+const ZERO_MS_ISO = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.000(Z|[+-]\d{2}:\d{2})$/;
+
 export function compact(value: unknown): unknown {
+  if (typeof value === "string") return value.length <= 29 ? value.replace(ZERO_MS_ISO, "$1$2") : value;
   if (typeof value === "number") {
     return Number.isInteger(value) || !Number.isFinite(value) ? value : Math.round(value * 1000) / 1000;
   }

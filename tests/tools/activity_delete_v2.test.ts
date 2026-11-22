@@ -76,9 +76,13 @@ describe("whoop_activity_delete", () => {
   });
 
   it("treats a 404 on DELETE as already gone, then confirms", async () => {
+    let attempted = false;
     const t = await deleteTool((c) => {
-      if (c.path === "/activities-service/v2/activities/a3") return activityRecord({ id: "a3", type: "golf" }, false);
-      if (c.method === "DELETE") throw notFound(c.path, "Client exception, status code: 404, from client: ApiActivityClient, with response body: Trying to delete activity that doesn't exist");
+      if (c.path === "/activities-service/v2/activities/a3") {
+        if (attempted) throw notFound(c.path);
+        return activityRecord({ id: "a3", type: "golf" }, false);
+      }
+      if (c.method === "DELETE") { attempted = true; throw notFound(c.path, "Client exception, status code: 404, from client: ApiActivityClient, with response body: Trying to delete activity that doesn't exist"); }
       if (c.method === "GET" && c.path === CARDIO_V1) throw notFound(c.path);
       return unrouted(c);
     });

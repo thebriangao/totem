@@ -34,7 +34,14 @@ describe("v2 client behaviour", () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 409 }));
     const err = await client().post("/core-details-bff/v2/create-activity", {}).catch((e) => e);
     expect(err).toBeInstanceOf(WhoopConflictError);
-    expect(err.overlaps).toEqual([{ id: "a1", type: "walking", start: "2026-11-21T14:00:00.000Z", end: "2026-11-21T14:30:00.000Z" }]);
+    expect(err.overlaps).toEqual([{ id: "a1", type: "walking", start: "2026-11-21T14:00:00.000Z", end: "2026-11-21T14:30:00.000Z", label: "walking a1 2026-11-21T14:00:00.000Z – 2026-11-21T14:30:00.000Z" }]);
+  });
+  it("parses WHOOP's real 409 overlap list (display strings, no ids)", async () => {
+    const body = { overlapping_activities: ["**Rowing** - 7:45 AM - 7:55 AM"], error_title: "OVERLAPPING ACTIVITIES", message: "You added an activity from **7:50 AM to 8:00 AM**." };
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 409 }));
+    const err = await client().post("/core-details-bff/v2/create-activity", {}).catch((e) => e);
+    expect(err).toBeInstanceOf(WhoopConflictError);
+    expect(err.overlaps).toEqual([{ type: "Rowing", start: "7:45 AM", end: "7:55 AM", label: "Rowing 7:45 AM – 7:55 AM" }]);
   });
   it("surfaces the <title> of an HTML 500 page, not the page", async () => {
     fetchMock.mockResolvedValueOnce(new Response("<html><head><title>Error 500 Internal Server Error</title></head><body>…</body></html>", { status: 500 }));

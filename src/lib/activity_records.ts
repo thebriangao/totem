@@ -143,8 +143,25 @@ export async function readActivity(client: WhoopClient, id: string): Promise<Act
   }
 }
 
-/** Fresh read through the endpoint that matches the kind; null on 404. */
+/**
+ * Fresh read-back of a known activity; null on 404.
+ *
+ * The raw activity record comes first: it answers in every state and for every
+ * kind (verified live for workouts, recovery sessions and naps, before and after
+ * edits). The detail screens can't be the primary read-back, because right after
+ * a create or edit WHOOP refuses them for a few seconds (cardio-details: 400
+ * "Cannot view activity details for a pending activity"; sleep-details: 400
+ * "Sleep must be processed in order to view SleepDetails"). They stay as the
+ * fallback when the record read fails, and as the second opinion when it 404s.
+ */
 export async function readActivityAs(client: WhoopClient, id: string, scoreType: ScoreType): Promise<ActivityRecord | null> {
+  try {
+    const rec = recordFromActivity(await client.get(activityRecordPath(id), {}, { fresh: true }));
+    if (rec && rec.type) return rec;
+  } catch {
+    // 404 or any other failure: let the kind-specific detail screen decide, so
+    // "gone" is only ever claimed when that screen 404s too.
+  }
   try {
     if (scoreType === "SLEEP") return recordFromSleepDetails(await client.get(sleepDetailsPath(id), {}, { fresh: true }), id);
     return recordFromCardioDetails(await client.get(CARDIO_DETAILS_V1, { activityId: id }, { fresh: true }), id);
@@ -163,28 +180,10 @@ export async function isGone(client: WhoopClient, id: string, scoreType: ScoreTy
   }
 }
 
-/** "**Rowing** - 7:45 AM - 7:55 AM" → "Rowing 7:45 AM – 7:55 AM". */
-function cleanOverlapText(s: string): string {
-  return s.replace(/\*\*/g, "").replace(/\s+-\s+/, " ").replace(/\s+-\s+/, " – ").trim();
-}
-
 /**
- * Human-readable list of what a 409 says overlaps. BFF creates and sleep edits
- * return `overlapping_activities` as display strings ("**Sleep** - 2:15 AM -
- * 5:45 AM"); the cardio-details edit returns none at all.
+ * Human-readable list of what a 409 says overlaps ("Sleep 2:15 AM – 5:45 AM").
+ * BFF creates and sleep edits list them; the cardio-details edit lists none.
  */
 export function overlapDescriptions(error: WhoopConflictError): string[] {
-  const out: string[] = [];
-  try {
-    const parsed = JSON.parse(error.body) as { overlapping_activities?: unknown };
-    if (Array.isArray(parsed.overlapping_activities)) {
-      for (const item of parsed.overlapping_activities) if (typeof item === "string") out.push(cleanOverlapText(item));
-    }
-  } catch {
-    // Text body (the edit 409): nothing listed.
-  }
-  for (const o of error.overlaps) {
-    if (o.id || o.type || o.start) out.push([o.type, o.id, o.start && o.end ? `${o.start} – ${o.end}` : o.start].filter(Boolean).join(" "));
-  }
-  return out;
+  return error.overlaps.map((o) => o.label).filter((l): l is string => Boolean(l));
 }

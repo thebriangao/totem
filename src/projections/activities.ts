@@ -151,6 +151,14 @@ export function projectActivityDetail(cardio: unknown, recovery: unknown, activi
   const isStrength = base.msk.is_strength_workout || catalog?.msk_linkable === true;
   const elevation = gpsMetricMeters(cardio, /ELEV/i);
   const hr = opts.hr ? hrSeries(base.hr_curve, base.duration_ms) : null;
+  // No strap data in the window: WHOOP shows 0 bpm, 0 kcal and all-zero zones.
+  // Those are "no data", not measurements, so they're left out.
+  const positive = (v: number | null | undefined): number | null => (typeof v === "number" && v > 0 ? v : null);
+  const avgHr = positive(recAvg ?? base.avg_hr_bpm);
+  const maxHr = positive(recMax ?? base.max_hr_bpm);
+  const minHr = positive(recMin);
+  const hasHr = avgHr !== null || maxHr !== null;
+  const zones = zoneMinutes(cardio);
   return {
     type: scoreType,
     internal_name: internal,
@@ -160,11 +168,11 @@ export function projectActivityDetail(cardio: unknown, recovery: unknown, activi
     end: base.end,
     duration_ms: base.duration_ms,
     strain,
-    calories: base.calories,
-    avg_hr_bpm: recAvg ?? base.avg_hr_bpm,
-    max_hr_bpm: recMax ?? base.max_hr_bpm,
-    ...(recMin !== null ? { min_hr_bpm: recMin } : {}),
-    zones_min: zoneMinutes(cardio),
+    calories: hasHr ? base.calories : positive(base.calories),
+    avg_hr_bpm: avgHr,
+    max_hr_bpm: maxHr,
+    ...(minHr !== null ? { min_hr_bpm: minHr } : {}),
+    zones_min: zones && zones.some((z) => z > 0) ? zones : null,
     distance_m: gpsMetricMeters(cardio, /DISTANCE/i),
     ...(elevation !== null ? { elevation_gain_m: elevation } : {}),
     ...(isStrength ? { msk: { total_volume_kg: base.msk.total_volume_kg, intensity_pct: base.msk.intensity_pct } } : {}),

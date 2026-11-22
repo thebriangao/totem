@@ -11,6 +11,10 @@ describe("compact", () => {
   it("rounds floats to 3 decimals and leaves integers alone", () => {
     expect(compact({ score: 0.8726999759674072, hrv: 55.1234567, n: 12, big: 1795305142486 })).toEqual({ score: 0.873, hrv: 55.123, n: 12, big: 1795305142486 });
   });
+  it("drops a zero milliseconds part from ISO timestamps", () => {
+    expect(compact({ start: "2026-11-21T06:10:00.000-08:00", end: "2026-11-21T14:10:00.000Z", exact: "2026-11-21T06:10:00.123-08:00" }))
+      .toEqual({ start: "2026-11-21T06:10:00-08:00", end: "2026-11-21T14:10:00Z", exact: "2026-11-21T06:10:00.123-08:00" });
+  });
   it("leaves a write preview's will_execute subtree untouched", () => {
     const preview = { preview: true, will_execute: { method: "PUT", path: "/x", body_summary: { city: null, weight: 80.123456, tags: [] } } };
     expect(compact(preview)).toEqual(preview);
