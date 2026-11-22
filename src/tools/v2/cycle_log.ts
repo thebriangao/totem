@@ -13,7 +13,7 @@ import {
   type SymptomScreen,
 } from "../../projections/hormonal_insights.js";
 import { previewWith, suggest, toolError, writeRejected } from "../../lib/health_plans_write.js";
-import { WhoopApiError } from "../../whoop/errors.js";
+import { WhoopApiError, WhoopServerError } from "../../whoop/errors.js";
 import { todayIso } from "../../lib/dates.js";
 import { fetchOverview, SYMPTOM_SCREEN_PATH, WH } from "./cycle.js";
 
@@ -236,6 +236,10 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
       } catch (error) {
         if (error instanceof WhoopApiError) {
           return writeRejected(w.method === "PUT" ? "period/ovulation log" : "symptom log", path!, error, applied);
+        }
+        // A 5xx on the second step: the first one is already in. Say so instead of just throwing.
+        if (error instanceof WhoopServerError && applied) {
+          return toolError(`WHOOP answered ${error.status} on the ${w.method === "PUT" ? "period/ovulation" : "symptom"} step.`, { status: error.status, endpoint: path!, hint: applied });
         }
         throw error;
       }

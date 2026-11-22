@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { registerCycleLog } from "../../src/tools/v2/cycle_log.js";
-import { WhoopApiError } from "../../src/whoop/errors.js";
+import { WhoopApiError, WhoopServerError } from "../../src/whoop/errors.js";
 import { findAll } from "../../src/whoop/bff.js";
 import { call, connect, fx, mockClient, routedGet, seq } from "./health_plans_helpers.js";
 
@@ -265,6 +265,16 @@ describe("whoop_cycle_log: one request must not undo the other", () => {
     const { out } = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: true, flow: 2 }, symptoms: [{ name: "Headache" }], confirm: true });
     expect(post).toHaveBeenCalledWith(POST, { tracker_inputs: [{ behavior_tracker_id: 177, answered_yes: true, is_suggested: false }], menstruation: "heavy_flow" }, { requestDate: DATE });
     expect(out).toMatchObject({ verified: true, day: { period_day: true, flow: "heavy_flow" } });
+  });
+
+  it("a 500 on the second request says the first one already went through", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const post = vi.fn().mockRejectedValue(new WhoopServerError(500, POST, "Error 500"));
+    const get = routedGet({ [OVERVIEW]: overview(DATE, "NONE", false), [SCREEN]: screen({ flow: null, mucus: null }) });
+    const client = await connect((s) => registerCycleLog(s, mockClient({ get, put, post })));
+    const { isError, out } = await call(client, "whoop_cycle_log", { date: DATE, period: { yes: true }, symptoms: [{ name: "Headache" }], confirm: true });
+    expect(isError).toBe(true);
+    expect(out).toMatchObject({ status: 500, hint: `Already applied before this failed: PUT ${LOG}.` });
   });
 
   it("won't send a symptom log when the current flow / mucus can't be read (omitting them clears them)", async () => {
