@@ -130,12 +130,49 @@ describe("whoop_sleep tool", () => {
 
   it("activity_id reads one sleep or nap by id without the day context", async () => {
     const nap = "69552a7c-db0d-44a7-9621-42387dd38503";
-    const get = routedGet({ [`/core-details-bff/v2/sleep-details/${nap}`]: fx("sleep_details_incomplete_nap"), "/sleep-service/v1/heart-rate/baseline": err500("baseline") });
+    const get = routedGet({
+      [`/core-details-bff/v2/sleep-details/${nap}`]: fx("sleep_details_incomplete_nap"),
+      [`/activities-service/v2/activities/${nap}`]: { id: nap, score_type: "SLEEP", type: "nap", score_state: "incomplete" },
+      "/sleep-service/v1/heart-rate/baseline": err500("baseline"),
+    });
     const out = await call(await connect(registerSleep, get), "whoop_sleep", { activity_id: nap, include: ["naps", "need"] });
-    expect(paths(get).sort()).toEqual([`/core-details-bff/v2/sleep-details/${nap}`, "/sleep-service/v1/heart-rate/baseline"]);
+    expect(paths(get).sort()).toEqual([
+      `/activities-service/v2/activities/${nap}`, `/core-details-bff/v2/sleep-details/${nap}`, "/sleep-service/v1/heart-rate/baseline",
+    ]);
     expect(out.date ?? null).toBeNull();
     expect(out.sleep).toMatchObject({ id: nap, type: "nap", scored: false });
     expect(out.naps).toBeUndefined();
+  });
+
+  // Live 2026-11-21 (reads-review): GET sleep-details/{boxing id} answered 200 with title "SLEEP",
+  // INCOMPLETE_ACTIVITY and the workout's window. Only the activity record tells it apart.
+  const BOXING = "70ad76a1-1e3c-4c8e-a026-903ff3175783";
+  const boxingAsSleep = {
+    activity_display_type: "INCOMPLETE_ACTIVITY",
+    sleep_details_labels: { screen_title_display: "SLEEP" },
+    sleep_details_edit_components: { sleep_start_time: "2026-11-22T00:24:37.527Z", sleep_end_time: "2026-11-22T00:27:03.453Z", nap_to_sleep_available: false },
+    sleep_metric_breakdowns: [],
+  };
+
+  it("refuses an activity_id that is a workout instead of reporting it as an unscored sleep", async () => {
+    const get = routedGet({
+      [`/core-details-bff/v2/sleep-details/${BOXING}`]: boxingAsSleep,
+      [`/activities-service/v2/activities/${BOXING}`]: { id: BOXING, score_type: "CARDIO", type: "boxing", score_state: "complete" },
+      "/sleep-service/v1/heart-rate/baseline": 56.6,
+    });
+    await expect(call(await connect(registerSleep, get), "whoop_sleep", { activity_id: BOXING }))
+      .rejects.toThrow(/boxing activity, not a sleep or nap/);
+  });
+
+  it("still answers from sleep-details when the activity record cannot be read", async () => {
+    const id = "c58031dc-36f0-472f-8d04-1acfd8ec7776";
+    const get = routedGet({
+      [`/core-details-bff/v2/sleep-details/${id}`]: fx("sleep_details_incomplete"),
+      [`/activities-service/v2/activities/${id}`]: err500("record"),
+      "/sleep-service/v1/heart-rate/baseline": 56.6,
+    });
+    const out = await call(await connect(registerSleep, get), "whoop_sleep", { activity_id: id });
+    expect(out.sleep).toMatchObject({ id, type: "sleep", scored: false });
   });
 
   it("rejects a malformed activity_id before calling WHOOP", async () => {

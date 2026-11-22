@@ -9,6 +9,7 @@ import { todayIso } from "../../lib/dates.js";
 import { SleepV2Out } from "../../schemas/v2/sleep.js";
 import { mainSleepId, projectSleepV2, type SleepInclude } from "../../projections/v2/sleep.js";
 import { projectSleepNeedV2 } from "../../projections/v2/core_sleep_need.js";
+import { activityRecordPath, recordFromActivity } from "../../lib/activity_records.js";
 
 const NAME = "whoop_sleep";
 const INCLUDES = ["hypnogram", "need", "naps"] as const;
@@ -38,7 +39,15 @@ export function registerSleep(server: McpServer, client: WhoopClient): void {
         // One sleep or nap by id: no date context, so no naps list or sleep need.
         inc.delete("naps");
         inc.delete("need");
-        const details = await client.get(`/core-details-bff/v2/sleep-details/${activity_id}`);
+        // WHOOP's sleep-details answers 200 for ANY activity id: a workout comes back as an
+        // empty "SLEEP" screen. The activity record says what the id really is.
+        const [details, record] = await Promise.all([
+          client.get(`/core-details-bff/v2/sleep-details/${activity_id}`),
+          client.get(activityRecordPath(activity_id)).then(recordFromActivity).catch(() => null),
+        ]);
+        if (record?.score_type && record.score_type !== "SLEEP") {
+          throw new Error(`Activity ${activity_id} is a ${record.type ?? record.score_type} activity, not a sleep or nap. Use whoop_workouts for it.`);
+        }
         return respond(NAME, SleepV2Out, projectSleepV2({ date: null, activityId: activity_id, include: inc, details, baseline: await baseline }));
       }
       const today = todayIso();
