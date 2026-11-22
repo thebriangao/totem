@@ -94,8 +94,8 @@ describe("whoop_lift_log", () => {
       converted_from: "kg",
       sent_weights: [[100, 100, 100]],
       verified: true,
-      warnings: [],
     });
+    expect(out.warnings).toBeUndefined(); // jsonOut drops empty arrays
   });
 
   it("read-back pages history (5 workouts per page) and retries while WHOOP catches up", async () => {
