@@ -47,7 +47,7 @@ describe("EnvFileTokenStore", () => {
     });
   });
 
-  it("keeps 0600 on the token file", () => {
+  it.skipIf(process.platform === "win32")("keeps 0600 on the token file", () => {
     writeFileSync(envPath, "WHOOP_EMAIL=a@b.com\n", { mode: 0o644 });
     new EnvFileTokenStore(envPath).save({ accessToken: "t", refreshToken: "r" });
     expect(statSync(envPath).mode & 0o777).toBe(0o600);

@@ -7,7 +7,7 @@
 // copy-paste. Custom is a printed Docker guide for any other host or your own
 // server. Either way it's one command to a working, Claude-connected deployment.
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, chmodSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { resolve, dirname } from "node:path";
 import { readEnvFile, upsertEnvFile } from "../lib/env_file.js";
@@ -17,6 +17,7 @@ import {
   withSpinner, spin, pause, maskArgs,
   runScript, ensureCli, openUrl,
 } from "./ui.js";
+import { pkgBin, claudeDesktopConfigPath, vscodeUserMcpPath } from "./spawn.js";
 
 // ── .env helpers ────────────────────────────────────────────────────────────
 function envPath(root: string): string {
@@ -139,8 +140,8 @@ function buildPrereq(root: string): Prereq {
     label: "server built (dist/)",
     check: () => existsSync(resolve(root, "dist", "server.js")),
     ensure: async () => {
-      const tsc = resolve(root, "node_modules", ".bin", "tsc");
-      if (!existsSync(tsc)) { console.log(c.gray("  No TypeScript compiler — run `npm install`, then re-run.")); return false; }
+      const tsc = pkgBin(root, "typescript", "tsc");
+      if (!tsc) { console.log(c.gray("  No TypeScript compiler — run `npm install`, then re-run.")); return false; }
       return (await run(process.execPath, [tsc], { cwd: root })) === 0;
     },
   };
@@ -386,12 +387,11 @@ function mergeJsonConfig(cfgPath: string, key: string, name: string, entry: Reco
 // A client wired by merging a JSON config file (most of them). `key` is the
 // top-level object: "mcpServers" for Claude Desktop/Cursor/Gemini/Windsurf,
 // "servers" (with a "type":"stdio" field) for VS Code.
-function jsonClient(label: string, hint: string, relPath: string, key: "mcpServers" | "servers", restart: string): LocalClient {
+function jsonClient(label: string, hint: string, configPath: () => string, key: "mcpServers" | "servers", restart: string): LocalClient {
   return {
     label, hint,
     wire: async (node, serverJs) => {
-      const home = process.env.HOME ?? "~";
-      const cfgPath = resolve(home, relPath);
+      const cfgPath = configPath();
       const entry: Record<string, unknown> = key === "servers"
         ? { type: "stdio", command: node, args: [serverJs] }
         : { command: node, args: [serverJs] };
@@ -437,9 +437,8 @@ const claudeCodeClient: LocalClient = {
 const codexClient: LocalClient = {
   label: "Codex CLI", hint: "show the config.toml block to add",
   wire: async (node, serverJs) => {
-    const home = process.env.HOME ?? "~";
     console.log("");
-    console.log(c.gray(`  Add this to ${resolve(home, ".codex/config.toml")} and restart Codex:`));
+    console.log(c.gray(`  Add this to ${resolve(homedir(), ".codex", "config.toml")} and restart Codex:`));
     console.log("");
     console.log(`  [mcp_servers.whoop]`);
     console.log(`  command = ${JSON.stringify(node)}`);
@@ -461,13 +460,13 @@ const showConfigClient: LocalClient = {
 };
 
 const LOCAL_CLIENTS: LocalClient[] = [
-  jsonClient("Claude Desktop", "write the config automatically", "Library/Application Support/Claude/claude_desktop_config.json", "mcpServers", "Quit and reopen Claude Desktop."),
+  jsonClient("Claude Desktop", "write the config automatically", () => claudeDesktopConfigPath(), "mcpServers", "Quit and reopen Claude Desktop."),
   claudeCodeClient,
-  jsonClient("Cursor", "write ~/.cursor/mcp.json", ".cursor/mcp.json", "mcpServers", "Reload Cursor (Settings → Tools & MCP)."),
-  jsonClient("VS Code (Copilot)", "write the user mcp.json", "Library/Application Support/Code/User/mcp.json", "servers", "Reload VS Code; start the server in the MCP view."),
-  jsonClient("Gemini CLI", "write ~/.gemini/settings.json", ".gemini/settings.json", "mcpServers", "Restart the gemini CLI."),
+  jsonClient("Cursor", "write ~/.cursor/mcp.json", () => resolve(homedir(), ".cursor", "mcp.json"), "mcpServers", "Reload Cursor (Settings → Tools & MCP)."),
+  jsonClient("VS Code (Copilot)", "write the user mcp.json", () => vscodeUserMcpPath(), "servers", "Reload VS Code; start the server in the MCP view."),
+  jsonClient("Gemini CLI", "write ~/.gemini/settings.json", () => resolve(homedir(), ".gemini", "settings.json"), "mcpServers", "Restart the gemini CLI."),
   codexClient,
-  jsonClient("Windsurf", "write ~/.codeium/windsurf/mcp_config.json", ".codeium/windsurf/mcp_config.json", "mcpServers", "Reload Windsurf (Cascade → refresh MCP)."),
+  jsonClient("Windsurf", "write ~/.codeium/windsurf/mcp_config.json", () => resolve(homedir(), ".codeium", "windsurf", "mcp_config.json"), "mcpServers", "Reload Windsurf (Cascade → refresh MCP)."),
   showConfigClient,
 ];
 
