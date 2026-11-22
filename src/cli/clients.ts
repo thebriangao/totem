@@ -30,7 +30,7 @@ export type Target =
   | { kind: "remote"; mcpUrl: string };
 
 export type Recipe =
-  /** Merge `entry` under `key` in a JSON config file. */
+  /** Merge `entry` under `key` in a JSON config file. A dotted key ("mcp.servers") names a nested object. */
   | { kind: "file"; path: string; key: string; entry: Record<string, unknown>; after: string }
   /**
    * Run the client's own command; `then` are follow-up commands or steps.
@@ -60,6 +60,27 @@ const exists = (...parts: string[]): boolean => existsSync(join(...parts));
 const PATH_SEP = "\u0001";
 const menu = (...levels: string[]): string => levels.join(` ${PATH_SEP} `);
 
+/**
+ * OpenCode's global config. It reads `opencode.json` and `opencode.jsonc`; use
+ * whichever the person already has, so totem never creates a second file
+ * beside theirs.
+ */
+function opencodeConfig(sys: Sys): string {
+  const dir = join(sys.env.XDG_CONFIG_HOME || join(sys.home, ".config"), "opencode");
+  return !existsSync(join(dir, "opencode.json")) && existsSync(join(dir, "opencode.jsonc")) ? join(dir, "opencode.jsonc") : join(dir, "opencode.json");
+}
+
+// Checked on 2026-11-21 against each vendor's docs and, where installed, the
+// tool's own --help (Claude Code 2.1, codex-cli 0.154, OpenCode 1.19 and 2.3,
+// VS Code 1.142). What changed since v1:
+//   - ChatGPT and Codex are one desktop app (July 2026). The app, the Codex CLI
+//     and the IDE extension share ~/.codex/config.toml, so one `codex mcp add`
+//     covers all three. chatgpt.com adds outside servers through Plugins.
+//   - OpenCode 2 keeps servers under mcp.servers (1.19 reads that too) and has
+//     no `enabled` field.
+//   - VS Code reads the personal Copilot config, ~/.copilot/mcp-config.json
+//     (shared with Copilot CLI). Its profile mcp.json is the deprecated path.
+//   - Gemini CLI was retired in June 2026; Antigravity replaced it.
 export const CLIENTS: Client[] = [
   {
     id: "claude", name: "claude.ai", featured: true,
@@ -75,17 +96,38 @@ export const CLIENTS: Client[] = [
       : { kind: "steps", steps: ["Uses the claude.ai connector: add it there once and it shows up here and in the mobile app."] },
   },
   {
-    id: "chatgpt", name: "ChatGPT", featured: true,
-    detect: () => false,
-    recipe: (t) => t.kind === "local" ? needsUrl("ChatGPT")
-      : { kind: "steps", steps: [`${menu("Settings", "Apps & Connectors", "Create")}. Paste the URL. (Turn on Developer mode under Advanced settings first.)`] },
-  },
-  {
     id: "claude-code", name: "Claude Code", featured: true,
     detect: (sys) => sys.has("claude"),
     recipe: (t) => t.kind === "local"
       ? { kind: "command", argv: ["claude", "mcp", "add", "--scope", "user", SERVER_NAME, "--", t.node, t.serverJs], remove: ["claude", "mcp", "remove", "--scope", "user", SERVER_NAME], then: [], after: "Start a new Claude Code session." }
       : { kind: "command", argv: ["claude", "mcp", "add", "--transport", "http", "--scope", "user", SERVER_NAME, t.mcpUrl], remove: ["claude", "mcp", "remove", "--scope", "user", SERVER_NAME], then: [`In Claude Code: /mcp ${PATH_SEP} ${SERVER_NAME} ${PATH_SEP} Authenticate`], after: `In Claude Code, run /mcp and authenticate ${SERVER_NAME}.` },
+  },
+  {
+    // The ChatGPT desktop app and the Codex CLI: one config, so one entry.
+    id: "chatgpt", name: "ChatGPT", featured: true,
+    detect: (sys) => sys.has("codex") || exists(sys.home, ".codex"),
+    recipe: (t, sys) => {
+      const web = `On chatgpt.com: ${menu("Plugins", "+", "Add custom MCP server")}. Paste the URL.`;
+      if (!sys.has("codex")) {
+        // The desktop app without the codex command: its own settings screen.
+        const add = menu("Settings", "MCP servers", "Add server");
+        return t.kind === "local"
+          ? { kind: "steps", steps: [`In the ChatGPT desktop app: ${add}. Choose STDIO and enter this command, then save and restart:`, `${t.node} ${t.serverJs}`] }
+          : { kind: "steps", steps: [`In the ChatGPT desktop app: ${add}. Choose Streamable HTTP, paste the URL, save and restart, then select Authenticate.`, web] };
+      }
+      return t.kind === "local"
+        ? { kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--", t.node, t.serverJs], remove: ["codex", "mcp", "remove", SERVER_NAME], then: [], after: "Restart ChatGPT, or start a new Codex session." }
+        : { kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--url", t.mcpUrl], remove: ["codex", "mcp", "remove", SERVER_NAME], then: [`codex mcp login ${SERVER_NAME}`, web], after: `Run: codex mcp login ${SERVER_NAME}` };
+    },
+  },
+  {
+    id: "opencode", name: "OpenCode", featured: true,
+    detect: (sys) => sys.has("opencode") || exists(sys.env.XDG_CONFIG_HOME || join(sys.home, ".config"), "opencode"),
+    recipe: (t, sys) => ({
+      kind: "file", path: opencodeConfig(sys), key: "mcp.servers",
+      entry: t.kind === "local" ? { type: "local", command: [t.node, t.serverJs] } : { type: "remote", url: t.mcpUrl },
+      after: t.kind === "local" ? "Start a new OpenCode session." : `In OpenCode, run /mcps and sign in to ${SERVER_NAME} (or run: opencode mcp auth ${SERVER_NAME}).`,
+    }),
   },
   {
     id: "cursor", name: "Cursor", featured: true,
@@ -97,51 +139,34 @@ export const CLIENTS: Client[] = [
     }),
   },
   {
-    id: "codex", name: "Codex", featured: true,
-    detect: (sys) => sys.has("codex"),
-    recipe: (t) => t.kind === "local"
-      ? { kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--", t.node, t.serverJs], remove: ["codex", "mcp", "remove", SERVER_NAME], then: [], after: "Start a new Codex session." }
-      : { kind: "command", argv: ["codex", "mcp", "add", SERVER_NAME, "--url", t.mcpUrl], remove: ["codex", "mcp", "remove", SERVER_NAME], then: [`codex mcp login ${SERVER_NAME}`], after: `Run: codex mcp login ${SERVER_NAME}` },
-  },
-  {
-    id: "opencode", name: "OpenCode", featured: true,
-    detect: (sys) => sys.has("opencode"),
-    recipe: (t, sys) => t.kind === "local"
-      ? { kind: "file", path: join(sys.home, ".config", "opencode", "opencode.json"), key: "mcp", entry: { type: "local", command: [t.node, t.serverJs], enabled: true }, after: "Start a new OpenCode session." }
-      : { kind: "command", argv: ["opencode", "mcp", "add", SERVER_NAME, "--url", t.mcpUrl], remove: [], then: [`opencode mcp auth ${SERVER_NAME}`], after: `Run: opencode mcp auth ${SERVER_NAME}` },
-  },
-  {
     id: "vscode", name: "VS Code", featured: false,
-    detect: (sys) => exists(appConfigDir(sys.platform, sys.home, sys.env), "Code"),
+    detect: (sys) => exists(appConfigDir(sys.platform, sys.home, sys.env), "Code") || exists(sys.env.COPILOT_HOME || join(sys.home, ".copilot")),
     recipe: (t, sys) => ({
-      kind: "file", path: join(appConfigDir(sys.platform, sys.home, sys.env), "Code", "User", "mcp.json"), key: "servers",
-      entry: t.kind === "local" ? { type: "stdio", ...stdio(t) } : { type: "http", url: t.mcpUrl },
-      after: `In VS Code, start ${SERVER_NAME} from the MCP servers view.`,
+      kind: "file", path: join(sys.env.COPILOT_HOME || join(sys.home, ".copilot"), "mcp-config.json"), key: "mcpServers",
+      entry: t.kind === "local" ? { type: "stdio", ...stdio(t), tools: ["*"] } : { type: "http", url: t.mcpUrl, tools: ["*"] },
+      after: `In VS Code, run "Chat: Open Customizations" and find ${SERVER_NAME} under MCP Servers${t.kind === "local" ? "" : ", then sign in"}.`,
     }),
   },
   {
-    id: "gemini", name: "Gemini CLI", featured: false,
-    detect: (sys) => sys.has("gemini"),
+    id: "antigravity", name: "Antigravity", featured: false,
+    detect: (sys) => sys.has("agy") || exists(sys.home, ".gemini", "antigravity") || exists(sys.home, ".gemini", "config"),
     recipe: (t, sys) => ({
-      kind: "file", path: join(sys.home, ".gemini", "settings.json"), key: "mcpServers",
-      entry: t.kind === "local" ? stdio(t) : { httpUrl: t.mcpUrl },
-      after: "Start a new Gemini CLI session.",
-    }),
-  },
-  {
-    id: "windsurf", name: "Windsurf", featured: false,
-    detect: (sys) => exists(sys.home, ".codeium", "windsurf"),
-    recipe: (t, sys) => ({
-      kind: "file", path: join(sys.home, ".codeium", "windsurf", "mcp_config.json"), key: "mcpServers",
+      kind: "file", path: join(sys.home, ".gemini", "config", "mcp_config.json"), key: "mcpServers",
       entry: t.kind === "local" ? stdio(t) : { serverUrl: t.mcpUrl },
-      after: `In Windsurf: Cascade ${PATH_SEP} MCP servers ${PATH_SEP} Refresh.`,
+      after: `In Antigravity, type /mcp and check ${SERVER_NAME} is connected${t.kind === "local" ? "" : " (sign in when it asks)"}.`,
     }),
   },
 ];
 
 export function findClient(id: string): Client | undefined {
   const wanted = id.toLowerCase().replace(/[\s_.]+/g, "-");
-  const alias: Record<string, string> = { "claude.ai": "claude", "claude-ai": "claude", desktop: "claude-desktop", code: "claude-code", "codex-cli": "codex", "gemini-cli": "gemini", "vs-code": "vscode", copilot: "vscode" };
+  // Old names still find the client that took their place.
+  const alias: Record<string, string> = {
+    "claude.ai": "claude", "claude-ai": "claude", desktop: "claude-desktop", code: "claude-code",
+    codex: "chatgpt", "codex-cli": "chatgpt", "chatgpt-desktop": "chatgpt",
+    "vs-code": "vscode", copilot: "vscode",
+    gemini: "antigravity", "gemini-cli": "antigravity", agy: "antigravity",
+  };
   return CLIENTS.find((cl) => cl.id === (alias[wanted] ?? wanted));
 }
 
@@ -156,7 +181,8 @@ const withSep = (text: string, k: Kit): string => text.split(PATH_SEP).join(k.g.
 
 /** The JSON a file recipe adds, as the lines to paste. */
 export function recipeJson(recipe: Extract<Recipe, { kind: "file" }>): string[] {
-  return JSON.stringify({ [recipe.key]: { [SERVER_NAME]: recipe.entry } }, null, 2).split("\n");
+  const nested = recipe.key.split(".").reduceRight<Record<string, unknown>>((inner, k) => ({ [k]: inner }), { [SERVER_NAME]: recipe.entry });
+  return JSON.stringify(nested, null, 2).split("\n");
 }
 
 /** What to paste where for one recipe, indented under the client's name. */
@@ -217,11 +243,16 @@ export function connectCard(k: Kit, sys: Pick<Sys, "home" | "platform" | "has" |
       ...able.map((cl): [string, string] => [cl.name, k.c.accent(`totem connect ${cl.id}`)]),
       ["Another client", k.c.accent("totem connect other")],
     ], 4));
-    lines.push("", ...k.para("claude.ai and ChatGPT connect over the internet, so they need a deployed server: totem cloud"));
+    lines.push("", ...k.para("claude.ai connects over the internet, so it needs a deployed server: totem cloud"));
     return lines;
   }
   for (const client of CLIENTS.filter((cl) => cl.featured)) {
-    lines.push("", `  ${k.c.bold(client.name)}`, ...recipeLines(client.recipe(target, sys as Sys), k, sys));
+    const recipe = client.recipe(target, sys as Sys);
+    lines.push("", `  ${k.c.bold(client.name)}`);
+    // A config file is totem's to write (one command), not JSON to paste by hand.
+    // `totem connect <client> --print` still shows the entry itself.
+    if (recipe.kind === "file") lines.push(...k.code([`totem connect ${client.id}`], 4), ...k.para(withSep(recipe.after, k), 4));
+    else lines.push(...recipeLines(recipe, k, sys));
   }
   lines.push("", `  ${k.c.bold("Another client")}`);
   lines.push(...k.para("Give it the URL. If it can't sign in through a browser, send the server's token as a bearer header instead:", 4));
@@ -267,12 +298,20 @@ export function mergeJsonConfig(cfgPath: string, key: string, name: string, entr
       merged = parsed as Record<string, unknown>;
     }
   }
-  const existing = merged[key];
-  if (existing !== undefined && (typeof existing !== "object" || existing === null || Array.isArray(existing))) {
-    throw new ConfigNotMergeableError(`"${key}" in ${cfgPath} isn't an object, so totem left the file untouched.`);
-  }
-  const bucket = (existing as Record<string, unknown> | undefined) ?? {};
-  merged[key] = { ...bucket, [name]: entry };
+  // Walk to the object that holds the servers ("mcp.servers" is two levels), creating
+  // what is missing and refusing anything on the way that isn't an object.
+  let holder = merged;
+  const path = key.split(".");
+  path.forEach((part, i) => {
+    const existing = holder[part];
+    if (existing !== undefined && (typeof existing !== "object" || existing === null || Array.isArray(existing))) {
+      throw new ConfigNotMergeableError(`"${path.slice(0, i + 1).join(".")}" in ${cfgPath} isn't an object, so totem left the file untouched.`);
+    }
+    const next = { ...((existing as Record<string, unknown> | undefined) ?? {}) };
+    holder[part] = next;
+    holder = next;
+  });
+  holder[name] = entry;
   const next = JSON.stringify(merged, null, 2) + "\n";
   if (previous !== null && previous.trim() === next.trim()) return { changed: false };
   mkdirSync(dirname(cfgPath), { recursive: true });

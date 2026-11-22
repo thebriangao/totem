@@ -19,12 +19,11 @@ Run totem on this computer and connect an AI client to it.
 ? Which client?
   › Claude Desktop   installed
     Claude Code      installed
-    Cursor
-    Codex            installed
+    ChatGPT          installed
     OpenCode         installed
+    Cursor
     VS Code
-    Gemini CLI       installed
-    Windsurf
+    Antigravity      installed
     Another client   show what to paste
   ✓ Added the whoop server to Claude Desktop
     ~/Library/Application Support/Claude/claude_desktop_config.json

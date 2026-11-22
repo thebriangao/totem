@@ -175,7 +175,8 @@ export const SCREENS: Screen[] = [
   { name: "connect-server", command: "totem connect", about: "What to paste where for every client, for a deployed server.", setup: onFly },
   { name: "connect-local", command: "totem connect --print", about: "The same card for a local install.", setup: onLocal },
   { name: "connect-cursor-local", command: "totem connect cursor", about: "Connect one more client to a local install.", setup: onLocal },
-  { name: "connect-codex-server", command: "totem connect codex", about: "One client's steps for a deployed server.", setup: onFly },
+  { name: "connect-chatgpt-server", command: "totem connect chatgpt", about: "Connect one client to a deployed server.", setup: onFly },
+  { name: "connect-opencode-server", command: "totem connect opencode", about: "A client set up through its config file, for a deployed server.", setup: onFly },
   { name: "error-connect-unknown-client", command: "totem connect emacs", about: "A client totem doesn't know.", setup: onLocal },
 
   // ── auth ───────────────────────────────────────────────────────────────

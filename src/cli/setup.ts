@@ -209,13 +209,16 @@ export async function runConnect(root: string, args: string[], io: Io = realIo()
     }
     ui.header("totem connect", `Connect ${client.name} to ${where}.`);
     const recipe = client.recipe(target, sys);
-    // A remote install is connected by signing in from the client: totem shows
-    // the recipe. A local one totem can set up itself (unless asked to print).
-    if (print || target.kind === "remote" || recipe.kind === "steps" || recipe.kind === "unavailable") {
-      if (target.kind === "remote") {
-        ui.rows([["URL", ui.kit.c.accent(target.mcpUrl)], ["Password", "the connector password from totem cloud"]]);
-        ui.line();
-      }
+    // A remote install is finished by signing in from the client, on the server's
+    // own page, so the address and which password it wants come first.
+    if (target.kind === "remote" && recipe.kind !== "unavailable") {
+      ui.rows([["URL", ui.kit.c.accent(target.mcpUrl)], ["Password", "the connector password from totem cloud"]]);
+      ui.line();
+    }
+    // totem sets the client up itself when that is a file or the client's own
+    // command (for a server, both hold only its address). Steps in a client's
+    // settings, and --print, are shown instead.
+    if (print || recipe.kind === "steps" || recipe.kind === "unavailable") {
       ui.line(`  ${ui.kit.c.bold(client.name)}`);
       ui.lines(recipeLines(recipe, ui.kit, sys));
       return recipe.kind === "unavailable" ? 1 : 0;
