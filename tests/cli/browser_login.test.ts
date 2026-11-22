@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { posix, win32 } from "node:path";
 import {
-  ACCESS_COOKIE, REFRESH_COOKIE, browserCandidates, findBrowser, isWhoopDomain, parseDevToolsActivePort, pickWhoopTokens,
+  ACCESS_COOKIE, REFRESH_COOKIE, browserCandidates, browserTargetPath, findBrowser, isWhoopDomain, pickWhoopTokens,
   type CdpCookie,
 } from "../../src/cli/browser_login.js";
 import { WEB_CLIENT_ID } from "../../src/whoop/constants.js";
@@ -57,15 +57,18 @@ describe("isWhoopDomain", () => {
   });
 });
 
-describe("parseDevToolsActivePort", () => {
-  it("reads the port and the browser target path", () => {
-    expect(parseDevToolsActivePort("54321\n/devtools/browser/abc-123\n")).toEqual({ port: 54321, browserPath: "/devtools/browser/abc-123" });
-    expect(parseDevToolsActivePort("54321\r\n/devtools/browser/x")).toEqual({ port: 54321, browserPath: "/devtools/browser/x" });
+describe("browserTargetPath", () => {
+  it("takes only the browser target's path from /json/version", () => {
+    expect(browserTargetPath("ws://127.0.0.1:9222/devtools/browser/0b1c-22aa")).toBe("/devtools/browser/0b1c-22aa");
+    // Whatever host the answer names, only the path is used.
+    expect(browserTargetPath("ws://elsewhere.example:1/devtools/browser/abc")).toBe("/devtools/browser/abc");
   });
-  it("rejects anything else (a page target, a half-written file)", () => {
-    expect(parseDevToolsActivePort("54321\n/devtools/page/abc")).toBeNull();
-    expect(parseDevToolsActivePort("")).toBeNull();
-    expect(parseDevToolsActivePort("54321")).toBeNull();
+  it("rejects anything else (a page target, a traversal, junk)", () => {
+    expect(browserTargetPath("ws://127.0.0.1:9222/devtools/page/abc")).toBeNull();
+    expect(browserTargetPath("ws://127.0.0.1:9222/devtools/browser/../page/abc")).toBeNull();
+    expect(browserTargetPath("ws://127.0.0.1:9222/devtools/browser/")).toBeNull();
+    expect(browserTargetPath("not a url")).toBeNull();
+    expect(browserTargetPath(undefined)).toBeNull();
   });
 });
 

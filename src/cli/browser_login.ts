@@ -9,16 +9,24 @@
 // session cookies (whoop-auth-token, whoop-auth-refresh-token), the browser is
 // closed and the profile deleted.
 //
-// The debugging port is chosen by the browser (--remote-debugging-port=0, read
-// back from DevToolsActivePort) and bound to 127.0.0.1 for the minutes the login
-// takes. --remote-debugging-pipe would avoid the port, but Chromium marks pipe
-// sessions as automation (navigator.webdriver), which a login page can flag.
+// The debugging port is a free loopback port picked here and passed explicitly,
+// open on 127.0.0.1 for the minutes the login takes. It must not be
+// --remote-debugging-port=0 or --remote-debugging-pipe: Chromium treats both as
+// "driven by automation" and sets navigator.webdriver = true (content/child/
+// runtime_features.cc; seen on a headful Chrome), which a login page's fraud
+// check reads. An explicit port leaves the browser exactly as a person's, and
+// is what the prototype logged in with.
+//
+// Anything running on this machine can reach that port while the window is
+// open. That is inherent in a debugging port; on a shared machine use
+// `totem auth --paste` instead.
 //
 // This module returns results and emits events; it prints nothing. The CLI
 // (src/cli/auth.ts) does the talking.
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { basename, join, posix, win32 } from "node:path";
 import { decodeJwtClientId, decodeJwtExp } from "../whoop/cognito.js";
@@ -164,12 +172,34 @@ export function pickWhoopTokens(cookies: readonly CdpCookie[]): WhoopLoginTokens
   };
 }
 
-/** Parse Chrome's DevToolsActivePort file: port on line 1, browser target path on line 2. */
-export function parseDevToolsActivePort(text: string): { port: number; browserPath: string } | null {
-  const [portLine, pathLine] = text.split(/\r?\n/);
-  const port = Number(portLine);
-  if (!Number.isInteger(port) || port <= 0 || !pathLine?.startsWith("/devtools/browser/")) return null;
-  return { port, browserPath: pathLine.trim() };
+/**
+ * The browser target's path from /json/version's `webSocketDebuggerUrl`
+ * ("ws://127.0.0.1:9222/devtools/browser/<id>"). Only the path is used: the
+ * connection always goes to 127.0.0.1 on the port we chose, whatever host the
+ * answer names. Null for anything that isn't a browser target.
+ */
+export function browserTargetPath(webSocketDebuggerUrl: unknown): string | null {
+  if (typeof webSocketDebuggerUrl !== "string") return null;
+  let path: string;
+  try {
+    path = new URL(webSocketDebuggerUrl).pathname;
+  } catch {
+    return null;
+  }
+  return /^\/devtools\/browser\/[\w-]+$/.test(path) ? path : null;
+}
+
+/** A free port on 127.0.0.1 for the browser's debugging endpoint. */
+function freeLoopbackPort(): Promise<number> {
+  return new Promise((resolvePort, rejectPort) => {
+    const probe = createServer();
+    probe.once("error", rejectPort);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      probe.close(() => (port > 0 ? resolvePort(port) : rejectPort(new Error("no free port"))));
+    });
+  });
 }
 
 // ── CDP over the browser target ─────────────────────────────────────────────
@@ -266,10 +296,12 @@ export async function captureBrowserLogin(opts: BrowserLoginOptions): Promise<Wh
   const timeoutMs = opts.timeoutMs ?? 15 * 60_000;
   const pollMs = opts.pollMs ?? 1_500;
   const emit = opts.onEvent ?? (() => undefined);
+  // An explicit port, never 0: see the note at the top of this file.
+  const port = await freeLoopbackPort();
   const profile = mkdtempSync(join(profileParent(opts.browser), "totem-login-"));
   const args = [
     `--user-data-dir=${profile}`,
-    "--remote-debugging-port=0",
+    `--remote-debugging-port=${port}`,
     "--remote-debugging-address=127.0.0.1",
     "--no-first-run",
     "--no-default-browser-check",
@@ -299,20 +331,24 @@ export async function captureBrowserLogin(opts: BrowserLoginOptions): Promise<Wh
     child.once("exit", () => { exited = true; });
     emit({ type: "launched", browser: opts.browser });
 
-    // The browser writes its chosen port to DevToolsActivePort in the profile.
-    const portFile = join(profile, "DevToolsActivePort");
-    const findPort = async (): Promise<{ port: number; browserPath: string }> => {
+    // Ask the debugging endpoint for its browser target (with an explicit port
+    // Chromium doesn't write DevToolsActivePort).
+    const findBrowserTarget = async (): Promise<string> => {
       for (let i = 0; i < 120; i++) {
         if (exited) throw new BrowserLoginError(`${opts.browser.name} closed before it was ready`, "launch");
-        if (existsSync(portFile)) {
-          const parsed = parseDevToolsActivePort(readFileSync(portFile, "utf8"));
-          if (parsed) return parsed;
+        try {
+          const response = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(2_000) });
+          const info = response.ok ? ((await response.json()) as { webSocketDebuggerUrl?: unknown }) : null;
+          const path = browserTargetPath(info?.webSocketDebuggerUrl);
+          if (path) return path;
+        } catch {
+          // not listening yet
         }
         await sleep(250);
       }
       throw new BrowserLoginError(`${opts.browser.name} never opened its debugging port`, "launch");
     };
-    const { port, browserPath } = await Promise.race([findPort(), spawnError]);
+    const browserPath = await Promise.race([findBrowserTarget(), spawnError]);
     cdp = await connectCdp(`ws://127.0.0.1:${port}${browserPath}`);
 
     const seen = new Set<string>();
