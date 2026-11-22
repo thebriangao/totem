@@ -528,6 +528,13 @@ const ALIASES: Record<string, string[]> = {
   "dev:http": ["dev", "--http"],
 };
 
+/**
+ * A table's own entry for what was typed. `commands[name]` alone also finds
+ * what every object inherits: `totem constructor` and `totem toString` were
+ * "commands" with nothing to run, and crashed with a TypeError.
+ */
+const own = <T>(table: Record<string, T>, key: string): T | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
+
 // ── help ─────────────────────────────────────────────────────────────────────
 
 export function helpScreen(k: Kit, app: Pick<AppCtx, "version">): string[] {
@@ -557,7 +564,7 @@ export function helpScreen(k: Kit, app: Pick<AppCtx, "version">): string[] {
 }
 
 export function commandHelp(k: Kit, name: string): string[] | null {
-  const cmd = commands[name];
+  const cmd = own(commands, name);
   if (!cmd) return null;
   const table = (pairs: Array<[string, string]>): string[] => {
     const w = Math.max(...pairs.map(([a]) => a.length)) + 3;
@@ -601,7 +608,7 @@ export async function runCli(argv: string[], app: AppCtx, io: Io): Promise<numbe
   if (name === undefined || name === "help" || name === "-h" || name === "--help") {
     const topic = name === "help" ? args[0] : undefined;
     if (topic) {
-      const help = commandHelp(ui.kit, ALIASES[topic]?.[0] ?? topic);
+      const help = commandHelp(ui.kit, own(ALIASES, topic)?.[0] ?? topic);
       if (help) { ui.lines(help); return 0; }
       name = topic; // falls through to "unknown command"
     } else {
@@ -613,10 +620,10 @@ export async function runCli(argv: string[], app: AppCtx, io: Io): Promise<numbe
     ui.line(app.version);
     return 0;
   }
-  const alias = ALIASES[name];
+  const alias = own(ALIASES, name);
   if (alias) { name = alias[0]!; args = [...alias.slice(1), ...args]; }
 
-  const cmd = commands[name];
+  const cmd = own(commands, name);
   if (!cmd) {
     const close = nearest(name);
     ui.error(`"${name}" isn't a totem command.`, { fix: [...(close ? [["Did you mean", `totem ${close}`] as Fix] : []), ["See them all", "totem help"]] });
