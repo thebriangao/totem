@@ -933,6 +933,21 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   const TOTAL = 6;
   ui.header("totem cloud", "Deploy your own totem server and connect your AI clients to it.");
 
+  // This flow ends by writing the new server into .totem-deploy.json, over what
+  // is there. For a server that is already deployed, that record is the only
+  // copy of its MCP_AUTH_TOKEN on this computer (what `totem auth`, `status`
+  // and `token` reach it with), and the server itself keeps running and
+  // billing: don't replace it without asking.
+  const existing = readDeployRecord(root);
+  if (existing && existing.platform !== "local" && existing.url) {
+    ui.warn(`This install already has a server at ${existing.url}.`);
+    ui.hint("Deploying another makes this computer forget that one: its token leaves .totem-deploy.json, and the server keeps running until you remove it on its host. To deploy this install's code to it again: totem deploy");
+    if (!(await ui.confirm("Deploy a new server anyway?", false))) {
+      ui.hint("Nothing changed. To connect a client to the server: totem connect");
+      return 1;
+    }
+  }
+
   ui.step(1, TOTAL, "Host");
   const platform = HOSTS[await ui.select("Where should the server run?", HOSTS.map((h) => ({ label: h.name, hint: h.hint })))]!.id;
   if (!(await prerequisites(root, io, false))) return 1;

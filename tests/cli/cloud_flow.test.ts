@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { join } from "node:path";
 import { runCli, type AppCtx } from "../../src/cli/app.js";
-import { readDeployRecord } from "../../src/cli/deploy_record.js";
+import { readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
 import type { ExecResult } from "../../src/cli/sys.js";
 import { fakeWorld, PASSWORD, TOKEN, type FakeWorld, type WorldOptions } from "./helpers.js";
 
@@ -55,6 +55,37 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
     expect(text).toContain("The deploy finished, but the server isn't answering.");
     expect(text).not.toContain(own);
     expect(text).not.toContain(PASSWORD);
+  });
+});
+
+// The deploy record holds the only local copy of a deployed server's
+// MCP_AUTH_TOKEN. A second `totem cloud` used to write a new server over it
+// without a word, leaving the first one running, billed, and out of reach.
+describe("totem cloud: this install already has a server", () => {
+  const OLD = { platform: "fly", app: "totem-old", url: "https://totem-old.fly.dev", mcp_auth_token: "0ld".repeat(21) + "0" };
+  const deployed = (w: FakeWorld): void => writeDeployRecord(w.root, OLD);
+
+  it("asks first, and by default changes nothing", async () => {
+    const { w, code, text } = await cloud({ exec: fly }, deployed);
+    expect(code).toBe(1);
+    expect(text).toContain("This install already has a server at https://totem-old.fly.dev.");
+    expect(text).toContain("? Deploy a new server anyway? (y/N)");
+    expect(readDeployRecord(w.root)).toEqual(OLD);
+    // Nothing was asked of the host, and no host was even chosen.
+    expect(w.commands).toEqual([]);
+    expect(text).not.toContain("1/6  Host");
+  });
+
+  it("deploys a new one when told to", async () => {
+    const { w, code } = await cloud({ exec: fly, answers: [["Deploy a new server anyway?", true]] }, deployed);
+    expect(code).toBe(0);
+    expect(readDeployRecord(w.root)).toMatchObject({ app: "totem-c0ffee", mcp_auth_token: TOKEN });
+  });
+
+  it("doesn't ask on a first run, or over a local install", async () => {
+    expect((await cloud({ exec: fly })).text).not.toContain("already has a server");
+    world?.cleanup();
+    expect((await cloud({ exec: fly }, (w) => writeDeployRecord(w.root, { platform: "local" }))).text).not.toContain("already has a server");
   });
 });
 
