@@ -321,6 +321,17 @@ export async function captureBrowserLogin(opts: BrowserLoginOptions): Promise<Wh
   };
   // Ctrl-C exits the CLI from anywhere; don't leave a browser or profile behind.
   process.once("exit", cleanupSync);
+  // A closed terminal (SIGHUP) or a `kill` (SIGTERM) ends the process without
+  // running 'exit' handlers unless someone listens for the signal. Left alone,
+  // the browser would keep running with its debugging port open and the profile
+  // (which holds the session cookies once logged in) would stay on disk.
+  const EXIT_CODES = { SIGHUP: 129, SIGINT: 130, SIGTERM: 143 } as const;
+  const onSignal = (signal: keyof typeof EXIT_CODES): void => {
+    cleanupSync();
+    process.exit(EXIT_CODES[signal]);
+  };
+  const signals = Object.keys(EXIT_CODES) as Array<keyof typeof EXIT_CODES>;
+  for (const signal of signals) process.on(signal, onSignal);
 
   try {
     child = spawn(opts.browser.path, args, { stdio: "ignore" });
@@ -382,6 +393,7 @@ export async function captureBrowserLogin(opts: BrowserLoginOptions): Promise<Wh
     throw new BrowserLoginError(`Timed out after ${Math.round(timeoutMs / 60_000)} minutes without a WHOOP login.`, "timeout");
   } finally {
     process.removeListener("exit", cleanupSync);
+    for (const signal of signals) process.removeListener(signal, onSignal);
     cleanupSync();
   }
 }

@@ -123,4 +123,25 @@ describe.skipIf(process.platform === "win32")("captureBrowserLogin", () => {
     await expect(pending).rejects.toMatchObject({ reason: "closed" });
     expect(readdirSync(profiles)).toEqual([]);
   });
+
+  // A closed terminal (SIGHUP) or a `kill` (SIGTERM) used to end the CLI without
+  // cleanup: the browser kept running with its debugging port open, and the
+  // profile (which holds the session cookies once logged in) stayed on disk.
+  it.each(["SIGTERM", "SIGHUP"] as const)("leaves no browser and no profile behind when the CLI gets %s", async (signal) => {
+    process.env.FAKE_BROWSER_MODE = "never";
+    const cli = spawn(process.execPath, ["--import", "tsx", RUNNER, browser.path], { cwd: ROOT, stdio: "ignore" });
+    const exit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((r) => cli.once("exit", (code, sig) => r({ code, signal: sig })));
+    try {
+      expect(await until(() => readLog().some((l) => l.event === "cdp"), 15_000)).toBe(true);
+      const browserPid = started()!.pid;
+      expect(readdirSync(profiles)).toHaveLength(1);
+      cli.kill(signal);
+      const how = await exit;
+      expect(how.signal ?? how.code).not.toBe(0);
+      expect(await until(() => !alive(browserPid))).toBe(true);
+      expect(readdirSync(profiles)).toEqual([]);
+    } finally {
+      if (cli.exitCode === null && cli.signalCode === null) cli.kill("SIGKILL");
+    }
+  }, 30_000);
 });
