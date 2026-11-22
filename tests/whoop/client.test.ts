@@ -268,4 +268,23 @@ describe("WhoopClient", () => {
     await client.get("/progression-service/v3/trends/hrv", { endDate: "2026-05-23" });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
+
+  it("refreshes the token once and retries after a 401", async () => {
+    let token = "old";
+    const onUnauthorized = vi.fn(() => { token = "new"; });
+    fetchMock
+      .mockResolvedValueOnce(new Response("unauthorized", { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const client = new WhoopClient({ getToken: async () => token, onUnauthorized });
+    await expect(client.get("/x")).resolves.toEqual({ ok: true });
+    expect(onUnauthorized).toHaveBeenCalledWith("old");
+    expect((fetchMock.mock.calls[1]![1] as RequestInit).headers).toMatchObject({ authorization: "Bearer new" });
+  });
+
+  it("gives up with WhoopAuthExpiredError when the retry also gets 401", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("unauthorized", { status: 401 })));
+    const client = new WhoopClient({ getToken: async () => "t", onUnauthorized: () => {} });
+    await expect(client.get("/x")).rejects.toBeInstanceOf(WhoopAuthExpiredError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

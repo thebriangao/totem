@@ -12,6 +12,11 @@ export interface WhoopClientConfig {
   getToken: () => Promise<string>;
   /** Injectable clock for deterministic cache tests. */
   now?: () => number;
+  /**
+   * Called with the rejected token when Whoop answers 401, before the single
+   * retry, so the token source can force a refresh.
+   */
+  onUnauthorized?: (rejectedToken: string) => void;
 }
 
 type QueryValue = string | number | boolean | undefined | null;
@@ -292,6 +297,7 @@ export class WhoopClient {
     path: string,
     query: Record<string, QueryValue>,
     body: unknown,
+    retried = false,
   ): Promise<T> {
     const url = new URL(BASE_URL + path);
     url.searchParams.set("apiVersion", API_VERSION);
@@ -334,6 +340,13 @@ export class WhoopClient {
     }
 
     if (response.status === 401) {
+      // Whoop can reject a token before its local expiry (revocation, clock
+      // skew). Force one refresh and retry before giving up.
+      if (!retried && this.config.onUnauthorized) {
+        await response.body?.cancel().catch(() => {});
+        this.config.onUnauthorized(token);
+        return this.send<T>(method, path, query, body, true);
+      }
       throw new WhoopAuthExpiredError();
     }
     if (response.status >= 500) {
