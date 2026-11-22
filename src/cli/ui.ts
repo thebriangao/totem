@@ -310,24 +310,75 @@ export function ping(url: string, timeoutMs = 10_000): Promise<number> {
 }
 
 // ── interactive prompts ─────────────────────────────────────────────────────
-// A fresh readline per question. Long-lived readlines break when a subprocess
-// in between (e.g. the build step) inherits stdin, so we open/close per ask.
-// On EOF (piped input) the question resolves empty instead of throwing.
-async function ask(query: string): Promise<string> {
+
+/**
+ * A question was asked and the input ended before an answer came (stdin closed
+ * or redirected from /dev/null, Ctrl-D at the prompt).
+ *
+ * No answer is not an answer: it must never be read as "take the default". The
+ * prompts used to resolve "" here, and every default-yes confirmation then
+ * proceeded, so `totem cloud < /dev/null` said yes to creating apps and
+ * starting billable deploys. The prompts throw this instead and the command
+ * stops.
+ */
+export class InputClosedError extends Error {
+  constructor(public readonly question: string) {
+    super("Input ended before the question was answered.");
+    this.name = "InputClosedError";
+  }
+}
+
+// Piped input: ONE line reader per input stream for the life of the process.
+// A readline opened per question reads ahead, so with several answers piped in
+// at once the first question's reader swallowed the lines meant for the next.
+interface PipedLines { lines: string[]; waiters: Array<(line: string | null) => void>; ended: boolean }
+const pipedReaders = new WeakMap<object, PipedLines>();
+function pipedLine(): Promise<string | null> {
+  const stdin = process.stdin;
+  let state = pipedReaders.get(stdin);
+  if (!state) {
+    const fresh: PipedLines = { lines: [], waiters: [], ended: false };
+    const rl = createInterface({ input: stdin, terminal: false });
+    rl.on("line", (line) => { const w = fresh.waiters.shift(); if (w) w(line); else fresh.lines.push(line); });
+    rl.on("close", () => { fresh.ended = true; for (const w of fresh.waiters.splice(0)) w(null); });
+    pipedReaders.set(stdin, fresh);
+    state = fresh;
+  }
+  if (state.lines.length) return Promise.resolve(state.lines.shift()!);
+  if (state.ended) return Promise.resolve(null);
+  const waiting = state;
+  return new Promise((resolve) => waiting.waiters.push(resolve));
+}
+
+// On a terminal: a fresh readline per question. Long-lived readlines break when
+// a subprocess in between (e.g. the build step) inherits stdin, so we open/close
+// per ask. Resolves null when the input ends without an answer.
+async function ask(query: string): Promise<string | null> {
+  if (!process.stdin.isTTY) {
+    process.stdout.write(query);
+    const line = await pipedLine();
+    process.stdout.write("\n");
+    return line === null ? null : line.trim();
+  }
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   // Ctrl-C during a text prompt: readline swallows SIGINT (emits it on the
   // interface). Handle it here — restore the cursor, drop a line, exit.
   rl.on("SIGINT", () => { process.stderr.write("\x1b[?25h"); process.stdout.write("\n"); process.exit(130); });
   try {
-    // Resolve "" if the stream closes (EOF) so the caller falls back to its
-    // default instead of hanging.
-    return await new Promise<string>((resolve) => {
-      rl.once("close", () => resolve(""));
-      rl.question(query).then((a) => resolve(a.trim())).catch(() => resolve(""));
+    return await new Promise<string | null>((resolve) => {
+      rl.once("close", () => resolve(null));
+      rl.question(query).then((a) => resolve(a.trim())).catch(() => resolve(null));
     });
   } finally {
     rl.close();
   }
+}
+
+/** The answer, or InputClosedError when the input ended instead. */
+async function answerTo(query: string, question: string): Promise<string> {
+  const answer = await ask(query);
+  if (answer === null) throw new InputClosedError(question);
+  return answer;
 }
 
 // Kept for API compatibility; no-op now that prompts are per-call.
@@ -335,7 +386,7 @@ export function closePrompts(): void {}
 
 export async function prompt(question: string, fallback = ""): Promise<string> {
   const suffix = fallback ? c.gray(` [${fallback}]`) : "";
-  const answer = await ask(`${c.violet("?")} ${c.white(question)}${suffix}${c.gray(" ›")} `);
+  const answer = await answerTo(`${c.violet("?")} ${c.white(question)}${suffix}${c.gray(" ›")} `, question);
   return answer || fallback;
 }
 
@@ -344,6 +395,13 @@ export async function prompt(question: string, fallback = ""): Promise<string> {
 // Readline handles paste markers and editing; secrets must never be trimmed.
 async function askHidden(query: string): Promise<string> {
   const stdin = process.stdin;
+  if (!stdin.isTTY) {
+    // Piped: the shared line reader (see pipedLine), untrimmed.
+    process.stdout.write(query);
+    const line = await pipedLine();
+    process.stdout.write("\n");
+    return line ?? "";
+  }
   const wasRaw = stdin.isRaw;
   const muted = new Writable({ write(_chunk, _encoding, done) { done(); } });
   const rl = createInterface({ input: stdin, output: muted, terminal: Boolean(stdin.isTTY) });
@@ -372,9 +430,11 @@ export async function promptHidden(question: string): Promise<string> {
 // Enter — and ANY answer that isn't an explicit "no" — proceeds when `defaultYes`
 // is set. To decline you must actually type n / no / N / NO. (When `defaultYes`
 // is false it's the mirror: only an explicit y / yes proceeds.)
+//
+// The input ending is neither: it throws InputClosedError (see there).
 export async function promptYesNo(question: string, defaultYes = true): Promise<boolean> {
   const hint = defaultYes ? `${c.green(c.bold("Y"))}${c.gray("/n")}` : `${c.gray("y/")}${c.red(c.bold("N"))}`;
-  const answer = (await ask(`${c.violet("?")} ${c.white(question)} ${c.gray("(")}${hint}${c.gray(")")}${c.gray(" ›")} `)).trim().toLowerCase();
+  const answer = (await answerTo(`${c.violet("?")} ${c.white(question)} ${c.gray("(")}${hint}${c.gray(")")}${c.gray(" ›")} `, question)).trim().toLowerCase();
   if (defaultYes) return !/^(n|no)$/.test(answer);
   return /^(y|yes)$/.test(answer);
 }
@@ -385,10 +445,10 @@ export async function promptChoice(question: string, choices: string[]): Promise
   console.log(`${c.violet("?")} ${c.bold(c.white(question))}`);
   choices.forEach((ch, i) => console.log(`  ${c.cyan(c.bold(String(i + 1)))}${c.gray(".")} ${ch}`));
   for (let attempts = 0; attempts < 100; attempts++) {
-    const raw = await ask(`  ${c.gray("enter a number")}: `);
+    const raw = await answerTo(`  ${c.gray("enter a number")}: `, question);
     const n = parseInt(raw, 10);
     if (Number.isInteger(n) && n >= 1 && n <= choices.length) return n - 1;
-    if (raw === "") return 0; // EOF / piped input → first choice (safe default)
+    if (raw === "") return 0; // Enter alone → first choice
     console.log(c.red(`  Please enter 1-${choices.length}.`));
   }
   return 0;

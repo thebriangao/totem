@@ -20,7 +20,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
 import { runUpdate } from "./update.js";
-import { runScript, ping, run as runInherit } from "./ui.js";
+import { runScript, ping, run as runInherit, InputClosedError } from "./ui.js";
 import { runAuth } from "./auth.js";
 import { readLocalStatus } from "./auth_flow.js";
 import { resolveTokenFilePath } from "../whoop/token_store.js";
@@ -556,6 +556,12 @@ async function main(): Promise<number> {
 }
 
 main().then((code) => process.exit(code)).catch((err) => {
+  if (err instanceof InputClosedError) {
+    // A prompt had nobody to answer it. That is never a yes: stop here.
+    console.error(`\n${c.red("✗")} Stopped at "${err.question.trim()}": there is no terminal input to answer it.`);
+    console.error(c.gray("  Run this command in an interactive terminal."));
+    process.exit(1);
+  }
   console.error(c.red("Fatal:"), err instanceof Error ? err.stack : err);
   process.exit(1);
 });
