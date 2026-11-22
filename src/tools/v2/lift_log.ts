@@ -119,19 +119,21 @@ export function registerLiftLog(server: McpServer, client: WhoopClient): void {
       }
       window = { startMs, endMs };
     }
+    const refuseZeroRep = (sets: ReturnType<typeof zeroRepWeightedSets>) => liftError({
+      error: "Sets with weight and 0 reps are refused: WHOOP awards them a weight PR that can't be removed.",
+      sets,
+      fix: "Log only completed reps, or leave missed attempts out.",
+    });
     const zeroRep = zeroRepWeightedSets(exercises.map((e) => ({ label: e.exercise_id ?? e.name ?? "?", sets: e.sets })));
-    if (zeroRep.length > 0) {
-      return liftError({
-        error: "Sets with weight and 0 reps are refused: WHOOP awards them a weight PR that can't be removed.",
-        sets: zeroRep,
-        fix: "Log only completed reps, or leave missed attempts out.",
-      });
-    }
+    if (zeroRep.length > 0) return refuseZeroRep(zeroRep);
 
     // 2. Fresh pre-reads: exercise rows (sent verbatim), display unit, attach target.
     const resolution = await new ExerciseResolver(client).resolveAll(exercises);
     if (!resolution.ok) return liftError({ error: "Unknown exercise(s).", misses: resolution.misses });
     const items: ExerciseSets[] = resolution.exercises.map((exercise, i) => ({ exercise, sets: exercises[i]!.sets }));
+    // Again now that the exercises are known: time_seconds only excuses 0 reps on a timed exercise.
+    const zeroRepResolved = zeroRepWeightedSets(items.map(({ exercise, sets }) => ({ label: exercise.name, sets, timed: exercise.volume_input_format === "TIME" })));
+    if (zeroRepResolved.length > 0) return refuseZeroRep(zeroRepResolved);
     const problems = setShapeProblems(items);
     if (problems.length > 0) return liftError({ error: "Some sets don't fit their exercise.", problems });
     const account = await accountWeightUnit(client);

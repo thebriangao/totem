@@ -48,15 +48,18 @@ export function parseDuring(during: unknown): [number, number] | null {
 }
 
 /**
- * Sets with weight but 0 reps and no time. WHOOP awards a weight PR for them
- * (a 0×300 set won a permanent gold PR, and `v3/prs` tiles survive deleting the
- * activity), so they are refused.
+ * Sets with weight but 0 reps. WHOOP awards a weight PR for them (a 0×300 set
+ * won a permanent gold PR, and `v3/prs` tiles survive deleting the activity), so
+ * they are refused. Only a timed exercise may carry weight with no reps (a
+ * weighted hold): pass `timed` once the exercise is resolved. While it is
+ * unknown, a set with time_seconds gets the benefit of the doubt.
  */
-export function zeroRepWeightedSets(items: Array<{ label: string; sets: SetInput[] }>): Array<{ exercise: string; set_number: number; weight: number }> {
+export function zeroRepWeightedSets(items: Array<{ label: string; sets: SetInput[]; timed?: boolean }>): Array<{ exercise: string; set_number: number; weight: number }> {
   const bad: Array<{ exercise: string; set_number: number; weight: number }> = [];
   for (const it of items) {
     it.sets.forEach((s, i) => {
-      if ((s.reps ?? 0) === 0 && (s.weight ?? 0) > 0 && !s.time_seconds) bad.push({ exercise: it.label, set_number: i + 1, weight: s.weight! });
+      const timedSet = it.timed !== false && Boolean(s.time_seconds);
+      if ((s.reps ?? 0) === 0 && (s.weight ?? 0) > 0 && !timedSet) bad.push({ exercise: it.label, set_number: i + 1, weight: s.weight! });
     });
   }
   return bad;

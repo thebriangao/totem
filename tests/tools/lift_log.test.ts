@@ -154,6 +154,18 @@ describe("whoop_lift_log", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
+  it("time_seconds doesn't excuse a 0-rep weighted set on a rep exercise (it would still win a weight PR)", async () => {
+    const post = vi.fn();
+    const client = await connect(registerLiftLog, { get: whoop(), post });
+    const bypass = await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, exercises: [{ exercise_id: BENCH, sets: [{ reps: 0, weight: 300, time_seconds: 5 }] }], confirm: true } });
+    expect(bypass.isError).toBe(true);
+    expect(body(bypass).sets).toEqual([{ exercise: "Bench Press - Barbell", set_number: 1, weight: 300 }]);
+    expect(post).not.toHaveBeenCalled();
+    // a timed exercise may carry weight with no reps (a weighted hold)
+    const timed = body(await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, exercises: [{ exercise_id: "ASSAULT_AIRBIKE", sets: [{ weight: 10, time_seconds: 60 }] }] } }));
+    expect(timed.preview).toBe(true);
+  });
+
   it("timed exercises need time_seconds; unknown names get suggestions", async () => {
     const client = await connect(registerLiftLog, { get: whoop(), post: vi.fn() });
     const timed = await client.callTool({ name: "whoop_lift_log", arguments: { ...BASE_ARGS, exercises: [{ exercise_id: "ASSAULT_AIRBIKE", sets: [{ reps: 1 }] }] } });
