@@ -290,6 +290,28 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
+  it("does not retain lift reads taken while WHOOP is still catching up with a lift write", async () => {
+    let now = Date.parse("2026-11-21T20:00:00.000Z");
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 })));
+    const client = new WhoopClient({ getToken: async () => "test-bearer", now: () => now });
+    const HISTORY = "/weightlifting-service/v3/exercise/BENCHPRESS_BARBELL/exercise_history";
+    await client.post("/weightlifting-service/v2/weightlifting-workout/activity", {});
+    await client.get(HISTORY); // the page WHOOP serves before the new workout shows up
+    now += 20_000;
+    await client.get(HISTORY); // must ask WHOOP again, not replay that page for 5 minutes
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // once settled, lift reads are cached as usual
+    now += 120_000;
+    await client.get(HISTORY);
+    await client.get(HISTORY);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // deleting an activity changes lift history too
+    await client.delete("/core-details-bff/v1/cardio-details", { activityId: "a" });
+    await client.get(HISTORY);
+    await client.get(HISTORY);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+  });
+
   it("refreshes the token once and retries after a 401", async () => {
     let token = "old";
     const onUnauthorized = vi.fn(() => { token = "new"; });

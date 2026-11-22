@@ -27,6 +27,8 @@ export interface WhoopClientConfig {
 
 /** Backoff for WHOOP's 412 "User's cycle is concurrently being updated" on writes. */
 const RETRY_412_DELAYS_MS = [2_000, 10_000] as const;
+/** How long lift reads stay uncached after a write that changes them. */
+const LIFT_SETTLE_MS = 2 * 60_000;
 
 type QueryValue = string | number | boolean | undefined | null;
 
@@ -53,6 +55,7 @@ class RequestCache {
   private generation = 0;
   private loadSeq = 0;
   private readonly latestLoad = new Map<string, number>();
+  private readonly unsettledUntil = new Map<string, number>();
 
   constructor(private readonly now: () => number) {}
 
@@ -87,7 +90,7 @@ class RequestCache {
         // Whoop finishes scoring it would be misleading. A load superseded by a
         // newer one for the same key (a fresh read) must not overwrite it.
         const latest = this.latestLoad.get(key) === seq;
-        if (policy && latest && generation === this.generation && !containsPendingState(value)) {
+        if (policy && latest && generation === this.generation && !containsPendingState(value) && !this.unsettled(policy.tags)) {
           this.store(key, value, policy);
         }
         return value;
@@ -111,6 +114,15 @@ class RequestCache {
     for (const [key, entry] of this.values) {
       if (entry.tags.some((tag) => tags.includes(tag))) this.delete(key, entry);
     }
+  }
+
+  /** Serve reads tagged `tag` live, without retaining them, for the next `ms`: WHOOP is still catching up with a write. */
+  holdOff(tag: string, ms: number): void {
+    this.unsettledUntil.set(tag, this.now() + ms);
+  }
+
+  private unsettled(tags: readonly string[]): boolean {
+    return tags.some((tag) => (this.unsettledUntil.get(tag) ?? 0) > this.now());
   }
 
   private store(key: string, value: unknown, policy: { ttlMs: number; tags: readonly string[] }): void {
@@ -347,7 +359,11 @@ export class WhoopClient {
     try {
       return await this.send<T>(method, path, query, body);
     } finally {
-      this.cache.invalidate(writeInvalidationTags(path));
+      const tags = writeInvalidationTags(path);
+      this.cache.invalidate(tags);
+      // Exercise history, PRs and e1RM lag a lift or activity write (live: seconds,
+      // up to ~30 s). A page read in that gap must not be replayed for its 5-min TTL.
+      if (tags.includes("lift")) this.cache.holdOff("lift", LIFT_SETTLE_MS);
     }
   }
 
