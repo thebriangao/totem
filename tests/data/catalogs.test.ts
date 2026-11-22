@@ -21,8 +21,8 @@ describe("bundled catalogs", () => {
     expect(BEHAVIORS_BY_ID.size).toBe(BEHAVIORS.length);
   });
 
-  it("has 372 official exercises (custom filtered out)", () => {
-    expect(EXERCISES.length).toBe(372);
+  it("has 371 official exercises (custom filtered out)", () => {
+    expect(EXERCISES.length).toBe(371);
   });
 
   it("every exercise parses against its schema", () => {
