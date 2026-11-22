@@ -13,7 +13,7 @@ import { accountWeightUnit } from "../../whoop/units.js";
 import { WhoopApiError } from "../../whoop/errors.js";
 import { get } from "../../whoop/bff.js";
 import { ExerciseResolver } from "../../lib/lift_catalog.js";
-import { buildTemplateGroups, setShapeProblems, type ExerciseSets } from "../../lib/lift_sets.js";
+import { buildTemplateGroups, sentWeight, setShapeProblems, type ExerciseSets } from "../../lib/lift_sets.js";
 import { errorMessage, liftError } from "../../lib/lift_tool.js";
 import { groupExercises } from "../../projections/lift_library_v2.js";
 
@@ -56,6 +56,19 @@ function shape(groups: unknown): { ids: string[]; sets: number } {
   return { ids: ex.map((e) => e.id), sets: ex.reduce((n, e) => n + e.sets.length, 0) };
 }
 
+type Exercises = ReturnType<typeof groupExercises>;
+
+/** Same exercises in the same order, and every set's reps, weight and time as sent. */
+function sameSets(sent: Exercises, back: Exercises): boolean {
+  return sent.length === back.length && sent.every((e, i) => {
+    const b = back[i]!;
+    return e.id === b.id && e.sets.length === b.sets.length && e.sets.every((s, k) => {
+      const t = b.sets[k]!;
+      return (s.reps ?? 0) === (t.reps ?? 0) && Math.abs((s.weight ?? 0) - (t.weight ?? 0)) <= 0.05 && (s.time ?? 0) === (t.time ?? 0);
+    });
+  });
+}
+
 export function registerLiftTemplate(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: TOOL,
@@ -67,7 +80,7 @@ export function registerLiftTemplate(server: McpServer, client: WhoopClient): vo
       copy_from: z.union([z.number().int(), z.string()]).optional().describe("Template key or WHOOP prebuilt_id to copy."),
       name: z.string().min(1).max(100).optional(),
       exercises: z.array(ExerciseIn).min(1).max(30).optional().describe("Full list; replaces the current one on edit."),
-      unit: z.enum(["kg", "lb"]).default("kg").describe("Unit of the weights you give."),
+      unit: z.enum(["kg", "lb"]).optional().describe("Unit of the weights you give; required when any set has weight."),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
@@ -80,6 +93,10 @@ export function registerLiftTemplate(server: McpServer, client: WhoopClient): vo
     if (action === "copy" && copy_from === undefined) return liftError({ error: "copy needs copy_from." });
     if (action === "edit" && !name && !exercises) return liftError({ error: "edit needs a new name and/or exercises." });
     if (action === "delete" && (name || exercises)) return liftError({ error: "delete takes only template_key." });
+    // No default unit: a bare 225 read as kg on a lb account would be saved as 496 lb.
+    if (!unit && exercises?.some((e) => e.sets.some((s) => (s.weight ?? 0) > 0))) {
+      return liftError({ error: "Say which unit the weights are in: unit \"kg\" or \"lb\". Nothing is assumed." });
+    }
 
     // 2. Fresh pre-reads.
     let current: unknown = null;
@@ -135,12 +152,16 @@ export function registerLiftTemplate(server: McpServer, client: WhoopClient): vo
       const s = shape(get(current, "workout_groups"));
       return respond(TOOL, LiftTemplateOut, {
         action: "deleted", template_key: template_key!, name: currentName, exercises: s.ids.length, sets: s.sets,
-        unit: null, converted_from: null, verified: gone, warnings,
+        unit: null, sent_unit: null, verified: gone, warnings,
       });
     }
 
+    // The display unit is the last read before the write (D2). Without new sets the
+    // weights are re-sent exactly as read, so no unit is involved.
     const account = items ? await accountWeightUnit(client) : null;
-    const groups = items ? buildTemplateGroups(items, { input: unit, account: account! }) : cleanGroups(get(current, "workout_groups"));
+    const input = unit ?? account;
+    const converted = account !== null && input !== account;
+    const groups = items ? buildTemplateGroups(items, { input: input!, account: account! }) : cleanGroups(get(current, "workout_groups"));
     const finalName = name ?? (action === "copy" ? `${String(get(current, "name") ?? "Workout")} (copy)` : String(get(current, "name") ?? ""));
     const body: Record<string, unknown> = { name: finalName, workout_groups: groups };
     if (action === "edit") {
@@ -149,43 +170,56 @@ export function registerLiftTemplate(server: McpServer, client: WhoopClient): vo
       if (source === "USER" || source === "AI") body.source = source;
     }
     const sent = shape(groups);
-    const converted = account !== null && unit !== account;
 
     if (!confirm) {
+      const was = shape(get(current, "workout_groups"));
       return respond(TOOL, LiftTemplateOut, preview("POST", TEMPLATE_POST, {
         action,
         ...(action === "edit" ? { template_key, was: String(get(current, "name") ?? "") } : {}),
         ...(copiedFrom ? { copy_of: copiedFrom } : {}),
         name: finalName,
-        exercises: groupExercises(groups).map((e) => ({ id: e.id, sets: e.sets.map((s) => [s.weight, e.timed ? s.time : s.reps]) })),
-        ...(account ? { unit: account } : {}),
-        ...(converted ? { converted_from: unit } : {}),
-        ...(action === "edit" && !items ? { note: "Exercises unchanged." } : {}),
+        // New sets: weights as the caller gave them, plus `sent` (the account's unit) when converted.
+        // Unchanged sets (rename, copy): counts only; whoop_lift_library shows them with their unit.
+        ...(items
+          ? {
+              exercises: items.map(({ exercise, sets }) => ({
+                id: exercise.exercise_id,
+                sets: sets.map((s) => [s.weight ?? 0, exercise.volume_input_format === "TIME" ? (s.time_seconds ?? null) : (s.reps ?? null)]),
+                ...(converted ? { sent: sets.map((s) => sentWeight(s.weight, input!, account!)) } : {}),
+              })),
+              unit: input,
+              ...(converted ? { sent_unit: account } : {}),
+              ...(action === "edit" ? { replaces: { exercises: was.ids.length, sets: was.sets } } : {}),
+            }
+          : { exercises: sent.ids.length, sets: sent.sets, ...(action === "edit" ? { note: "Exercises unchanged." } : {}) }),
       }));
     }
 
     const receipt = await client.post(TEMPLATE_POST, body);
     const key = get(receipt, "workout_template_key");
     if (typeof key !== "number") throw new Error("WHOOP saved the template but returned no workout_template_key; check whoop_lift_library.");
-    if (action === "edit" && key !== template_key) warnings.push(`WHOOP created template ${key} instead of editing ${template_key}.`);
+    // An edit must come back under the same key. A different one means WHOOP created a
+    // new template (the key vanished after the existence check), so nothing was edited.
+    const strayed = action === "edit" && key !== template_key;
+    if (strayed) warnings.push(`WHOOP created template ${key} instead of editing ${template_key} (it no longer exists). Delete ${key} if it isn't wanted.`);
 
     let verified = false;
     try {
       const back = await client.get(templatePath(key), {}, { fresh: true });
-      const b = shape(get(back, "workout_groups"));
-      verified = get(back, "name") === finalName && b.sets === sent.sets && b.ids.join() === sent.ids.join();
-      if (!verified) warnings.push("The template read back differently from what was sent.");
+      const same = get(back, "name") === finalName && sameSets(groupExercises(groups), groupExercises(get(back, "workout_groups")));
+      if (!same) warnings.push("The template read back differently from what was sent.");
+      verified = same && !strayed;
     } catch (e) {
       warnings.push(`Read-back failed: ${errorMessage(e)}`);
     }
     return respond(TOOL, LiftTemplateOut, {
-      action: action === "create" ? "created" : action === "edit" ? "edited" : "copied",
+      action: action === "create" || strayed ? "created" : action === "edit" ? "edited" : "copied",
       template_key: key,
       name: finalName,
       exercises: sent.ids.length,
       sets: sent.sets,
-      unit: account,
-      converted_from: converted ? unit : null,
+      unit: items ? input : null,
+      sent_unit: converted ? account : null,
       verified,
       warnings,
     });

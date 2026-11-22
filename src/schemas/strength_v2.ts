@@ -168,8 +168,10 @@ export const LiftTemplateReceipt = z.object({
   name: z.string().nullable(),
   exercises: z.number().int(),
   sets: z.number().int(),
+  /** The caller's unit, when new sets were given. */
   unit: UnitT.nullable(),
-  converted_from: UnitT.nullable(),
+  /** The account's display unit, only when it differs: WHOOP received the weights in it. */
+  sent_unit: UnitT.nullable(),
   verified: z.boolean(),
   warnings: Warnings,
 });
