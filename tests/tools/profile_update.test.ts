@@ -90,6 +90,28 @@ describe("whoop_profile_update", () => {
     expect(whoop.put).not.toHaveBeenCalled();
   });
 
+  it("refuses to send a profile without email, birthday or country when the edit screen didn't return them", async () => {
+    // The PUT is a full replace; these three have only ever been sent unchanged, never omitted.
+    for (const gone of ["email", "birthday", "country"] as const) {
+      const whoop = mockWhoop({ [EDIT_PATH]: { ...EDIT, [gone]: null } });
+      const { result, out } = await call(whoop, { first_name: "New" });
+      expect(result.isError).toBe(true);
+      expect(out.error).toMatch(new RegExp(`without ${gone}`));
+      expect(whoop.put).not.toHaveBeenCalled();
+    }
+  });
+
+  it("carries email, birthday and country exactly as the edit screen has them", async () => {
+    const whoop = mockWhoop({ [EDIT_PATH]: seq(EDIT, { ...EDIT, city: null }) });
+    whoop.put.mockResolvedValueOnce(true);
+    const { out } = await call(whoop, { city: "" });
+    const body = whoop.put.mock.calls[0]![1] as Record<string, unknown>;
+    expect(body).toMatchObject({ email: "tester@example.com", birthday: "1990-05-05", country: "US", state: "IL" });
+    expect(body).not.toHaveProperty("city"); // "" clears it: WHOOP clears an omitted city
+    expect(body).not.toHaveProperty("physiological_baseline");
+    expect(out.verified).toBe(true);
+  });
+
   const refusals: Array<[string, Record<string, unknown>, RegExp]> = [
     ["weight above 272 kg", { weight: 700, weight_unit: "lb" }, /24–272 kg/],
     ["height above 2.72 m", { height: 3 }, /0.91–2.72 m/],

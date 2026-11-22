@@ -95,6 +95,12 @@ export function registerProfileUpdate(server: McpServer, client: WhoopClient): v
 
     const missing = (["first_name", "last_name", "gender", "unit_system", "height", "weight"] as const).filter((k) => next[k] === null);
     if (missing.length > 0) return fail(`Your WHOOP profile has no ${missing.join(", ")}; pass ${missing.length > 1 ? "them" : "it"} too (WHOOP requires the full profile).`);
+    // The PUT replaces the whole profile, and email, birthday and country have
+    // only ever been sent unchanged, never omitted. Don't find out what omitting does.
+    const absent = (["email", "birthday", "country"] as const).filter((k) => !next[k]);
+    if (absent.length > 0) {
+      return fail(`WHOOP's profile screen came back without ${absent.join(", ")}, and its PUT replaces the whole profile, so nothing was sent. Try again later.`);
+    }
     if (next.country === "US" && !next.state) return fail("WHOOP requires a state for US profiles; pass state.");
 
     const changes: Partial<Record<Field, [Value, Value]>> = {};
