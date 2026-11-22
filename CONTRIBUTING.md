@@ -1,38 +1,6 @@
 # Contributing to totem
 
-Pull requests welcome. The codebase is small and the test suite is fast, so iteration is quick.
-
----
-
-## Quick orientation
-
-```
-src/
-├── server.ts            # MCP entry — branches on MCP_TRANSPORT (stdio default, http opt-in)
-├── server-http.ts       # Streamable HTTP transport + bearer-token auth gate (since v1.1.0)
-├── whoop/               # Auth + HTTP-client layer (don't break unless you know what you're doing)
-│   ├── client.ts        # Outbound HTTP wrapper, error classification, 30s timeout
-│   ├── cognito.ts       # Cognito proxy auth (no AWS SDK, no client secret)
-│   ├── token_manager.ts # Auto-refresh, single-flight, persists via TokenStore
-│   ├── token_store.ts   # EnvFileTokenStore + MemoryTokenStore (since v1.1.0)
-│   ├── write_safety.ts  # preview() + withPreview() helpers
-│   ├── build_lift_body.ts
-│   ├── client.ts        # ...also holds the bounded in-memory read cache + write invalidation
-│   ├── errors.ts, json_out.ts, constants.ts, types.ts
-├── data/                # Auto-generated catalogs (behaviors, exercises, sports, endpoints)
-├── schemas/             # zod schemas for every tool's output (the contract with Claude)
-├── projections/         # Raw API response → flat domain object (one per tool group)
-├── lib/                 # walk / dates / format / stats helpers
-└── tools/
-    ├── register.ts      # Wires every tool to the MCP server
-    └── v2/              # 48 tool handlers, one per file
-```
-
-Every tool follows a three-layer pattern: **schema** (defines the output shape) → **projection** (walks the raw API response into that shape) → **tool** (registers it with the MCP server, validates input args, calls the client, runs the projection, returns).
-
-See [README.md → Architecture](README.md#architecture) for the full pattern walkthrough. See [README.md → Remote hosting](README.md#remote-hosting) for the HTTP transport architecture (added in v1.1.0).
-
----
+Pull requests are welcome. The code base is small and the tests run in a few seconds.
 
 ## Setup
 
@@ -40,110 +8,74 @@ See [README.md → Architecture](README.md#architecture) for the full pattern wa
 git clone https://github.com/thebriangao/totem.git
 cd totem
 npm install
-npx tsc && npm link          # one-time: builds + puts `totem` on PATH
-cp .env.example .env
-# edit .env with your Whoop creds
-totem auth
-totem test               # 278 tests, <2s
-totem typecheck
-totem build
-
-# stdio mode (default, for local Claude Desktop / Claude Code):
-totem dev
-
-# HTTP mode (for remote hosting via Docker/Fly/etc.):
-MCP_AUTH_TOKEN=$(openssl rand -hex 32) totem dev --http
-curl http://localhost:3000/health   # → {"status":"ok"}
+npx tsc && npm link     # builds once and puts `totem` on your PATH
+totem auth --local      # log in to WHOOP (use a test account if you have one)
+totem test
 ```
 
-> The only `npm` steps are `npm install` and the one-time `npx tsc` (you need a build before the `totem` CLI exists). Everything else is a `totem` command — `package.json` has no `scripts`. `totem test`/`dev`/`typecheck` run against the source directly, so you don't rebuild to iterate.
+`totem test`, `totem typecheck` and `totem dev` run from the source, so there is no rebuild while you work. `totem dev --http` starts the HTTP server (set `MCP_AUTH_TOKEN` to 32+ characters first).
 
----
-
-## Adding a new tool
-
-Walkthrough lives in [README.md → Adding a new tool](README.md#adding-a-new-tool). Short version:
-
-1. Pick a source endpoint (browse [`WHOOP.md`](WHOOP.md) for the relevant microservice).
-2. Add a zod schema in `src/schemas/`.
-3. Add a projection function in `src/projections/`. Tested against captured fixtures in `tests/fixtures/*.json`.
-4. Add a tool file in `src/tools/v2/` (~30 lines: register with the MCP server, parse args, call client, project, validate, return).
-5. Wire it up in `src/tools/register.ts`.
-6. Add a projection test in `tests/projections/`.
-7. `totem typecheck && totem test && totem build`.
-
----
-
-## Fixing a broken projection (Whoop API drift)
-
-When Whoop changes a response shape, projections may start returning all-null or partial outputs. They typically don't throw — zod schemas validate the *shape*, not the *content*, so null-heavy outputs pass validation silently.
-
-To debug:
-
-1. Hit the endpoint live via `whoop_raw` — get the current shape into your hands.
-2. Save it as a captured fixture under `tests/fixtures/`.
-3. Diff against the old fixture. Common drift patterns:
-   - Tile types renamed (e.g. `GRAPHING_CARD` → `SCORE_GAUGE`)
-   - Card titles changed (e.g. `"RECOVERY"` → no title, identified by `content.id` instead)
-   - Sport name mappings changed (e.g. `weightlifting_msk` exposed via different internal_name)
-4. Rewrite the projection to walk the new shape.
-5. Update the per-projection tests with the new expected values.
-6. Document the migration in [`WHOOP.md`](WHOOP.md) so the next person knows.
-
-Recent precedents to read:
-- May 2026 deep-dive migration: `src/projections/recovery.ts`, `src/projections/strain.ts`. See [Pattern 2b in the endpoints doc](WHOOP.md).
-- Sport-name filter fix: `src/projections/lift_history.ts` — old `/strength/i` regex matched none of `weightlifting_msk` / `weightlifting` / `powerlifting`.
-
----
-
-## Testing
-
-- **`totem test`** — 278 unit tests in <2s. Fixture-driven for projections; integration-style for the HTTP transport (`tests/whoop/http_auth.test.ts` spins up a real `http.Server` and hits it with `fetch`).
-- **Live-API tests live in a separate `whoop-testing` archive.** They require a dummy account and aren't safe to expose to first-time users. If you want to add or run them, ask Brian.
-- When fixing a projection, update its fixture in `tests/fixtures/` and the corresponding test in `tests/projections/` (`round1`/`round2`/`round3`, plus `round3_data_fixes.test.ts` for the live-audit data-extraction regressions).
-- When changing the HTTP transport (`src/server-http.ts`) or auth model, add coverage to `tests/whoop/http_auth.test.ts`. The pattern is: boot a real server on an ephemeral port with a stub `WhoopClient`, then assert with `fetch()`.
-- **CI runs the same checks on every PR.** `.github/workflows/ci.yml` runs `tsc --noEmit`, the full `vitest` suite, and a build on each push to `main` and each pull request. Run `totem typecheck && totem test && totem build` locally before opening a PR and it'll pass green — nothing reaches `main` (or a merge) without it.
-
----
-
-## Code style
-
-- TypeScript 6 strict mode (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`).
-- No `any`. Use `unknown` + narrow with `isObject` / `asString` / `asNumber` from `src/lib/walk.ts`.
-- Match the existing conventions in adjacent files — don't unilaterally refactor.
-- Don't add features beyond what the task requires.
-- One tool per file. ~30 lines is normal; over 100 is a smell unless the schema is genuinely complex (`whoop_smart_alarm_set` has 4 modes — that's fine).
-
----
-
-## Commit style
-
-Follow what's already in the log:
+## How the code is laid out
 
 ```
-fix: whoop_recovery + whoop_strain were silently returning all-null
-
-<one paragraph explaining what broke and how you found it>
-<one paragraph on the fix>
-<verification: live-API check or test result>
+src/
+├── server.ts            stdio entry (what an app starts on your computer)
+├── server-http.ts       HTTP entry: MCP, OAuth sign-in, consent and Connect pages, /admin/tokens
+├── cloudflare/          the same server inside a Durable Object (wrangler.jsonc builds it)
+├── whoop/               WHOOP client and login
+│   ├── client.ts          requests, errors, the bounded read cache, 401 refresh-and-retry
+│   ├── token_manager.ts   one owner per login, keep-alive, rotation saved before use
+│   ├── token_store.ts     the token file (and a memory store for tests)
+│   ├── oauth_provider.ts  OAuth 2.1 for apps that connect to a server
+│   └── consent_page.ts, connect_page.ts   the two pages a person sees
+├── tools/
+│   ├── register.ts        the 40 tools, in order
+│   └── v2/                one file per tool
+├── projections/v2/      WHOOP's responses turned into the compact shapes tools return
+├── lib/                 dates, time zones, times as tools take them, install links, helpers
+├── data/                catalogs generated from WHOOP (exercises, behaviours, sports, endpoints)
+└── cli/                 the `totem` command: setup flows, connect, auth, update, the UI kit
 ```
 
-For commits that change behavior, include a before/after measurement when possible. The bug reports + fixes in the existing log are good models.
+A tool reads from WHOOP through `WhoopClient`, turns the response into a small shape with a projection, and returns it as compact JSON. A tool that writes returns a preview (`will_execute`) unless it gets `confirm: true`, then reads back what it wrote to check it landed.
 
----
+## Rules the tests hold you to
+
+- **Token budget.** The whole tool list must stay at or under 36,000 characters (`tests/tools/registry.test.ts`), and a default call at about 1.5 KB (`tests/tools/default_output_budget.test.ts`). Every character in a description is paid on every turn of every conversation.
+- **TOOLS.md is generated.** After changing a tool, run `npx tsx scripts/tools-md.ts > TOOLS.md`.
+- **The CLI's screens are snapshots** (`tests/cli/screens/`). Run the tests with `-u` after a deliberate change and read the diff. Colour must only decorate, lines stay within 80 columns, and there is an ASCII fallback.
+- **No real data in fixtures.** Fixtures come from a test account or are made up. Never commit anything from a real person's account.
+
+## Adding a tool
+
+Think twice: a new tool costs tokens for everyone, and most ideas fit an existing tool as an `include` option or an input.
+
+1. Find the endpoint (see [WHOOP.md](WHOOP.md); `whoop_raw` lets you call it).
+2. Save a response from a test account under `tests/fixtures/`.
+3. Write the projection in `src/projections/v2/` and its test.
+4. Write the tool in `src/tools/v2/` and add it to `src/tools/register.ts` and the groups in `scripts/tools-md.ts`.
+5. `totem typecheck && totem test`, then regenerate TOOLS.md.
+
+## When WHOOP changes something
+
+A tool starts returning nulls, or a write starts failing. Call the endpoint with `whoop_raw`, save the new response as a fixture, update the projection and its test, and note the change in [WHOOP.md](WHOOP.md).
+
+## Before you open a pull request
+
+```bash
+totem typecheck && npx tsc --noEmit -p tsconfig.test.json && totem test
+```
+
+CI runs the same on every pull request. Describe what changed and how you checked it; for a tool, say which account (test or your own) you tried it against.
+
+## Commits
+
+One change per commit, a subject that says what is now true ("whoop_sleep refuses an activity that isn't a sleep"), and a body with what broke, how you found it and how you checked the fix.
 
 ## Reporting bugs
 
-Open an issue with:
-- Which tool
-- The exact arguments you called it with
-- The full output (especially if it's all-null or partial)
-- The current state of your account that should be in the output (e.g. "I have 3 workouts on May 23 but `whoop_workouts` returns empty")
-
-If you can attach a `whoop_raw` capture of the underlying endpoint, even better.
-
----
+Open an issue with the tool, the exact inputs, what it returned and what you expected. A `whoop_raw` response of the endpoint behind it helps a lot (remove anything personal first).
 
 ## Code of conduct
 
-Be decent. This is a small project run by a teenager.
+Be kind. This is a small project.
