@@ -10,7 +10,7 @@
 //
 // Gated by the static MCP_AUTH_TOKEN only. OAuth access tokens issued to
 // claude.ai can call tools but can't replace the login.
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { decodeJwtExp } from "./whoop/cognito.js";
 import { inferClientId, onMountedVolume, inContainer, type TokenRecord, type TokenSource } from "./whoop/token_store.js";
@@ -33,11 +33,17 @@ function digest(value: string): Buffer {
   return createHash("sha256").update(value).digest();
 }
 
+/** Shortest MCP_AUTH_TOKEN the endpoint will run behind (the HTTP server enforces the same). */
+const MIN_AUTH_TOKEN_LENGTH = 16;
+
 /** Constant-time check of `authorization: Bearer <token>` against the static token. */
 export function bearerMatches(header: string | undefined, expected: string): boolean {
+  if (!expected) return false; // an unset token must never match (`Bearer <NBSP>` trims to "")
   const m = /^Bearer\s+(.+)$/i.exec(header ?? "");
   if (!m) return false;
-  return timingSafeEqual(digest(m[1]!.trim()), digest(expected));
+  const presented = m[1]!.trim();
+  if (!presented) return false;
+  return timingSafeEqual(digest(presented), digest(expected));
 }
 
 export type PushBody = {
@@ -72,6 +78,11 @@ export function parsePushBody(body: unknown): PushBody | string {
 
 /** Mount /admin/tokens on an Express app. */
 export function mountAdminTokens(app: Express, opts: AdminTokensOptions): void {
+  // This token is all that stands between the internet and the WHOOP login.
+  // Without a real one the endpoint must not exist at all.
+  if (typeof opts.authToken !== "string" || opts.authToken.length < MIN_AUTH_TOKEN_LENGTH) {
+    throw new Error(`/admin/tokens needs an MCP_AUTH_TOKEN of at least ${MIN_AUTH_TOKEN_LENGTH} characters.`);
+  }
   const now = opts.now ?? Date.now;
   // Failed-auth ceiling across all clients: a guesser can't dilute it by
   // rotating IPs (X-Forwarded-For is spoofable).
@@ -99,15 +110,18 @@ export function mountAdminTokens(app: Express, opts: AdminTokensOptions): void {
     return { ...status, durable };
   };
 
-  app.get("/admin/tokens", (req, res) => {
-    if (!gate(req, res)) return;
+  // The token is checked before anything else: an unauthenticated caller never
+  // gets a body read or parsed.
+  const requireToken = (req: Request, res: Response, next: NextFunction): void => {
     res.setHeader("cache-control", "no-store");
+    if (gate(req, res)) next();
+  };
+
+  app.get("/admin/tokens", requireToken, (_req, res) => {
     res.json(statusBody());
   });
 
-  app.post("/admin/tokens", express.json({ limit: "32kb" }), (req, res) => {
-    if (!gate(req, res)) return;
-    res.setHeader("cache-control", "no-store");
+  app.post("/admin/tokens", requireToken, express.json({ limit: "32kb" }), (req, res) => {
     const parsed = parsePushBody(req.body);
     if (typeof parsed === "string") {
       res.status(400).json({ error: "invalid_request", error_description: parsed });
@@ -133,5 +147,25 @@ export function mountAdminTokens(app: Express, opts: AdminTokensOptions): void {
     }
     const exp = decodeJwtExp(record.access_token) * 1000;
     res.json({ ok: true, access_expires_at: exp ? new Date(exp).toISOString() : null, ...statusBody() });
+  });
+
+  // A body that fails to parse (or is too large) must not reach Express's
+  // default error handler: it logs the error object, and body-parser attaches
+  // the raw body to it, which here holds the WHOOP tokens. Answer in JSON and
+  // log nothing.
+  app.use("/admin/tokens", (err: unknown, _req: Request, res: Response, _next: NextFunction): void => {
+    if (res.headersSent) {
+      res.end(); // nothing more to say, and the error must not be passed on to be logged
+      return;
+    }
+    const e = err as { status?: unknown; statusCode?: unknown; type?: unknown };
+    const status = typeof e?.status === "number" ? e.status : typeof e?.statusCode === "number" ? e.statusCode : 500;
+    if (status === 413) {
+      res.status(413).json({ error: "invalid_request", error_description: "The body is too large (32 KB at most)." });
+    } else if (status >= 400 && status < 500) {
+      res.status(status).json({ error: "invalid_request", error_description: "The body isn't valid JSON." });
+    } else {
+      res.status(500).json({ error: "server_error", error_description: "The request failed." });
+    }
   });
 }

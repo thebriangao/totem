@@ -1,6 +1,8 @@
 // POST/GET /admin/tokens: how `totem auth` pushes a login to a deployment.
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
+import { createHmac } from "node:crypto";
+import { inspect } from "node:util";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import { bearerMatches, mountAdminTokens, parsePushBody } from "../../src/server-admin.js";
@@ -137,6 +139,64 @@ describe("admin helpers", () => {
     expect(parsePushBody({ access_token: access })).toMatch(/refresh_token/);
     expect(parsePushBody(body)).toMatchObject({ access_token: access, user_id: 44 });
   });
+
+  it("an unset or short MCP_AUTH_TOKEN never opens the endpoint", () => {
+    // `Bearer <NBSP><NBSP>` trims to "", which would equal an empty token.
+    expect(bearerMatches("Bearer   ", "")).toBe(false);
+    expect(bearerMatches("Bearer x", "")).toBe(false);
+    expect(() => mountAdminTokens(express(), { authToken: "", tokens: fakeTokens() })).toThrow(/MCP_AUTH_TOKEN/);
+    expect(() => mountAdminTokens(express(), { authToken: "short-token", tokens: fakeTokens() })).toThrow(/MCP_AUTH_TOKEN/);
+  });
+});
+
+describe("bodies the endpoint must not parse, echo or log", () => {
+  // Express logs unhandled errors unless NODE_ENV is "test" (vitest's default),
+  // so run this app the way the Docker image does.
+  let s: Server;
+  let url: string;
+  let t: ReturnType<typeof fakeTokens>;
+  beforeAll(async () => {
+    const app = express();
+    app.set("env", "production");
+    mountAdminTokens(app, { authToken: TOKEN, tokens: { adopt: (r) => t.adopt(r), status: () => t.status(), current: () => t.current() } });
+    s = await new Promise<Server>((res) => { const x = app.listen(0, "127.0.0.1", () => res(x)); });
+    url = `http://127.0.0.1:${(s.address() as AddressInfo).port}/admin/tokens`;
+  });
+  afterAll(() => new Promise<void>((res) => s.close(() => res())));
+  beforeEach(() => { t = fakeTokens(); });
+
+  const raw = (payload: string, auth: string | null) =>
+    fetch(url, { method: "POST", headers: { "content-type": "application/json", ...(auth ? { authorization: auth } : {}) }, body: payload });
+  const secret = `rt-${"s".repeat(60)}`;
+  const malformed = `{"access_token": "${access}", refresh_token: "${secret}"}`; // a quoting slip in a hand-written push
+  const oversized = JSON.stringify({ ...body, pad: "x".repeat(40_000) });
+
+  it("checks the token before it reads a body", async () => {
+    expect((await raw(oversized, null)).status).toBe(401);
+    expect((await raw(malformed, "Bearer wrong")).status).toBe(401);
+  });
+
+  it("answers a malformed or oversized body in JSON, without echoing or logging it", async () => {
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => { logged.push(args.map((a) => inspect(a)).join(" ")); });
+    try {
+      const bad = await raw(malformed, `Bearer ${TOKEN}`);
+      expect(bad.status).toBe(400);
+      expect(bad.headers.get("content-type")).toMatch(/application\/json/);
+      const badText = await bad.text();
+      expect(JSON.parse(badText)).toMatchObject({ error: "invalid_request" });
+      const big = await raw(oversized, `Bearer ${TOKEN}`);
+      expect(big.status).toBe(413);
+      expect(JSON.parse(await big.text())).toMatchObject({ error: "invalid_request" });
+      for (const text of [badText, ...logged]) {
+        expect(text).not.toContain(secret); // the body held a refresh token
+        expect(text).not.toContain(access);
+      }
+      expect(t.adopt).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe("startHttpServer mounts /admin/tokens when given the token manager", () => {
@@ -150,5 +210,22 @@ describe("startHttpServer mounts /admin/tokens when given the token manager", ()
     const r = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" }, body: JSON.stringify(body) });
     expect(r.status).toBe(200);
     expect(t.adopt).toHaveBeenCalledOnce();
+
+    // An OAuth access token (what claude.ai holds) opens /mcp but not the login.
+    const b64u = (o: object): string => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const signingSecret = createHmac("sha256", TOKEN).update("totem/oauth-jwt-signing/v1").digest("hex");
+    const nowS = Math.floor(Date.now() / 1000);
+    const data = `${b64u({ alg: "HS256", typ: "JWT" })}.${b64u({ cid: "c.test", scopes: [], iat: nowS, typ: "access", exp: nowS + 3600 })}`;
+    const oauth = `${data}.${createHmac("sha256", signingSecret).update(data).digest("base64url")}`;
+    const mcp = await fetch(`http://127.0.0.1:${port}/mcp`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${oauth}`, "content-type": "application/json", accept: "application/json, text/event-stream" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "0" } } }),
+    });
+    expect(mcp.status).toBe(200); // the token is genuine
+    expect((await fetch(url, { headers: { authorization: `Bearer ${oauth}` } })).status).toBe(401);
+    const push = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${oauth}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+    expect(push.status).toBe(401);
+    expect(t.adopt).toHaveBeenCalledOnce(); // still only the static-token push
   });
 });
