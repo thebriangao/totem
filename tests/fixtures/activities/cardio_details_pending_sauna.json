@@ -1,0 +1,415 @@
+{
+ "link_workout_option_enabled": false,
+ "title_bar": {
+  "title_display": "DRY SAUNA",
+  "subtitle_display": "Today 7:00 AM to 7:20 AM"
+ },
+ "horizontal_stat": {
+  "stat_main_value_display": "---",
+  "stat_title_display": "ACTIVITY STRAIN",
+  "stat_title_suffix_display": null,
+  "stat_comparison_display": null,
+  "stat_trend_type": null,
+  "stat_icon_display": null,
+  "stat_main_value_color": null
+ },
+ "horizontal_stats": [
+  {
+   "stat_main_value_display": "---",
+   "stat_title_display": "ACTIVITY STRAIN",
+   "stat_title_suffix_display": null,
+   "stat_comparison_display": null,
+   "stat_trend_type": null,
+   "stat_icon_display": null,
+   "stat_main_value_color": null
+  }
+ ],
+ "key_metric_carousel": {
+  "title": "KEY STATISTICS",
+  "subtitle": "VS. 30 DAY AVERAGE",
+  "key_metric_tile": [
+   {
+    "key_metric_tile_icon": "CALORIES",
+    "key_metric_tile_title_display": "CALORIES",
+    "key_metric_tile_stat_value_display": "0",
+    "key_metric_tile_suffix_display": "cals",
+    "key_metric_tile_trend_display": null,
+    "key_metric_tile_trend_type": null
+   },
+   {
+    "key_metric_tile_icon": "HEART_RATE",
+    "key_metric_tile_title_display": "AVG HR",
+    "key_metric_tile_stat_value_display": "0",
+    "key_metric_tile_suffix_display": "bpm",
+    "key_metric_tile_trend_display": null,
+    "key_metric_tile_trend_type": null
+   },
+   {
+    "key_metric_tile_icon": "MAX_HEART_RATE",
+    "key_metric_tile_title_display": "MAX HR",
+    "key_metric_tile_stat_value_display": "0",
+    "key_metric_tile_suffix_display": "bpm",
+    "key_metric_tile_trend_display": null,
+    "key_metric_tile_trend_type": null
+   },
+   {
+    "key_metric_tile_icon": "DURATION",
+    "key_metric_tile_title_display": "DURATION",
+    "key_metric_tile_stat_value_display": "0:20",
+    "key_metric_tile_suffix_display": ":00",
+    "key_metric_tile_trend_display": null,
+    "key_metric_tile_trend_type": null
+   }
+  ]
+ },
+ "graph_response": {
+  "id": null,
+  "plane": {
+   "lines": [
+    {
+     "position": 0.25,
+     "axis": "X_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    },
+    {
+     "position": 0.5,
+     "axis": "X_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    },
+    {
+     "position": 0.75,
+     "axis": "X_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    },
+    {
+     "position": 1,
+     "axis": "X_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    },
+    {
+     "position": 0.25,
+     "axis": "Y_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    },
+    {
+     "position": 0.5,
+     "axis": "Y_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    },
+    {
+     "position": 0.75,
+     "axis": "Y_AXIS",
+     "type": "STANDARD",
+     "style": "HEART_RATE",
+     "label": null,
+     "label_style": null,
+     "theme": null
+    }
+   ],
+   "accessibility_info": {
+    "label": "A graph displaying the heart rates collected during the activity in view."
+   },
+   "start_yaxis": {
+    "type": "TIME_MARKER",
+    "style": null,
+    "labels": [
+     {
+      "label": "40",
+      "position": 0.25,
+      "style": "STANDARD",
+      "sub_label": null,
+      "id": null,
+      "icon": null
+     },
+     {
+      "label": "60",
+      "position": 0.5,
+      "style": "STANDARD",
+      "sub_label": null,
+      "id": null,
+      "icon": null
+     },
+     {
+      "label": "80",
+      "position": 0.75,
+      "style": "STANDARD",
+      "sub_label": null,
+      "id": null,
+      "icon": null
+     },
+     {
+      "label": "100",
+      "position": 1,
+      "style": "STANDARD",
+      "sub_label": null,
+      "id": null,
+      "icon": null
+     }
+    ],
+    "offset": 0.075,
+    "axis_description": "7:00 AM",
+    "scrim_present": true,
+    "theme": null
+   },
+   "end_yaxis": {
+    "type": "TIME_MARKER",
+    "style": null,
+    "labels": [],
+    "offset": 0.075,
+    "axis_description": "7:20 AM",
+    "scrim_present": true,
+    "theme": null
+   },
+   "bottom_xaxis": null,
+   "enable_advanced_haptics": true,
+   "top_xaxis": null
+  },
+  "plots": [
+   {
+    "plot": {
+     "segments": [],
+     "style": "STRAIN_HEART_RATE",
+     "diagonal_points": null,
+     "theme": null,
+     "id": "STRAIN_HEART_RATE",
+     "hide_while_scrubbing": false,
+     "skip_scrubbing": null
+    },
+    "type": "LINE_PLOT"
+   }
+  ],
+  "graph_title_display": "HEART RATE",
+  "graph_buttons": null,
+  "layout_direction": "LEFT_TO_RIGHT",
+  "spotlight_target_id": null
+ },
+ "vow_response_string": null,
+ "bar_graph_container": {
+  "duration_title_display": "DURATION",
+  "duration_display": "0:20:00",
+  "typical_range_title_display": "TYPICAL RANGE",
+  "heart_rate_zones": [
+   {
+    "bar_graph_tile_title_display": "ZONE 5 (90-100%)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": ":00",
+    "id": "MAX",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "MAX_HR_ZONE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "ZONE 4 (80-90%)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": ":00",
+    "id": "HARD",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "HARD_HR_ZONE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "ZONE 3 (70-80%)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": ":00",
+    "id": "MODERATE",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "MODERATE_HR_ZONE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "ZONE 2 (60-70%)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": ":00",
+    "id": "LIGHT",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "LIGHT_HR_ZONE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "ZONE 1 (50-60%)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": ":00",
+    "id": "VERY_LIGHT",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "VERY_LIGHT_HR_ZONE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   },
+   {
+    "bar_graph_tile_title_display": "RESTORATIVE (<50%)",
+    "bar_graph_tile_percentage_display": "0%",
+    "bar_graph_tile_time_display": "0:00",
+    "bar_graph_tile_time_suffix_display": ":00",
+    "id": "RESTORATIVE",
+    "bar_graph": {
+     "graph_fill_percentage": 0,
+     "time_bound_ranges": [],
+     "graph_range_endpoints": null
+    },
+    "tile_style": "RESTORATIVE_HR_ZONE",
+    "bar_graph_tile_subtitle_display": null,
+    "show_radio_toggle": null,
+    "hide_background": null,
+    "annotation_description": null
+   }
+  ],
+  "time_splice_layout_direction": "LEFT_TO_RIGHT"
+ },
+ "map": null,
+ "details_edit_components": {
+  "edit_activity_title_display": "EDIT ACTIVITY",
+  "single_score_type": "RECOVERY",
+  "activity_type_internal_name": "sauna",
+  "location": null,
+  "time_divider_title_display": "TIME",
+  "start_time_selector": {
+   "selected_time_title_display": "Start Time",
+   "formatted_time_display": "7:00 AM",
+   "initial_time": "2026-11-21T15:00:00.000Z"
+  },
+  "end_time_selector": {
+   "selected_time_title_display": "End Time",
+   "formatted_time_display": "7:20 AM",
+   "initial_time": "2026-11-21T15:20:00.000Z"
+  },
+  "location_divider_title_display": "LOCATION",
+  "location_prompt_display": "Where did you wear your WHOOP?",
+  "call_to_action_display": "SAVE",
+  "allowed_strap_locations": [
+   {
+    "strap_location_title_display": "---",
+    "strap_location": 0
+   },
+   {
+    "strap_location_title_display": "PERFORMANCE TANK",
+    "strap_location": 12
+   },
+   {
+    "strap_location_title_display": "MEN'S SWIMSUIT",
+    "strap_location": 13
+   },
+   {
+    "strap_location_title_display": "WOMEN'S SWIMSUIT",
+    "strap_location": 14
+   },
+   {
+    "strap_location_title_display": "CYCLING BIB",
+    "strap_location": 15
+   },
+   {
+    "strap_location_title_display": "WRIST BAND",
+    "strap_location": 1
+   },
+   {
+    "strap_location_title_display": "BICEP BAND",
+    "strap_location": 2
+   },
+   {
+    "strap_location_title_display": "ARM SLEEVE",
+    "strap_location": 3
+   },
+   {
+    "strap_location_title_display": "UNDERWEAR",
+    "strap_location": 10
+   },
+   {
+    "strap_location_title_display": "BRA",
+    "strap_location": 11
+   },
+   {
+    "strap_location_title_display": "SHORTS",
+    "strap_location": 7
+   },
+   {
+    "strap_location_title_display": "COMPRESSION TOP",
+    "strap_location": 6
+   },
+   {
+    "strap_location_title_display": "LEGGINGS",
+    "strap_location": 9
+   }
+  ]
+ },
+ "strain_breakdown": null,
+ "weightlifting_cardio_details": null,
+ "menu_options": [
+  {
+   "display_label": "Edit",
+   "action": "EDIT",
+   "destination": null,
+   "icon": "PENCIL",
+   "analytic_event": null
+  },
+  {
+   "display_label": "Delete",
+   "action": "DELETE",
+   "destination": null,
+   "icon": "DELETE",
+   "analytic_event": null
+  }
+ ],
+ "additional_info_text": null
+}
