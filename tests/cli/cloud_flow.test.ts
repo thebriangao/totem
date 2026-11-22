@@ -2,6 +2,7 @@
 // but stopped short of the last screen, and a second run over an existing
 // deployment. Driven with the fake world (helpers.ts): no host, no login.
 import { afterEach, describe, expect, it } from "vitest";
+import { chmodSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runCli, type AppCtx } from "../../src/cli/app.js";
 import { readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
@@ -56,6 +57,29 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
     expect(text).toContain("The deploy finished, but the server isn't answering.");
     expect(text).not.toContain(own);
     expect(text).not.toContain(PASSWORD);
+  });
+});
+
+// The own-server flow writes the server's secrets to .env.deploy and says the
+// file is readable only by you. That has to hold when the file already existed.
+describe.skipIf(process.platform === "win32")("totem cloud: .env.deploy", () => {
+  const ownServer: WorldOptions = { answers: [["Where should the server run?", 3], ["Public https URL", "totem.example.com"]] };
+  const mode = (path: string): string => (statSync(path).mode & 0o777).toString(8);
+
+  it("is 0600 when the flow creates it", async () => {
+    const { w, text } = await cloud(ownServer);
+    expect(text).toContain("readable only by you");
+    expect(mode(join(w.root, ".env.deploy"))).toBe("600");
+  });
+
+  it("is 0600 when a world-readable one was already there", async () => {
+    const { w } = await cloud(ownServer, (world_) => {
+      writeFileSync(join(world_.root, ".env.deploy"), "MCP_AUTH_TOKEN=from-an-earlier-run\n");
+      chmodSync(join(world_.root, ".env.deploy"), 0o644);
+    });
+    const file = join(w.root, ".env.deploy");
+    expect(readFileSync(file, "utf8")).toContain(`MCP_AUTH_TOKEN=${TOKEN}`);
+    expect(mode(file)).toBe("600");
   });
 });
 

@@ -17,7 +17,7 @@ import { resolve } from "node:path";
 import { pkgBin } from "./spawn.js";
 import { realAuthDeps, runAuth } from "./auth.js";
 import { readDeployRecord, writeDeployRecord, type DeployRecord } from "./deploy_record.js";
-import { migrateFromEnv, resolveTokenFilePath } from "../whoop/token_store.js";
+import { migrateFromEnv, resolveTokenFilePath, writeFileAtomic } from "../whoop/token_store.js";
 import {
   CLIENTS, FIRST_QUESTION, SERVER_NAME, applyRecipe, connectCard, findClient, lastLine, recipeLines, tildify,
   type Client, type Target,
@@ -791,7 +791,11 @@ async function askUrl(io: Io, question: string): Promise<string> {
 async function deployCustom(d: Deploy): Promise<string | null> {
   const { ui, sys } = d.io;
   const envFile = resolve(d.root, ".env.deploy");
-  writeFileSync(envFile, Object.entries(d.env).map(([k, v]) => `${k}=${v}`).join("\n") + "\nPUBLIC_URL=https://CHANGE-ME-to-your-public-https-address\n", { mode: 0o600 });
+  // Replaced, not written in place: a mode given to writeFileSync only applies
+  // to a file it creates, so an .env.deploy that was already there (from an
+  // earlier run, or copied in) kept whatever permissions it had while the next
+  // line called it "readable only by you".
+  writeFileAtomic(envFile, Object.entries(d.env).map(([k, v]) => `${k}=${v}`).join("\n") + "\nPUBLIC_URL=https://CHANGE-ME-to-your-public-https-address\n");
   const width = ui.style.width - 7;
   ui.ok("Settings written", `${tildify(envFile, sys.home)}, readable only by you`);
   ui.para("That file holds the server's secrets. totem doesn't run Docker for you; these are the steps:");
