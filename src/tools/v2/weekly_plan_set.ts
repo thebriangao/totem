@@ -104,19 +104,28 @@ export function registerWeeklyPlanSet(server: McpServer, client: WhoopClient): v
         if (w.method === "PUT") await client.put(w.path, w.body);
         else await client.delete(w.path);
       } catch (error) {
-        if (error instanceof WhoopApiError) return writeRejected("weekly plan change", w.path, error);
+        if (error instanceof WhoopApiError) {
+          // end_plan is several DELETEs: say which ones already went through.
+          const done = writes.slice(0, writes.indexOf(w)).map((x) => `${x.method} ${x.path}`);
+          return writeRejected("weekly plan change", w.path, error, done.length ? `Already applied before this failed: ${done.join("; ")}.` : undefined);
+        }
         throw error;
       }
     }
 
     const after: WeeklyPlanOutT = await readWeeklyPlan(client, date, true);
     const goal = after.goals.find((g) => g.type === type);
+    // set_goal is verified only by the target itself: a goal whose target can't be read proves nothing.
     const verified = action === "set_goal"
-      ? Boolean(goal) && (goal!.target === null || goal!.target === target)
+      ? goal?.target === target
       : action === "remove_goal"
         ? !goal
         : !after.has_plan || after.goals.length === 0;
-    if (!verified) warnings.push("The plan read back doesn't show the change yet; check whoop_weekly_plan.");
+    if (!verified) {
+      warnings.push(action === "set_goal" && goal && goal.target === null
+        ? "The goal is in the plan but its target couldn't be read back; check whoop_weekly_plan."
+        : "The plan read back doesn't show the change yet; check whoop_weekly_plan.");
+    }
     return respond("whoop_weekly_plan_set", WeeklyPlanSetOut, { action, verified, plan: after, warnings });
   });
 }

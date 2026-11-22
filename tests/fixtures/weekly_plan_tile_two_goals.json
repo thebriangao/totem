@@ -1,0 +1,85 @@
+{
+ "tile": {
+  "content": {
+   "title": "CUSTOM PLAN",
+   "days_left_display": "2 days left",
+   "progress_bar": {
+    "percent_string": "5%",
+    "percent_subtitle": "ACCOMPLISHED",
+    "percent_value": 5,
+    "percent_symbol": "%"
+   },
+   "items": [
+    {
+     "id": "STRENGTH_TRAINING_TIME",
+     "title": "2:00+ Strength Activity Time",
+     "circular_progress_indicator": {
+      "id": null,
+      "current_progress_steps": null,
+      "current_progress_percentage": {
+       "text_display": "0:12",
+       "percentage": 10.722222222222221,
+       "style": "WEEKLY_PLAN_IN_PROGRESS"
+      }
+     },
+     "goal_type": null,
+     "destination": {
+      "screen": "WEEKLY_PLAN_OVERVIEW",
+      "parameters": {
+       "scroll_id": "STRENGTH_TRAINING_TIME"
+      }
+     }
+    },
+    {
+     "id": "STEPS",
+     "title": "8,000+ Steps",
+     "circular_progress_indicator": {
+      "id": null,
+      "current_progress_steps": {
+       "text_display": "0/7",
+       "current_step": 0,
+       "total_steps": 7,
+       "style": "WEEKLY_PLAN_IN_PROGRESS",
+       "text_display_options": []
+      },
+      "current_progress_percentage": null
+     },
+     "goal_type": null,
+     "destination": {
+      "screen": "WEEKLY_PLAN_OVERVIEW",
+      "parameters": {
+       "scroll_id": "STEPS"
+      }
+     }
+    }
+   ],
+   "card_button": {
+    "id": null,
+    "title": "VIEW MY PLAN",
+    "icon": null,
+    "icon_tint": null,
+    "icon_configuration": null,
+    "style": "DEFAULT",
+    "background_style": null,
+    "destination": {
+     "screen": "WEEKLY_PLAN_OVERVIEW",
+     "parameters": {}
+    },
+    "dismiss_event": null,
+    "action": null,
+    "modal": null,
+    "card_name": null,
+    "size": "COMPACT",
+    "corner_radius": null,
+    "text_style": null,
+    "analytic_event": null,
+    "analytic_events": {},
+    "bindings": null,
+    "aggregate_bindings": null,
+    "is_enabled": null,
+    "generic_interaction": null
+   }
+  },
+  "type": "WEEKLY_PLAN_HOME_TILE"
+ }
+}

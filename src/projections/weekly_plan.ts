@@ -55,7 +55,9 @@ export function projectWeeklyPlan(v1: unknown, tile: unknown, date: string): Wee
   const goals = ids.map((id) => {
     const card = get(arr(sections.find((g) => g.id === id)?.goal_cards)[0], "content");
     const item = homeItems.find((i) => i.id === id);
-    const title = str(get(card, "title")) ?? str(get(item, "title"));
+    // The target sits in whichever title has it: the v1 steps card says "8,000+ Steps", but the
+    // v1 time-goal card is just "Strength Activity Time" and only the tile says "2:00+ …".
+    const target = goalTarget(str(get(card, "title"))) ?? goalTarget(str(get(item, "title")));
     const p = progress(get(card, "circular_progress_indicator") ?? get(item, "circular_progress_indicator"));
     // "Steps Taken This Week: 1,197", or a time goal's "0:32" (h:mm done so far).
     const weekText = str(get(card, "plan_progress_status", "title"));
@@ -63,7 +65,7 @@ export function projectWeeklyPlan(v1: unknown, tile: unknown, date: string): Wee
     const thisWeek = weekText && /this week/i.test(weekText)
       ? parseNumber(weekText.split(":").pop())
       : doneMs !== null ? Math.round(doneMs / 60_000) : null;
-    return { type: id, target: goalTarget(title), days_met: p.days_met, pct: p.pct, this_week: thisWeek };
+    return { type: id, target, days_met: p.days_met, pct: p.pct, this_week: thisWeek };
   });
   return {
     has_plan: hasPlan,

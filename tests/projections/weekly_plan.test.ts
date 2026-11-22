@@ -21,6 +21,18 @@ describe("projectWeeklyPlan — v1 weekly-plan + v2 home tile", () => {
     });
   });
 
+  it("a time goal's target comes from the home tile: the v1 card title carries none (live, both goals in both reads)", () => {
+    // Captured live with STEPS 8000 + STRENGTH_TRAINING_TIME 120: the v1 strength card is titled
+    // just "Strength Activity Time"; only the tile says "2:00+ Strength Activity Time".
+    const out = projectWeeklyPlan(fx("weekly_plan_v1_two_goals.json"), fx("weekly_plan_tile_two_goals.json"), "2026-11-21");
+    expect(out.goals).toEqual([
+      { type: "STEPS", target: 8000, days_met: [0, 7], pct: null, this_week: 1197 },
+      { type: "STRENGTH_TRAINING_TIME", target: 120, days_met: null, pct: 10.7, this_week: 12 },
+    ]);
+    // Without the tile there is no target to report for the time goal; it stays null, never 0.
+    expect(projectWeeklyPlan(fx("weekly_plan_v1_two_goals.json"), null, "2026-11-21").goals[1]).toMatchObject({ type: "STRENGTH_TRAINING_TIME", target: null, this_week: 12 });
+  });
+
   it("no plan: has_plan false and no goals (the locked plan tiles aren't goals)", () => {
     expect(projectWeeklyPlan(fx("weekly_plan_v1_none.json"), fx("weekly_plan_tile_none.json"), "2026-11-21")).toEqual({
       has_plan: false, plan_id: null, plan: null, week: { start: "2026-11-16", end: "2026-11-22" }, days_left: null, pct: null, goals: [],

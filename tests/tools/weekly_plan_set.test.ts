@@ -98,6 +98,31 @@ describe("whoop_weekly_plan_set writes", () => {
     expect(out.verified).toBe(false);
   });
 
+  it("a strength goal is verified against the target read back (live shapes: v1 has no target, the tile does)", async () => {
+    const twoGoals = { [V1]: fx("weekly_plan_v1_two_goals.json"), [tileRoute()]: fx("weekly_plan_tile_two_goals.json"), [`${V2}/setup`]: fx("weekly_plan_setup_strength.json") };
+    const put = vi.fn().mockResolvedValue(undefined);
+    const setupPid = (fx("weekly_plan_setup_strength.json") as { plan_id: string }).plan_id;
+    // The account's plan id differs from the setup fixture's, so align the v1 plan tile with it.
+    const v1 = JSON.parse(JSON.stringify(twoGoals[V1]).replaceAll(PID, setupPid)) as unknown;
+    const client = await connect((s) => registerWeeklyPlanSet(s, mockClient({ get: routedGet({ ...twoGoals, [V1]: v1 }), put })));
+    // The plan reads back with 2:00 (120 min): asking for 120 verifies, asking for 90 does not.
+    const ok = await call(client, "whoop_weekly_plan_set", { action: "set_goal", type: "STRENGTH_TRAINING_TIME", target: 120, confirm: true });
+    expect(ok.out).toMatchObject({ verified: true, plan: { goals: [{ type: "STEPS" }, { type: "STRENGTH_TRAINING_TIME", target: 120 }] } });
+    const wrong = await call(client, "whoop_weekly_plan_set", { action: "set_goal", type: "STRENGTH_TRAINING_TIME", target: 90, confirm: true });
+    expect(wrong.out.verified).toBe(false);
+  });
+
+  it("a target that can't be read back is not verified", async () => {
+    // The home tile fails, so the strength goal comes back from v1 alone, without its target.
+    const setupPid = (fx("weekly_plan_setup_strength.json") as { plan_id: string }).plan_id;
+    const v1 = JSON.parse(JSON.stringify(fx("weekly_plan_v1_two_goals.json")).replaceAll(PID, setupPid)) as unknown;
+    const get = routedGet({ [V1]: v1, [tileRoute()]: new WhoopApiError(500, tileRoute(), ""), [`${V2}/setup`]: fx("weekly_plan_setup_strength.json") });
+    const client = await connect((s) => registerWeeklyPlanSet(s, mockClient({ get, put: vi.fn().mockResolvedValue(undefined) })));
+    const { out } = await call(client, "whoop_weekly_plan_set", { action: "set_goal", type: "STRENGTH_TRAINING_TIME", target: 120, confirm: true });
+    expect(out.verified).toBe(false);
+    expect(out.warnings.join(" ")).toMatch(/target couldn't be read back/);
+  });
+
   it("remove_goal DELETEs …/goal/target/{type}; refuses a goal that isn't in the plan", async () => {
     const del = vi.fn().mockResolvedValue(undefined);
     const client = await connect((s) => registerWeeklyPlanSet(s, mockClient({ get: routes(["active", "none"]), delete: del })));
@@ -116,6 +141,14 @@ describe("whoop_weekly_plan_set writes", () => {
     expect(del.mock.calls.map((c) => c[0])).toEqual([`${V2}/${PID}/goal/target/STEPS`, `${V2}/${PID}/goal/target/STRENGTH_TRAINING_TIME`]);
     expect(del.mock.calls.every((c) => /\/goal\/target\//.test(c[0] as string))).toBe(true);
     expect(out).toMatchObject({ action: "end_plan", verified: true, plan: { has_plan: false } });
+  });
+
+  it("end_plan that fails part-way says which goal is already gone", async () => {
+    const del = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new WhoopApiError(400, `${V2}/${PID}/goal/target/STRENGTH_TRAINING_TIME`, "nope"));
+    const client = await connect((s) => registerWeeklyPlanSet(s, mockClient({ get: routes("active"), delete: del })));
+    const { isError, out } = await call(client, "whoop_weekly_plan_set", { action: "end_plan", confirm: true });
+    expect(isError).toBe(true);
+    expect(out.hint).toBe(`Already applied before this failed: DELETE ${V2}/${PID}/goal/target/STEPS.`);
   });
 
   it("end_plan refuses a plan with goals totem doesn't manage", async () => {
