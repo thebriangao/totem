@@ -291,11 +291,13 @@ ${args}
 `;
 }
 
-// One cron line, tagged so we can find + remove exactly ours.
+// One cron line, tagged so we can find + remove exactly ours. Every word is
+// quoted for sh (cron hands the line to `sh -c`), and `%` is escaped: cron ends
+// the command at a bare `%` and feeds the rest to it as stdin.
 export function cronLine(programArgs: string[], root: string, logPath: string): string {
-  const cmd = programArgs.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(" ");
-  const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
-  return `0 */6 * * * cd ${shq(root)} && ${cmd} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
+  const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`.replace(/%/g, "\\%");
+  const word = (s: string): string => (/^[A-Za-z0-9_/.:=@+-]+$/.test(s) ? s : shq(s));
+  return `0 */6 * * * cd ${shq(root)} && ${programArgs.map(word).join(" ")} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
 }
 
 export function isAutoOn(): boolean {

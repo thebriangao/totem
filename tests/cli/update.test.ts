@@ -2,6 +2,10 @@
 // run in CI, but version comparison, release parsing, and the scheduler-file
 // generation are pure and must not regress.
 import { describe, it, expect } from "vitest";
+import { execFileSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { compareSemver, isNewer, isRelease, parseReleases, launchdPlist, cronLine } from "../../src/cli/update.js";
 
 describe("compareSemver", () => {
@@ -109,5 +113,31 @@ describe("cronLine", () => {
     const l = cronLine(["node"], "/home/a b/it's", "/home/a b/log");
     expect(l).toContain("cd '/home/a b/it'\\''s' &&");
     expect(l).toContain(">> '/home/a b/log' 2>&1");
+  });
+  it("quotes the program words too, and escapes % for cron", () => {
+    const l = cronLine(["/opt/my node/bin/node", "/apps/50% done/it's/index.js", "update", "--auto-run"], "/apps/50% done", "/tmp/log");
+    expect(l).toContain("'/opt/my node/bin/node' '/apps/50\\% done/it'\\''s/index.js' update --auto-run");
+    expect(l).toContain("cd '/apps/50\\% done' &&");
+    expect(l).not.toMatch(/(^|[^\\])%/); // a bare % ends the command in a crontab
+  });
+
+  // The real thing: cron un-escapes \% and hands the rest to `sh -c`. The words
+  // must come out the other side as the same argv, in the right directory.
+  it.skipIf(process.platform === "win32")("survives sh with spaces, quotes, % and $ in every path", () => {
+    const base = mkdtempSync(join(tmpdir(), "totem cron's 50% $HOME "));
+    try {
+      const root = join(base, "install dir");
+      mkdirSync(root);
+      const script = join(root, "print args.sh");
+      writeFileSync(script, '#!/bin/sh\npwd -P\nfor a in "$@"; do echo "$a"; done\n');
+      chmodSync(script, 0o755);
+      const log = join(base, "the log.txt");
+      const line = cronLine([script, "update", "--auto-run", "a b", "it's", "100%", "$HOME"], root, log);
+      const command = line.replace(/^0 \*\/6 \* \* \* /, "").replace(/\\%/g, "%");
+      execFileSync("/bin/sh", ["-c", command]);
+      expect(readFileSync(log, "utf8").trim().split("\n")).toEqual([realpathSync(root), "update", "--auto-run", "a b", "it's", "100%", "$HOME"]);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 });
