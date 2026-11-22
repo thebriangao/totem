@@ -15,7 +15,7 @@
 //   AUTH_PASSWORD=<password>  (optional; enables the OAuth/web-connector path)
 //   PUBLIC_URL=https://...    (optional; the server's public origin, used as the
 //                              OAuth issuer. Defaults to http://localhost:<port>)
-import express, { type Request, type Response } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { randomUUID, createHmac } from "node:crypto";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -236,31 +236,33 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       res.status(429).json({ error: "too_many_requests", error_description: "Too many attempts — wait 15 minutes." });
       return;
     }
-    const body = req.body as Record<string, string>;
-    const redirect = provider.consent({
-      clientId: body.client_id ?? "",
-      redirectUri: body.redirect_uri ?? "",
-      codeChallenge: body.code_challenge ?? "",
-      state: body.state ?? "",
-      scopes: body.scope ?? "",
-      resource: body.resource ?? "",
-      password: body.password ?? "",
-    });
+    // This route is reachable without credentials, so take nothing about the
+    // body on trust: it is undefined when the content type isn't a form, and a
+    // repeated field arrives as an array. Either one used to throw (500, with a
+    // stack trace outside NODE_ENV=production). Anything but a string is "".
+    const form: unknown = req.body;
+    const field = (name: string): string => {
+      const value = isObject(form) ? form[name] : undefined;
+      return typeof value === "string" ? value : "";
+    };
+    const fields = {
+      clientId: field("client_id"),
+      redirectUri: field("redirect_uri"),
+      codeChallenge: field("code_challenge"),
+      state: field("state"),
+      scopes: field("scope"),
+      resource: field("resource"),
+    };
+    const password = field("password");
+    const redirect = provider.consent({ ...fields, password });
     if (!redirect) {
       // Wrong password (or bad client) — re-render the form with an error. Only a
       // wrong password counts toward the global ceiling.
-      if (!provider.checkPassword(body.password ?? "")) globalFails++;
+      if (!provider.checkPassword(password)) globalFails++;
       setConsentSecurityHeaders(res);
+      res.setHeader("cache-control", "no-store");
       res.status(401).setHeader("content-type", "text/html; charset=utf-8");
-      res.end(renderConsentForm({
-        clientId: body.client_id ?? "",
-        redirectUri: body.redirect_uri ?? "",
-        codeChallenge: body.code_challenge ?? "",
-        state: body.state ?? "",
-        scopes: body.scope ?? "",
-        resource: body.resource ?? "",
-        error: true,
-      }));
+      res.end(renderConsentForm({ ...fields, error: true }));
       return;
     }
     res.redirect(302, redirect);
@@ -326,6 +328,22 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     void mcpHandler(req, res);
   });
   app.delete("/mcp", bearer, (req, res) => void mcpHandler(req, res));
+
+  // Last-resort error handler. Express's default answers with an HTML page that
+  // includes the stack trace (file paths) unless NODE_ENV=production; an MCP
+  // client can't read HTML either. Body-parser failures carry their own 4xx.
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+    const claimed = isObject(err) && typeof err.status === "number" ? err.status : 500;
+    const status = claimed >= 400 && claimed < 500 ? claimed : 500;
+    const badJson = isObject(err) && err.type === "entity.parse.failed";
+    if (status === 500) console.error("[totem] request error:", err);
+    const message = badJson ? "Parse error: the request body is not valid JSON"
+      : status === 413 ? "Request body too large"
+      : status === 500 ? "Internal server error"
+      : "Bad request";
+    res.status(status).json({ jsonrpc: "2.0", error: { code: badJson ? -32700 : status === 500 ? -32603 : -32600, message }, id: null });
+  });
 
   // Express 5 hands a failed listen (EADDRINUSE, EACCES) to this same callback as
   // its argument. Ignoring it logged "listening on …" for a server that never
