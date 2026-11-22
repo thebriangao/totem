@@ -1,0 +1,201 @@
+{
+ "title": "Day Streak",
+ "celebration_media": {
+  "content_type": "LOTTIE",
+  "text_overlay": "1",
+  "text_overlay_suffix": null,
+  "text_overlay_style": "DEFAULT",
+  "size": "STREAK_LOTTIE_LARGE"
+ },
+ "today_streak_state": "ACTIVE",
+ "streak_value": "1",
+ "title_subtitle": {
+  "id": "d5717fde-e831-4976-8864-38581e4c75f8",
+  "title": "Day Streak",
+  "subtitle": "Wear your WHOOP daily",
+  "title_color": "BRAND_WHITE",
+  "subtitle_color": "WHITE_70",
+  "alignment": "CENTER",
+  "bindings": null,
+  "title_style": "T2",
+  "subtitle_style": "B1",
+  "trailing_button": null
+ },
+ "items": [
+  {
+   "type": "HORIZONTAL_DIVIDED_LIST",
+   "content": {
+    "list_items": [
+     {
+      "id": "b5b8a011-bba5-435e-8bee-5b57a5ce635b",
+      "title": "Nov 21, 2026",
+      "subtitle": "Streak started",
+      "icon": null,
+      "dialog_info": null,
+      "main_image": null,
+      "main_image_style": null,
+      "main_image_position": null
+     },
+     {
+      "id": "a6bfd5c6-55f9-434f-a80e-65c26e77407e",
+      "title": "1",
+      "subtitle": "Max streak",
+      "icon": null,
+      "dialog_info": null,
+      "main_image": null,
+      "main_image_style": null,
+      "main_image_position": null
+     }
+    ]
+   }
+  },
+  {
+   "type": "HORIZONTAL_TRACKER",
+   "content": {
+    "title": "THIS WEEK",
+    "tracked_items": [
+     {
+      "title": "MON",
+      "style": "DEFAULT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/circle_cross.png"
+     },
+     {
+      "title": "TUE",
+      "style": "DEFAULT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/circle_cross.png"
+     },
+     {
+      "title": "WED",
+      "style": "DEFAULT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/circle_cross.png"
+     },
+     {
+      "title": "THU",
+      "style": "DEFAULT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/circle_cross.png"
+     },
+     {
+      "title": "FRI",
+      "style": "DEFAULT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/circle_cross.png"
+     },
+     {
+      "title": "SAT",
+      "style": "HIGHLIGHT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/milestones/static/active/1.png"
+     },
+     {
+      "title": "SUN",
+      "style": "DEFAULT",
+      "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/dashed_circle.png"
+     }
+    ]
+   }
+  },
+  {
+   "type": "MILESTONE_PROGRESS_CARD",
+   "content": {
+    "title": "4 more days",
+    "description": "to unlock your next milestone.",
+    "current_milestone": {
+     "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/milestones/v2/active/tier1.png",
+     "text": "0"
+    },
+    "next_milestone": {
+     "icon_url": "https://app-cdn.prod.whoop.com/alwayson/streaks/milestones/v2/grey/tier2.png",
+     "text": "5"
+    },
+    "progress_percent": 0.2,
+    "style": "STREAKS"
+   }
+  },
+  {
+   "type": "TEXT_ONLY",
+   "content": {
+    "id": "default_state",
+    "title": "Spark's lit",
+    "body": "You've started a streak! Keep the flame going by wearing WHOOP day and night to unlock insights about your body.",
+    "app_notification_type": "ONBOARDING",
+    "show_highlight": false,
+    "card_type": "DEFAULT"
+   }
+  },
+  {
+   "type": "TEXT_ONLY",
+   "content": {
+    "id": "off_body_state",
+    "title": "Keep fueling your fire",
+    "body": "Keep wearing WHOOP day and night to unlock the most accurate insights about your body.",
+    "app_notification_type": "ONBOARDING",
+    "show_highlight": false,
+    "card_type": "DEFAULT"
+   }
+  },
+  {
+   "type": "CARD_BUTTON",
+   "content": {
+    "id": null,
+    "title": "SHARE DAY STREAK",
+    "icon": "SHARE",
+    "icon_tint": null,
+    "icon_configuration": null,
+    "style": "DEFAULT",
+    "destination": {
+     "screen": "SHARE",
+     "parameters": {
+      "path": "streaks-service/v1/bff/streaks/data-streak/share",
+      "source": "data_streak_explainer"
+     }
+    },
+    "dismiss_event": null,
+    "action": null,
+    "modal": null,
+    "card_name": null,
+    "size": "COMPACT",
+    "corner_radius": null,
+    "bindings": null,
+    "aggregate_bindings": null,
+    "is_enabled": null,
+    "generic_interaction": null
+   }
+  },
+  {
+   "type": "MILESTONE_CARD",
+   "content": {
+    "id": "education_card",
+    "title": "How Streaks Work",
+    "subtitle": "Learn how your day streak works and why it matters.",
+    "cta": "LEARN MORE",
+    "navigation": {
+     "screen": "EDUCATION_PAGE",
+     "parameters": {
+      "feature_education_name": "DATA_STREAK_EDUCATION",
+      "source": "data_streak_explainer"
+     }
+    },
+    "filled_count": null,
+    "total_count": null,
+    "is_unlocked": true,
+    "type": "PROGRESS_BAR",
+    "progress_style": "DISCOVER_HOME",
+    "card_name": null,
+    "navigation_tag": null,
+    "dialog_info": null,
+    "analytics": null,
+    "interaction": {
+     "modal": null,
+     "action": null,
+     "navigation": {
+      "screen": "EDUCATION_PAGE",
+      "parameters": {
+       "feature_education_name": "DATA_STREAK_EDUCATION",
+       "source": "data_streak_explainer"
+      }
+     },
+     "dismiss_event": null
+    }
+   }
+  }
+ ],
+ "header_icon": "SHARE"
+}

@@ -1,0 +1,102 @@
+{
+ "plan": {
+  "date_picker": {
+   "current_date_range_display": "NOV 16 - NOV 22, 26",
+   "next_date_time": null,
+   "previous_date_time": null,
+   "previous_interaction": null,
+   "next_interaction": null
+  },
+  "title_display": {
+   "display": "My Progress",
+   "style": "NONE"
+  },
+  "subtitle_display": null,
+  "description_display": null,
+  "header_items": [
+   {
+    "type": "CURRENT_PLAN_TILE",
+    "content": {
+     "title_display": "Custom",
+     "subtitle_display": "CURRENT PLAN",
+     "leading_icon": "JOURNAL",
+     "trailing_icon": "PENCIL",
+     "destination": {
+      "screen": "WEEKLY_PLAN_PRESET_LANDING",
+      "parameters": {
+       "plan_id": "d027813c-507a-48d3-b06e-3d71a8f098c0"
+      }
+     }
+    }
+   }
+  ],
+  "current_plan_tile": null,
+  "banner_tile": null,
+  "progress_bar": {
+   "percent_string": "0%",
+   "percent_subtitle": "GOALS ACCOMPLISHED",
+   "percent_value": 0,
+   "percent_symbol": "%"
+  },
+  "goal_section": [
+   {
+    "title_display": "Steps",
+    "title_image": null,
+    "title_style": "LEFT",
+    "subtitle_display": null,
+    "action_display": "EDIT",
+    "icon": "PENCIL",
+    "goal_cards": [
+     {
+      "type": "GOAL_GRAPHING_CARD",
+      "content": {
+       "progress_display": "399",
+       "checkmark_style": "DISABLED",
+       "destination": {
+        "screen": "TRENDS",
+        "parameters": {
+         "trend_key": "STEPS",
+         "duration": 0,
+         "date": "2026-11-21"
+        }
+       },
+       "graph_legends": [],
+       "plan_progress_status": {
+        "title": "Steps Taken This Week: 1,197",
+        "subtitle": "You are approaching a 5k, which is about 7,900 steps. Every step brings you closer to a healthier you.",
+        "progress_breakdown": {
+         "total_progress_steps": 100,
+         "current_progress_steps": 15,
+         "progress_style": "STEPS",
+         "upper_left_display": "",
+         "upper_right_display": "5k",
+         "lower_left_display": null,
+         "progress_metadata": null
+        }
+       },
+       "circular_progress_indicator": {
+        "id": null,
+        "current_progress_steps": {
+         "text_display": "0/7",
+         "current_step": 0,
+         "total_steps": 7,
+         "style": "WEEKLY_PLAN_IN_PROGRESS",
+         "text_display_options": []
+        },
+        "current_progress_percentage": null
+       },
+       "title": "10,000+ Steps",
+       "sub_items": []
+      }
+     }
+    ],
+    "callout_display": null,
+    "callout_cta_display": null,
+    "id": "STEPS",
+    "secondary_button": null
+   }
+  ],
+  "gradient_style": "DEFAULT"
+ },
+ "summary": null
+}
