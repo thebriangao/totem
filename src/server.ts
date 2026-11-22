@@ -6,43 +6,105 @@
 import { config as loadEnv } from "dotenv";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { existsSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WhoopClient } from "./whoop/client.js";
-import { TokenManager } from "./whoop/token_manager.js";
-import { EnvFileTokenStore, MemoryTokenStore, type TokenStore } from "./whoop/token_store.js";
+import { TokenManager, keepAliveMsFromEnv } from "./whoop/token_manager.js";
+import { TokenLock } from "./whoop/token_lock.js";
+import {
+  FileTokenStore, MemoryTokenStore, LEGACY_TOKEN_KEYS, inContainer, migrateFromEnv, onMountedVolume,
+  resolveTokenFilePath, type TokenStore,
+} from "./whoop/token_store.js";
+import { deleteEnvKeys } from "./lib/env_file.js";
 import { registerTools } from "./tools/register.js";
 import { startTimezoneAutoDetect } from "./whoop/init_timezone.js";
 import { resolveInstallationId } from "./whoop/installation.js";
-import { versionStaleWarning } from "./whoop/device.js";
+import { getInstallationId, versionStaleWarning } from "./whoop/device.js";
 import { BUILD_ID } from "./build_info.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENV_PATH = resolve(__dirname, "../.env");
 loadEnv({ path: ENV_PATH, quiet: true });
 
+const log = (message: string): void => console.error(`[totem] ${message}`);
+
 function requireEnv(key: string): string {
   const v = process.env[key];
-  if (!v) throw new Error(`Missing ${key} in environment. Run \`totem auth\` to set up auto-refresh.`);
+  if (!v) throw new Error(`Missing ${key} in environment.`);
   return v;
 }
 
-function chooseStore(): TokenStore {
-  const mode = (process.env.WHOOP_TOKEN_STORE ?? "envfile").toLowerCase();
+/**
+ * The token store (G6). A file by default; `WHOOP_TOKEN_STORE=memory` only for
+ * local throwaway runs, because WHOOP rotates the refresh token on every refresh
+ * and a restart would strand a memory-only login.
+ */
+function chooseStore(transport: string): TokenStore {
+  const mode = (process.env.WHOOP_TOKEN_STORE ?? "file").toLowerCase();
   if (mode === "memory") {
-    console.error(
-      "[totem] WHOOP_TOKEN_STORE=memory: rotated tokens are NOT persisted. If Cognito rotates your refresh token, a restart will need a fresh `totem auth`.",
-    );
-    return new MemoryTokenStore();
+    if (inContainer() || transport === "http") {
+      throw new Error(
+        "WHOOP_TOKEN_STORE=memory is refused in a container or remote deployment: WHOOP rotates the refresh token on every " +
+          "refresh, so a restart would lose the login. Remove it and mount a volume for the token file (the image uses " +
+          "TOTEM_TOKEN_FILE=/data/tokens.json).",
+      );
+    }
+    log("WHOOP_TOKEN_STORE=memory: the login lives only in this process; a restart needs `totem auth` again.");
+    return new MemoryTokenStore(migrateFromEnv(process.env));
   }
-  return new EnvFileTokenStore(ENV_PATH);
+  const store = new FileTokenStore(resolveTokenFilePath(process.env));
+  store.assertWritable();
+  return store;
+}
+
+/** First run after v1: move WHOOP_IOS_BEARER_TOKEN / WHOOP_COGNITO_REFRESH_TOKEN into the token file. */
+function migrateLegacyTokens(store: TokenStore): void {
+  if (!store.path) return;
+  let existing;
+  try {
+    existing = store.load();
+  } catch (error) {
+    log((error as Error).message);
+    return;
+  }
+  const legacy = migrateFromEnv(process.env);
+  if (existing) {
+    if (legacy) log(`ignoring ${LEGACY_TOKEN_KEYS.join("/")} from the environment: ${store.path} holds the login.`);
+    return;
+  }
+  if (!legacy) return;
+  store.save(legacy);
+  log(`moved the WHOOP login from ${LEGACY_TOKEN_KEYS.join("/")} into ${store.path}.`);
+  if (existsSync(ENV_PATH)) {
+    try {
+      deleteEnvKeys(ENV_PATH, [...LEGACY_TOKEN_KEYS, "WHOOP_PASSWORD"]);
+    } catch {
+      // read-only .env: the token file wins anyway
+    }
+  }
 }
 
 async function main(): Promise<void> {
-  console.error(`[totem] build=${BUILD_ID}`);
+  log(`build=${BUILD_ID}`);
+  const transport = (process.env.MCP_TRANSPORT ?? "stdio").toLowerCase();
+
+  const store = chooseStore(transport);
+  migrateLegacyTokens(store);
+  if (store.path && inContainer() && onMountedVolume(store.path) === false) {
+    log(`${store.path} is not on a mounted volume: a restart or redeploy will lose the WHOOP login (run \`totem auth\` again after one).`);
+  }
+
+  // The device identity lives with the login so it survives container restarts.
+  let saved = null;
+  try {
+    saved = store.load();
+  } catch {
+    // reported by the token manager below; the server still starts
+  }
+  if (!process.env.WHOOP_INSTALLATION_ID && saved?.installation_id) process.env.WHOOP_INSTALLATION_ID = saved.installation_id;
   // Generate + persist a stable per-install identifier before any request goes
-  // out, so every data request carries the same `x-whoop-installation-identifier`
-  // the iOS app sends. Persisted to the env file like the tokens.
+  // out, so every data request carries the same `x-whoop-installation-identifier`.
   resolveInstallationId(ENV_PATH);
 
   // Warn (once, at boot) if the bundled iOS app version has gone stale enough to
@@ -50,37 +112,61 @@ async function main(): Promise<void> {
   const stale = versionStaleWarning();
   if (stale) console.error(stale);
 
+  let client: WhoopClient | undefined;
   const tokenManager = new TokenManager({
-    email: requireEnv("WHOOP_EMAIL"),
-    accessToken: requireEnv("WHOOP_IOS_BEARER_TOKEN"),
-    refreshToken: requireEnv("WHOOP_COGNITO_REFRESH_TOKEN"),
-    store: chooseStore(),
+    store,
+    lock: store.path ? new TokenLock({ path: `${store.path}.lock` }) : null,
+    keepAliveMs: keepAliveMsFromEnv(process.env.TOTEM_KEEPALIVE_HOURS),
+    onFatal: () => {
+      // Logged by the manager. Exit so the host restarts us and the problem is loud.
+      setTimeout(() => process.exit(1), 100).unref();
+    },
+    onLoginChange: (record) => {
+      if (record?.user_id) process.env.WHOOP_USER_ID = String(record.user_id);
+      if (client) {
+        client.invalidateAll(); // never serve one account's cached data to another
+        if (record) startTimezoneAutoDetect(client);
+      }
+    },
   });
+  tokenManager.start();
+  process.once("exit", () => tokenManager.stop()); // releases the lock
 
-  const client = new WhoopClient({
+  const current = tokenManager.current();
+  if (current && !current.installation_id) tokenManager.annotate({ installation_id: getInstallationId() });
+  const status = tokenManager.status();
+  if (status.state === "no-login") log("no WHOOP login yet. Run `totem auth` (on a deployment it pushes the login to this server).");
+  else if (status.state === "handed-off") log(`this login was handed to ${status.handed_off_to}; run \`totem auth --local\` for a separate local login.`);
+  else log(`WHOOP login: ${status.source}, ${status.role}, token file ${status.store}`);
+
+  const whoop = new WhoopClient({
     getToken: () => tokenManager.getToken(),
     onUnauthorized: (token) => tokenManager.invalidate(token),
   });
+  client = whoop;
 
   // Tier 2 of the timezone resolution chain: auto-detect from Whoop's profile
   // so responses come back in the user's local TZ without manual config.
   // No-op if WHOOP_TIMEZONE is set (env var wins). Fires async — does not
   // block server startup.
-  startTimezoneAutoDetect(client);
-
-  const transport = (process.env.MCP_TRANSPORT ?? "stdio").toLowerCase();
+  if (current) startTimezoneAutoDetect(whoop);
 
   if (transport === "http") {
     const { startHttpServer } = await import("./server-http.js");
-    await startHttpServer(client, {
+    await startHttpServer(whoop, {
       authToken: requireEnv("MCP_AUTH_TOKEN"),
+      tokens: tokenManager,
+      installationId: () => getInstallationId(),
     });
     return;
   }
 
-  // stdio (default — local Claude Desktop / Claude Code)
+  // stdio (default — local Claude Desktop / Claude Code). The default SIGTERM
+  // handler skips 'exit' handlers, so route signals through process.exit to
+  // release the token lock.
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.once(signal, () => process.exit(0));
   const server = new McpServer({ name: "totem", version: "1.5.1" });
-  registerTools(server, client);
+  registerTools(server, whoop);
   await server.connect(new StdioServerTransport());
 }
 

@@ -2,7 +2,7 @@
 // run in CI, but version comparison, release parsing, and the scheduler-file
 // generation are pure and must not regress.
 import { describe, it, expect } from "vitest";
-import { compareSemver, isNewer, parseReleases, launchdPlist, cronLine } from "../../src/cli/update.js";
+import { compareSemver, isNewer, isRelease, parseReleases, launchdPlist, cronLine } from "../../src/cli/update.js";
 
 describe("compareSemver", () => {
   it("orders by major/minor/patch", () => {
@@ -22,6 +22,19 @@ describe("compareSemver", () => {
   it("sorts a list newest-first", () => {
     const sorted = ["1.2.0", "1.4.1", "1.10.0", "1.4.10"].sort((a, b) => compareSemver(b, a));
     expect(sorted).toEqual(["1.10.0", "1.4.10", "1.4.1", "1.2.0"]);
+  });
+  it("sorts a prerelease below its release", () => {
+    expect(compareSemver("1.6.0-rc.1", "1.6.0")).toBe(-1);
+    expect(compareSemver("1.6.0", "1.6.0-rc.1")).toBe(1);
+    expect(compareSemver("1.6.0-rc.2", "1.6.0-rc.10")).toBe(-1);
+    expect(compareSemver("1.6.0-rc.1", "1.5.9")).toBe(1);
+    expect(isNewer("1.6.0", "1.6.0-rc.1")).toBe(true);
+  });
+});
+
+describe("isRelease", () => {
+  it("accepts only plain x.y.z (npm list filter)", () => {
+    expect(["1.5.1", "1.6.0-rc.1", "1.6.0-beta", "2.0.0"].filter(isRelease)).toEqual(["1.5.1", "2.0.0"]);
   });
 });
 
@@ -89,6 +102,12 @@ describe("cronLine", () => {
     expect(line).toContain("0 */6 * * *");
     expect(line).toContain("# com.totem.autoupdate");
     expect(line).toContain("update --auto-run");
-    expect(line).toContain("cd /app");
+    expect(line).toContain("cd '/app' &&");
+    expect(line).toContain(">> '/app/.totem-autoupdate.log' 2>&1");
+  });
+  it("quotes paths with spaces and single quotes", () => {
+    const l = cronLine(["node"], "/home/a b/it's", "/home/a b/log");
+    expect(l).toContain("cd '/home/a b/it'\\''s' &&");
+    expect(l).toContain(">> '/home/a b/log' 2>&1");
   });
 });

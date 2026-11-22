@@ -62,3 +62,6 @@ fly.toml
 tool_audit_results.json
 tool_audit_condensed.json
 captures/
+
+# WHOOP login written by `totem auth` if TOTEM_TOKEN_FILE points into the repo
+tokens.json*

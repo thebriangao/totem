@@ -1,99 +1,580 @@
-// Holds the current access token + refresh token, auto-refreshes via Cognito
-// when the access token is within `refreshSkewSeconds` of expiry. Writes
-// rotated tokens to an injected TokenStore so server restarts pick up fresh
-// state without re-bootstrapping.
-import { decodeJwtClientId, decodeJwtExp, refreshCognitoSession } from "./cognito.js";
-import { WEB_CLIENT_ID } from "./constants.js";
-import { EnvFileTokenStore, type TokenStore } from "./token_store.js";
+// Holds the WHOOP login, refreshes it, and keeps it alive.
+//
+// - Durable (G6): every rotated refresh token is written to the TokenStore
+//   BEFORE the new access token is handed out. A failed write is fatal: the old
+//   refresh token is already spent, so carrying on would strand the login at the
+//   next restart.
+// - Keep-alive (G7): refresh when less than 10 minutes of access life remain,
+//   plus a periodic refresh (default every 12 h, TOTEM_KEEPALIVE_HOURS) so an
+//   idle server never lets the refresh token go unused. The timer is unref'd and
+//   shares the single-flight with on-demand refreshes.
+// - One owner (G8): with a TokenLock, only the lock holder refreshes. Another
+//   process on the same token file runs as a follower: it picks up the owner's
+//   rotated tokens from the file and never refreshes; it takes over only when
+//   the owner's lock goes stale, and otherwise fails with WhoopTokenOwnedError.
+// - The file is the source of truth: when another writer changes it (`totem
+//   auth`, a push to the admin endpoint), the manager adopts the new login on
+//   its next call, without a restart.
+// - G9: WhoopAuthExpiredError only when Cognito refuses the refresh itself.
 
-export interface TokenManagerConfig {
-  email: string;
-  accessToken: string;
-  refreshToken: string;
-  /** How many seconds before exp to preemptively refresh. Default 60. */
-  refreshSkewSeconds?: number;
-  /**
-   * Where to persist rotated tokens. Pass `EnvFileTokenStore(path)` (default
-   * when `envPath` is given) or `MemoryTokenStore` for ephemeral hosts.
-   */
-  store?: TokenStore;
-  /** Convenience: provide envPath instead of `store` to get the default file store. */
-  envPath?: string;
+import { CognitoError, decodeJwtExp, refreshCognitoSession, type CognitoTokens } from "./cognito.js";
+import { WhoopAuthExpiredError } from "./errors.js";
+import { WhoopTokenOwnedError, type LockHolder, type LockState, type TokenLock } from "./token_lock.js";
+import { isHandoff, type HandoffRecord, type TokenRecord, type TokenSource, type TokenStore } from "./token_store.js";
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+/**
+ * The keep-alive timer wakes at least this often and compares wall clocks.
+ * Node's timers count running time, which on Linux excludes suspend: a timer
+ * set for "in 12 hours" would fire 12 hours of awake time later.
+ */
+const MAX_TICK_MS = MINUTE;
+/**
+ * A token we refreshed less than this long ago is used as it is, whatever its
+ * `exp` says. Without it a clock running far ahead (every new token looks
+ * expired on arrival), an undecodable token or a tiny TOTEM_KEEPALIVE_HOURS
+ * turns every call or every second into a refresh, and each refresh rotates
+ * the refresh token. A 401 still forces a refresh (see invalidate()).
+ */
+const MIN_REFRESH_GAP_MS = 5 * MINUTE;
+/** A follower lets the owner go first, then checks. */
+const FOLLOWER_GRACE_MS = 2 * MINUTE;
+/** A follower re-checks this often while a live owner hasn't refreshed yet. */
+const FOLLOWER_POLL_MS = 5 * MINUTE;
+/** A follower keeps using an access token until this close to expiry. */
+const FOLLOWER_MIN_LIFE_MS = 30_000;
+
+/** No login saved on this server or machine. */
+export class WhoopNotLoggedInError extends WhoopAuthExpiredError {
+  constructor(where: string) {
+    super();
+    this.message = `No WHOOP login on this server (${where}). Run \`totem auth\` to log in.`;
+    this.name = "WhoopNotLoggedInError";
+  }
 }
 
+/** This copy's login was pushed to a deployment by `totem auth`; it must not refresh. */
+export class WhoopLoginHandedOffError extends WhoopAuthExpiredError {
+  constructor(public readonly to: string, at: string) {
+    super();
+    this.message =
+      `This WHOOP login was handed to ${to} (${at.slice(0, 10)}), so this copy no longer refreshes it. ` +
+      "Run `totem auth --local` to give this machine its own login.";
+    this.name = "WhoopLoginHandedOffError";
+  }
+}
+
+/** The rotated refresh token could not be written. Fatal: the old one is spent. */
+export class WhoopTokenPersistError extends Error {
+  constructor(where: string, cause: unknown) {
+    super(
+      `Couldn't save the rotated WHOOP refresh token to ${where} (${cause instanceof Error ? cause.message : String(cause)}). ` +
+        "The previous refresh token is already spent, so this login can't survive a restart. Fix the disk, then run `totem auth`.",
+    );
+    this.name = "WhoopTokenPersistError";
+  }
+}
+
+/**
+ * The token directory can't be written right now, found out BEFORE spending the
+ * refresh token. Nothing is lost: the login is still valid and refreshes again
+ * once the disk is writable.
+ */
+export class WhoopTokenUnwritableError extends Error {
+  constructor(where: string, cause: unknown) {
+    super(
+      `Can't write next to the WHOOP token file ${where} (${cause instanceof Error ? cause.message : String(cause)}), ` +
+        "so the token wasn't refreshed (a rotated refresh token that can't be saved would end the login). Fix the disk or its permissions.",
+    );
+    this.name = "WhoopTokenUnwritableError";
+  }
+}
+
+/** The refresh failed for a reason other than a refused login (network, throttling, outage). */
+export class WhoopRefreshUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super(`Couldn't reach WHOOP's login service to refresh the token (${cause instanceof Error ? cause.message : String(cause)}). Try again shortly.`);
+    this.name = "WhoopRefreshUnavailableError";
+  }
+}
+
+export type TokenRole = "owner" | "follower" | "solo";
+
+export interface TokenStatus {
+  state: "ok" | "no-login" | "handed-off" | "expired" | "fatal";
+  role: TokenRole;
+  store: string;
+  source?: TokenSource | undefined;
+  client_id?: string | undefined;
+  user_id?: number | undefined;
+  saved_at?: string | undefined;
+  refreshed_at?: string | undefined;
+  access_expires_at?: string | undefined;
+  next_keepalive_at?: string | undefined;
+  handed_off_to?: string | undefined;
+  owner?: { pid: number; host: string } | undefined;
+  detail?: string | undefined;
+}
+
+export interface TokenManagerConfig {
+  store: TokenStore;
+  /** Single-owner lock (G8). Omit for the memory store and tests. */
+  lock?: TokenLock | null | undefined;
+  /** Refresh when less than this much access life remains. Default 10 min. */
+  refreshSkewMs?: number | undefined;
+  /** Periodic refresh interval. Default 12 h; 0 turns the periodic refresh off. */
+  keepAliveMs?: number | undefined;
+  /** First retry after a transient keep-alive failure (doubles, capped at 15 min). Default 60 s. */
+  retryBaseMs?: number | undefined;
+  /** Write attempts before a failed save is fatal. Default 3. */
+  saveAttempts?: number | undefined;
+  now?: (() => number) | undefined;
+  refresh?: ((refreshToken: string, clientId: string) => Promise<CognitoTokens>) | undefined;
+  log?: ((message: string) => void) | undefined;
+  /** Called once when a rotated token can't be persisted. The server exits. */
+  onFatal?: ((error: Error) => void) | undefined;
+  /** Called when the login itself changes (new login, hand-off, removal), not on rotation. */
+  onLoginChange?: ((record: TokenRecord | null) => void) | undefined;
+}
+
+type MustRefresh = (record: TokenRecord) => boolean;
+
 export class TokenManager {
-  private email: string;
-  private accessToken: string;
-  private refreshToken: string;
-  private expiresAt: number; // epoch ms
-  private skewMs: number;
-  private store: TokenStore;
-  private refreshing: Promise<void> | null = null;
+  private readonly store: TokenStore;
+  private readonly lock: TokenLock | null;
+  private readonly skewMs: number;
+  private readonly keepAliveMs: number;
+  private readonly retryBaseMs: number;
+  private readonly saveAttempts: number;
+  private readonly now: () => number;
+  private readonly refreshFn: (refreshToken: string, clientId: string) => Promise<CognitoTokens>;
+  private readonly log: (message: string) => void;
+  private readonly onFatal: ((error: Error) => void) | undefined;
+  private readonly onLoginChange: ((record: TokenRecord | null) => void) | undefined;
+
+  private record: TokenRecord | null = null;
+  private handoff: HandoffRecord | null = null;
+  private expired: string | null = null;
+  private fatal: Error | null = null;
+  private forceRefresh = false;
   private lastRefreshAt = 0;
+  private seenVersion: string | null = null;
+  /** Version of a token file that failed to load (reported once). */
+  private unreadableVersion: string | null | undefined = undefined;
+  private loaded = false;
+  private refreshing: Promise<void> | null = null;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private nextAt: number | null = null;
+  private retryMs: number;
+  private stopped = true;
+  private ownerHint: LockHolder | null = null;
 
   constructor(config: TokenManagerConfig) {
-    this.email = config.email;
-    this.accessToken = config.accessToken;
-    this.refreshToken = config.refreshToken;
-    this.skewMs = (config.refreshSkewSeconds ?? 60) * 1000;
-    this.expiresAt = decodeJwtExp(config.accessToken) * 1000;
-    if (config.store) {
-      this.store = config.store;
-    } else if (config.envPath) {
-      this.store = new EnvFileTokenStore(config.envPath);
-    } else {
-      throw new Error("TokenManager: pass either `store` or `envPath`");
+    this.store = config.store;
+    this.lock = config.lock ?? null;
+    this.skewMs = config.refreshSkewMs ?? 10 * MINUTE;
+    this.keepAliveMs = config.keepAliveMs ?? 12 * HOUR;
+    this.retryBaseMs = config.retryBaseMs ?? MINUTE;
+    this.retryMs = this.retryBaseMs;
+    this.saveAttempts = Math.max(1, config.saveAttempts ?? 3);
+    this.now = config.now ?? Date.now;
+    this.refreshFn = config.refresh ?? refreshCognitoSession;
+    this.log = config.log ?? ((m) => console.error(`[totem] ${m}`));
+    this.onFatal = config.onFatal;
+    this.onLoginChange = config.onLoginChange;
+  }
+
+  /** Load the saved login, claim ownership, and start the keep-alive timer. */
+  start(): void {
+    this.stopped = false;
+    this.sync(true);
+    if (this.lock) {
+      const result = this.lock.tryAcquire();
+      if (result.acquired) {
+        this.lock.startHeartbeat(() => this.log("lost the token lock to another process; this process won't refresh any more"));
+      } else {
+        this.ownerHint = result.holder;
+        this.log(
+          `another totem process (pid ${result.holder?.pid ?? "?"}) owns this login; this one follows its token file and won't refresh`,
+        );
+      }
+    }
+    this.schedule();
+  }
+
+  /** Stop the timer and release the lock. */
+  stop(): void {
+    this.stopped = true;
+    this.clearTimer();
+    this.lock?.release();
+  }
+
+  /** The current access token, refreshing first when needed. */
+  async getToken(): Promise<string> {
+    this.sync();
+    const record = this.usable();
+    if (!this.needsRefresh(record)) return record.access_token;
+    await this.ensureFresh("on demand", (r) => this.needsRefresh(r));
+    return this.usable().access_token;
+  }
+
+  /**
+   * WHOOP answered 401 with `rejectedToken`: force the next getToken() to refresh.
+   * Ignored when that token is no longer current (parallel 401s cost one refresh)
+   * or within a minute of the last refresh (a token WHOOP keeps rejecting is
+   * path-specific, not expired; see client.ts).
+   */
+  invalidate(rejectedToken: string): void {
+    if (rejectedToken !== this.record?.access_token) return;
+    if (this.now() - this.lastRefreshAt < MINUTE) return;
+    this.forceRefresh = true;
+  }
+
+  /**
+   * Install a new login (POST /admin/tokens). Persists it first; throws when the
+   * write fails, leaving the previous login in place.
+   */
+  adopt(record: TokenRecord): void {
+    if (this.lock && !this.lock.held) {
+      const result = this.lock.tryAcquire();
+      if (result.acquired) this.lock.startHeartbeat();
+    }
+    this.store.save(record);
+    this.seenVersion = this.store.version();
+    this.loaded = true;
+    this.setRecord(record, null);
+    this.lastRefreshAt = 0;
+    this.fatal = null;
+    this.retryMs = this.retryBaseMs;
+    this.log(`installed a new WHOOP login (${record.source}); saved to ${this.store.description}`);
+    this.schedule();
+  }
+
+  /** Record extra fields on the current login (owner only, best-effort). */
+  annotate(patch: { user_id?: number | undefined; installation_id?: string | undefined }): void {
+    // Start from the file, and only as the proven owner: writing our in-memory
+    // copy as a process that lost the lock would put a spent refresh token back
+    // over the one the new owner rotated.
+    this.sync();
+    if (!this.record || (this.lock && !this.lock.verify())) return;
+    const next: TokenRecord = { ...this.record };
+    if (patch.user_id !== undefined) next.user_id = patch.user_id;
+    if (patch.installation_id !== undefined) next.installation_id = patch.installation_id;
+    try {
+      this.store.save(next);
+      this.seenVersion = this.store.version();
+      this.record = next;
+    } catch (error) {
+      this.log(`couldn't update ${this.store.description}: ${(error as Error).message}`);
     }
   }
 
-  async getToken(): Promise<string> {
-    if (this.isFresh()) return this.accessToken;
-    // Single-flight: if a refresh is already running, wait on it
+  /** The current login, if any (after picking up file changes). */
+  current(): TokenRecord | null {
+    this.sync();
+    return this.record;
+  }
+
+  status(): TokenStatus {
+    this.sync();
+    const role: TokenRole = !this.lock ? "solo" : this.lock.held ? "owner" : "follower";
+    const r = this.record;
+    const state: TokenStatus["state"] = this.fatal ? "fatal"
+      : this.handoff ? "handed-off"
+      : !r ? "no-login"
+      : this.expired ? "expired"
+      : "ok";
+    const exp = r ? decodeJwtExp(r.access_token) * 1000 : 0;
+    const owner = role === "follower" ? (this.lock?.readHolder() ?? this.ownerHint) : null;
+    return {
+      state,
+      role,
+      store: this.store.description,
+      source: r?.source,
+      client_id: r?.client_id,
+      user_id: r?.user_id ?? this.handoff?.user_id,
+      saved_at: r?.saved_at ?? this.handoff?.saved_at,
+      refreshed_at: r?.refreshed_at,
+      access_expires_at: exp ? new Date(exp).toISOString() : undefined,
+      next_keepalive_at: this.nextAt ? new Date(this.nextAt).toISOString() : undefined,
+      handed_off_to: this.handoff?.handed_off_to,
+      owner: owner ? { pid: owner.pid, host: owner.host } : undefined,
+      detail: this.fatal?.message ?? this.expired ?? undefined,
+    };
+  }
+
+  // ── internals ────────────────────────────────────────────────────────────
+
+  /** The current record, or the error explaining why there isn't a usable one. */
+  private usable(): TokenRecord {
+    if (this.fatal) throw this.fatal;
+    if (this.handoff) throw new WhoopLoginHandedOffError(this.handoff.handed_off_to, this.handoff.saved_at);
+    if (!this.record) throw new WhoopNotLoggedInError(this.store.description);
+    if (this.expired) throw new WhoopAuthExpiredError(this.expired);
+    return this.record;
+  }
+
+  private timeLeft(record: TokenRecord): number {
+    return decodeJwtExp(record.access_token) * 1000 - this.now();
+  }
+
+  /** Last refresh (or login) time of a record, epoch ms. */
+  private refreshedAt(record: TokenRecord): number {
+    const t = Date.parse(record.refreshed_at ?? record.saved_at);
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  /**
+   * Whether this record came out of a refresh less than MIN_REFRESH_GAP_MS ago
+   * (by `refreshed_at`, which only a refresh writes; a timestamp in the future
+   * means the clock was changed, and counts as "no").
+   */
+  private justRefreshed(record: TokenRecord): boolean {
+    const at = Date.parse(record.refreshed_at ?? "");
+    if (!Number.isFinite(at)) return false;
+    const since = this.now() - at;
+    return since >= 0 && since < MIN_REFRESH_GAP_MS;
+  }
+
+  /** Whether a call must refresh before it gets a token. */
+  private needsRefresh(record: TokenRecord): boolean {
+    if (this.forceRefresh) return true;
+    return this.timeLeft(record) <= this.skewMs && !this.justRefreshed(record);
+  }
+
+  /** When the keep-alive should next refresh this record. */
+  private dueAt(record: TokenRecord): number {
+    const byExpiry = decodeJwtExp(record.access_token) * 1000 - this.skewMs;
+    const byPeriod = this.keepAliveMs > 0 ? this.refreshedAt(record) + this.keepAliveMs : Infinity;
+    const due = Math.min(byExpiry, byPeriod);
+    return this.justRefreshed(record) ? Math.max(due, Date.parse(record.refreshed_at!) + MIN_REFRESH_GAP_MS) : due;
+  }
+
+  /** dueAt, plus a grace period for a follower so the owner goes first. */
+  private followerAwareDue(record: TokenRecord): number {
+    return this.dueAt(record) + (this.lock && !this.lock.held ? FOLLOWER_GRACE_MS : 0);
+  }
+
+  /** Re-read the store when it changed (or when forced). */
+  private sync(force = false): void {
+    const version = this.store.version();
+    if (!force && this.loaded && version === this.seenVersion) return;
+    let content;
+    try {
+      content = this.store.load();
+    } catch (error) {
+      // Keep what we have and look again on the next call. Say so once per
+      // bad file, not on every call.
+      if (version !== this.unreadableVersion) this.log((error as Error).message);
+      this.unreadableVersion = version;
+      return;
+    }
+    this.unreadableVersion = undefined;
+    this.loaded = true;
+    this.seenVersion = version;
+    if (!content) this.setRecord(null, null);
+    else if (isHandoff(content)) this.setRecord(null, content);
+    else this.setRecord(content, null);
+  }
+
+  private setRecord(record: TokenRecord | null, handoff: HandoffRecord | null): void {
+    const before = this.record;
+    const newLogin =
+      (before?.saved_at ?? null) !== (record?.saved_at ?? null) ||
+      (before?.source ?? null) !== (record?.source ?? null) ||
+      Boolean(this.handoff) !== Boolean(handoff);
+    if (before?.refresh_token !== record?.refresh_token) {
+      this.expired = null;
+      this.forceRefresh = false;
+    }
+    this.record = record;
+    this.handoff = handoff;
+    if (newLogin && this.loaded) {
+      this.onLoginChange?.(record);
+      if (!this.stopped) this.schedule();
+    }
+  }
+
+  /** Make sure we own the login (or may take it over). */
+  private claim(): boolean {
+    if (!this.lock) return true;
+    if (!this.lock.held) {
+      const result = this.lock.tryAcquire();
+      if (!result.acquired) {
+        this.ownerHint = result.holder;
+        return false;
+      }
+      this.log(`took over the WHOOP login${this.ownerHint ? ` from pid ${this.ownerHint.pid}, which stopped` : ""}`);
+      this.ownerHint = null;
+      this.lock.startHeartbeat(() => this.log("lost the token lock to another process; this process won't refresh any more"));
+    }
+    // Whether we held the lock all along or took it over a moment ago: prove,
+    // under the guard, that the lock file names us, and stamp a fresh heartbeat,
+    // right before the refresh token is spent. Believing isn't enough: after a
+    // laptop sleep our heartbeat is hours old and a follower waking beside us
+    // would take the "stale" lock while our refresh is on the wire.
+    let state: LockState;
+    try {
+      state = this.lock.confirm();
+    } catch (error) {
+      // The lock sits next to the token file. If it can't be written, the
+      // rotated refresh token couldn't be saved either: don't spend this one.
+      throw new WhoopTokenUnwritableError(this.store.description, error);
+    }
+    if (state === "held") return true;
+    this.ownerHint = this.lock.readHolder(); // lost, or another process is changing the lock right now
+    return false;
+  }
+
+  private ensureFresh(reason: string, mustRefresh: MustRefresh): Promise<void> {
     if (!this.refreshing) {
-      this.refreshing = this.doRefresh().finally(() => {
+      this.refreshing = this.refreshOnce(reason, mustRefresh).finally(() => {
         this.refreshing = null;
       });
     }
-    await this.refreshing;
-    return this.accessToken;
+    return this.refreshing;
   }
 
-  /**
-   * Force the next getToken() to refresh. Ignored when `rejectedToken` is no
-   * longer current, so parallel 401s on the same token cause a single refresh,
-   * and within a minute of the last refresh, so a token Whoop keeps rejecting
-   * doesn't cost a Cognito call per request.
-   */
-  invalidate(rejectedToken: string): void {
-    if (rejectedToken !== this.accessToken) return;
-    if (Date.now() - this.lastRefreshAt < 60_000) return;
-    this.expiresAt = 0;
-  }
-
-  private isFresh(): boolean {
-    return Date.now() < this.expiresAt - this.skewMs;
-  }
-
-  private async doRefresh(): Promise<void> {
-    // Browser-login tokens refresh against WHOOP's web client; legacy iOS
-    // password-flow tokens refresh with "" (WHOOP's proxy fills the iOS client).
-    const clientId = decodeJwtClientId(this.accessToken) === WEB_CLIENT_ID ? WEB_CLIENT_ID : "";
-    const next = await refreshCognitoSession(this.refreshToken, clientId);
-    this.accessToken = next.accessToken;
-    // Cognito may rotate the refresh token; if it does, persist the new one.
-    if (next.refreshToken && next.refreshToken !== this.refreshToken) {
-      this.refreshToken = next.refreshToken;
-      // Observable so a memory-store (non-persisting) deploy can tell when a
-      // restart would strand the old token. See SECURITY.md → token hygiene.
-      console.error("[totem] Cognito rotated the refresh token — persisting the new one.");
+  private async refreshOnce(reason: string, mustRefresh: MustRefresh): Promise<void> {
+    if (!this.claim()) {
+      // Follower: the owner refreshes and writes the file; we only read it.
+      this.sync(true);
+      const record = this.usable();
+      this.forceRefresh = false;
+      if (this.timeLeft(record) > FOLLOWER_MIN_LIFE_MS || this.justRefreshed(record)) return;
+      throw new WhoopTokenOwnedError(this.ownerHint, this.lock!.path);
     }
-    this.expiresAt = next.expiresAt;
-    this.lastRefreshAt = Date.now();
+
+    // Pick up a login another writer saved (`totem auth`) before spending ours.
+    this.sync();
+    const before = this.usable();
+    if (!mustRefresh(before)) return;
+    const versionBefore = this.store.version();
+
+    let next: CognitoTokens;
     try {
-      this.store.save({ accessToken: this.accessToken, refreshToken: this.refreshToken });
+      next = await this.refreshFn(before.refresh_token, before.client_id);
     } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      console.error(`[totem] refreshed the Whoop access token but could not persist it: ${detail}. This process will keep using the fresh in-memory token.`);
+      if (error instanceof CognitoError && error.isAuthFailure) {
+        this.expired = error.message;
+        this.log(`WHOOP refused the refresh token (${error.message}). Run \`totem auth\` to log in again.`);
+        throw new WhoopAuthExpiredError(error.message);
+      }
+      throw new WhoopRefreshUnavailableError(error);
+    }
+
+    // The file changed while we were refreshing. If `totem auth` replaced the
+    // login, handed it to a deployment, or the file was removed, that wins: the
+    // session we just refreshed is abandoned, never written back over it.
+    if (this.store.version() !== versionBefore) {
+      this.sync(true);
+      if (!this.record) {
+        this.log("the login was handed off or removed while refreshing; not saving the refreshed session");
+        return;
+      }
+      if (this.record.refresh_token !== before.refresh_token) {
+        this.log("the login was replaced while refreshing; using the new one");
+        return;
+      }
+    }
+
+    const record: TokenRecord = {
+      ...(this.record ?? before), // the same login, with anything annotate() added meanwhile
+      access_token: next.accessToken,
+      refresh_token: next.refreshToken || before.refresh_token,
+      refreshed_at: new Date(this.now()).toISOString(),
+    };
+    this.persist(record); // before anyone sees the new access token
+    this.record = record;
+    this.forceRefresh = false;
+    this.lastRefreshAt = this.now();
+    const exp = decodeJwtExp(record.access_token) * 1000;
+    this.log(
+      `refreshed the WHOOP access token (${reason}); it expires ${exp ? new Date(exp).toISOString() : "at an unknown time"}` +
+        `${record.refresh_token !== before.refresh_token ? "; rotated refresh token saved" : ""}`,
+    );
+    this.schedule();
+  }
+
+  private persist(record: TokenRecord): void {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < this.saveAttempts; attempt++) {
+      try {
+        this.store.save(record);
+        this.seenVersion = this.store.version();
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    const fatal = new WhoopTokenPersistError(this.store.description, lastError);
+    this.fatal = fatal;
+    this.clearTimer();
+    this.log(fatal.message);
+    this.onFatal?.(fatal);
+    throw fatal;
+  }
+
+  // ── keep-alive ───────────────────────────────────────────────────────────
+
+  private clearTimer(): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.nextAt = null;
+  }
+
+  private schedule(delayOverride?: number): void {
+    this.clearTimer();
+    if (this.stopped || this.fatal || this.handoff || this.expired || !this.record) return;
+    const delay = Math.max(delayOverride ?? this.followerAwareDue(this.record) - this.now(), 1_000);
+    this.nextAt = this.now() + delay;
+    this.arm();
+  }
+
+  /** Sleep until `nextAt` by the wall clock, in steps of at most MAX_TICK_MS. */
+  private arm(): void {
+    if (this.nextAt === null) return;
+    const wait = Math.min(Math.max(this.nextAt - this.now(), 0), MAX_TICK_MS);
+    this.timer = setTimeout(() => void this.keepAlive(), wait);
+    this.timer.unref?.();
+  }
+
+  private async keepAlive(): Promise<void> {
+    this.timer = null;
+    if (this.stopped) return;
+    if (this.nextAt !== null && this.now() < this.nextAt) {
+      this.arm(); // only a tick: not due yet by the wall clock
+      return;
+    }
+    this.nextAt = null;
+    try {
+      this.sync();
+      if (!this.record || this.handoff || this.fatal || this.expired) return;
+      await this.ensureFresh("keep-alive", (r) => this.now() >= this.dueAt(r));
+      this.retryMs = this.retryBaseMs;
+      // A follower whose live owner hasn't refreshed yet polls instead of spinning.
+      const waiting = this.record && this.followerAwareDue(this.record) <= this.now();
+      this.schedule(waiting ? FOLLOWER_POLL_MS : undefined);
+    } catch (error) {
+      if (error instanceof WhoopTokenOwnedError) {
+        this.schedule(FOLLOWER_POLL_MS);
+      } else if (error instanceof WhoopAuthExpiredError || error instanceof WhoopTokenPersistError) {
+        // Logged where it happened; nothing to retry until a new login arrives.
+      } else {
+        this.log(`keep-alive refresh failed (${(error as Error).message}); retrying in ${Math.round(this.retryMs / 1000)}s`);
+        const delay = this.retryMs;
+        this.retryMs = Math.min(this.retryMs * 2, 15 * MINUTE);
+        this.schedule(delay);
+      }
     }
   }
+}
+
+/** Keep-alive interval from TOTEM_KEEPALIVE_HOURS (default 12; 0 = expiry-driven only). */
+export function keepAliveMsFromEnv(value: string | undefined): number {
+  if (value === undefined || value.trim() === "") return 12 * HOUR;
+  const hours = Number(value);
+  if (!Number.isFinite(hours) || hours < 0) return 12 * HOUR;
+  return Math.round(hours * HOUR);
 }
