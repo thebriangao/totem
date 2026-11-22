@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
-import { WhoopOAuthProvider } from "../../src/whoop/oauth_provider.js";
+import { WhoopOAuthProvider, renderConsentForm, redirectDestination } from "../../src/whoop/oauth_provider.js";
 
 const SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const PASSWORD = "hunter2-correct-horse";
@@ -224,6 +224,41 @@ describe("WhoopOAuthProvider — token verification", () => {
     expect(refreshed.access_token).toBeTruthy();
     const info = await p.verifyAccessToken(refreshed.access_token);
     expect(info.clientId).toBe(client.client_id);
+  });
+});
+
+// Registration is open, so anyone can mint a client whose redirect is their own
+// site and send the owner a link to the owner's own /authorize. The page has to
+// say where the code is going; it used to read "connect this server to Claude"
+// for every client.
+describe("consent page — names who receives access", () => {
+  const page = (redirectUri: string) => renderConsentForm({
+    clientId: "c.x", redirectUri, codeChallenge: "x", state: "", scopes: "", resource: "", error: false,
+  });
+
+  it("shows the redirect host for the real connector and for anyone else", () => {
+    expect(page("https://claude.ai/api/mcp/auth_callback")).toContain('<strong class="dest">claude.ai</strong>');
+    const phishing = page("https://claude.ai.evil.example/api/mcp/auth_callback");
+    expect(phishing).toContain('<strong class="dest">claude.ai.evil.example</strong>');
+    expect(phishing).not.toMatch(/to Claude\b/);
+  });
+
+  it("describes loopback, plain-http and custom-scheme destinations", () => {
+    expect(redirectDestination("http://127.0.0.1:33418/callback")).toBe("an app on this device (127.0.0.1:33418)");
+    expect(redirectDestination("http://localhost:1/cb")).toBe("an app on this device (localhost:1)");
+    expect(redirectDestination("http://intranet.example/cb")).toBe("http://intranet.example");
+    expect(redirectDestination("cursor://anysphere.cursor-mcp/oauth/callback")).toBe("cursor://anysphere.cursor-mcp");
+    expect(redirectDestination("https://xn--clude-0qa.ai/cb")).toBe("xn--clude-0qa.ai"); // lookalike shown in punycode
+    expect(redirectDestination("not a url")).toBe("an unrecognised address");
+  });
+
+  it("escapes everything it reflects", () => {
+    const html = renderConsentForm({
+      clientId: '"><script>1</script>', redirectUri: '"><img src=x onerror=1>', codeChallenge: "x",
+      state: "'\"<>&", scopes: "", resource: "", error: true,
+    });
+    expect(html).not.toMatch(/<script>|<img/);
+    expect(html).toContain("&quot;&gt;&lt;script&gt;");
   });
 });
 

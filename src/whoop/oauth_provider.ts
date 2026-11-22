@@ -350,6 +350,25 @@ export function setConsentSecurityHeaders(res: Response): void {
   res.setHeader("Referrer-Policy", "no-referrer");
 }
 
+/**
+ * Who receives the authorization code, for display on the consent page.
+ *
+ * Client registration is open to anyone, so a link to this server's own
+ * /authorize can carry an attacker's client and redirect URI. The page used to
+ * say "connect this server to Claude" whatever the redirect was: the owner saw
+ * their own server asking for their password, and typing it sent the code (and
+ * with it their health data) to the attacker's site. Name the destination.
+ */
+export function redirectDestination(redirectUri: string): string {
+  if (!URL.canParse(redirectUri)) return "an unrecognised address";
+  const { protocol, hostname, host } = new URL(redirectUri);
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
+    return `an app on this device (${host})`;
+  }
+  // A non-https destination (http, or an app's custom scheme) shows its scheme.
+  return protocol === "https:" ? host : `${protocol}//${host}`;
+}
+
 // ─── consent form HTML ──────────────────────────────────────────────────────
 export function renderConsentForm(d: {
   clientId: string;
@@ -365,6 +384,7 @@ export function renderConsentForm(d: {
   const errorBanner = d.error
     ? `<p style="color:#dc2626;margin:0 0 16px">Incorrect password. Try again.</p>`
     : "";
+  const destination = esc(redirectDestination(d.redirectUri));
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -378,6 +398,7 @@ export function renderConsentForm(d: {
           width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
   h1 { font-size: 18px; margin: 0 0 4px; }
   p.sub { color: #969696; font-size: 13px; margin: 0 0 24px; }
+  .dest { color: #e6e6e6; word-break: break-all; }
   label { display: block; font-size: 13px; margin: 0 0 8px; color: #b0b0b0; }
   input[type=password] { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
          border: 1px solid #30363d; background: #0d1117; color: #e6e6e6; font-size: 14px; margin: 0 0 20px; }
@@ -389,7 +410,8 @@ export function renderConsentForm(d: {
 <body>
   <div class="card">
     <h1>totem</h1>
-    <p class="sub">Enter your access password to connect this server to Claude.</p>
+    <p class="sub">Enter your access password to connect this server.</p>
+    <p class="sub">Access to your WHOOP data will go to <strong class="dest">${destination}</strong>. Continue only if you started this from there.</p>
     ${errorBanner}
     <form method="POST" action="/oauth/consent">
       <input type="hidden" name="client_id" value="${esc(d.clientId)}">
