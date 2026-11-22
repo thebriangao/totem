@@ -993,15 +993,57 @@ async function railwayInitOrLink(appName: string, root: string): Promise<boolean
   return false;
 }
 
+const SECRET_KEY = /(TOKEN|PASSWORD|SECRET)/i;
+
+/**
+ * The `railway` invocations that set `env` on the linked service, with every
+ * secret value on stdin (`railway variable set KEY --stdin`) instead of the
+ * command line, where any local user could read it from `ps` while the command
+ * runs. Secrets go first with --skip-deploys; the plain values go last in one
+ * call, which triggers the single redeploy. Empty values are skipped (Railway
+ * rejects them).
+ */
+export function railwayVariableCommands(env: Record<string, string>): Array<{ args: string[]; input?: string }> {
+  const entries = Object.entries(env).filter(([, v]) => v !== "");
+  const secrets = entries.filter(([k]) => SECRET_KEY.test(k));
+  const plain = entries.filter(([k]) => !SECRET_KEY.test(k));
+  const commands: Array<{ args: string[]; input?: string }> = secrets.map(([k, v], i) => ({
+    args: ["variable", "set", k, "--stdin", ...(plain.length || i < secrets.length - 1 ? ["--skip-deploys"] : [])],
+    input: v,
+  }));
+  if (plain.length) commands.push({ args: ["variable", "set", ...plain.map(([k, v]) => `${k}=${v}`)] });
+  return commands;
+}
+
+type Exec = (cmd: string, args: string[], opts: { cwd: string; input?: string }) => Promise<{ code: number; stdout: string; stderr: string }>;
+
+/**
+ * Set `env` on the linked Railway service. A Railway CLI too old to know
+ * `variable set --stdin` gets the values the old way (`variables --set`), and
+ * says so: that is the only case a secret reaches the command line.
+ */
+export async function setRailwayVariables(env: Record<string, string>, root: string, exec: Exec = captureAsync): Promise<boolean> {
+  for (const { args, input } of railwayVariableCommands(env)) {
+    const r = await exec("railway", args, input === undefined ? { cwd: root } : { cwd: root, input });
+    if (r.code === 0) continue;
+    if (/unexpected argument|unrecognized subcommand|wasn't expected|found argument/i.test(r.stderr + r.stdout)) {
+      console.log(c.yellow("  This Railway CLI can't read a value from stdin, so the secrets are passed on its command line."));
+      console.log(c.gray("  Update it to keep them off it: npm i -g @railway/cli"));
+      const legacy = ["variables", ...Object.entries(env).filter(([, v]) => v !== "").flatMap(([k, v]) => ["--set", `${k}=${v}`])];
+      const old = await exec("railway", legacy, { cwd: root });
+      if (old.code !== 0) console.log(c.red(`  ✗ ${lastLine(old)}`));
+      return old.code === 0;
+    }
+    console.log(c.red(`  ✗ ${lastLine(r)}`));
+    return false;
+  }
+  return true;
+}
+
 // RAILWAY — CLI-automatable; resilient to Railway's flaky GraphQL API.
 async function deployRailway(ctx: DeployCtx): Promise<string | null> {
-  // Railway rejects `--set KEY=` (empty value), and PUBLIC_URL isn't known until
-  // `domain` runs — so set the non-empty vars now, PUBLIC_URL in the 2nd pass.
-  const varArgs: string[] = ["variables"];
-  for (const [k, v] of Object.entries(ctx.env)) {
-    if (v === "") continue;
-    varArgs.push("--set", `${k}=${v}`);
-  }
+  // PUBLIC_URL isn't known until `domain` runs — so set the rest now, and
+  // PUBLIC_URL in the 2nd pass.
   return assistedDeploy({
     cliName: "railway",
     install: { npmPkg: "@railway/cli", brewPkg: "railway", manualHint: "npm i -g @railway/cli  (or: brew install railway)" },
@@ -1031,7 +1073,7 @@ async function deployRailway(ctx: DeployCtx): Promise<string | null> {
         retries: 1,
         confirm: { summary: "Add a volume at /data so the WHOOP login survives restarts?", detail: "without it, every restart or redeploy needs `totem auth` again (a small charge from Railway)", cmd: "railway volume add --mount-path /data", defaultYes: true, skippable: true },
       },
-      { desc: "set environment variables (redeploys with them)", cmd: ["railway", varArgs], retries: 3 },
+      { desc: "set environment variables (redeploys with them)", run: () => setRailwayVariables(ctx.env, ctx.root), retries: 3 },
     ],
     getUrl: async () => {
       // `railway domain` prints "🚀 https://…up.railway.app" — capture + parse it
