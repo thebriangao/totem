@@ -131,14 +131,21 @@ export function trackerList(raw: unknown): unknown[] {
  * 171, plus tracked custom behaviours), then every bundled stock behaviour the
  * user doesn't track. Falls back to the bundle alone when WHOOP can't be read.
  */
-export async function loadBehaviorCatalog(client: WhoopClient, date: string): Promise<BehaviorCatalog> {
+export async function loadBehaviorCatalog(
+  client: WhoopClient,
+  date: string,
+  // Writes validate against this list, so they read it fresh: the cached copy
+  // (5 min) wouldn't know a custom behaviour created in the app a moment ago.
+  options: { fresh?: boolean } = {},
+): Promise<BehaviorCatalog> {
   const sources = [
     `/journal-service/v2/journals/behaviors/user/${date}`,
+    // Stock behaviours only: WHOOP never lists custom ones here (verified live).
     "/activities-service/v1/journals/behaviors/user",
   ];
-  for (const path of sources) {
+  for (const [i, path] of sources.entries()) {
     try {
-      const list = trackerList(await client.get(path));
+      const list = trackerList(await (options.fresh ? client.get(path, {}, { fresh: true }) : client.get(path)));
       if (list.length === 0) continue;
       const specs = new Map<number, BehaviorSpec>();
       for (const t of list) {
@@ -148,7 +155,11 @@ export async function loadBehaviorCatalog(client: WhoopClient, date: string): Pr
       for (const b of BEHAVIORS) {
         if (!specs.has(b.behavior_tracker_id)) specs.set(b.behavior_tracker_id, bundledSpec(b.behavior_tracker_id, false)!);
       }
-      return { specs, source: "live", warning: null };
+      return {
+        specs,
+        source: "live",
+        warning: i === 0 ? null : "Couldn't read your dated behaviour list from WHOOP, so custom behaviours can't be resolved right now (stock ones can).",
+      };
     } catch {
       // try the next source, then the bundle
     }

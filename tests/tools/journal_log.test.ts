@@ -171,6 +171,24 @@ describe("whoop_journal_log: partial (default)", () => {
     expect(out.mismatches.map((m: { field: string }) => m.field).sort()).toEqual(["magnitude", "time"]);
   });
 
+  it("reads the behaviour catalog fresh (a write must see a just-created custom behaviour)", async () => {
+    const whoop = whoopFor({ [D]: [draft({}), draft({ 79: { answered_yes: true } })] });
+    await call(whoop, { date: D, behaviors: [{ id: 79 }] });
+    expect(whoop.get).toHaveBeenCalledWith(`/journal-service/v2/journals/behaviors/user/${D}`, {}, { fresh: true });
+  });
+
+  it("says custom behaviours can't be resolved when only WHOOP's stock list could be read", async () => {
+    // The fallback list never contains custom behaviours, so an unknown id there isn't proof it doesn't exist.
+    const stock = { total_count: 2, offset: 2, records: [T[2], T[79]] };
+    const whoop = mockWhoop({
+      "/journal-service/v2/journals/behaviors/user/*": new Error("down"),
+      "/activities-service/v1/journals/behaviors/user": stock,
+      [DRAFT(D)]: draft({}),
+    });
+    const { out } = await call(whoop, { date: D, behaviors: [{ id: 79 }], confirm: false });
+    expect(out.will_execute.body_summary.warnings.join(" ")).toMatch(/custom behaviours can't be resolved/);
+  });
+
   it("reports a partial write when the second request fails", async () => {
     const whoop = whoopFor({ [D]: [draft({})] });
     whoop.put.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new WhoopApiError(400, PARTIAL, "x", "nope"));

@@ -97,7 +97,7 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
     }
 
     // 2. Resolve every behaviour against the live catalog (171 and customs included).
-    const catalog = await loadBehaviorCatalog(client, dateList[0]!);
+    const catalog = await loadBehaviorCatalog(client, dateList[0]!, { fresh: true });
     const warnings: string[] = catalog.warning ? [catalog.warning] : [];
     const errors: Array<{ error: string; suggestions?: Array<{ id: number; title: string }> }> = [];
     const resolved: Array<{ spec: BehaviorSpec; input: z.infer<typeof BehaviorInput> }> = [];
