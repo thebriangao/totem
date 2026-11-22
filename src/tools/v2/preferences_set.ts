@@ -364,11 +364,11 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
       path: P.clock,
       body,
       before: null,
-      target: { clock_format: clockFormat },
+      // The timezone goes out with every clock-format write, so the preview shows it too.
+      target: { clock_format: clockFormat, timezone: tz },
       noChange: false,
       // No user-token GET exists; the POST answers with the stored row.
       readBack: async (result) => (isObject(result) ? { clock_format: asString(result.clock_format), timezone: asString(result.timezone) } : null),
-      afterOut: (a) => ({ clock_format: (a as { clock_format: string | null }).clock_format }),
       matches: (a) => eq(a, { clock_format: clockFormat, timezone: tz }),
       warnings: ["WHOOP has no read for the clock format; verified from the write's response."],
     };

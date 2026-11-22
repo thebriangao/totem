@@ -209,6 +209,25 @@ describe("whoop_preferences_set: clock_format", () => {
     expect(out).toMatchObject({ verified: true, after: { clock_format: "TWENTY_FOUR_HOUR_FORMAT" } });
   });
 
+  it("shows the timezone it will send in the preview and the receipt", async () => {
+    vi.stubEnv("WHOOP_TIMEZONE", "America/Los_Angeles");
+    const routes = { "/users-service/v2/bootstrap": boot(zoneOffset("America/Los_Angeles")) };
+    const preview = await call(mockWhoop(routes), { setting: "clock_format", clock_format: "TWENTY_FOUR_HOUR_FORMAT", confirm: false });
+    expect(preview.out.will_execute.body_summary.after).toEqual({ clock_format: "TWENTY_FOUR_HOUR_FORMAT", timezone: "America/Los_Angeles" });
+    const whoop = mockWhoop(routes);
+    whoop.post.mockResolvedValueOnce({ clock_format: "TWENTY_FOUR_HOUR_FORMAT", timezone: "America/Los_Angeles" });
+    const { out } = await call(whoop, { setting: "clock_format", clock_format: "TWENTY_FOUR_HOUR_FORMAT" });
+    expect(out.after).toEqual({ clock_format: "TWENTY_FOUR_HOUR_FORMAT", timezone: "America/Los_Angeles" });
+  });
+
+  it("reports verified:false when WHOOP's response row shows another format or zone", async () => {
+    vi.stubEnv("WHOOP_TIMEZONE", "America/Los_Angeles");
+    const whoop = mockWhoop({ "/users-service/v2/bootstrap": boot(zoneOffset("America/Los_Angeles")) });
+    whoop.post.mockResolvedValueOnce({ clock_format: "TWELVE_HOUR_FORMAT", timezone: "America/Los_Angeles" });
+    const { out } = await call(whoop, { setting: "clock_format", clock_format: "TWENTY_FOUR_HOUR_FORMAT" });
+    expect(out.verified).toBe(false);
+  });
+
   it("refuses when the timezone it would send doesn't match the profile offset", async () => {
     vi.stubEnv("WHOOP_TIMEZONE", "Asia/Tokyo");
     const whoop = mockWhoop({ "/users-service/v2/bootstrap": boot("-0800") });
