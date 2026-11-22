@@ -83,19 +83,19 @@ const CASES: Record<string, { args?: Record<string, unknown>; routes: Record<str
   whoop_workouts: {
     routes: {
       "/home-service/v1/calendar/overview": fx("activities/calendar_overview_2026-11.json"),
-      "/home-service/v1/home": (q) => (q.date === TODAY ? fx("activities/home_2026-11-21.json") : {}),
+      "/home-service/v1/home": (q: Record<string, unknown>) => (q.date === TODAY ? fx("activities/home_2026-11-21.json") : {}),
     },
   },
   whoop_lift_sessions: {
     routes: {
       "/home-service/v1/calendar/overview": { days_of_month: [19, 20, 21].map((d) => ({ date_value_display: String(d), has_data: true })) },
-      "/home-service/v1/home": (q) => liftHome(String(q.date)),
+      "/home-service/v1/home": (q: Record<string, unknown>) => liftHome(String(q.date)),
       "/core-details-bff/v1/cardio-details": fx("cardio_details.json"),
     },
   },
   whoop_lift_exercise: {
     routes: {
-      "/weightlifting-service/v3/prs": (q) => fx(`strength_v2/prs_page${Number(q.offset ?? 0) / 10}.json`),
+      "/weightlifting-service/v3/prs": (q: Record<string, unknown>) => fx(`strength_v2/prs_page${Number(q.offset ?? 0) / 10}.json`),
     },
   },
   whoop_lift_library: { routes: { "/weightlifting-service/v3/workout-library": fx("strength_v2/library.json") } },

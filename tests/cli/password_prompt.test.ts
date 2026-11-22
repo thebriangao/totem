@@ -1,7 +1,9 @@
 import { PassThrough } from "node:stream";
 import { stripVTControlCharacters } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { promptHidden } from "../../src/cli/ui.js";
+import { PLAIN, Ui } from "../../src/cli/ui.js";
+
+const promptHidden = (question: string): Promise<string> => new Ui({ style: PLAIN }).hidden(question);
 
 function terminal(isTTY = true, initiallyRaw = false) {
   const input = Object.assign(new PassThrough(), {
@@ -9,7 +11,7 @@ function terminal(isTTY = true, initiallyRaw = false) {
     isRaw: initiallyRaw,
     setRawMode(mode: boolean) { this.isRaw = mode; return this; },
   });
-  vi.spyOn(process, "stdin", "get").mockReturnValue(input as typeof process.stdin);
+  vi.spyOn(process, "stdin", "get").mockReturnValue(input as unknown as typeof process.stdin);
   const output: string[] = [];
   vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
     output.push(String(chunk));
@@ -35,7 +37,7 @@ describe("hidden password prompt", () => {
     for (const chunk of chunks) input.write(chunk);
     expect(await result).toBe(expected);
     // All editing/redraw output must stay off stdout, not just the secret.
-    expect(stripVTControlCharacters(output.join(""))).toBe("? Password › \n");
+    expect(stripVTControlCharacters(output.join(""))).toBe("? Password (hidden): \n");
     expect(input.isRaw).toBe(false);
     input.destroy();
   });

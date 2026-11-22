@@ -78,11 +78,12 @@ That puts `totem` on your PATH (the one-time `npx tsc` builds it; after that eve
 
 Deploys the server to a host and connects it to Claude on **web, desktop, and mobile**, synced across every device on your account. One command walks through:
 
-1. **Pick a host** — Fly (automated + tested), Railway, Google Cloud Run, or your own server (guided Docker steps).
-2. **Secrets** — generates `MCP_AUTH_TOKEN` and asks you to choose a connector password.
-3. **Deploy + verify** — sets env, creates a small volume for the login (Fly, Railway), deploys, confirms `/health` and the OAuth endpoints are live.
-4. **WHOOP login** — a browser window opens on whoop.com; you log in there (email, password, code). totem reads WHOOP's session cookies, sends the login straight to your server, and keeps no copy on your machine.
-5. **Connect** — prints ready-to-paste setup for **claude.ai, ChatGPT, Claude Code (remote), and Cursor / Windsurf / any HTTP MCP client** (URL + password for the OAuth connectors, a bearer-token block for the rest), and opens claude.ai's connector page.
+1. **Host** — Fly (automated + tested), Railway, Google Cloud Run, or your own server (guided Docker steps). It installs the host's CLI and signs you in if needed.
+2. **Secrets** — generates `MCP_AUTH_TOKEN` (64 random characters) and a connector password. Neither is shown while it works; the password is handed to you once, at the end.
+3. **Deploy** — shows the whole plan (app, address, volume, who is billed) and asks once. Nothing is created before you say yes. Then it creates the app and a small volume for the login (Fly, Railway), sets the secrets over stdin, and deploys with a one-line progress (`--verbose` for the host's full output).
+4. **Check** — waits for `/health`, confirms the sign-in metadata is served and that `/mcp` refuses a request without a token.
+5. **WHOOP login** — a browser window opens on whoop.com; you log in there (email, password, code). totem reads WHOOP's session cookies, sends the login straight to your server, and keeps no copy on your machine.
+6. **Connect a client** — prints exactly what to paste where for **claude.ai, Claude Desktop, ChatGPT, Claude Code, Cursor, Codex and OpenCode**: one URL. Each client then opens your server's own sign-in page, which names where access is going and asks for the connector password. `totem connect` shows this again any time.
 
 ```bash
 totem cloud
@@ -90,7 +91,7 @@ totem cloud
 
 ### Local only — `totem local`
 
-Runs the server on this machine over stdio — no hosting, this device only. Walks through Whoop login → build → wiring it into the client you pick: **Claude Desktop, Claude Code, Cursor, VS Code (Copilot), Gemini CLI, Codex CLI, or Windsurf** — it writes the right config to the right path automatically (or prints a universal block for any other MCP client). Restart the client and you're set.
+Runs the server on this machine over stdio — no hosting, this device only. Three steps: prerequisites (it installs dependencies and builds if needed), WHOOP login (a saved login is reused), and one question: which client. **Claude Desktop, Claude Code, Cursor, Codex, OpenCode, VS Code, Gemini CLI or Windsurf** — it writes the client's config for you (keeping a backup, and refusing to touch a config it can't read as plain JSON) or runs the client's own `mcp add`. For anything else it prints the block to paste. `totem connect <client>` adds another client later.
 
 ```bash
 totem local
@@ -430,25 +431,24 @@ All of the above is what `totem cloud` automates for you — the manual steps he
 # One-time, after cloning:
 npm install && npx tsc && npm link   # the only npm steps; `npx tsc` does the first build
 
-totem       # banner + full command list
+totem       # the command list
 ```
 
 Commands by group:
 
 | Group | Commands |
 |---|---|
-| **Get started** | `cloud` ★ (guided server deploy + Claude connect) · `local` (guided local setup) |
-| **Setup** | `auth` (browser login; saved here, or pushed to your deployment · `--paste` · `--local` · `--status`) |
-| **Deployed** | `deploy` · `update` (interactive version picker + auto-update) · `logs` · `status` · `ping` |
-| **Local dev** | `start [--http]` · `dev` · `dev:http` · `build` · `test` · `typecheck` |
-| **Inspect** | `info` · `tools` · `config <stdio\|http>` |
-| **Help** | `help` · `version` (+ `--help`, `-v` aliases) |
+| **Set up** | `cloud` ★ (guided server deploy) · `local` (guided local setup) · `connect [client]` (connect another client, or show what to paste where) · `auth` (browser login; saved here, or sent to your server · `--status` · `--paste` · `--local`) |
+| **Run and maintain** | `status` (install, server and login at a glance · `--host`) · `ping` · `logs` · `deploy` · `update` (version picker + auto-update) · `tools` · `token` (the server's `MCP_AUTH_TOKEN`, for `$(totem token)` in a command) |
+| **Develop** | `start [--http]` · `dev [--http]` · `build` · `test` · `typecheck` |
 
-Most people only ever need the two **Get started** commands plus `auth` (if WHOOP ever ends the session). The rest are for power users — `totem ping` ("is my deploy alive"), `totem logs`, `totem start` (drop-in for `node dist/server.js`), etc.
+`totem help` lists them, `totem <command> --help` explains one. Output is plain text when it isn't going to a terminal, and `--no-color` or `NO_COLOR=1` turns colour off. Older names still work: `info` is `status`, `config` is `connect`, `dev:http` is `dev --http`.
 
-**Staying current — `totem update`.** An interactive updater. Run it and you get a version picker — every release, newest first, with dates and notes pulled from GitHub Releases. The newest is the default; pick anything older and it warns you what you'd be behind on (you can always run it again to go forward). After you choose, it applies the change with a guided, animated build — git installs check out the release's tag (never `main`), reinstall deps, and rebuild; npm installs reinstall the chosen version — then redeploys to your existing host and health-checks `/health`. A clean working tree is required (it won't clobber local edits), and a failed deploy leaves your live server untouched.
+Most people only ever need `cloud` or `local`, plus `auth` if WHOOP ever ends the session. Every command that fails says what went wrong and the command that fixes it. A command that asks questions stops, rather than assuming yes, when nobody can answer (`totem cloud < /dev/null`).
 
-After a successful update to the latest it offers **auto-update**. Turn it on and a background job (launchd on macOS, cron on Linux) checks for new releases every 6 hours and applies them the same way — pull, build, redeploy, health-check — logging to `.totem-autoupdate.log`. There's no push channel to your machine, so it's a scheduled poll, not instant. Toggle it directly anytime:
+**Staying current — `totem update`.** An interactive updater. Run it and you get a version picker — every release, newest first, with dates and notes pulled from GitHub Releases. The newest is the default; pick anything older and it warns you what you'd be behind on (you can always run it again to go forward). After you choose, it installs it step by step — git installs check out the release's tag (never `main`), reinstall deps, and rebuild; npm installs reinstall the chosen version — then redeploys to your existing host and checks `/health`. A clean working tree is required (it won't clobber local edits). If the install, the build or the deploy fails, it goes back to the version you had and rebuilds it, so the install never sits half-updated and the next run tries again.
+
+After a successful update to the latest it offers **auto-update**. Turn it on and a background job (launchd on macOS, cron on Linux) checks for new releases every 6 hours and applies them the same way, logging to `.totem-autoupdate.log`. The job carries the PATH it was scheduled with, so it can find `npm` and your host's CLI, and it leaves a checkout alone unless it is on `main` or a release tag. There's no push channel to your machine, so it's a scheduled poll, not instant. Toggle it directly anytime:
 
 ```bash
 totem update              # interactive: pick a version, then optionally enable auto-update

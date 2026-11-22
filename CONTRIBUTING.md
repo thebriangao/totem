@@ -52,7 +52,7 @@ totem build
 totem dev
 
 # HTTP mode (for remote hosting via Docker/Fly/etc.):
-MCP_AUTH_TOKEN=$(openssl rand -hex 32) totem dev:http
+MCP_AUTH_TOKEN=$(openssl rand -hex 32) totem dev --http
 curl http://localhost:3000/health   # → {"status":"ok"}
 ```
 

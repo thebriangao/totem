@@ -104,7 +104,7 @@ describe("whoop_cycle_log period / ovulation", () => {
     expect(put).toHaveBeenCalledWith(LOG, { period_logs: [{ date: DATE, period: { answered_yes: true, magnitude_input_value: 2 }, ovulation: { answered_yes: false, magnitude_input_value: null } }] });
     expect(out).toMatchObject({ date: DATE, verified: true, day: { period_day: true, ovulation: false } });
     expect(out.mismatches).toBeUndefined();
-    expect(get.mock.calls.filter(([p]) => p === OVERVIEW).every(([, , o]) => (o as { fresh: boolean }).fresh)).toBe(true);
+    expect(get.mock.calls.filter(([p]) => p === OVERVIEW).every((call) => ((call as unknown[])[2] as { fresh: boolean }).fresh)).toBe(true);
   });
 
   it("undoes a period with answered_yes:false for both", async () => {

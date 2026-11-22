@@ -1,0 +1,108 @@
+
+totem cloud
+Deploy your own totem server and connect your AI clients to it.
+
+1/6  Host
+? Where should the server run?
+  › Fly.io             a small VM with a volume for the login (recommended)
+    Railway            a managed service with a dashboard
+    Google Cloud Run   serverless; no disk, so a restart needs a new login
+    My own server      any Docker host; totem prints the commands
+  ✓ Node.js 24.3.0
+  ✓ Dependencies installed
+  ✓ Fly CLI installed
+  ✓ Signed in to Fly  you@example.com
+
+2/6  Secrets
+  ✓ MCP_AUTH_TOKEN generated  64 random characters; the server's own key
+  ✓ Connector password generated  you get it at the end, once
+    Both are set on the server. The token is also kept in .totem-deploy.json
+    (readable only by you), so totem auth can reach the server.
+
+3/6  Deploy
+  Host      Fly.io, as you@example.com
+  App       totem-c0ffee
+  Address   https://totem-c0ffee.fly.dev
+  Region    sjc
+  Volume    totem_data, 1 GB: keeps the WHOOP login across restarts
+  Cost      Fly bills your account for one small machine and the volume
+? Deploy this?
+  › Deploy
+    Change something   the name, the password, or the account
+    Cancel             nothing has been created
+  ✓ App created  totem-c0ffee
+  ✓ Volume created  4s
+  ✓ Secrets set
+  • Building and deploying on Fly…
+  ✓ Deployed  1m 42s
+
+4/6  Check
+  • Waiting for https://totem-c0ffee.fly.dev to answer…
+  ✓ The server is up  /health answered in under a second
+  ✓ Sign-in is advertised  clients can find where to log in
+  ✓ /mcp is locked  401 without a token
+
+5/6  WHOOP login
+  A Google Chrome window opens on WHOOP's site with a temporary profile. Log in
+  there. totem never sees what you type: it waits for WHOOP's session cookies,
+  then closes the window and deletes the profile.
+  • Waiting for you to log in in the browser…
+  ✓ Logged in to WHOOP  user 1234567
+  ✓ Login sent to the server  https://totem-c0ffee.fly.dev
+    The server keeps it fresh from now on. No copy stays on this computer.
+
+6/6  Connect a client
+  URL        https://totem-c0ffee.fly.dev/mcp
+  Password   Kq7m-Rt2x-Vb9n-Lp4w-Hd6s (copied to the clipboard)
+  totem shows the password this once. Save it in your password manager.
+
+  Every client below opens a totem page in your browser. Check where access is
+  going, then enter the password.
+
+  claude.ai
+    Settings → Connectors → Add custom connector. Paste the URL.
+
+  Claude Desktop
+    Uses the claude.ai connector: add it there once and it shows up here and in
+    the mobile app.
+
+  ChatGPT
+    Settings → Apps & Connectors → Create. Paste the URL. (Turn on Developer
+    mode under Advanced settings first.)
+
+  Claude Code
+    claude mcp add --transport http --scope user whoop \
+      https://totem-c0ffee.fly.dev/mcp
+    In Claude Code: /mcp → whoop → Authenticate
+
+  Cursor
+    Add to ~/.cursor/mcp.json:
+    {
+      "mcpServers": {
+        "whoop": {
+          "url": "https://totem-c0ffee.fly.dev/mcp"
+        }
+      }
+    }
+
+  Codex
+    codex mcp add whoop --url https://totem-c0ffee.fly.dev/mcp
+    codex mcp login whoop
+
+  OpenCode
+    opencode mcp add whoop --url https://totem-c0ffee.fly.dev/mcp
+    opencode mcp auth whoop
+
+  Another client
+    Give it the URL. If it can't sign in through a browser, send the server's
+    token as a bearer header instead:
+    Authorization: Bearer $(totem token)
+
+╭─ Next ──────────────────────────────────────────────────────────────╮
+│ 1. Add the connector in claude.ai (its settings are opening in your │
+│    browser).                                                        │
+│ 2. Ask it: "How did I sleep last night?"                            │
+│                                                                     │
+│ See this again: totem connect                                       │
+│ Check the server: totem status                                      │
+╰─────────────────────────────────────────────────────────────────────╯

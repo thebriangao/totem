@@ -51,7 +51,7 @@ export function mockWhoop(routes: Record<string, unknown | ((n: number) => unkno
   });
   return {
     get,
-    put: vi.fn(async () => undefined as unknown),
+    put: vi.fn(async (_path: string, _body?: unknown) => undefined as unknown),
     post: vi.fn(async () => undefined as unknown),
     delete: vi.fn(async () => undefined as unknown),
   };
