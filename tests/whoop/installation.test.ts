@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, openSync, readSync, closeSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveInstallationId } from "../../src/whoop/installation.js";
@@ -42,5 +42,36 @@ describe("resolveInstallationId", () => {
     const id = resolveInstallationId(envPath);
     const idLines = readFileSync(envPath, "utf8").split("\n").filter((line) => line.startsWith("WHOOP_INSTALLATION_ID="));
     expect(idLines).toEqual([`WHOOP_INSTALLATION_ID=${id}`]);
+  });
+
+  // It used its own writer: truncate-and-rewrite in place (the tokens live in
+  // this file too), a blank line before the entry and no newline after it.
+  it("persists through the shared .env writer: whole-file swap, file shape kept", () => {
+    const dir = mkdtempSync(join(tmpdir(), "totem-installation-"));
+    dirs.push(dir);
+    const envPath = join(dir, ".env");
+    const before = "WHOOP_EMAIL=test@example.com\nWHOOP_IOS_BEARER_TOKEN=tok\n";
+    writeFileSync(envPath, before);
+    delete process.env.WHOOP_INSTALLATION_ID;
+    const fd = openSync(envPath, "r");
+    try {
+      const id = resolveInstallationId(envPath);
+      const snapshot = Buffer.alloc(4096);
+      // A reader that opened the file before the write still sees all of the old file.
+      expect(snapshot.subarray(0, readSync(fd, snapshot, 0, snapshot.length, 0)).toString("utf8")).toBe(before);
+      expect(readFileSync(envPath, "utf8")).toBe(`${before}WHOOP_INSTALLATION_ID=${id}\n`);
+    } finally {
+      closeSync(fd);
+    }
+    expect(readdirSync(dir)).toEqual([".env"]);
+  });
+
+  it("reads a quoted persisted id the way dotenv does", () => {
+    const dir = mkdtempSync(join(tmpdir(), "totem-installation-"));
+    dirs.push(dir);
+    const envPath = join(dir, ".env");
+    writeFileSync(envPath, 'export WHOOP_INSTALLATION_ID="ABCDEF12-0000-4000-8000-000000000001" # mine\n');
+    delete process.env.WHOOP_INSTALLATION_ID;
+    expect(resolveInstallationId(envPath)).toBe("ABCDEF12-0000-4000-8000-000000000001");
   });
 });
