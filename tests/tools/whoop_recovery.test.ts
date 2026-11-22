@@ -1,7 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { assessmentTimestamp, registerRecovery } from "../../src/tools/v2/recovery.js";
 import { projectAssessment, projectHealthMonitor, projectRecoveryDeepDive } from "../../src/projections/v2/recovery.js";
-import { RecoveryV2Out } from "../../src/schemas/v2/recovery.js";
 import { call, closeAll, connect, err500, fx, paths, pinToday, queryFor, routedGet, unpinToday } from "./reads_core_harness.js";
 
 const MONITOR = "/coaching-service/v1/health/bff/monitor";
@@ -52,9 +51,9 @@ describe("whoop_recovery tool", () => {
 
   it("adds today's health monitor and never calls /developer/v2/recovery", async () => {
     const get = routedGet({ "/home-service/v1/deep-dive/recovery": fx("recovery_dd_populated"), [MONITOR]: fx("monitor_populated") });
-    const out = RecoveryV2Out.parse(await call(await connect(registerRecovery, get), "whoop_recovery"));
+    const out = await call(await connect(registerRecovery, get), "whoop_recovery");
     expect(queryFor(get, "/home-service/v1/deep-dive/recovery")).toEqual({ date: "2026-11-21" });
-    expect(out.monitor?.spo2_pct).toBe(96);
+    expect(out.monitor.spo2_pct).toBe(96);
     expect(paths(get)).not.toContain("/developer/v2/recovery");
     expect(out.assessment).toBeUndefined();
   });

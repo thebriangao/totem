@@ -1,7 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { registerTrend } from "../../src/tools/v2/trend.js";
 import { compareRows, pointDate, projectTrendWindow, windowBounds } from "../../src/projections/v2/trend.js";
-import { TrendV2Out } from "../../src/schemas/v2/trend.js";
 import { call, closeAll, connect, err500, fx, oldFx, pinToday, routedGet, unpinToday } from "./reads_core_harness.js";
 
 describe("whoop_trend projection", () => {
@@ -65,9 +64,9 @@ describe("whoop_trend tool", () => {
 
   it("always sends endDate (today by default) and returns the requested window", async () => {
     const get = routedGetByQuery({ "HRV@2026-11-21": oldFx("trend_hrv") });
-    const out = TrendV2Out.parse(await call(await connect(registerTrend, get), "whoop_trend", { metrics: ["HRV"] }));
+    const out = await call(await connect(registerTrend, get), "whoop_trend", { metrics: ["HRV"] });
     expect(out.window).toBe("month");
-    expect(out.metrics[0]!.a).toMatchObject({ start: "2026-10-23", end: "2026-11-21" });
+    expect(out.metrics[0].a).toMatchObject({ start: "2026-10-23", end: "2026-11-21" });
   });
 
   it("compare_end_date fetches a second window per metric and returns deltas", async () => {

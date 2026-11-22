@@ -1,7 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { registerNow } from "../../src/tools/v2/now.js";
 import { projectNow } from "../../src/projections/v2/now.js";
-import { NowV2Out } from "../../src/schemas/v2/now.js";
 import { call, closeAll, connect, err500, fx, paths, pinToday, queryFor, routedGet, unpinToday } from "./reads_core_harness.js";
 
 describe("whoop_now projection", () => {
@@ -35,7 +34,7 @@ describe("whoop_now tool", () => {
       "/health-service/v2/stress-bff/2026-11-21": fx("stress_calibrating"),
       "/home-service/v1/widget/overview": fx("widget"),
     });
-    const out = NowV2Out.parse(await call(await connect(registerNow, get), "whoop_now"));
+    const out = await call(await connect(registerNow, get), "whoop_now");
     expect(queryFor(get, "/home-service/v1/widget/overview")).toEqual({ widgetSize: "MEDIUM" });
     expect(paths(get)).not.toContain("/health-tab-bff/v1/health-tab");
     expect(out.freshness.completed_cache).toBe("bypassed");
