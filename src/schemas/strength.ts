@@ -93,6 +93,7 @@ export type LiftProgressionOutT = z.infer<typeof LiftProgressionOut>;
 
 export const LiftHistoryOut = z.array(z.object({
   activity_id: z.string(),
+  sport_name: z.string().nullable(),
   date: z.string(),
   name: z.string().nullable(),
   duration_ms: z.number().int(),
