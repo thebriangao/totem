@@ -136,8 +136,8 @@ describe("lift exercise projection", () => {
   it("reads the 1RM card and manual entry ids from history", () => {
     expect(oneRepMaxCard(fixture("one_rep_max_card"))).toEqual({ value: 111, unit: "lb", source: "estimated", date: "2026-11-21" });
     const entries = oneRepMaxEntries(fixture("one_rep_max_history_manual"));
-    expect(entries).toContainEqual({ key: "MANUAL-2026-11-20", source: "manual", date: "2026-11-20", value: 150, entry_id: "cc8e19b0-fc1a-4fe8-8cb4-e1174dc255f9" });
-    expect(entries).toContainEqual({ key: "ESTIMATED-2026-11-21", source: "estimated", date: "2026-11-21", value: 150, entry_id: null });
+    expect(entries).toContainEqual({ key: "MANUAL-2026-11-20", source: "manual", date: "2026-11-20", value: 150, unit: "lb", entry_id: "cc8e19b0-fc1a-4fe8-8cb4-e1174dc255f9" });
+    expect(entries).toContainEqual({ key: "ESTIMATED-2026-11-21", source: "estimated", date: "2026-11-21", value: 150, unit: "lb", entry_id: null });
     expect(oneRepMaxRows(entries)).toContainEqual(["2026-11-20", 150, "manual", "cc8e19b0-fc1a-4fe8-8cb4-e1174dc255f9"]);
     expect(oneRepMaxEntries(fixture("one_rep_max_history_after_delete")).some((e) => e.source === "manual")).toBe(false);
   });

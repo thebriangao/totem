@@ -25,6 +25,8 @@ export const manualEntryPath = (entryId: string) => `/weightlifting-service/v3/o
 const VOLUME_FORMATS = ["WEIGHT", "REPS", "TIME"] as const;
 const ORM_MIN = 1;
 const ORM_MAX = 999;
+/** The history may show a value rounded to a whole number. */
+const ORM_SHOWN_TOLERANCE = 0.6;
 
 const CustomIn = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -64,7 +66,7 @@ export function registerLiftExerciseSet(server: McpServer, client: WhoopClient):
       value: z.number().positive().optional().describe("1RM in `unit`."),
       date: z.iso.date().optional().describe("1RM date; default today."),
       entry_id: z.string().optional().describe("Manual 1RM entry to edit or delete."),
-      unit: z.enum(["kg", "lb"]).default("kg"),
+      unit: z.enum(["kg", "lb"]).optional().describe("Unit of `value`; required for set_1rm."),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
@@ -183,11 +185,11 @@ export function registerLiftExerciseSet(server: McpServer, client: WhoopClient):
       const manual = (await readEntries()).filter((e) => e.source === "manual");
       const entry = manual.find((e) => (entry_id ? e.entry_id === entry_id : e.date === date));
       if (!entry?.entry_id) {
-        return liftError({ error: `No manual 1RM entry ${entry_id ?? `on ${date}`} for ${t.name}.`, manual_entries: manual.map((e) => [e.date, e.value, e.entry_id]) });
+        return liftError({ error: `No manual 1RM entry ${entry_id ?? `on ${date}`} for ${t.name}.`, manual_entries: manual.map((e) => [e.date, e.value, e.unit, e.entry_id]) });
       }
       if (!confirm) {
         return respond(TOOL, LiftExerciseSetOut, preview("DELETE", manualEntryPath(entry.entry_id), {
-          exercise: t.name, date: entry.date, value: entry.value, note: "That day's estimate reverts to WHOOP's own.",
+          exercise: t.name, date: entry.date, value: entry.value, unit: entry.unit, note: "That day's estimate reverts to WHOOP's own.",
         }));
       }
       await client.delete(manualEntryPath(entry.entry_id));
@@ -200,20 +202,20 @@ export function registerLiftExerciseSet(server: McpServer, client: WhoopClient):
       }
       return respond(TOOL, LiftExerciseSetOut, {
         action, exercise_id: id, exercise: null,
-        one_rep_max: { date: entry.date ?? today, value: entry.value, unit: null, entry_id: entry.entry_id },
+        // WHOOP's own display value, in the unit WHOOP showed it in.
+        one_rep_max: { date: entry.date ?? today, value: entry.value, unit: entry.unit, sent_value: null, sent_unit: null, entry_id: entry.entry_id },
         verified: gone, warnings,
       });
     }
 
     // set_1rm
     if (value === undefined) return liftError({ error: "set_1rm needs value." });
+    // No default unit: a bare 225 read as kg on a lb account would be stored as a 496 lb 1RM.
+    if (!unit) return liftError({ error: "Say which unit the value is in: unit \"kg\" or \"lb\". Nothing is assumed." });
     const day = date ?? today;
     if (day > today) return liftError({ error: `${day} is in the future; WHOOP refuses future 1RM entries.` });
     const earliest = sixMonthsBefore(today);
     if (day < earliest) return liftError({ error: `${day} is more than 6 months back; the earliest WHOOP accepts is ${earliest}.` });
-    const account = await accountWeightUnit(client);
-    const sent = Math.round(convertWeight(value, unit, account) * 10) / 10;
-    if (sent < ORM_MIN || sent > ORM_MAX) return liftError({ error: `${sent} ${account} is outside WHOOP's 1RM range (${ORM_MIN}–${ORM_MAX} ${account}).` });
     if (t.e1rm_eligible === false) warnings.push(`${t.name} isn't e1RM-eligible: WHOOP stores the entry but won't estimate from your lifts.`);
 
     const entries = await readEntries();
@@ -221,18 +223,26 @@ export function registerLiftExerciseSet(server: McpServer, client: WhoopClient):
     let replacing: OneRepMaxEntry | undefined;
     if (entry_id) {
       replacing = manual.find((e) => e.entry_id === entry_id);
-      if (!replacing) return liftError({ error: `No manual 1RM entry ${entry_id} for ${t.name}.`, manual_entries: manual.map((e) => [e.date, e.value, e.entry_id]) });
+      if (!replacing) return liftError({ error: `No manual 1RM entry ${entry_id} for ${t.name}.`, manual_entries: manual.map((e) => [e.date, e.value, e.unit, e.entry_id]) });
     } else {
       replacing = manual.find((e) => e.date === day);
-      if (replacing) warnings.push(`Replaces the manual entry on ${day} (${replacing.value} ${account}).`);
+      if (replacing) warnings.push(`Replaces the manual entry on ${day} (${replacing.value} ${replacing.unit ?? ""}).`.replace(" )", ")"));
     }
+
+    // The display unit is the last read before the write (D2): WHOOP reads the number in it.
+    const account = await accountWeightUnit(client);
+    const sent = Math.round(convertWeight(value, unit, account) * 10) / 10;
+    if (sent < ORM_MIN || sent > ORM_MAX) return liftError({ error: `${sent} ${account} is outside WHOOP's 1RM range (${ORM_MIN}–${ORM_MAX} ${account}).` });
+    const converted = unit !== account;
+    /** In the caller's unit; what WHOOP received is spelled out only when it differs. */
+    const stated = { value, unit, ...(converted ? { sent_value: sent, sent_unit: account } : {}) };
     const body: Record<string, unknown> = { date: day, value: sent };
     if (entry_id) body.id = entry_id;
     if (!confirm) {
       return respond(TOOL, LiftExerciseSetOut, preview("PUT", ormPath(id), {
-        exercise: t.name, ...body, unit: account,
-        ...(unit !== account ? { converted_from: `${value} ${unit}` } : {}),
-        ...(replacing ? { replaces: [replacing.date, replacing.value] } : {}),
+        exercise: t.name, date: day, ...stated,
+        ...(entry_id ? { id: entry_id } : {}),
+        ...(replacing ? { replaces: [replacing.date, replacing.value, replacing.unit] } : {}),
         ...(warnings.length ? { warnings } : {}),
       }));
     }
@@ -240,14 +250,20 @@ export function registerLiftExerciseSet(server: McpServer, client: WhoopClient):
     let entryAfter: OneRepMaxEntry | undefined;
     try {
       entryAfter = (await readEntries()).find((e) => e.source === "manual" && e.date === day && (!entry_id || e.entry_id === entry_id));
+      if (!entryAfter) warnings.push(`No manual entry on ${day} reads back.`);
     } catch (e) {
       warnings.push(`Read-back failed: ${errorMessage(e)}`);
     }
-    const verified = entryAfter !== undefined && entryAfter.value !== null && Math.abs(entryAfter.value - sent) <= 1;
-    if (entryAfter && !verified) warnings.push(`The entry reads back as ${entryAfter.value} ${account}.`);
+    // Compare in the unit WHOOP shows the entry in: the same number under another unit is a different weight.
+    const shownUnit = entryAfter?.unit ?? account;
+    const verified = entryAfter !== undefined && entryAfter.value !== null
+      && Math.abs(entryAfter.value - convertWeight(sent, account, shownUnit)) <= ORM_SHOWN_TOLERANCE;
+    if (entryAfter && !verified) {
+      warnings.push(`The entry reads back as ${entryAfter.value} ${shownUnit}, but ${sent} ${account} was sent. If the unit differs, the account's unit changed during the write: fix the entry in the app or set it again.`);
+    }
     return respond(TOOL, LiftExerciseSetOut, {
       action, exercise_id: id, exercise: null,
-      one_rep_max: { date: day, value: sent, unit: account, entry_id: entryAfter?.entry_id ?? null },
+      one_rep_max: { date: day, value, unit, sent_value: converted ? sent : null, sent_unit: converted ? account : null, entry_id: entryAfter?.entry_id ?? null },
       verified, warnings,
     });
   });

@@ -183,8 +183,12 @@ export const LiftExerciseSetReceipt = z.object({
   exercise: ExerciseMetaOut.omit({ instructions: true }).nullable(),
   one_rep_max: z.object({
     date: z.iso.date(),
+    /** set_1rm: the caller's value and unit. delete_1rm: the deleted entry as WHOOP showed it. */
     value: z.number().nullable(),
     unit: UnitT.nullable(),
+    /** What WHOOP received, only when the account's display unit differs from `unit`. */
+    sent_value: z.number().nullable(),
+    sent_unit: UnitT.nullable(),
     entry_id: z.string().nullable(),
   }).nullable(),
   verified: z.boolean(),

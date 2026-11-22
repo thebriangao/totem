@@ -94,6 +94,8 @@ export interface OneRepMaxEntry {
   source: "manual" | "estimated";
   date: string | null;
   value: number | null;
+  /** The unit WHOOP shows the value in (`title_suffix`). */
+  unit: "kg" | "lb" | null;
   entry_id: string | null;
 }
 
@@ -116,6 +118,7 @@ export function oneRepMaxEntries(raw: unknown): OneRepMaxEntry[] {
       source: manual ? "manual" : "estimated",
       date: key.match(/(\d{4}-\d{2}-\d{2})$/)?.[1] ?? displayDate(c.subtitle_suffix),
       value: parseNumber(c.title),
+      unit: weightUnit(c.title_suffix),
       entry_id: manual ? entry : null,
     });
   }
