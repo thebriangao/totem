@@ -48,17 +48,17 @@
   "scripts": {},
   "_scripts_note": "All workflows are `totem <command>` (build, dev, dev:http, start, test, typecheck, auth, cloud, local, deploy, logs, ping, …). The only npm steps are `npm install` and, for the one-time build before the CLI is linked, `npx tsc`. See README → Get Started.",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "zod": "^4.4.3"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "@types/node": "^24.12.4",
-    "tsx": "^4.22.3",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
   },
   "engines": {
     "node": ">=24"
