@@ -192,7 +192,17 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
     // else the commit (a release tag is a detached checkout).
     const previous = (await sys.exec("git", ["symbolic-ref", "--short", "-q", "HEAD"], { cwd: ctx.root })).stdout.trim()
       || (await sys.exec("git", ["rev-parse", "HEAD"], { cwd: ctx.root })).stdout.trim();
-    const install = (onLine?: (l: string) => void): Promise<ExecResult> => sys.exec("npm", ["install"], { cwd: ctx.root, onLine });
+    // `npm install` may rewrite package-lock.json (another npm version writes it
+    // its own way). The tracked tree was clean when this began, so that change
+    // is npm's, not the person's. Left there, git refuses the checkout that
+    // goes back to the old version ("local changes would be overwritten": the
+    // lock differs between any two releases), and after a good update the next
+    // one stops at "uncommitted changes". Put the committed file back.
+    const install = async (onLine?: (l: string) => void): Promise<ExecResult> => {
+      const r = await sys.exec("npm", ["install"], { cwd: ctx.root, onLine });
+      await sys.exec("git", ["checkout", "--quiet", "--", "package-lock.json"], { cwd: ctx.root });
+      return r;
+    };
     const build = async (onLine?: (l: string) => void): Promise<ExecResult> => {
       const tsc = pkgBin(ctx.root, "typescript", "tsc");
       return tsc ? sys.exec(sys.node, [tsc], { cwd: ctx.root, onLine }) : { code: 1, stdout: "", stderr: "typescript isn't installed in node_modules" };

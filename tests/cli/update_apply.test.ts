@@ -32,7 +32,9 @@ function setup(exec: Handler, over: Partial<UpdateCtx> = {}): { w: FakeWorld; ct
   };
   return { w, ctx, git: () => w.commands.filter((c) => c.startsWith("exec  git ")).map((c) => c.slice("exec  git ".length)) };
 }
-const checkouts = (git: () => string[]): string[] => git().filter((a) => a.startsWith("checkout"));
+// The checkouts that move HEAD (`checkout -- package-lock.json` after an npm
+// install only puts that one file back: update_rollback_git.test.ts).
+const checkouts = (git: () => string[]): string[] => git().filter((a) => a.startsWith("checkout") && !a.includes(" -- "));
 const TARGET = { version: "1.5.1", tag: "v1.5.1" };
 
 describe("applyVersion (git install)", () => {
