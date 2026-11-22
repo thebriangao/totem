@@ -23,8 +23,14 @@ export const TOTEM_LOGO_SVG =
 export const FAVICON_PATH = "/favicon.svg";
 export const FAVICON_LINK = `<link rel="icon" href="${FAVICON_PATH}" type="image/svg+xml">`;
 
-/** The logo for an inline spot that names totem in text beside it. */
-export const TOTEM_MARK = TOTEM_LOGO_SVG.replace("<svg ", '<svg aria-hidden="true" ');
+/**
+ * The mark alone, for a page header that names totem in text beside it: no ink
+ * square, so it sits on whatever colour the page is, and a viewBox cut to the
+ * mark (x 125–875, y 176.84–823.16) so it fills its box.
+ */
+export const TOTEM_MARK = TOTEM_LOGO_SVG
+  .replace('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">', '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="125 176 750 648">')
+  .replace('<rect width="1000" height="1000" fill="#141414"/>', "");
 
 /**
  * 128 px PNG of the logo, for MCP clients that don't draw SVG icons.

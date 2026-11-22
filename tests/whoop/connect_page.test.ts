@@ -73,6 +73,29 @@ describe("the Connect page", () => {
     expect(odd.match(/<script>/g)).toHaveLength(1);
   });
 
+  it("colours every snippet with Pierre and copies it as plain text from a floating icon button", () => {
+    const rows = [...html.matchAll(/<div class="box copyrow (?:line|block)"><code>([\s\S]*?)<\/code><button ([^>]*)>([\s\S]*?)<\/button><\/div>/g)];
+    expect(rows).toHaveLength(5); // the address, Codex, Claude Code, OpenCode, Antigravity
+    for (const [, code, attrs, inner] of rows) {
+      expect(code).toMatch(/<span class="t-(cmd|str|key|url)">/);
+      expect(attrs).toMatch(/class="copy" data-copy="[^"<]+" aria-label="Copy [^"]+"/);
+      // Two icons, no text: copy, then the check a copy turns it into.
+      expect(inner).toMatch(/^<svg class="ic"[^>]*aria-hidden="true">[\s\S]*<\/svg><svg class="done"[^>]*aria-hidden="true">[\s\S]*<\/svg>$/);
+      expect(inner.replace(/<[^>]+>/g, "")).toBe("");
+    }
+    // What is copied is the text itself, never the coloured markup.
+    expect(html).toContain(`data-copy="${MCP}"`);
+    // URLs are left uncoloured (t-url has no colour rule); the address row centres its button.
+    expect(html).toContain('<div class="box copyrow line"><code><span class="t-url">https://totem-a1b2c3.fly.dev/mcp</span></code>');
+    expect(html).not.toMatch(/\.t-url\s*\{[^}]*color/);
+    expect(html.match(/copyrow block/g)).toHaveLength(1); // only the Antigravity JSON keeps its button in the corner
+    expect(html).not.toMatch(/>Copy</);
+    expect(html).toContain('<p id="copied" class="sr" aria-live="polite"></p>');
+    // Pierre Light, then Pierre Dark.
+    expect(html).toMatch(/--code-bg: #ffffff; --code-fg: #0a0a0a; --t-cmd: #693acf; --t-flag: #d5a910;/);
+    expect(html).toMatch(/--code-bg: #0a0a0a; --code-fg: #fafafa; --t-cmd: #9d6afb; --t-flag: #ffd452;/);
+  });
+
   it("says it is not affiliated with WHOOP and holds no password", () => {
     expect(html).toContain("not affiliated with WHOOP");
     expect(html).not.toMatch(/AUTH_PASSWORD|MCP_AUTH_TOKEN/);
@@ -115,7 +138,7 @@ describe("GET /connect and GET / on a running server", async () => {
     expect(await r.text()).toBe(TOTEM_LOGO_SVG);
     const page = await (await fetch(`${base}/connect`)).text();
     expect(page).toContain('<link rel="icon" href="/favicon.svg" type="image/svg+xml">');
-    expect(page).toContain('<p class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">');
+    expect(page).toContain('<p class="brand"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="125 176 750 648">');
     expect(CONNECT_CSP).toContain("img-src 'self'");
   });
 

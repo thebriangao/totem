@@ -23,7 +23,10 @@ describe("the logo", () => {
   it("uses the brand colours", () => {
     expect(BRAND).toEqual({ ice: "#B7D3F2", ink: "#141414", fold: "#7A9CC6" });
     for (const c of Object.values(BRAND)) expect(TOTEM_LOGO_SVG).toContain(`"${c}"`);
-    expect(TOTEM_MARK.startsWith('<svg aria-hidden="true" ')).toBe(true);
+    // The header mark has no ink square (it takes the page's colour) and is cut to the mark.
+    expect(TOTEM_MARK.startsWith('<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="125 176 750 648">')).toBe(true);
+    expect(TOTEM_MARK).not.toContain("<rect");
+    expect(shapes(TOTEM_MARK)).toEqual(shapes(FILE).filter((s) => s.startsWith("polygon")));
   });
 
   it("is the header of both pages, with the old placeholder gone", () => {
@@ -34,8 +37,10 @@ describe("the logo", () => {
     for (const html of pages) {
       expect(html).toContain(`<p class="brand">${TOTEM_MARK}totem</p>`);
       expect(html).not.toContain('viewBox="0 0 22 22"');
-      // Ice on ink for the primary button in the dark theme, ink with ice in the light one.
-      expect(html).toContain("--go: #141414; --on: #b7d3f2;");
+      // Plain buttons: black with white text in the light theme, white with black text in the dark one.
+      expect(html).toContain("--go: #141414; --on: #ffffff;");
+      expect(html).toContain("--go: #ffffff; --on: #141414;");
+      expect(html).not.toMatch(/--(go|on): #b7d3f2/i);
       expect(html).toContain("--page: #141414;");
     }
   });

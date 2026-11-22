@@ -25,19 +25,19 @@ const CONSENT_CSS = `
 :root {
   color-scheme: light dark;
   --page: #f6f8fb; --box: #ffffff; --fg: #141414; --dim: #5d6672; --line: #e2e7ee; --soft: #f0f4f9;
-  --go: #141414; --on: #b7d3f2; --error: #b3261e; --shadow: 0 1px 2px rgba(20, 20, 20, .05);
+  --go: #141414; --on: #ffffff; --error: #b3261e; --shadow: 0 1px 2px rgba(20, 20, 20, .05);
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --page: #141414; --box: #1b1d20; --fg: #eef2f7; --dim: #9ba4af; --line: #2b2f34; --soft: #17191b;
-    --go: #b7d3f2; --on: #141414; --error: #ff8f85; --shadow: none;
+    --go: #ffffff; --on: #141414; --error: #ff8f85; --shadow: none;
   }
 }
 * { box-sizing: border-box; margin: 0; }
 html { background: var(--page); color: var(--fg); font: 15px/1.5 "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
 body { min-height: 100vh; padding: 24px 22px 48px; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
-.brand svg { width: 24px; height: 24px; border-radius: 6px; }
+.brand svg { width: 27px; height: 24px; }
 form { max-width: 1080px; margin: clamp(18px, 6vh, 60px) auto 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; }
 section { min-width: 0; }
 h1 { font-size: 27px; font-weight: 450; letter-spacing: -.01em; line-height: 1.2; margin-bottom: 20px; overflow-wrap: anywhere; }
