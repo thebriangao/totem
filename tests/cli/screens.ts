@@ -44,7 +44,9 @@ export async function render(screen: Screen, style?: Style): Promise<Rendered> {
 const out = (stdout: string): ExecResult => ({ code: 0, stdout, stderr: "" });
 const err = (stderr: string, code = 1): ExecResult => ({ code, stdout: "", stderr });
 
-const fly = (over: (args: string, world: FakeWorld) => ExecResult | undefined = () => undefined): WorldOptions["exec"] =>
+type Handler = NonNullable<WorldOptions["exec"]>;
+
+const fly = (over: (args: string, world: FakeWorld) => ExecResult | undefined = () => undefined): Handler =>
   (cmd, args, _input, world) => {
     const a = args.join(" ");
     const special = over(a, world);
@@ -56,7 +58,7 @@ const fly = (over: (args: string, world: FakeWorld) => ExecResult | undefined = 
     return undefined;
   };
 
-const railway: WorldOptions["exec"] = (cmd, args, _input, world) => {
+const railway: Handler = (cmd, args, _input, world) => {
   const a = args.join(" ");
   if (a === "whoami") return out("Logged in as you@example.com 👋\n");
   if (a.startsWith("up")) { world.clock.t += 9_000; return out("Build Logs: https://railway.com/project/x\n"); }
@@ -64,7 +66,7 @@ const railway: WorldOptions["exec"] = (cmd, args, _input, world) => {
   return undefined;
 };
 
-const gcloud: WorldOptions["exec"] = (cmd, args, _input, world) => {
+const gcloud: Handler = (cmd, args, _input, world) => {
   const a = args.join(" ");
   if (a.startsWith("auth list")) return out("you@example.com\n");
   if (a === "config get-value project") return out("my-project\n");
@@ -75,7 +77,7 @@ const gcloud: WorldOptions["exec"] = (cmd, args, _input, world) => {
   return undefined;
 };
 
-const versions: WorldOptions["exec"] = (cmd, args, _input, world) => {
+const versions: Handler = (cmd, args, _input, world) => {
   const a = args.join(" ");
   if (cmd === "git" && a.startsWith("tag")) return out("v1.6.0\nv1.5.1\nv1.5.0\nv1.4.2\n");
   if (cmd === "git" && a.startsWith("for-each-ref")) return out("v1.6.0 2026-11-18 2026-11-18\nv1.5.1 2026-10-02 2026-10-02\nv1.5.0 2026-09-20 2026-09-20\nv1.4.2 2026-06-07 2026-06-07\n");
@@ -92,7 +94,7 @@ const releases = JSON.stringify([
   { tag_name: "v1.5.1", name: "v1.5.1", body: "Fix .env quoting", published_at: "2026-10-02T10:00:00Z" },
   { tag_name: "v1.5.0", name: "v1.5.0", body: "Journal fixes", published_at: "2026-09-20T10:00:00Z" },
 ]);
-const github: WorldOptions["http"] = (url) => (url.includes("api.github.com") ? { status: 200, body: releases } : undefined);
+const github: NonNullable<WorldOptions["http"]> = (url) => (url.includes("api.github.com") ? { status: 200, body: releases } : undefined);
 /** A git checkout: the updater treats the install as one when .git exists. */
 const gitCheckout = (world: FakeWorld): void => { mkdirSync(join(world.root, ".git")); };
 
@@ -100,7 +102,7 @@ const onFly = (world: FakeWorld): void => writeDeployRecord(world.root, { platfo
 const onLocal = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "local" });
 const onCustom = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "custom", app: "totem", url: "https://whoop.example.com", mcp_auth_token: TOKEN });
 const loggedIn = { state: "tokens" as const, source: "browser", savedAt: "2026-11-02T08:00:00.000Z", refreshedAt: "2026-11-21T20:00:00.000Z", accessExpiresAt: "2026-11-21T21:00:00.000Z", owner: null };
-const down: WorldOptions["http"] = (url) => (url.includes("api.github.com") ? undefined : { status: 0, body: "", ms: 3000, error: "ECONNREFUSED" });
+const down: NonNullable<WorldOptions["http"]> = (url) => (url.includes("api.github.com") ? undefined : { status: 0, body: "", ms: 3000, error: "ECONNREFUSED" });
 
 export const SCREENS: Screen[] = [
   // ── help and errors ────────────────────────────────────────────────────
@@ -211,7 +213,7 @@ export const SCREENS: Screen[] = [
       http: github,
       exec: (cmd, args, input, w) => (cmd === "npm" && args[0] === "install" && (w.counts.installs = (w.counts.installs ?? 0) + 1) === 1
         ? { code: 1, stdout: "", stderr: "npm error code ENOTFOUND\nnpm error network request to https://registry.npmjs.org/zod failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org\n" }
-        : versions!(cmd, args, input, w)),
+        : versions(cmd, args, input, w)),
     },
     setup: (w) => { gitCheckout(w); onLocal(w); },
   },
@@ -224,7 +226,7 @@ export const SCREENS: Screen[] = [
   { name: "update-auto-run-log", command: "totem update --auto-run", about: "What the scheduled job writes to its log when a release is out.", world: { exec: versions, http: github }, setup: (w) => { gitCheckout(w); onLocal(w); } },
   {
     name: "update-auto-run-off-main", command: "totem update --auto-run", about: "The scheduled job on a feature branch: skipped (bug hunt R11).",
-    world: { http: github, exec: (cmd, args, input, w) => (cmd === "git" && args.join(" ") === "rev-parse --abbrev-ref HEAD" ? out("v2-ux\n") : versions!(cmd, args, input, w)) }, setup: gitCheckout,
+    world: { http: github, exec: (cmd, args, input, w) => (cmd === "git" && args.join(" ") === "rev-parse --abbrev-ref HEAD" ? out("v2-ux\n") : versions(cmd, args, input, w)) }, setup: gitCheckout,
   },
 ];
 

@@ -25,8 +25,8 @@ describe("whoop_lift_sessions", () => {
   it("walks home days with data and returns one compact row per scored session", async () => {
     const get = routes({
       "/home-service/v1/calendar/overview": repoFixture("calendar_overview"),
-      "/home-service/v1/home": (q) => (q.date === "2026-05-23" ? repoFixture("home") : {}),
-      "/core-details-bff/v1/cardio-details": (q) => (q.activityId === SCORED ? repoFixture("cardio_details") : repoFixture("cardio_details_nonstrength")),
+      "/home-service/v1/home": (q: Record<string, unknown>) => (q.date === "2026-05-23" ? repoFixture("home") : {}),
+      "/core-details-bff/v1/cardio-details": (q: Record<string, unknown>) => (q.activityId === SCORED ? repoFixture("cardio_details") : repoFixture("cardio_details_nonstrength")),
     });
     const client = await connect(registerLiftSessions, { get });
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { start_date: "2026-05-22", end_date: "2026-05-23" } }));
@@ -46,7 +46,7 @@ describe("whoop_lift_sessions", () => {
   it("include sets adds compact per-set rows", async () => {
     const get = routes({
       "/home-service/v1/calendar/overview": repoFixture("calendar_overview"),
-      "/home-service/v1/home": (q) => (q.date === "2026-05-23" ? repoFixture("home") : {}),
+      "/home-service/v1/home": (q: Record<string, unknown>) => (q.date === "2026-05-23" ? repoFixture("home") : {}),
       "/core-details-bff/v1/cardio-details": repoFixture("cardio_details"),
     });
     const client = await connect(registerLiftSessions, { get });
@@ -58,9 +58,9 @@ describe("whoop_lift_sessions", () => {
     const pages = [fixture("prs_page0"), fixture("prs_page1"), fixture("prs_page2")];
     return routes({
       "/home-service/v1/calendar/overview": { days_of_month: [{ date_value_display: "21", has_data: true }] },
-      "/home-service/v1/home": (q) => pendingHome(q.date as string),
+      "/home-service/v1/home": (q: Record<string, unknown>) => pendingHome(q.date as string),
       "/core-details-bff/v1/cardio-details": fixture("cardio_details_pending_lift"),
-      "/weightlifting-service/v3/prs": (q) => pages[((q.offset as number | undefined) ?? 0) / 10],
+      "/weightlifting-service/v3/prs": (q: Record<string, unknown>) => pages[((q.offset as number | undefined) ?? 0) / 10],
       ...Object.fromEntries(pages.flatMap((p: any) => p.tiles).map((t: any) => [`/weightlifting-service/v3/exercise/${encodeURIComponent(t.exercise_id)}/exercise_history`, historyFor(t.exercise_id)])),
     });
   }

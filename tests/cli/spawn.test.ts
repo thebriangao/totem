@@ -43,7 +43,7 @@ describe("spawnArgs", () => {
       expect(args.slice(0, 3)).toEqual(["/d", "/s", "/c"]);
       expect(args[3]!.toLowerCase()).toContain("fake.cmd");
       expect(args[3]).toContain('^^^"a^^^ b^^^"');
-      expect(opts.windowsVerbatimArguments).toBe(true);
+      expect((opts as { windowsVerbatimArguments?: boolean }).windowsVerbatimArguments).toBe(true);
       expect(spawnArgs("real", ["x"], { env }, "win32")).toEqual(["real", ["x"], { env }]);
     } finally {
       rmSync(dir, { recursive: true, force: true });

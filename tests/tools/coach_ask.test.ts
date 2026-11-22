@@ -425,7 +425,7 @@ describe("askCoach send path", () => {
     });
     const out = await askCoach(m.client, planAsk({ ...base, agent: "daily_outlook" }, DAY), fakeTiming());
     // Home was read uncached (cycle ids change under sleep edits).
-    expect(m.get.mock.calls.find((c) => c[0] === "/home-service/v1/home")![2]).toEqual({ fresh: true });
+    expect((m.get.mock.calls.find((c) => c[0] === "/home-service/v1/home") as unknown[])[2]).toEqual({ fresh: true });
     expect(out.thread).toBe("daily-outlook___cycle___1974268448");
     expect(out.verified).toBe(true);
     expect(out.report).toMatchObject({ kind: "daily_outlook", generated: true });
