@@ -1,0 +1,295 @@
+{
+ "id": "personal_records",
+ "items": [
+  {
+   "type": "EXPANDABLE_CARD",
+   "content": {
+    "icon_collapsed": "CARET_DOWN",
+    "icon_expanded": "CARET_UP",
+    "expanded": true,
+    "header_content": {
+     "type": "EXERCISE_RECORD_HEADER",
+     "content": {
+      "achievement_icon": "BADGE_GOLD",
+      "record_date": "November 21, 2026",
+      "record_subtitle": {
+       "value": "5",
+       "unit": "reps"
+      },
+      "record_title": {
+       "value": "209",
+       "unit": "lbs"
+      },
+      "id": "ed7825bf-cdd7-4c39-bd91-84887fc8c30c"
+     }
+    },
+    "expanded_content": [
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "5",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "209",
+           "value_style": null
+          }
+         ]
+        },
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "5",
+           "value_style": null
+          },
+          {
+           "achievement_icon": "BADGE_GOLD",
+           "units": "lbs",
+           "value": "209",
+           "value_style": null
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "REPS",
+        "WEIGHT"
+       ],
+       "id": "c3e8d66f-0c9e-4309-96da-701ca38c854d"
+      }
+     },
+     {
+      "type": "DIVIDER",
+      "content": {
+       "id": null,
+       "title": "",
+       "header_position": null,
+       "style": null,
+       "divider_type": "SOLID"
+      }
+     },
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "10",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "2,094",
+           "value_style": "STRAIN"
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TOTAL"
+       ],
+       "id": "41eea82d-5b9c-4921-a242-c2a144a5ae4d"
+      }
+     },
+     {
+      "type": "CARD_BUTTON",
+      "content": {
+       "id": null,
+       "title": "GO TO ACTIVITY",
+       "icon": null,
+       "icon_tint": null,
+       "icon_configuration": null,
+       "style": "DEFAULT",
+       "background_style": null,
+       "destination": {
+        "screen": "CARDIO_DETAILS",
+        "parameters": {
+         "activity_id": "0407ac13-0623-48c3-b695-f9b97f9bbb55",
+         "entry_point": "Exercise Details",
+         "ai_action": null,
+         "type": "CARDIO"
+        }
+       },
+       "dismiss_event": null,
+       "action": null,
+       "modal": null,
+       "card_name": null,
+       "size": "COMPACT",
+       "corner_radius": "MEDIUM",
+       "text_style": null,
+       "analytic_event": null,
+       "analytic_events": {},
+       "bindings": null,
+       "aggregate_bindings": null,
+       "is_enabled": true,
+       "generic_interaction": null
+      }
+     }
+    ],
+    "id": "d5016a2c-d97f-4329-a9c2-6d4c32535b20"
+   }
+  },
+  {
+   "type": "EXPANDABLE_CARD",
+   "content": {
+    "icon_collapsed": "CARET_DOWN",
+    "icon_expanded": "CARET_UP",
+    "expanded": false,
+    "header_content": {
+     "type": "EXERCISE_RECORD_HEADER",
+     "content": {
+      "achievement_icon": "BADGE_SILVER",
+      "record_date": "November 21, 2026",
+      "record_subtitle": {
+       "value": "5",
+       "unit": "reps"
+      },
+      "record_title": {
+       "value": "209",
+       "unit": "lbs"
+      },
+      "id": "71c53f89-226f-43e2-9918-bb28f86ae7a8"
+     }
+    },
+    "expanded_content": [
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "5",
+           "value_style": null
+          },
+          {
+           "achievement_icon": "BADGE_SILVER",
+           "units": "lbs",
+           "value": "209",
+           "value_style": null
+          }
+         ]
+        },
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "5",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "209",
+           "value_style": null
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "REPS",
+        "WEIGHT"
+       ],
+       "id": "add6abff-7a26-41b9-83bc-ac7495cc0e66"
+      }
+     },
+     {
+      "type": "DIVIDER",
+      "content": {
+       "id": null,
+       "title": "",
+       "header_position": null,
+       "style": null,
+       "divider_type": "SOLID"
+      }
+     },
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "10",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "2,094",
+           "value_style": "STRAIN"
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TOTAL"
+       ],
+       "id": "03370c3a-edcb-4a96-9915-51d4888aaf43"
+      }
+     },
+     {
+      "type": "CARD_BUTTON",
+      "content": {
+       "id": null,
+       "title": "GO TO ACTIVITY",
+       "icon": null,
+       "icon_tint": null,
+       "icon_configuration": null,
+       "style": "DEFAULT",
+       "background_style": null,
+       "destination": {
+        "screen": "CARDIO_DETAILS",
+        "parameters": {
+         "activity_id": "0407ac13-0623-48c3-b695-f9b97f9bbb55",
+         "entry_point": "Exercise Details",
+         "ai_action": null,
+         "type": "CARDIO"
+        }
+       },
+       "dismiss_event": null,
+       "action": null,
+       "modal": null,
+       "card_name": null,
+       "size": "COMPACT",
+       "corner_radius": "MEDIUM",
+       "text_style": null,
+       "analytic_event": null,
+       "analytic_events": {},
+       "bindings": null,
+       "aggregate_bindings": null,
+       "is_enabled": true,
+       "generic_interaction": null
+      }
+     }
+    ],
+    "id": "6c8e1df9-ec3f-41d2-9313-31661cabc5ab"
+   }
+  }
+ ],
+ "show_more": null,
+ "analytics_action": "Expand Exercise Details PRs"
+}

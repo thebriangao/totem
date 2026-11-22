@@ -1,0 +1,158 @@
+{
+ "tiles": [
+  {
+   "exercise_id": "STEPUPSLEFT_BARBELL",
+   "name": "Step Up - L - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "COUNTERMOVEMENTJUMP",
+   "name": "Countermovement Jump",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BODY",
+   "volume_input_format": "REPS",
+   "volume_input_value": "6",
+   "volume_input_units": "reps",
+   "custom_exercise": false,
+   "e1rm_eligible": false,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "PUSHUP_CLASSIC",
+   "name": "Push Up",
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "equipment": "BODY",
+   "volume_input_format": "REPS",
+   "volume_input_value": "10",
+   "volume_input_units": "reps",
+   "custom_exercise": false,
+   "e1rm_eligible": false,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "LATERALRAISE_DUMBBELL",
+   "name": "Lateral Shoulder Raise - Dumbbell",
+   "muscle_groups": [
+    "SHOULDERS"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "SPLITSQUATRIGHT_DUMBBELL",
+   "name": "Split Squat - R - Dumbbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "ROMANIANDEADLIFT_BARBELL",
+   "name": "Romanian Deadlift - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "BENCHPRESS_DUMBBELL",
+   "name": "Bench Press - Dumbbell",
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "equipment": "DUMBBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "HIPTHRUST_BARBELL",
+   "name": "Hip Thrust - Barbell",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "0",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "INCLINEBENCHPRESS_BARBELL",
+   "name": "Bench Press - Incline - Barbell",
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "equipment": "BARBELL",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "300",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  },
+  {
+   "exercise_id": "LEGPRESS_PULLEYMACHINE",
+   "name": "Leg Press",
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "equipment": "MACHINE",
+   "volume_input_format": "WEIGHT",
+   "volume_input_value": "999",
+   "volume_input_units": "lbs",
+   "custom_exercise": false,
+   "e1rm_eligible": true,
+   "trackable": true,
+   "deleted": false
+  }
+ ],
+ "show_more": true,
+ "next_exercise_offset": 20,
+ "next_end_date": "2026-11-22",
+ "next_start_date": "2026-11-22"
+}

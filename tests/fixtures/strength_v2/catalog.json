@@ -1,0 +1,348 @@
+{
+ "exercises": [
+  {
+   "training_types": [
+    "POWER"
+   ],
+   "instructions": [
+    "Choose this exercise to log cardio during your Strength Trai"
+   ],
+   "muscle_groups": [
+    "FULL_BODY"
+   ],
+   "translated_muscle_groups": "Full Body",
+   "created_at": "2023-07-28T13:10:03.786Z",
+   "updated_at": "2024-01-04T14:59:10.411Z",
+   "custom_exercise_info": null,
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "ASSAULT_AIRBIKE",
+   "name": "Assault Bike",
+   "push_core_name": "ASSAULT_AIRBIKE",
+   "trackable": false,
+   "equipment": "BODY",
+   "translated_equipment": "Bodyweight",
+   "exercise_type": "POWER",
+   "laterality": "BILATERAL",
+   "movement_pattern": "OTHER",
+   "translated_movement_pattern": "Other",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/ASSAULT_AIRBIKE_V4.png",
+   "video_url": null,
+   "volume_input_format": "TIME",
+   "e1rm_eligible": false,
+   "custom_exercise": false
+  },
+  {
+   "training_types": [],
+   "instructions": [
+    "Position barbell across your back and shoulders. Squat down "
+   ],
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "translated_muscle_groups": "Legs",
+   "created_at": "2022-03-03T19:45:51.740Z",
+   "updated_at": "2026-09-02T15:57:09.962Z",
+   "custom_exercise_info": null,
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "BACKSQUAT_BARBELL",
+   "name": "Back Squat - Barbell",
+   "push_core_name": "BACKSQUAT_BARBELL",
+   "trackable": true,
+   "equipment": "BARBELL",
+   "translated_equipment": "Barbell",
+   "exercise_type": "STRENGTH",
+   "laterality": "BILATERAL",
+   "movement_pattern": "SQUAT",
+   "translated_movement_pattern": "Squat",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/BACKSQUAT_BARBELL.jpg",
+   "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/BACKSQUAT_BARBELLmp4.mp4",
+   "volume_input_format": "WEIGHT",
+   "e1rm_eligible": true,
+   "custom_exercise": false
+  },
+  {
+   "training_types": [],
+   "instructions": [
+    "Lie on the bench with your back and head resting on it, with"
+   ],
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "translated_muscle_groups": "Chest",
+   "created_at": "2022-03-03T19:45:51.740Z",
+   "updated_at": "2026-09-02T15:57:09.962Z",
+   "custom_exercise_info": null,
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "BENCHPRESS_BARBELL",
+   "name": "Bench Press - Barbell",
+   "push_core_name": "BENCHPRESS_BARBELL",
+   "trackable": true,
+   "equipment": "BARBELL",
+   "translated_equipment": "Barbell",
+   "exercise_type": "STRENGTH",
+   "laterality": "BILATERAL",
+   "movement_pattern": "HORIZONTAL_PRESS",
+   "translated_movement_pattern": "Horizontal Press",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/BENCHPRESS_BARBELL.jpg",
+   "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/BENCHPRESS_BARBELL.mp4",
+   "volume_input_format": "WEIGHT",
+   "e1rm_eligible": true,
+   "custom_exercise": false
+  },
+  {
+   "training_types": [],
+   "instructions": [
+    "With your feet underneath the bar, squat down to grasp it wh"
+   ],
+   "muscle_groups": [
+    "LEGS"
+   ],
+   "translated_muscle_groups": "Legs",
+   "created_at": "2022-03-03T19:45:51.740Z",
+   "updated_at": "2026-09-02T15:57:09.962Z",
+   "custom_exercise_info": null,
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "DEADLIFT_BARBELL",
+   "name": "Deadlift - Barbell",
+   "push_core_name": "DEADLIFT_BARBELL",
+   "trackable": true,
+   "equipment": "BARBELL",
+   "translated_equipment": "Barbell",
+   "exercise_type": "STRENGTH",
+   "laterality": "BILATERAL",
+   "movement_pattern": "HINGE",
+   "translated_movement_pattern": "Hinge",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/DEADLIFT_BARBELL.jpg",
+   "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/DEADLIFT_BARBELL.mp4",
+   "volume_input_format": "WEIGHT",
+   "e1rm_eligible": true,
+   "custom_exercise": false
+  },
+  {
+   "training_types": [],
+   "instructions": [
+    "Position barbell across the front portion of your shoulders "
+   ],
+   "muscle_groups": [
+    "SHOULDERS"
+   ],
+   "translated_muscle_groups": "Shoulders",
+   "created_at": "2022-03-03T19:45:51.740Z",
+   "updated_at": "2026-09-02T15:57:09.962Z",
+   "custom_exercise_info": null,
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "OVERHEADPRESS_BARBELL",
+   "name": "Overhead Press - Barbell",
+   "push_core_name": "OVERHEADPRESS_BARBELL",
+   "trackable": true,
+   "equipment": "BARBELL",
+   "translated_equipment": "Barbell",
+   "exercise_type": "STRENGTH",
+   "laterality": "BILATERAL",
+   "movement_pattern": "VERTICAL_PRESS",
+   "translated_movement_pattern": "Vertical Press",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/OVERHEADPRESS_BARBELL.jpg",
+   "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/OVERHEADPRESS_BARBELL.mp4",
+   "volume_input_format": "WEIGHT",
+   "e1rm_eligible": true,
+   "custom_exercise": false
+  },
+  {
+   "training_types": [],
+   "instructions": [
+    "Lie on the floor with your hands slightly wider than shoulde"
+   ],
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "translated_muscle_groups": "Chest",
+   "created_at": "2022-03-03T19:45:51.740Z",
+   "updated_at": "2023-07-17T21:31:26.370Z",
+   "custom_exercise_info": null,
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "PUSHUP_CLASSIC",
+   "name": "Push Up",
+   "push_core_name": "PUSHUP_CLASSIC",
+   "trackable": true,
+   "equipment": "BODY",
+   "translated_equipment": "Bodyweight",
+   "exercise_type": "STRENGTH",
+   "laterality": "BILATERAL",
+   "movement_pattern": "HORIZONTAL_PRESS",
+   "translated_movement_pattern": "Horizontal Press",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/PUSHUP_CLASSIC.jpg",
+   "video_url": "https://dh6o7n168ts9.cloudfront.net/exercise-videos-temp/PUSHUP_CLASSIC.mp4",
+   "volume_input_format": "REPS",
+   "e1rm_eligible": false,
+   "custom_exercise": false
+  },
+  {
+   "training_types": [],
+   "instructions": [],
+   "muscle_groups": [
+    "CHEST"
+   ],
+   "translated_muscle_groups": "Chest",
+   "created_at": "2026-11-22T02:36:31.768Z",
+   "updated_at": "2026-11-22T02:36:31.768Z",
+   "custom_exercise_info": {
+    "custom_exercise_title": null,
+    "linked_exercise": {
+     "exercise_id": "BENCHPRESS_BARBELL",
+     "name": "Bench Press - Barbell",
+     "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/BENCHPRESS_BARBELL.jpg"
+    }
+   },
+   "volume_input_value": null,
+   "volume_input_units": null,
+   "exercise_id": "520AB719-E8B0-45CD-AE63-2F78A1877BDF",
+   "name": "probe-strength Custom Bench A",
+   "push_core_name": "BENCHPRESS_BARBELL",
+   "trackable": true,
+   "equipment": "BARBELL",
+   "translated_equipment": "Barbell",
+   "exercise_type": "STRENGTH",
+   "laterality": "BILATERAL",
+   "movement_pattern": "HORIZONTAL_PRESS",
+   "translated_movement_pattern": "Horizontal Press",
+   "deleted": false,
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/default-exercise-image.png",
+   "video_url": null,
+   "volume_input_format": "REPS",
+   "e1rm_eligible": true,
+   "custom_exercise": true
+  }
+ ],
+ "filter_options": {
+  "equipment": [
+   {
+    "internal_value": "BARBELL",
+    "translated_value": "BARBELL"
+   },
+   {
+    "internal_value": "BODY",
+    "translated_value": "BODYWEIGHT"
+   },
+   {
+    "internal_value": "DUMBBELL",
+    "translated_value": "DUMBBELL"
+   },
+   {
+    "internal_value": "KETTLEBELL",
+    "translated_value": "KETTLEBELL"
+   },
+   {
+    "internal_value": "MACHINE",
+    "translated_value": "MACHINE"
+   },
+   {
+    "internal_value": "MEDICINE_BALL",
+    "translated_value": "MEDICINE BALL"
+   },
+   {
+    "internal_value": "PLYO_BOX",
+    "translated_value": "PLYO BOX"
+   },
+   {
+    "internal_value": "PULL_UP_BAR",
+    "translated_value": "PULL UP BAR"
+   },
+   {
+    "internal_value": "STABILITY_BALL",
+    "translated_value": "STABILITY BALL"
+   },
+   {
+    "internal_value": "OTHER",
+    "translated_value": "OTHER"
+   }
+  ],
+  "muscle_groups": [
+   {
+    "internal_value": "ARMS",
+    "translated_value": "ARMS"
+   },
+   {
+    "internal_value": "BACK",
+    "translated_value": "BACK"
+   },
+   {
+    "internal_value": "CHEST",
+    "translated_value": "CHEST"
+   },
+   {
+    "internal_value": "CORE",
+    "translated_value": "CORE"
+   },
+   {
+    "internal_value": "FULL_BODY",
+    "translated_value": "FULL BODY"
+   },
+   {
+    "internal_value": "LEGS",
+    "translated_value": "LEGS"
+   },
+   {
+    "internal_value": "SHOULDERS",
+    "translated_value": "SHOULDERS"
+   },
+   {
+    "internal_value": "OTHER",
+    "translated_value": "OTHER"
+   }
+  ],
+  "movement_patterns": [
+   {
+    "internal_value": "HINGE",
+    "translated_value": "HINGE"
+   },
+   {
+    "internal_value": "HORIZONTAL_PRESS",
+    "translated_value": "HORIZONTAL PRESS"
+   },
+   {
+    "internal_value": "HORIZONTAL_PULL",
+    "translated_value": "HORIZONTAL PULL"
+   },
+   {
+    "internal_value": "JUMP",
+    "translated_value": "JUMP"
+   },
+   {
+    "internal_value": "LUNGE",
+    "translated_value": "LUNGE"
+   },
+   {
+    "internal_value": "OLY_LIFT",
+    "translated_value": "OLYMPIC LIFT"
+   },
+   {
+    "internal_value": "SQUAT",
+    "translated_value": "SQUAT"
+   },
+   {
+    "internal_value": "VERTICAL_PRESS",
+    "translated_value": "VERTICAL PRESS"
+   },
+   {
+    "internal_value": "VERTICAL_PULL",
+    "translated_value": "VERTICAL PULL"
+   },
+   {
+    "internal_value": "OTHER",
+    "translated_value": "OTHER"
+   }
+  ]
+ }
+}

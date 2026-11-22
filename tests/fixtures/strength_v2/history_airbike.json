@@ -1,0 +1,382 @@
+{
+ "id": "exercise_history",
+ "items": [
+  {
+   "type": "EXPANDABLE_CARD",
+   "content": {
+    "icon_collapsed": "CARET_DOWN",
+    "icon_expanded": "CARET_UP",
+    "expanded": true,
+    "header_content": {
+     "type": "EXERCISE_RECORD_HEADER",
+     "content": {
+      "achievement_icon": null,
+      "record_date": "November 21, 2026",
+      "record_subtitle": null,
+      "record_title": {
+       "value": "0:00",
+       "unit": "min"
+      },
+      "id": "dcf93833-3724-4204-9ab5-ffd71511340f"
+     }
+    },
+    "expanded_content": [
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": "min",
+           "value": "0:00",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "0",
+           "value_style": null
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TIME",
+        "WEIGHT"
+       ],
+       "id": "870f55ed-5a6d-4e00-aae1-065b5de7cc76"
+      }
+     },
+     {
+      "type": "DIVIDER",
+      "content": {
+       "id": null,
+       "title": "",
+       "header_position": null,
+       "style": null,
+       "divider_type": "SOLID"
+      }
+     },
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "0:00",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "0",
+           "value_style": "STRAIN"
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TOTAL"
+       ],
+       "id": "101e0e62-78b2-47b7-be7a-eb66218917f3"
+      }
+     },
+     {
+      "type": "CARD_BUTTON",
+      "content": {
+       "id": null,
+       "title": "GO TO ACTIVITY",
+       "icon": null,
+       "icon_tint": null,
+       "icon_configuration": null,
+       "style": "DEFAULT",
+       "background_style": null,
+       "destination": {
+        "screen": "CARDIO_DETAILS",
+        "parameters": {
+         "activity_id": "f48ccc49-c269-48a2-968d-38a78bbf7176",
+         "entry_point": "Exercise Details",
+         "ai_action": null,
+         "type": "CARDIO"
+        }
+       },
+       "dismiss_event": null,
+       "action": null,
+       "modal": null,
+       "card_name": null,
+       "size": "COMPACT",
+       "corner_radius": "MEDIUM",
+       "text_style": null,
+       "analytic_event": null,
+       "analytic_events": {},
+       "bindings": null,
+       "aggregate_bindings": null,
+       "is_enabled": true,
+       "generic_interaction": null
+      }
+     }
+    ],
+    "id": "e2f50978-b78c-4c5f-967b-5fd672109cb6"
+   }
+  },
+  {
+   "type": "EXPANDABLE_CARD",
+   "content": {
+    "icon_collapsed": "CARET_DOWN",
+    "icon_expanded": "CARET_UP",
+    "expanded": false,
+    "header_content": {
+     "type": "EXERCISE_RECORD_HEADER",
+     "content": {
+      "achievement_icon": null,
+      "record_date": "November 21, 2026",
+      "record_subtitle": null,
+      "record_title": {
+       "value": "0:00",
+       "unit": "min"
+      },
+      "id": "4ce98349-1b03-48f0-8103-a41057f4d24e"
+     }
+    },
+    "expanded_content": [
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": "min",
+           "value": "0:00",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "0",
+           "value_style": null
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TIME",
+        "WEIGHT"
+       ],
+       "id": "5bbb938d-484b-4649-be61-b85cb35478c0"
+      }
+     },
+     {
+      "type": "DIVIDER",
+      "content": {
+       "id": null,
+       "title": "",
+       "header_position": null,
+       "style": null,
+       "divider_type": "SOLID"
+      }
+     },
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "0:00",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "0",
+           "value_style": "STRAIN"
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TOTAL"
+       ],
+       "id": "05bd186b-377b-480a-8a37-ce143675cb97"
+      }
+     },
+     {
+      "type": "CARD_BUTTON",
+      "content": {
+       "id": null,
+       "title": "GO TO ACTIVITY",
+       "icon": null,
+       "icon_tint": null,
+       "icon_configuration": null,
+       "style": "DEFAULT",
+       "background_style": null,
+       "destination": {
+        "screen": "CARDIO_DETAILS",
+        "parameters": {
+         "activity_id": "d31a7f6e-960b-4f59-8cce-79f8574f7b63",
+         "entry_point": "Exercise Details",
+         "ai_action": null,
+         "type": "CARDIO"
+        }
+       },
+       "dismiss_event": null,
+       "action": null,
+       "modal": null,
+       "card_name": null,
+       "size": "COMPACT",
+       "corner_radius": "MEDIUM",
+       "text_style": null,
+       "analytic_event": null,
+       "analytic_events": {},
+       "bindings": null,
+       "aggregate_bindings": null,
+       "is_enabled": true,
+       "generic_interaction": null
+      }
+     }
+    ],
+    "id": "f1496ebc-104e-467a-83a5-5a4b071547dd"
+   }
+  },
+  {
+   "type": "EXPANDABLE_CARD",
+   "content": {
+    "icon_collapsed": "CARET_DOWN",
+    "icon_expanded": "CARET_UP",
+    "expanded": false,
+    "header_content": {
+     "type": "EXERCISE_RECORD_HEADER",
+     "content": {
+      "achievement_icon": "BADGE_GOLD",
+      "record_date": "November 21, 2026",
+      "record_subtitle": null,
+      "record_title": {
+       "value": "5:00",
+       "unit": "min"
+      },
+      "id": "d633c8e5-80e1-40a4-800f-63769450e003"
+     }
+    },
+    "expanded_content": [
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": "BADGE_GOLD",
+           "units": "min",
+           "value": "5:00",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "0",
+           "value_style": null
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TIME",
+        "WEIGHT"
+       ],
+       "id": "023fbf04-fe52-4931-b360-f2064f4f1cad"
+      }
+     },
+     {
+      "type": "DIVIDER",
+      "content": {
+       "id": null,
+       "title": "",
+       "header_position": null,
+       "style": null,
+       "divider_type": "SOLID"
+      }
+     },
+     {
+      "type": "EXERCISE_BREAKDOWN",
+      "content": {
+       "number_of_columns": 2,
+       "rows": [
+        {
+         "items": [
+          {
+           "achievement_icon": null,
+           "units": null,
+           "value": "5:00",
+           "value_style": null
+          },
+          {
+           "achievement_icon": null,
+           "units": "lbs",
+           "value": "0",
+           "value_style": "STRAIN"
+          }
+         ]
+        }
+       ],
+       "table_titles": [
+        "TOTAL"
+       ],
+       "id": "1771dae7-bae2-4d34-9752-b08f5d25833f"
+      }
+     },
+     {
+      "type": "CARD_BUTTON",
+      "content": {
+       "id": null,
+       "title": "GO TO ACTIVITY",
+       "icon": null,
+       "icon_tint": null,
+       "icon_configuration": null,
+       "style": "DEFAULT",
+       "background_style": null,
+       "destination": {
+        "screen": "CARDIO_DETAILS",
+        "parameters": {
+         "activity_id": "1f27998b-95c6-4865-acdd-3d413063ce9b",
+         "entry_point": "Exercise Details",
+         "ai_action": null,
+         "type": "CARDIO"
+        }
+       },
+       "dismiss_event": null,
+       "action": null,
+       "modal": null,
+       "card_name": null,
+       "size": "COMPACT",
+       "corner_radius": "MEDIUM",
+       "text_style": null,
+       "analytic_event": null,
+       "analytic_events": {},
+       "bindings": null,
+       "aggregate_bindings": null,
+       "is_enabled": true,
+       "generic_interaction": null
+      }
+     }
+    ],
+    "id": "875c7cf2-0b5f-4d5f-8365-9d37ac20c2a6"
+   }
+  }
+ ],
+ "show_more": null,
+ "analytics_action": "Expand Exercise Details History"
+}
