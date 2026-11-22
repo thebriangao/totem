@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
 import { defineTool, respond } from "../define.js";
 import { READ_ONLY } from "../annotations.js";
-import { CoachHistoryOut, type CoachHistoryOutT } from "../../schemas/coach.js";
+import { CoachHistoryOut, type CoachConversationT, type CoachHistoryOutT } from "../../schemas/coach.js";
 import {
   AGENT_SOURCES,
   REPORT_PREFIX,
@@ -67,10 +67,15 @@ async function outlook(client: WhoopClient, input: Input): Promise<CoachHistoryO
   // The cycle id is resolved from home right before use and never kept (S19).
   const fingerprint = reportFingerprint(kind, await resolveCycleId(client, input.date));
   // Sleep edits re-cut cycles, so today's report can sit under an older cycle id
-  // (ai §4.5): for today, a same-kind report in the TODAY group also counts.
-  const listed = await findListed(client, (c) =>
-    c.fingerprint === fingerprint ||
-    (!input.date && c.fingerprint.startsWith(REPORT_PREFIX[kind]) && c.day?.toUpperCase() === "TODAY"));
+  // (ai §4.5): for today, a same-kind report in the TODAY group also counts,
+  // but only when the current cycle's own report isn't listed.
+  const older: { hit: CoachConversationT | null } = { hit: null };
+  const exact = await findListed(client, (c) => {
+    if (c.fingerprint === fingerprint) return true;
+    if (!older.hit && !input.date && c.fingerprint.startsWith(REPORT_PREFIX[kind]) && c.day?.toUpperCase() === "TODAY") older.hit = c;
+    return false;
+  });
+  const listed = exact ?? older.hit;
   if (listed && listed.fingerprint !== fingerprint) {
     warnings.push("Today's report is listed under an older cycle id (the cycle was re-cut after it was generated).");
   }

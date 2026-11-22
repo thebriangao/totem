@@ -98,6 +98,26 @@ describe("whoop_coach_history", () => {
     expect((out.warnings as string[]).join(" ")).toContain("older cycle id");
   });
 
+  it("outlook: the current cycle's report wins over an older-cycle one listed above it", async () => {
+    // After a re-cut the member generated a new report for the new cycle; the old
+    // one sits higher in the list (the list is ordered by last activity).
+    const row = (cycle: number) => ({ id: `id-${cycle}`, fingerprint: `daily-outlook___cycle___${cycle}`, source_type: "UNKNOWN", source_id: "daily-outlook", title: "Daily Outlook", icon: "WAKETIME" });
+    const w = whoop(
+      (path) => {
+        if (path === "/home-service/v1/home") return { metadata: { cycle_metadata: { cycle_id: 1974268448 } } };
+        if (path === `${AI}/conversations`) return { conversations: [{ group_id: 0, title: "TODAY", conversation_metadata_list: [row(1974049188), row(1974268448)] }], next_token: null };
+        if (path === `${AI}/recommendation-widget`) return load("coach/recommendation_widget.json");
+        throw new Error(`unexpected GET ${path}`);
+      },
+      () => ({ turns: [load("coach/outlook_turn.json")] }),
+    );
+    const client = await connect((s) => registerCoachHistory(s, w.client));
+    const out = body(await client.callTool({ name: "whoop_coach_history", arguments: { view: "outlook" } }));
+    expect(w.post).toHaveBeenCalledWith(`${AI}/conversation`, { fingerprint: "daily-outlook___cycle___1974268448", source_type: "UNKNOWN", source_id: "daily-outlook" });
+    expect(out).toMatchObject({ available: true, fingerprint: "daily-outlook___cycle___1974268448" });
+    expect(out.warnings ?? []).toEqual([]);
+  });
+
   it("outlook: a report whose generation FAILED says so, not 'still being generated'", async () => {
     const w = whoop(
       (path) => {
