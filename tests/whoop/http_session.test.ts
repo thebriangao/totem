@@ -16,9 +16,9 @@ vi.mock("../../src/tools/register.js", async (importOriginal) => {
 
 const { startHttpServer } = await import("../../src/server-http.js");
 
-const PORT = 39822;
+// Port 0: the OS picks a free port (no collisions between parallel runs).
 const TOKEN = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const BASE = `http://127.0.0.1:${PORT}`;
+let BASE = "";
 const HEADERS = {
   authorization: `Bearer ${TOKEN}`,
   "content-type": "application/json",
@@ -34,8 +34,8 @@ const stubClient = {
 
 describe("HTTP transport: session creation", () => {
   beforeAll(async () => {
-    await startHttpServer(stubClient, { authToken: TOKEN, port: PORT, host: "127.0.0.1" });
-    await new Promise((r) => setTimeout(r, 50));
+    const server = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    BASE = `http://127.0.0.1:${server.port}`;
   });
 
   it("a non-initialize POST with no mcp-session-id gets 400 and builds no session", async () => {

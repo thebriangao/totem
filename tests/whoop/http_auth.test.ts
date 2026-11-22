@@ -5,12 +5,13 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { startHttpServer } from "../../src/server-http.js";
+import { startHttpServer, type HttpServerHandle } from "../../src/server-http.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
 
-const PORT = 39812;
+// Port 0: the OS picks a free port, so parallel runs (other worktrees, a stale
+// server) never collide on a fixed one.
 const TOKEN = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const BASE = `http://127.0.0.1:${PORT}`;
+let BASE = "";
 
 // Minimal stub — these tests never reach the Whoop API. The HTTP gate sits
 // in front of every MCP call, so we don't need a real client to test it.
@@ -22,16 +23,13 @@ const stubClient = {
 } as unknown as WhoopClient;
 
 describe("HTTP transport: bearer-auth gate", () => {
+  let server: HttpServerHandle;
   beforeAll(async () => {
-    await startHttpServer(stubClient, { authToken: TOKEN, port: PORT, host: "127.0.0.1" });
-    // Give the listener a tick to bind
-    await new Promise((r) => setTimeout(r, 50));
+    server = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    BASE = `http://127.0.0.1:${server.port}`;
   });
 
-  afterAll(() => {
-    // The HTTP server runs until process exit; vitest tears it down with the
-    // process. We don't expose a close handle.
-  });
+  afterAll(() => server.close());
 
   it("rejects /mcp with no Authorization header (401)", async () => {
     const r = await fetch(`${BASE}/mcp`, { method: "POST", body: "{}" });
@@ -130,23 +128,58 @@ describe("HTTP transport: bearer-auth gate", () => {
   });
 });
 
+describe("HTTP transport: startup", () => {
+  it("resolves once bound, and reports the port the OS assigned", async () => {
+    const server = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    try {
+      expect(server.port).toBeGreaterThan(0);
+      // No "give the listener a tick" sleep: it is already accepting.
+      expect((await fetch(`http://127.0.0.1:${server.port}/health`)).status).toBe(200);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("rejects when the port is taken instead of logging that it is listening", async () => {
+    const first = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(
+        startHttpServer(stubClient, { authToken: TOKEN, port: first.port, host: "127.0.0.1" }),
+      ).rejects.toThrow(/already in use/);
+      expect(logged.mock.calls.flat().join("\n")).not.toMatch(/listening on/);
+    } finally {
+      logged.mockRestore();
+      await first.close();
+    }
+  });
+
+  it("close() stops the listener and frees the port", async () => {
+    const server = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    await server.close();
+    await expect(fetch(`http://127.0.0.1:${server.port}/health`)).rejects.toThrow();
+    const again = await startHttpServer(stubClient, { authToken: TOKEN, port: server.port, host: "127.0.0.1" });
+    await again.close();
+  });
+});
+
 describe("HTTP transport: misconfiguration", () => {
   it("refuses to start with a missing auth token", async () => {
     await expect(
-      startHttpServer(stubClient, { authToken: "", port: PORT + 1 }),
+      startHttpServer(stubClient, { authToken: "", port: 0 }),
     ).rejects.toThrow(/MCP_AUTH_TOKEN/);
   });
 
   it("refuses to start with a too-short auth token", async () => {
     await expect(
-      startHttpServer(stubClient, { authToken: "short", port: PORT + 2 }),
+      startHttpServer(stubClient, { authToken: "short", port: 0 }),
     ).rejects.toThrow(/16 chars/);
   });
 });
 
 describe("HTTP transport: session lifecycle", () => {
-  const port = PORT + 3;
-  const base = `http://127.0.0.1:${port}`;
+  let server: HttpServerHandle;
+  let base = "";
   const headers = {
     authorization: `Bearer ${TOKEN}`,
     "content-type": "application/json",
@@ -154,9 +187,11 @@ describe("HTTP transport: session lifecycle", () => {
   };
 
   beforeAll(async () => {
-    await startHttpServer(stubClient, { authToken: TOKEN, port, host: "127.0.0.1" });
-    await new Promise((r) => setTimeout(r, 50));
+    server = await startHttpServer(stubClient, { authToken: TOKEN, port: 0, host: "127.0.0.1" });
+    base = `http://127.0.0.1:${server.port}`;
   });
+
+  afterAll(() => server.close());
 
   it("issues a session id on initialize and accepts it on follow-up calls", async () => {
     const init = await fetch(`${base}/mcp`, {

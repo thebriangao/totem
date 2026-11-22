@@ -17,6 +17,8 @@
 //                              OAuth issuer. Defaults to http://localhost:<port>)
 import express, { type Request, type Response } from "express";
 import { randomUUID, createHmac } from "node:crypto";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
@@ -58,7 +60,14 @@ export function releaseSettledJsonStreams(transport: StreamableHTTPServerTranspo
   return released;
 }
 
-export async function startHttpServer(client: WhoopClient, opts: HttpServerOptions): Promise<void> {
+export interface HttpServerHandle {
+  /** The port actually bound (the OS picks one when 0 was requested). */
+  port: number;
+  /** Stop listening and wait for open connections to finish. */
+  close(): Promise<void>;
+}
+
+export async function startHttpServer(client: WhoopClient, opts: HttpServerOptions): Promise<HttpServerHandle> {
   if (!opts.authToken || opts.authToken.length < 16) {
     throw new Error(
       "MCP_AUTH_TOKEN must be set and at least 16 chars. Generate one with `openssl rand -hex 32`.",
@@ -288,16 +297,41 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   app.get("/mcp", bearer, (req, res) => void mcpHandler(req, res));
   app.delete("/mcp", bearer, (req, res) => void mcpHandler(req, res));
 
-  const httpServer = app.listen(port, host, () => {
-    console.error(`[totem] listening on ${publicUrl} (bound ${host}:${port})`);
-    console.error(`[totem] health: GET /health`);
-    console.error(`[totem] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
+  // Express 5 hands a failed listen (EADDRINUSE, EACCES) to this same callback as
+  // its argument. Ignoring it logged "listening on …" for a server that never
+  // bound, and the process then exited 0 with nothing to keep it alive.
+  const httpServer = await new Promise<Server>((resolve, reject) => {
+    const server = app.listen(port, host, (error?: Error) => {
+      if (!error) return resolve(server);
+      const code = (error as NodeJS.ErrnoException).code;
+      reject(code === "EADDRINUSE"
+        ? new Error(`Port ${port} on ${host} is already in use — is another totem server running? Set PORT to a free port.`, { cause: error })
+        : error);
+    });
+  }).catch((error: unknown) => {
+    clearInterval(sweep);
+    throw error;
   });
+  const boundPort = (httpServer.address() as AddressInfo).port;
+  console.error(`[totem] listening on ${publicUrl} (bound ${host}:${boundPort})`);
+  console.error(`[totem] health: GET /health`);
+  console.error(`[totem] auth: static bearer (MCP_AUTH_TOKEN)${oauthEnabled ? " + OAuth (web/mobile connectors)" : " — OAuth disabled (set AUTH_PASSWORD to enable)"}`);
 
-  const close = (): void => {
-    httpServer.close(() => process.exit(0));
+  let closing: Promise<void> | undefined;
+  const close = (): Promise<void> => {
+    closing ??= new Promise<void>((resolve) => {
+      clearInterval(sweep);
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
+      httpServer.close(() => resolve());
+    });
+    return closing;
+  };
+  const onSignal = (): void => {
+    void close().then(() => process.exit(0));
     setTimeout(() => process.exit(1), 5000).unref();
   };
-  process.on("SIGINT", close);
-  process.on("SIGTERM", close);
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  return { port: boundPort, close };
 }
