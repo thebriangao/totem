@@ -322,4 +322,32 @@ describe("askCoach send path", () => {
     expect(out.report!.recommendations).toHaveLength(3);
     expect(out.text).toContain("Steady start");
   });
+
+  it("opens an existing report as turn 0, not the member's latest follow-up reply", async () => {
+    // Live 2026-11-21: after one reply in the outlook thread, agent daily_outlook
+    // returned that reply's text as the report, with no recommendations.
+    const outlook = load("coach/outlook_turn.json") as { id: string };
+    const followUp = {
+      id: "follow-up", turn_status: "COMPLETE",
+      messages: [
+        { role: "user", items: [{ type: "MARKDOWN_CHAT_TEXT", content: { text: "Which matters most?" } }] },
+        { role: "assistant", items: [{ type: "MARKDOWN_CHAT_TEXT", content: { text: "Cycling—keep it easy today." } }] },
+      ],
+    };
+    const m = mockClient({
+      get: (path) => {
+        if (path === "/home-service/v1/home") return { metadata: { cycle_metadata: { cycle_id: 1974049188 } } };
+        if (path === `${AI}/conversations`) return load("coach/conversations.json");
+        if (path === `${AI}/recommendation-widget`) return load("coach/recommendation_widget.json");
+        throw new Error(`unexpected GET ${path}`);
+      },
+      post: () => ({ turns: [outlook, followUp] }),
+    });
+    const out = await askCoach(m.client, planAsk({ ...base, agent: "daily_outlook" }, DAY), fakeTiming());
+    expect(out.text).toContain("Steady start");
+    expect(out.text).not.toContain("Cycling—keep it easy");
+    expect(out.report).toMatchObject({ kind: "daily_outlook", generated: false });
+    expect(out.report!.recommendations).toHaveLength(3);
+    expect(out.verified).toBe(true);
+  });
 });

@@ -294,7 +294,9 @@ async function openReport(
   const existed = (await findListed(client, (c) => c.fingerprint === fingerprint, 1)) !== null;
   const receipt = emptyReceipt(fingerprint);
   const conversation = await openConversation(client, { fingerprint, source_id: AGENT_SOURCES[kind]!.source_id, source_type: "UNKNOWN" });
-  let turn = lastTurn(conversation);
+  // The report is turn 0. Later turns are the member's follow-up chat about it.
+  const turns = Array.isArray(conversation.turns) ? conversation.turns : [];
+  let turn: Turn | null = turns[0] && typeof turns[0] === "object" ? (turns[0] as Turn) : null;
   if (turn && turnStatus(turn) !== "COMPLETE" && turnStatus(turn) !== FAILED && typeof turn.id === "string") {
     turn = (await waitForTurn(client, fingerprint, turn.id, timing.replyTimeoutMs, timing)).turn ?? turn;
   }
