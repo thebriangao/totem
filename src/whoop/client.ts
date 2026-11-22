@@ -87,8 +87,13 @@ class RequestCache {
         // Whoop finishes scoring it would be misleading. A load superseded by a
         // newer one for the same key (a fresh read) must not overwrite it.
         const latest = this.latestLoad.get(key) === seq;
-        if (policy && latest && generation === this.generation && !containsPendingState(value)) {
-          this.store(key, value, policy);
+        if (latest && generation === this.generation) {
+          // The newest read replaces what was cached even when it can't be kept
+          // itself (a pending record, an oversized body). Otherwise a fresh read
+          // that came back pending left the older entry in place, and the next
+          // ordinary read served data from before the one just returned.
+          const kept = policy !== null && !containsPendingState(value) && this.store(key, value, policy);
+          if (!kept) this.evict(key);
         }
         return value;
       })
@@ -113,14 +118,20 @@ class RequestCache {
     }
   }
 
-  private store(key: string, value: unknown, policy: { ttlMs: number; tags: readonly string[] }): void {
+  private evict(key: string): void {
+    const entry = this.values.get(key);
+    if (entry) this.delete(key, entry);
+  }
+
+  /** Returns whether the value was kept. */
+  private store(key: string, value: unknown, policy: { ttlMs: number; tags: readonly string[] }): boolean {
     let bytes = 0;
     try {
       bytes = Buffer.byteLength(JSON.stringify(value));
     } catch {
-      return; // Never let cache accounting affect a successful API response.
+      return false; // Never let cache accounting affect a successful API response.
     }
-    if (bytes > MAX_CACHE_BYTES) return;
+    if (bytes > MAX_CACHE_BYTES) return false;
     const existing = this.values.get(key);
     if (existing) this.delete(key, existing);
     const entry: CacheEntry = {
@@ -136,6 +147,7 @@ class RequestCache {
       if (!oldest) break;
       this.delete(oldest[0], oldest[1]);
     }
+    return this.values.has(key);
   }
 
   private delete(key: string, entry: CacheEntry): void {
@@ -153,11 +165,30 @@ function containsPendingState(value: unknown): boolean {
   }
 }
 
+/**
+ * Refuse a path the URL parser would not send as written. `new URL()` resolves
+ * "." and ".." segments (also spelled "%2e"), turns "\" into "/", drops tabs
+ * and newlines, cuts at "#", and without a leading "/" reads the text as part
+ * of the host. A path built from a caller-supplied id could otherwise reach a
+ * different endpoint (or host, with the bearer token) than the one the calling
+ * tool, and whoop_raw's write denylist, checked.
+ */
+export function assertVerbatimPath(path: string): void {
+  const beforeQuery = path.split("?")[0]!;
+  const dotSegment = beforeQuery.split("/").some((segment) => /^(?:\.|%2e){1,2}$/i.test(segment));
+  if (!path.startsWith("/") || dotSegment || /[\\#\u0000-\u001f\u007f]/.test(path)) {
+    throw new Error(
+      `Refusing to call WHOOP path ${JSON.stringify(path)}: it must start with "/" and contain no "." or ".." segments, backslashes, "#" or control characters.`,
+    );
+  }
+}
+
 function cacheKey(path: string, query: Record<string, QueryValue>): string {
   const params = Object.entries(query)
     .filter(([, value]) => value !== undefined && value !== null)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${String(value)}`)
+    // Encoded, so {a: "1&b=2"} and {a: "1", b: "2"} (different requests) don't share a key.
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
     .join("&");
   return `${path}?${params}`;
 }
@@ -356,6 +387,7 @@ export class WhoopClient {
     retried = false,
     attempt412 = 0,
   ): Promise<T> {
+    assertVerbatimPath(path);
     // No `apiVersion` param: the app sent it on 0 of 5,813 requests (2026-11
     // capture), so it was totem's clearest single tell.
     const url = new URL(BASE_URL + path);
@@ -391,8 +423,18 @@ export class WhoopClient {
     if (bodyString !== undefined) init.body = bodyString;
 
     let response: Response;
+    let bodyText: string;
     try {
       response = await fetch(url.toString(), init);
+      // fetch() resolves on the headers, so the body is read under the same
+      // timer: a response that stalled mid-body used to hang forever, and every
+      // identical GET joined the hung in-flight load. An error status is still
+      // reported when its body can't be read.
+      const { ok } = response;
+      bodyText = await response.text().catch((error: unknown) => {
+        if (ok) throw error;
+        return "";
+      });
     } finally {
       clearTimeout(timeout);
     }
@@ -401,29 +443,26 @@ export class WhoopClient {
       // Whoop can reject a token before its local expiry (revocation, clock
       // skew, a birthday/country profile edit). Force one refresh and retry.
       if (!retried && this.config.onUnauthorized) {
-        await response.body?.cancel().catch(() => {});
         this.config.onUnauthorized(token);
         return this.send<T>(method, path, query, body, true, attempt412);
       }
       // A 401 that survives a fresh token is path-specific (WHOOP refuses some
       // endpoints for user tokens), not an expired login. Login expiry surfaces
       // from the refresh itself (WhoopAuthExpiredError in the token manager).
-      await response.body?.cancel().catch(() => {});
       throw new WhoopEndpointUnauthorizedError(path);
     }
     if (response.status === 412 && method !== "GET" && attempt412 < RETRY_412_DELAYS_MS.length) {
       // "User's cycle is concurrently being updated": WHOOP is recomputing the
       // day (often right after another write). It succeeds on retry.
-      await response.body?.cancel().catch(() => {});
       await (this.config.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(RETRY_412_DELAYS_MS[attempt412]!);
       return this.send<T>(method, path, query, body, retried, attempt412 + 1);
     }
     if (response.status >= 500) {
-      const text = await response.text().catch(() => "");
+      const text = bodyText;
       throw new WhoopServerError(response.status, path, htmlTitle(text) ?? apiErrorDetail(text));
     }
     if (!response.ok) {
-      const text = await response.text().catch(() => "");
+      const text = bodyText;
       if (response.status === 412) {
         throw new WhoopApiError(412, path, text, "WHOOP is updating this day; try again in a minute");
       }
@@ -438,7 +477,7 @@ export class WhoopClient {
     if (response.status === 204) return undefined as T;
     // Some endpoints answer 200 with an empty body, or a bare JSON literal
     // (profile PUT returns `false` when it refused the values).
-    const text = await response.text();
+    const text = bodyText;
     if (!text.trim()) return undefined as T;
     try {
       return JSON.parse(text) as T;

@@ -241,6 +241,11 @@ export function localizeTimestamps<T>(value: T, tz: string = getTimezone()): T {
   if (Array.isArray(value)) {
     return value.map((item) => localizeTimestamps(item, tz)) as T;
   }
+  // JSON.stringify writes a Date as its ISO string. Rebuilding it key by key
+  // (it has none) turned it into {} before stringify ever saw it.
+  if (value instanceof Date) {
+    return (Number.isNaN(value.getTime()) ? null : toLocalIso(value.toISOString(), tz)) as T;
+  }
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
