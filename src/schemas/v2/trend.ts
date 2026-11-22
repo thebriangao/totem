@@ -30,7 +30,7 @@ const Window = z.object({
   hidden: z.boolean(),
   rows: z.array(Row),
   breakdown: z.array(z.tuple([z.string(), NumOrNull])).nullable(),
-  points: z.object({ start: IsoDate, step: z.literal("day"), values: z.array(NumOrNull) }).optional(),
+  points: z.object({ start: IsoDate, step: z.enum(["day", "week"]), values: z.array(NumOrNull) }).optional(),
 });
 
 export const TrendV2Out = z.object({

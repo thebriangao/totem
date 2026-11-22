@@ -1,0 +1,261 @@
+{
+ "_comment": "Live GET /progression-service/v3/trends/STRESS?endDate=2026-11-21 on the throwaway account (reads-review probe), trimmed to the fields the projection reads. Week: stacked HIGH/MEDIUM/LOW bars with a top label; month: the same stack without one; six months: three LINE_PLOTs.",
+ "week_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "NOV 15 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "HIGH_STRESS",
+    "metric_name_display": "AVG. HIGH STRESS",
+    "metric_value_display": "0:10",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "current_metric_value": 600000.0,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "plots": [
+    {
+     "type": "BAR_PLOT",
+     "plot": {
+      "id": "-363551968",
+      "bar_groups": [
+       {
+        "top_label": {
+         "label": "0:10",
+         "label_style": "STRESS_HIGH"
+        },
+        "bars": [
+         {
+          "style": "STRESS_HIGH",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:10",
+           "secondary_contextual_display": "HIGH STRESS",
+           "unit_display": "hr"
+          }
+         },
+         {
+          "style": "STRESS_MEDIUM",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "1:09",
+           "secondary_contextual_display": "MEDIUM STRESS",
+           "unit_display": "hr"
+          }
+         },
+         {
+          "style": "STRESS_LOW",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:19",
+           "secondary_contextual_display": "LOW STRESS",
+           "unit_display": "hr"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "PROGRESS_PLOT",
+     "plot": {
+      "id": "MCI_MENSTRUAL-0"
+     }
+    },
+    {
+     "type": "PROGRESS_PLOT",
+     "plot": {
+      "id": "INACTIVE-1"
+     }
+    }
+   ]
+  },
+  "breakdown_bar": null,
+  "is_hidden": false
+ },
+ "month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "OCT 23 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "HIGH_STRESS",
+    "metric_name_display": "AVG. HIGH STRESS",
+    "metric_value_display": "0:10",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "current_metric_value": 600000.0,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "plots": [
+    {
+     "type": "BAR_PLOT",
+     "plot": {
+      "id": "-472881550",
+      "bar_groups": [
+       {
+        "top_label": null,
+        "bars": [
+         {
+          "style": "STRESS_HIGH",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:10",
+           "secondary_contextual_display": "HIGH STRESS",
+           "unit_display": "hr"
+          }
+         },
+         {
+          "style": "STRESS_MEDIUM",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "1:09",
+           "secondary_contextual_display": "MEDIUM STRESS",
+           "unit_display": "hr"
+          }
+         },
+         {
+          "style": "STRESS_LOW",
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:19",
+           "secondary_contextual_display": "LOW STRESS",
+           "unit_display": "hr"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "PROGRESS_PLOT",
+     "plot": {
+      "id": "INACTIVE-0"
+     }
+    },
+    {
+     "type": "PROGRESS_PLOT",
+     "plot": {
+      "id": "MCI_MENSTRUAL-1"
+     }
+    },
+    {
+     "type": "PROGRESS_PLOT",
+     "plot": {
+      "id": "INACTIVE-2"
+     }
+    }
+   ]
+  },
+  "breakdown_bar": null,
+  "is_hidden": false
+ },
+ "six_month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "MAY 26 - NOV 21, 26",
+   "next_date_time": null,
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "HIGH_STRESS",
+    "metric_name_display": "AVG. HIGH STRESS",
+    "metric_value_display": "0:10",
+    "metric_units_display": "hr",
+    "trend_direction": "NONE",
+    "current_metric_value": 600000.0,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "plots": [
+    {
+     "type": "LINE_PLOT",
+     "plot": {
+      "id": "STRESS_HIGH",
+      "segments": [
+       {
+        "points": [
+         {
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:10",
+           "secondary_contextual_display": "HIGH STRESS",
+           "unit_display": "hr"
+          },
+          "graph_label": null
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "LINE_PLOT",
+     "plot": {
+      "id": "STRESS_MEDIUM",
+      "segments": [
+       {
+        "points": [
+         {
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "1:09",
+           "secondary_contextual_display": "MEDIUM STRESS",
+           "unit_display": "hr"
+          },
+          "graph_label": null
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "LINE_PLOT",
+     "plot": {
+      "id": "STRESS_LOW",
+      "segments": [
+       {
+        "points": [
+         {
+          "data_scrubber_details": {
+           "primary_contextual_display": "SAT, NOV 21",
+           "value_display": "0:19",
+           "secondary_contextual_display": "LOW STRESS",
+           "unit_display": "hr"
+          },
+          "graph_label": null
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "TREND_PLOT",
+     "plot": {
+      "id": "TREND_PLOT_ID",
+      "segments": []
+     }
+    }
+   ]
+  },
+  "breakdown_bar": null,
+  "is_hidden": false
+ }
+}

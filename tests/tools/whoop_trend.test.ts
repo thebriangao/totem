@@ -65,6 +65,72 @@ describe("whoop_trend projection", () => {
     expect(projectTrendWindow(fx("trend_vo2"), "2026-11-21", "week", false)!.hidden).toBe(true);
   });
 
+  // trend_stress and trend_strength_time are live responses from the throwaway account.
+  it("six-month STRESS points come from the HIGH line, not whichever line is drawn last", () => {
+    const w = projectTrendWindow(fx("trend_stress"), "2026-11-21", "six_month", true)!;
+    expect(w.rows[0]).toMatchObject({ key: "HIGH_STRESS", avg: 10, unit: "min" });
+    expect(w.points!.values).toHaveLength(180);
+    // The three lines read HIGH 0:10, MEDIUM 1:09, LOW 0:19 for Nov 21.
+    expect(w.points!.values.at(-1)).toBe(10);
+    expect(w.points!.values.filter((v) => v !== null)).toEqual([10]);
+  });
+
+  it("a stress stack without a top label still yields its HIGH bar", () => {
+    const month = projectTrendWindow(fx("trend_stress"), "2026-11-21", "month", true)!;
+    expect(month.points).toMatchObject({ start: "2026-10-23", step: "day" });
+    expect(month.points!.values.at(-1)).toBe(10);
+    expect(projectTrendWindow(fx("trend_stress"), "2026-11-21", "week", true)!.points!.values).toEqual([null, null, null, null, null, null, 10]);
+  });
+
+  it("weekly bars become one value per week, not a daily value on the week's first day", () => {
+    const month = projectTrendWindow(fx("trend_strength_time"), "2026-11-21", "month", true)!;
+    expect(month.points).toEqual({ start: "2026-10-25", step: "week", values: [null, null, null, 2] });
+    const six = projectTrendWindow(fx("trend_strength_time"), "2026-11-21", "six_month", true)!;
+    expect(six.points).toMatchObject({ start: "2026-05-31", step: "week" });
+    expect(six.points!.values).toHaveLength(25);
+    expect(six.points!.values.at(-1)).toBe(2);
+    // The week window keeps daily bars.
+    expect(projectTrendWindow(fx("trend_strength_time"), "2026-11-21", "week", true)!.points)
+      .toEqual({ start: "2026-11-15", step: "day", values: [null, null, null, null, null, 0, 2] });
+  });
+
+  it("sums an HR-zone week bar that has no top label and places a cross-month week by its first day", () => {
+    const month = projectTrendWindow(fx("trend_hr_zones_all"), "2026-11-21", "month", true)!;
+    expect(month.points).toMatchObject({ start: "2026-10-25", step: "week" });
+    expect(month.points!.values.slice(0, 3)).toEqual([null, null, null]);
+    expect(month.points!.values[3]).toBeGreaterThan(0);
+    const segment = {
+      date_picker: { current_date_range_display: "OCT 25 - NOV 21, 26" },
+      metrics: [],
+      graph: { plots: [{ type: "BAR_PLOT", plot: { bar_groups: [
+        { top_label: null, bars: [{ style: "STRAIN", data_scrubber_details: { primary_contextual_display: "NOV 1 - 7, 26", value_display: "1:05" } }] },
+        { top_label: null, bars: [{ style: "STRAIN", data_scrubber_details: { primary_contextual_display: "OCT 25 - 31, 26", value_display: "0:40" } }] },
+        { top_label: null, bars: [
+          { style: "HR_ZONE_2", data_scrubber_details: { primary_contextual_display: "NOV 8 - 14, 26", value_display: "0:30" } },
+          { style: "HR_ZONE_1", data_scrubber_details: { primary_contextual_display: "NOV 8 - 14, 26", value_display: "1:00" } },
+        ] },
+      ] } }] },
+    };
+    expect(projectTrendWindow({ month_time_segment: segment }, "2026-11-21", "month", true)!.points)
+      .toEqual({ start: "2026-10-25", step: "week", values: [40, 65, 90, null] });
+    // A rolling window ending mid-week: the second week runs "OCT 29 - NOV 4".
+    const rolling = {
+      date_picker: { current_date_range_display: "OCT 22 - NOV 18, 26" },
+      metrics: [],
+      graph: { plots: [{ type: "BAR_PLOT", plot: { bar_groups: [
+        { top_label: null, bars: [{ style: "STRAIN", data_scrubber_details: { primary_contextual_display: "OCT 29 - NOV 4, 26", value_display: "0:20" } }] },
+      ] } }] },
+    };
+    expect(projectTrendWindow({ month_time_segment: rolling }, "2026-11-18", "month", true)!.points)
+      .toEqual({ start: "2026-10-22", step: "week", values: [null, 20, null, null] });
+  });
+
+  it("ignores trend-line and overlay plots", () => {
+    const line = (id: string, value: string) => ({ type: id, plot: { segments: [{ points: [{ data_scrubber_details: { primary_contextual_display: "SAT, NOV 21", value_display: value } }] }] } });
+    const segment = { date_picker: {}, metrics: [], graph: { plots: [line("LINE_PLOT", "55"), line("TREND_PLOT", "99"), line("PROGRESS_PLOT", "1")] } };
+    expect(projectTrendWindow({ week_time_segment: segment }, "2026-11-21", "week", true)!.points!.values).toEqual([null, null, null, null, null, null, 55]);
+  });
+
   it("parses point labels with and without a year", () => {
     expect(pointDate("SUN, MAY 17", "2026-05-23")).toBe("2026-05-17");
     expect(pointDate("TUE, NOV 25, 2025", "2026-05-23")).toBe("2025-11-25");
