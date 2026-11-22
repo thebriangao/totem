@@ -355,7 +355,9 @@ describe("whoop_lift_log", () => {
       });
       expect(del).not.toHaveBeenCalled();
       expect(out).toMatchObject({ action: "attached", activity_id: TARGET, score_state: "incomplete", unit: "lb", verified: true });
-      expect(out.effective_volume_kg).toBeCloseTo(171.78, 1);
+      // WHOOP's total_effective_volume_kg (171.78 here) is its own load formula, not sets × reps × weight:
+      // live, a 50 kg-volume lift came back as 7,455. The receipt leaves it out rather than mislead.
+      expect(out.effective_volume_kg).toBeUndefined();
     });
 
     it("maps 409 'already linked'; the link is not retried", async () => {

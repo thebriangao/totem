@@ -164,8 +164,6 @@ export const LiftLogReceipt = z.object({
   activity_id: z.string(),
   saved_during: z.string().nullable(),
   score_state: z.string().nullable(),
-  /** WHOOP's own total_effective_volume_kg (its effective-load formula, not sets x reps x weight). */
-  effective_volume_kg: z.number().nullable(),
   /** The caller's unit: the weights as given were logged (and, when verified, read back). */
   unit: UnitT,
   /** The account's display unit, only when it differs: WHOOP received `sent_weights` in it. */

@@ -122,8 +122,9 @@ export function registerWeightLog(server: McpServer, client: WhoopClient): void 
     const tsIso = at ?? (action === "edit" ? target!.timestamp : new Date().toISOString());
     try {
       assertNotFuture(tsIso, "reading time");
-    } catch (e) {
-      return toolError((e as Error).message);
+    } catch {
+      // assertNotFuture's own reason (an undeletable empty day) is about activities and sleeps.
+      return toolError(`The reading time ${tsIso} is in the future. A weight reading is dated when it was taken.`);
     }
     let fatPct: number | undefined;
     let leanKg: number | undefined;

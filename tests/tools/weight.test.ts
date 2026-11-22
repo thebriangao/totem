@@ -74,7 +74,8 @@ describe("whoop_weight_log validation", () => {
   });
 
   it.each([
-    ["future time", { at: "2099-01-01T08:00:00-08:00", weight: 80, unit: "kg" }, /future/],
+    // Its own reason: the "undeletable empty day" one belongs to activities and sleeps.
+    ["future time", { at: "2099-01-01T08:00:00-08:00", weight: 80, unit: "kg" }, /^The reading time .* is in the future\. A weight reading is dated when it was taken\.$/],
     ["over WHOOP's 275 kg bound (lb input)", { weight: 700, unit: "lb", at: "2026-11-21T14:10:00-08:00" }, /275/],
     ["lean mass not below weight", { weight: 70, lean_mass: 75, unit: "kg", at: "2026-11-21T14:10:00-08:00" }, /lean/i],
   ])("refuses %s without posting", async (_n, args, re) => {

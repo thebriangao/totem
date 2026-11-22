@@ -252,7 +252,9 @@ export function localizeTimestamps<T>(value: T, tz: string = getTimezone()): T {
       // Fields explicitly named *_utc are wire-level / audit values. Their
       // literal UTC form matters (for example write previews show precisely
       // what will be sent to Whoop), so do not turn them back into local time.
-      out[k] = k.endsWith("_utc") ? v : localizeTimestamps(v, tz);
+      // A write preview's `will_execute` is the exact request (compact() leaves
+      // it alone for the same reason): its timestamps stay as they will be sent.
+      out[k] = k.endsWith("_utc") || k === "will_execute" ? v : localizeTimestamps(v, tz);
     }
     return out as T;
   }

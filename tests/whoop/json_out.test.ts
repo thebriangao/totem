@@ -25,6 +25,24 @@ describe("jsonOut", () => {
   it("emits compact JSON without whitespace", () => {
     expect(jsonOut({ a: 1, b: null, c: [1.23456] })).toBe('{"a":1,"c":[1.235]}');
   });
+  it("shows a write preview's timestamps exactly as they will be sent, not in local time", () => {
+    const previous = process.env.WHOOP_TIMEZONE;
+    process.env.WHOOP_TIMEZONE = "America/Los_Angeles";
+    try {
+      const out = JSON.parse(jsonOut({
+        preview: true,
+        start: "2026-11-21T15:00:00.000Z",
+        will_execute: { method: "POST", body: { start_time: "2026-11-21T15:00:00.000Z", nested: [{ end: "2026-11-21T15:30:00.000Z" }] } },
+      }));
+      // Outside the preview, times read in the member's zone...
+      expect(out.start).toBe("2026-11-21T07:00:00-08:00");
+      // ...inside it, they are the request's own bytes.
+      expect(out.will_execute.body).toEqual({ start_time: "2026-11-21T15:00:00.000Z", nested: [{ end: "2026-11-21T15:30:00.000Z" }] });
+    } finally {
+      if (previous === undefined) delete process.env.WHOOP_TIMEZONE;
+      else process.env.WHOOP_TIMEZONE = previous;
+    }
+  });
   it("can return a faithful body for whoop_raw", () => {
     expect(jsonOut({ a: null, b: 0.123456 }, { compact: false })).toBe('{"a":null,"b":0.123456}');
   });
