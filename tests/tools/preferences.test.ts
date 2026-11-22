@@ -38,8 +38,8 @@ describe("whoop_preferences tool", () => {
       ai: { WHOOP_COACH_MEMORY: true },
       dashboard: { gauges: ["HRV", "SLEEP_PERFORMANCE"] },
       tracked_behaviors: { count: 3, custom: 1 },
-      errors: [],
     });
+    expect(out).not.toHaveProperty("errors");
     expect((result.content as Array<{ text: string }>)[0]!.text.length).toBeLessThan(1500);
   });
 
@@ -49,14 +49,14 @@ describe("whoop_preferences tool", () => {
     const out = parse(await client.callTool({ name: "whoop_preferences", arguments: { include: ["notifications"] } }));
     expect(whoop.get).toHaveBeenCalledTimes(1);
     expect(whoop.get).toHaveBeenCalledWith("/notification-service/v1/notifications/user-settings/bff");
-    expect(Object.keys(out).sort()).toEqual(["errors", "notifications"]);
+    expect(Object.keys(out).sort()).toEqual(["notifications"]);
   });
 
   it("degrades a failed section to null with an error, keeping the rest", async () => {
     const whoop = mockWhoop({ ...ROUTES, "/ai-conversation-service/v1/settings": new Error("500") });
     const client = await connect(registerPreferences, whoop);
     const out = parse(await client.callTool({ name: "whoop_preferences", arguments: { include: ["ai", "journal"] } }));
-    expect(out.ai).toBeNull();
+    expect(out).not.toHaveProperty("ai");
     expect(out.journal).toMatchObject({ journal_enabled: true });
     expect(out.errors).toEqual([{ section: "ai", error: "500" }]);
   });

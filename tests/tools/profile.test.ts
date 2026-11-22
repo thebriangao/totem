@@ -46,7 +46,9 @@ describe("whoop_profile tool", () => {
     const whoop = mockWhoop({ ...BASE, "/profile-service/v1/profile/bff/edit": new Error("down") });
     const client = await connect(registerProfile, whoop);
     const out = parse(await client.callTool({ name: "whoop_profile", arguments: {} }));
-    expect(out).toMatchObject({ first_name: "Test", state: "IL", birthday: "1990-05-05", gender: null, physiological_baseline: null });
+    expect(out).toMatchObject({ first_name: "Test", state: "IL", birthday: "1990-05-05" });
+    expect(out).not.toHaveProperty("gender");
+    expect(out).not.toHaveProperty("physiological_baseline");
     expect(out.warnings.join(" ")).toMatch(/Profile details unavailable/);
   });
 

@@ -125,7 +125,7 @@ describe("whoop_journal tool", () => {
       arguments: { date: DATE, impact_id: "599fdf12-9565-4fca-9b3a-bb5c46d3dc78" },
     }));
     expect(out.impact.rows).toHaveLength(4);
-    expect(out.impact.detail).toBeNull();
+    expect(out.impact).not.toHaveProperty("detail");
     expect(out.warnings.join(" ")).toMatch(/member-average/);
     expect(whoop.get).not.toHaveBeenCalledWith(expect.stringContaining("/impact/details/"));
   });

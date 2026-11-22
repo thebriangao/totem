@@ -90,7 +90,7 @@ describe("whoop_journal_log: partial (default)", () => {
     expect(whoop.put.mock.calls[0]![1]).toEqual({
       tracker_inputs: { [D]: { tracker_input_eggs: [{ behavior_tracker_id: 2, answered_yes: true, magnitude_input_value: 4, magnitude_input_label: "4" }] } },
     });
-    expect(out.rows[0].carried).toEqual([]);
+    expect(out.rows[0]).not.toHaveProperty("carried");
   });
 
   it("clears with a bare row for unset", async () => {
@@ -139,7 +139,10 @@ describe("whoop_journal_log: partial (default)", () => {
     const { result, out } = await call(whoop, { date: D, behaviors: [{ id: 2, magnitude: 4 }] });
     expect(result.isError).toBeFalsy();
     expect(out.verified).toBe(false);
-    expect(out.mismatches).toEqual(expect.arrayContaining([expect.objectContaining({ id: 2, field: "answered_yes", expected: true, actual: null })]));
+    // jsonOut drops null keys: the stored value (null = unanswered) is simply absent.
+    const miss = out.mismatches.find((m: { id: number; field: string }) => m.id === 2 && m.field === "answered_yes");
+    expect(miss).toMatchObject({ expected: true });
+    expect(miss).not.toHaveProperty("actual");
   });
 
   it("reports a partial write when the second request fails", async () => {
