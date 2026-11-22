@@ -452,7 +452,7 @@ Nothing here worked:
 | GET | `/arrhythmia-service/v2/afibhistory/screen` | verified | whoop_health | Android route (@Acetone1). 404 'No anf user found' until irregular rhythm notifications are set up (also /v2/settings). |
 | GET | `/arrhythmia-service/v1/about` | verified | – | Android route (@Acetone1). Static regulatory page. The Android list has no read route for ECG readings. |
 | GET | `/advanced-labs-service/v1/advanced-labs/biomarkers/{biomarker_id}` | verified | whoop_health | Android route (@Acetone1). ?next_token=. {navigation_title, header{title, subtitle, pills}, sections, status}; without results status UNAVAILABLE with an Add Lab Results tile (seen live); an unknown id is 404. Filled-in shape unseen. |
-| GET | `/ecg-service/v1/ecg/about` | verified | whoop_health | Android route (@Acetone1). {page_title, information_items[{info_label, info_value}]}: the ECG feature's regulatory facts. The Android list has no route that reads ECG recordings. |
+| GET | `/ecg-service/v1/ecg/about` | verified | – | Android route (@Acetone1). {page_title, information_items[{info_label, info_value}]}: the ECG feature's regulatory facts. The Android list has no route that reads ECG recordings. |
 
 Don't use:
 

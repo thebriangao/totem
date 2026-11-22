@@ -1,7 +1,7 @@
 // whoop_health (R, EXPERIMENTAL): Healthspan, blood pressure insights, AFib
-// history, Advanced Labs and ECG. See src/projections/health_features.ts for the
+// history and Advanced Labs. See src/projections/health_features.ts for the
 // routes and what is and isn't verified. Read-only on purpose: the writes these
-// features have (deleting AFib history, editing lab results or ECG notes) can't
+// features have (deleting AFib history, editing lab results) can't
 // be tried without an account that has them, and some can't be undone.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -10,15 +10,13 @@ import { defineTool, respond } from "../define.js";
 import { READ_ONLY } from "../annotations.js";
 import { HealthOut } from "../../schemas/health.js";
 import {
-  HEALTH_FEATURES, passThrough, projectBiomarker, projectEcgAbout, projectLabs, projectLabTests, projectLockable, type HealthFeature,
+  HEALTH_FEATURES, passThrough, projectBiomarker, projectLabs, projectLabTests, projectLockable, type HealthFeature,
 } from "../../projections/health_features.js";
 import { WhoopApiError, WhoopAuthExpiredError } from "../../whoop/errors.js";
 import { todayIso } from "../../lib/dates.js";
 
 const NAME = "whoop_health";
 const LABS = "/advanced-labs-service/v1/advanced-labs";
-const NO_ECG_ROUTE =
-  "WHOOP's app API has no route totem knows of that lists ECG recordings, so they can't be read here; open ECG in the WHOOP app.";
 
 const isStatus = (e: unknown, ...codes: number[]): boolean => e instanceof WhoopApiError && codes.includes(e.status);
 
@@ -61,9 +59,8 @@ export function registerHealth(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: NAME,
     description:
-      "EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or " +
-      "blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them); " +
-      "ecg: device info only (no route to recordings).",
+      "EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or blood_pressure for a date; afib history (date: " +
+      "a day; cursor: next page); labs: biomarkers and tests (id: one of them).",
     input: {
       feature: z.enum(HEALTH_FEATURES),
       date: z.iso.date().optional(),
@@ -109,11 +106,6 @@ export function registerHealth(server: McpServer, client: WhoopClient): void {
           out = tests ? { ...summary, ...(summary.status === "no_data" ? { status: "available" as const, message: null } : {}), tests } : summary;
         }
         break;
-      case "ecg": {
-        const about = await feature(client.get("/ecg-service/v1/ecg/about"), (raw) => ({ status: "not_readable", about: projectEcgAbout(raw) }), "ECG isn't available on this account.");
-        out = about.status === "not_readable" ? { ...about, message: NO_ECG_ROUTE } : about;
-        break;
-      }
     }
     return respond(NAME, HealthOut, { feature: name, experimental: true, ...shown, ...out, warnings });
   });

@@ -7,7 +7,7 @@ export const HealthOut = z.object({
   experimental: z.literal(true),
   date: z.iso.date().optional(),
   id: z.string().optional(),
-  status: z.enum(["available", "locked", "not_set_up", "no_data", "not_readable", "unavailable"]),
+  status: z.enum(["available", "locked", "not_set_up", "no_data", "unavailable"]),
   message: z.string().nullable().optional(),
   /** The screen with UI fields stripped: its filled-in shape is unverified. */
   content: z.unknown().optional(),
@@ -20,7 +20,6 @@ export const HealthOut = z.object({
     status: z.string().nullable(),
   })).optional(),
   tests: z.unknown().optional(),
-  about: z.record(z.string(), z.string()).optional(),
   next_cursor: z.string().nullable().optional(),
   warnings: z.array(z.string()),
 });

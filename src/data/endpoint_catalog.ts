@@ -2586,9 +2586,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "path": "/ecg-service/v1/ecg/about",
     "domain": "health",
     "verdict": "verified",
-    "tools": [
-      "whoop_health"
-    ],
+    "tools": [],
     "notes": "Android route (@Acetone1). {page_title, information_items[{info_label, info_value}]}: the ECG feature's regulatory facts. The Android list has no route that reads ECG recordings."
   }
 ];

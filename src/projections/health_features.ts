@@ -12,18 +12,17 @@
 //       …/tests/history (sections[].items[], an EMPTY_TILE without tests),
 //       …/biomarkers/{id}?next_token= ({navigation_title, header{title, subtitle, pills},
 //       sections, status}; status UNAVAILABLE without results), …/tests/{id}, …/insights?testId=
-//   GET /ecg-service/v1/ecg/about                    {page_title, information_items[{info_label, info_value}]}
-// What is certain is exact (locked, no results, not set up, the ECG about page,
-// the biomarker list's fields). Anything else is the screen passed through with
+// What is certain is exact (locked, no results, not set up, the biomarker
+// list's fields). Anything else is the screen passed through with
 // its UI fields stripped and its size capped (src/lib/screen_content.ts).
 import { get, str } from "../whoop/bff.js";
 import { nodes } from "./v2/core_common.js";
 import { screenContent } from "../lib/screen_content.js";
 
-export const HEALTH_FEATURES = ["healthspan", "blood_pressure", "afib", "labs", "ecg"] as const;
+export const HEALTH_FEATURES = ["healthspan", "blood_pressure", "afib", "labs"] as const;
 export type HealthFeatureName = (typeof HEALTH_FEATURES)[number];
 
-export type FeatureStatus = "available" | "locked" | "not_set_up" | "no_data" | "not_readable" | "unavailable";
+export type FeatureStatus = "available" | "locked" | "not_set_up" | "no_data" | "unavailable";
 export interface Biomarker { id: string; name: string | null; value: string | null; unit: string | null; status: string | null }
 export interface HealthFeature {
   status: FeatureStatus;
@@ -32,7 +31,6 @@ export interface HealthFeature {
   truncated?: true;
   biomarkers?: Biomarker[];
   tests?: unknown;
-  about?: Record<string, string>;
   next_cursor?: string | null;
 }
 
@@ -109,15 +107,4 @@ export function projectBiomarker(raw: unknown): HealthFeature {
     message: `No results${name ? ` for ${name}` : ""} yet.`,
     content: screenContent({ name, about: str(get(raw, "header", "subtitle")), tags: get(raw, "header", "pills") }).content,
   };
-}
-
-/** The ECG feature's regulatory page: label → value. */
-export function projectEcgAbout(raw: unknown): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const item of nodes(get(raw, "information_items"))) {
-    const label = str(item.info_label);
-    const value = str(item.info_value);
-    if (label && value) out[label] = value;
-  }
-  return out;
 }

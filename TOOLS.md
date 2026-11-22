@@ -435,15 +435,15 @@ Add `confirm: true` to make the change.
 
 ## Health features (experimental)
 
-WHOOP's paid health features: Healthspan, blood pressure, AFib history, Advanced Labs and ECG. Built without an account that has them, so untested.
+WHOOP's paid health features: Healthspan, blood pressure, AFib history and Advanced Labs. Built without an account that has them, so untested.
 
 ### `whoop_health`
 
-EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them); ecg: device info only (no route to recordings).
+EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them).
 
 | Input | Type | Notes |
 |---|---|---|
-| `feature` (required) | `healthspan`, `blood_pressure`, `afib`, `labs`, `ecg` |  |
+| `feature` (required) | `healthspan`, `blood_pressure`, `afib`, `labs` |  |
 | `date` | string |  |
 | `id` | string |  |
 | `cursor` | string |  |

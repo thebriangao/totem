@@ -4,7 +4,7 @@
 // guarded paths: what the tool does with a shape it hasn't seen.
 import { describe, expect, it } from "vitest";
 import { registerHealth } from "../../src/tools/v2/health.js";
-import { nextToken, passThrough, projectEcgAbout, projectLabs, projectLabTests, projectLockable } from "../../src/projections/health_features.js";
+import { nextToken, passThrough, projectLabs, projectLabTests, projectLockable } from "../../src/projections/health_features.js";
 import { screenContent } from "../../src/lib/screen_content.js";
 import { WhoopApiError, WhoopAuthExpiredError } from "../../src/whoop/errors.js";
 import { todayIso } from "../../src/lib/dates.js";
@@ -45,11 +45,6 @@ const LABS_FULL = labs([
 ]);
 const HISTORY = (items: unknown[]) => ({ title: "Lab History", paginated_records: { sections: [{ id: "s", items }], next_token: null } });
 const EMPTY_TILE = { type: "EMPTY_TILE", content: { id: "have_other_tests_tile", title: "Have other labs?", image_url: "https://x/e.png" } };
-const ECG_ABOUT = {
-  page_title: "ABOUT ECG",
-  information_items: [{ info_label: "Software Version", info_value: "1.0" }, { info_label: "Manufacturer", info_value: "WHOOP, Inc." }],
-  tile_items: [{ tile_label: "Instructions", caret_icon: "CARET", destination: { screen: "X" } }],
-};
 const notFound = (path: string, body: string) => new WhoopApiError(404, path, body, "404");
 
 async function health(routes: Record<string, unknown>, args: Record<string, unknown>) {
@@ -162,15 +157,6 @@ describe("whoop_health", () => {
     expect(missing.out).toMatchObject({ status: "no_data", message: expect.stringContaining("No biomarker or lab test zzz") });
   });
 
-  it("ecg: device info only, and says recordings can't be read", async () => {
-    const { out } = await health({ "/ecg-service/v1/ecg/about": ECG_ABOUT }, { feature: "ecg" });
-    expect(out).toEqual({
-      feature: "ecg", experimental: true, status: "not_readable",
-      about: { "Software Version": "1.0", Manufacturer: "WHOOP, Inc." },
-      message: expect.stringContaining("no route totem knows of that lists ECG recordings"),
-    });
-  });
-
   it("never hides an expired login behind a feature status", async () => {
     const whoop = mockWhoop({ "/healthspan-service/v1/healthspan/bff": new WhoopAuthExpiredError("expired") });
     const res = await (await connect(registerHealth, whoop)).callTool({ name: "whoop_health", arguments: { feature: "healthspan" } });
@@ -183,7 +169,6 @@ describe("health feature projections", () => {
     expect(projectLockable({ unlocked_content: null, locked_content: null }).status).toBe("unavailable");
     expect(projectLabs({ items: [] }).status).toBe("unavailable");
     expect(projectLabTests(HISTORY([EMPTY_TILE]))).toBeNull();
-    expect(projectEcgAbout({})).toEqual({});
   });
 
   it("find WHOOP's page token wherever it sits", () => {
