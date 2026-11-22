@@ -60,6 +60,42 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
   });
 });
 
+// On Cloud Run, choosing where to deploy can itself create things (a new
+// project, a billing link) before the plan is shown. Cancelling the plan must
+// not then say that nothing was created.
+describe("totem cloud: cancelling the plan after a Google Cloud project was created", () => {
+  /** gcloud with an account, and either a project already selected or none at all. */
+  const gcloudWith = (selected: string): NonNullable<WorldOptions["exec"]> => {
+    let project = selected;
+    return (_cmd, args) => {
+      const a = args.join(" ");
+      if (a.startsWith("auth list")) return out("you@example.com\n");
+      if (a === "config get-value project") return out(project ? `${project}\n` : "(unset)\n");
+      if (a.startsWith("projects list")) return out("");
+      if (a.startsWith("projects create")) { project = args[2]!; return out(""); }
+      if (a.startsWith("billing projects describe")) return out(selected ? "True\n" : "False\n");
+      if (a.startsWith("billing accounts list")) return out("billingAccounts/0X0X0X-0X0X0X-0X0X0X\n");
+      return undefined;
+    };
+  };
+  const cancel: WorldOptions["answers"] = [["Where should the server run?", 2], ["New project ID", "my-totem-project"], ["Deploy this?", 2]];
+
+  it("says what was already created instead of 'nothing'", async () => {
+    const { w, code, text } = await cloud({ exec: gcloudWith(""), answers: cancel });
+    expect(code).toBe(1);
+    expect(w.commands).toContain("exec  gcloud projects create my-totem-project");
+    expect(text).not.toMatch(/nothing (has been|was) created/i);
+    expect(text).toContain("Cancel             no server is created");
+    expect(text.replace(/\s+/g, " ")).toContain("Cancelled. No server was created. Already done above, and left as it is: the Google Cloud project my-totem-project and billing on my-totem-project.");
+  });
+
+  it("still says nothing was created when nothing was", async () => {
+    const { w, text } = await cloud({ exec: gcloudWith("my-project"), answers: cancel });
+    expect(w.commands.some((c) => c.includes("projects create") || c.includes("billing projects link"))).toBe(false);
+    expect(text).toContain("Cancelled. Nothing was created.");
+  });
+});
+
 // The own-server flow writes the server's secrets to .env.deploy and says the
 // file is readable only by you. That has to hold when the file already existed.
 describe.skipIf(process.platform === "win32")("totem cloud: .env.deploy", () => {

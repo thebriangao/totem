@@ -23,7 +23,7 @@ import {
   type Client, type Target,
 } from "./clients.js";
 import { realIo, type ExecResult, type Io } from "./sys.js";
-import { duration, maskSecrets, shellLines, when, type Choice, type Fix } from "./ui.js";
+import { duration, listOf, maskSecrets, shellLines, when, type Choice, type Fix } from "./ui.js";
 
 const NODE_MIN = 24;
 export const FLY_VOLUME = "totem_data";
@@ -660,8 +660,12 @@ async function chooseGcloudAccount(io: Io): Promise<boolean> {
   }
 }
 
-/** Pick the GCP project, or create one. */
-async function chooseGcloudProject(io: Io): Promise<boolean> {
+/**
+ * Pick the GCP project, or create one. Like linking billing below, this
+ * happens before the deploy plan is shown: what it creates is added to
+ * `already`, so cancelling the plan doesn't claim that nothing was created.
+ */
+async function chooseGcloudProject(io: Io, already: string[]): Promise<boolean> {
   const { ui, sys } = io;
   const current = value(await gcloud({ io }, ["config", "get-value", "project"]));
   const projects = (await ui.task("Listing your projects", () => gcloud({ io }, ["projects", "list", "--format=value(projectId)"]))).stdout.trim().split("\n").filter(Boolean);
@@ -675,7 +679,7 @@ async function chooseGcloudProject(io: Io): Promise<boolean> {
       const fresh = `totem-${sys.token().slice(0, 6)}`;
       project = (await ui.text("New project ID (6-30 lower-case letters, digits, hyphens)", fresh)).trim() || fresh;
       const made = await ui.task(`Creating ${project}`, () => gcloud({ io }, ["projects", "create", project!]));
-      if (made.code === 0) { ui.ok("Project created", project); break; }
+      if (made.code === 0) { ui.ok("Project created", project); already.push(`the Google Cloud project ${project}`); break; }
       ui.fail(`Couldn't create ${project}: ${lastLine(made)}`);
       if (!(await ui.confirm("Try another ID?", true))) return false;
     }
@@ -689,7 +693,7 @@ async function chooseGcloudProject(io: Io): Promise<boolean> {
 
 // Cloud Run needs billing on the project. An existing billing account is linked
 // from here; creating one (adding a payment method) only exists in the console.
-async function ensureGcloudBilling(io: Io): Promise<boolean> {
+async function ensureGcloudBilling(io: Io, already: string[]): Promise<boolean> {
   const { ui, sys } = io;
   const project = value(await gcloud({ io }, ["config", "get-value", "project"]));
   const billing = await ui.task("Checking billing", () => gcloud({ io }, ["billing", "projects", "describe", project, "--format=value(billingEnabled)"]));
@@ -704,7 +708,7 @@ async function ensureGcloudBilling(io: Io): Promise<boolean> {
     const account = accounts[idx];
     if (account) {
       const link = await ui.task("Linking billing", () => gcloud({ io }, ["billing", "projects", "link", project, "--billing-account", account]));
-      if (link.code === 0) { ui.ok("Billing linked", account); return true; }
+      if (link.code === 0) { ui.ok("Billing linked", account); already.push(`billing on ${project}`); return true; }
       ui.fail(`Couldn't link billing: ${lastLine(link)}`);
     }
   }
@@ -850,7 +854,7 @@ async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boo
 // ── the flow ─────────────────────────────────────────────────────────────────
 
 /** The host's CLI and a signed-in account. Returns the binary and who is signed in. */
-async function hostAccount(io: Io, platform: Platform): Promise<{ cli: string; account: string } | null> {
+async function hostAccount(io: Io, platform: Platform, already: string[]): Promise<{ cli: string; account: string } | null> {
   const { ui, sys } = io;
   const who = async (cli: string, args: string[]): Promise<string | null> => {
     const r = await ui.task("Checking who is signed in", () => sys.exec(cli, args));
@@ -891,18 +895,18 @@ async function hostAccount(io: Io, platform: Platform): Promise<{ cli: string; a
     }
     ui.ok("Signed in to Google", account);
     // Which project, and billing on it, are choices the person must own.
-    if (!value(await gcloud({ io }, ["config", "get-value", "project"])) && !(await chooseGcloudProject(io))) return null;
-    if (!(await ensureGcloudBilling(io))) return null;
+    if (!value(await gcloud({ io }, ["config", "get-value", "project"])) && !(await chooseGcloudProject(io, already))) return null;
+    if (!(await ensureGcloudBilling(io, already))) return null;
     return { cli, account };
   }
   return { cli: "docker", account: "" };
 }
 
 /** Sign in to the host as someone else. Returns the new account, or null if it didn't finish. */
-async function switchAccount(io: Io, platform: Platform, cli: string): Promise<string | null> {
+async function switchAccount(io: Io, platform: Platform, cli: string, already: string[]): Promise<string | null> {
   const { ui, sys } = io;
   if (platform === "cloudrun") {
-    if (!(await chooseGcloudAccount(io)) || !(await chooseGcloudProject(io)) || !(await ensureGcloudBilling(io))) return null;
+    if (!(await chooseGcloudAccount(io)) || !(await chooseGcloudProject(io, already)) || !(await ensureGcloudBilling(io, already))) return null;
     return value(await gcloud({ io }, ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"])) || "your account";
   }
   const [out, login, whoami] = platform === "fly" ? [["auth", "logout"], ["auth", "login"], ["auth", "whoami"]] : [["logout"], ["login"], ["whoami"]];
@@ -973,7 +977,10 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   ui.step(1, TOTAL, "Host");
   const platform = HOSTS[await ui.select("Where should the server run?", HOSTS.map((h) => ({ label: h.name, hint: h.hint })))]!.id;
   if (!(await prerequisites(root, io, false))) return 1;
-  const host = await hostAccount(io, platform);
+  // What choosing the host's account has created before the plan is confirmed
+  // (on Cloud Run: a new project, a billing link), in words for the person.
+  const already: string[] = [];
+  const host = await hostAccount(io, platform, already);
   if (!host) return 1;
 
   ui.step(2, TOTAL, "Secrets");
@@ -999,11 +1006,11 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
       const pick = await ui.select("Deploy this?", [
         { label: "Deploy" },
         { label: "Change something", hint: "the name, the password, or the account" },
-        { label: "Cancel", hint: "nothing has been created" },
+        { label: "Cancel", hint: already.length ? "no server is created" : "nothing has been created" },
       ]);
       if (pick === 0) break;
       if (pick === 2) {
-        ui.hint("Cancelled. Nothing was created.", 2);
+        ui.hint(already.length ? `Cancelled. No server was created. Already done above, and left as it is: ${listOf(already)}.` : "Cancelled. Nothing was created.", 2);
         return 1;
       }
       d.appName = (await ui.text("Name", d.appName)).trim() || d.appName;
@@ -1015,7 +1022,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
         ui.hint(why, 2);
       }
       if (await ui.confirm(`Sign in to ${HOSTS.find((h) => h.id === platform)!.name} as someone else?`, false)) {
-        const account = await switchAccount(io, platform, d.cli);
+        const account = await switchAccount(io, platform, d.cli, already);
         if (account) d.account = account;
       }
     }
