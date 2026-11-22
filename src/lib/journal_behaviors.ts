@@ -262,6 +262,15 @@ export function isAnswered(input: StoredInput | null): input is StoredInput {
 }
 
 /**
+ * True for a real draft body. WHOOP answers 200 with `journal.tracked_behaviors`
+ * (an array, empty on an empty day) for any date; anything else must not be
+ * read as "nothing logged", or a full-day write would erase the day.
+ */
+export function isDraftBody(raw: unknown): boolean {
+  return isObject(raw) && isObject(raw.journal) && Array.isArray(raw.journal.tracked_behaviors);
+}
+
+/**
  * GET /journal-service/v3/journals/drafts/mobile/{date}. A day with a cycle
  * lists every tracked behaviour (most unanswered); a day without one lists only
  * the answered rows. Entries are keyed by date, not cycle.

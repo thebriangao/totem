@@ -126,12 +126,26 @@ describe("whoop_journal_log: partial (default)", () => {
     expect(out.rows[0].date).toBe(D2);
   });
 
-  it("still merges when the draft pre-read fails, without carrying", async () => {
-    const whoop = whoopFor({ [D]: [new Error("down"), draft({ 2: { answered_yes: true } })] });
-    const { result, out } = await call(whoop, { date: D, behaviors: [{ id: 2 }] });
+  it("still merges when the draft pre-read fails, if the row has nothing stored to lose", async () => {
+    // A yes/no behaviour, and a row whose magnitude and time are both spelled out.
+    const whoop = whoopFor({ [D]: [new Error("down"), draft({ 79: { answered_yes: true }, 2: { answered_yes: true, magnitude_input_value: 3 } })] });
+    const { result, out } = await call(whoop, { date: D, behaviors: [{ id: 79 }, { id: 2, magnitude: 3, time: null }] });
     expect(result.isError).toBeFalsy();
     expect(whoop.put).toHaveBeenCalledWith(PARTIAL, expect.anything());
-    expect(out.warnings.join(" ")).toMatch(/weren't carried/);
+    expect(out.verified).toBe(true);
+    expect(out.warnings.join(" ")).toMatch(/Couldn't read the current journal/);
+  });
+
+  it("refuses a merge that could erase a stored magnitude or time when the draft can't be read", async () => {
+    // WHOOP replaces a row whole: without the draft, re-logging Caffeine would null its stored servings and time.
+    for (const failure of [new Error("down"), new WhoopApiError(404, DRAFT(D), "", "none")]) {
+      const whoop = whoopFor({ [D]: [failure] });
+      const { result, out } = await call(whoop, { date: D, behaviors: [{ id: 2 }, { id: 79 }] });
+      expect(result.isError).toBe(true);
+      expect(out.error).toMatch(/Nothing was written/);
+      expect(out.error).toMatch(/Caffeine/);
+      expect(whoop.put).not.toHaveBeenCalled();
+    }
   });
 
   it("reports verified:false when the read-back doesn't show the write", async () => {
@@ -197,11 +211,32 @@ describe("whoop_journal_log: full PUT (notes, replace_day)", () => {
     expect(whoop.put).not.toHaveBeenCalled();
   });
 
-  it("treats a 404 draft as an empty day", async () => {
-    const whoop = whoopFor({ [D]: [new WhoopApiError(404, DRAFT(D), "", "none"), draft({}, "hi")] });
+  it("refuses a full-day write on a 404 or an unrecognisable draft: WHOOP answers 200 for every date, empty ones included", async () => {
+    // Live 2026-11-21: 2019-01-01, an empty October day and a future date all answer 200 with
+    // journal.tracked_behaviors:[]; so a 404 or a body without `journal` is an anomaly, not an empty day.
+    for (const first of [new WhoopApiError(404, DRAFT(D), "", "none"), {}, { journal: { notes: null } }, "<html>"]) {
+      const whoop = whoopFor({ [D]: [first, draft({}, "hi")] });
+      const { result, out } = await call(whoop, { date: D, notes: "hi" });
+      expect(result.isError).toBe(true);
+      expect(out.error).toMatch(/Nothing was written/);
+      expect(whoop.put).not.toHaveBeenCalled();
+    }
+  });
+
+  it("writes notes on a genuinely empty day (200 with no rows)", async () => {
+    const empty = { journal: { tracked_behaviors: [], notes: null, user_reviewed: false, cycle_id: null } };
+    const whoop = whoopFor({ [D]: [empty, { journal: { ...empty.journal, notes: "hi" } }] });
     const { out } = await call(whoop, { date: D, notes: "hi" });
     expect(whoop.put).toHaveBeenCalledWith(FULL(D), { tracker_inputs: [], notes: "hi" });
     expect(out.verified).toBe(true);
+  });
+
+  it("refuses replace_day + notes too when the draft can't be read (it couldn't show what it removes)", async () => {
+    const whoop = whoopFor({ [D]: [new WhoopApiError(500, DRAFT(D), "", "down")] });
+    const { result, out } = await call(whoop, { date: D, replace_day: true, notes: "x", behaviors: [{ id: 2 }] });
+    expect(result.isError).toBe(true);
+    expect(out.error).toMatch(/Nothing was written/);
+    expect(whoop.put).not.toHaveBeenCalled();
   });
 });
 

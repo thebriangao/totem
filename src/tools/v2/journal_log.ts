@@ -5,8 +5,8 @@
 // (/journals/entries/user/date/{date}) replaces the whole day and nulls notes
 // it isn't sent, so it's used only for replace_day or notes, and then always
 // carries the current notes and answers from a fresh draft read (PR #44's
-// guard: no draft, no full PUT). Every write is read back: one 204 was seen not
-// to land while cycles were being reshuffled.
+// guard: no draft, no full PUT; a 404 counts as no draft). Every write is read
+// back: one 204 was seen not to land while cycles were being reshuffled.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
@@ -14,7 +14,6 @@ import { defineTool, respond, type ToolResult } from "../define.js";
 import { WRITE_DESTRUCTIVE } from "../annotations.js";
 import { JournalLogV2Out } from "../../schemas/journal_v2.js";
 import { preview } from "../../whoop/write_safety.js";
-import { WhoopApiError } from "../../whoop/errors.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
 import { runPaced } from "../../lib/concurrency.js";
@@ -23,6 +22,7 @@ import {
   buildRow,
   carryRow,
   isAnswered,
+  isDraftBody,
   loadBehaviorCatalog,
   parseDraft,
   resolveBehavior,
@@ -125,24 +125,42 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
 
     // 3. Fresh draft pre-read: "before" values for the preview, stored magnitude/time
     //    to carry, and (full PUT) the notes and answers that must be re-sent.
-    const needDraft = !full || !(replace_day === true && notes !== undefined);
+    //    WHOOP answers 200 for every date (an empty day is `tracked_behaviors: []`),
+    //    so a 404 or a body without the journal is a failed read, never "empty day".
     const drafts = new Map<string, DraftDay | null>();
     const readErrors: string[] = [];
     await runPaced(dateList.map((d) => async () => {
       try {
-        drafts.set(d, parseDraft(await client.get(DRAFT(d), {}, { fresh: true }), d));
+        const raw = await client.get(DRAFT(d), {}, { fresh: true });
+        if (!isDraftBody(raw)) throw new Error("unexpected journal response");
+        drafts.set(d, parseDraft(raw, d));
       } catch (e) {
-        if (e instanceof WhoopApiError && e.status === 404) drafts.set(d, parseDraft({}, d));
-        else { drafts.set(d, null); readErrors.push(`${d}: ${(e as Error).message}`); }
+        drafts.set(d, null);
+        readErrors.push(`${d}: ${(e as Error).message}`);
       }
     }), { concurrency: 3 });
-    if (full && needDraft && drafts.get(dateList[0]!) === null) {
+    if (full && drafts.get(dateList[0]!) === null) {
       return fail(
         `Couldn't read the current journal for ${dateList[0]}, so a full-day write could erase its notes or other answers. Nothing was written. Retry, or drop notes/replace_day to merge instead.`,
         { detail: readErrors.join("; ") },
       );
     }
-    if (readErrors.length > 0) warnings.push(`Couldn't read the current journal (${readErrors.join("; ")}); stored magnitudes/times weren't carried.`);
+    if (readErrors.length > 0) {
+      // A merge replaces each listed row whole. Without the draft, a stored
+      // magnitude or time the caller didn't spell out would be erased.
+      const atRisk = resolved.filter(({ spec, input }) =>
+        (input.answered_yes ?? true) && (
+          (spec.magnitude !== null && input.magnitude === undefined && input.magnitude_label === undefined) ||
+          (spec.time_label !== null && input.time === undefined)
+        ));
+      if (atRisk.length > 0) {
+        return fail(
+          `Couldn't read the current journal, and WHOOP replaces a row whole: a stored magnitude or time for ${atRisk.map((r) => r.spec.title).join(", ")} would be erased. Nothing was written. Retry, or pass magnitude and time explicitly (null clears them).`,
+          { detail: readErrors.join("; ") },
+        );
+      }
+      warnings.push(`Couldn't read the current journal first (${readErrors.join("; ")}), so there are no before-values.`);
+    }
 
     // 4. Build rows per date.
     const planned: PlannedRow[] = [];
