@@ -1,7 +1,6 @@
 // Pure projections for preferences and HR zones (SPEC.md §4.6, §4.8).
 import { asArray, asBool, asNumber, asString, isObject } from "../lib/walk.js";
 import { FIXED_GAUGES } from "../lib/profile_settings.js";
-import { trackerList } from "../lib/journal_behaviors.js";
 import { BEHAVIORS_BY_ID } from "../data/behaviors.js";
 import type { HrZonesV2OutT } from "../schemas/settings_v2.js";
 
@@ -50,15 +49,53 @@ export function projectDashboard(raw: unknown) {
   };
 }
 
-/** GET /activities-service/v1/journals/behaviors/user → the tracked set. */
-export function projectTrackedBehaviors(raw: unknown) {
-  const ids = trackerList(raw).flatMap((t) => (isObject(t) && asNumber(t.id) !== null ? [asNumber(t.id)!] : []));
-  const total = isObject(raw) ? asNumber(raw.total_count) : null;
+export interface BehaviorToggle {
+  id: number;
+  title: string | null;
+  internal_name: string | null;
+  question: string | null;
+  custom: boolean;
+  selected: boolean;
+}
+
+/**
+ * GET /journal-service/v3/journals/behaviors (the app's customize-journal
+ * screen) → every behaviour with its `selected` flag: the tracked set.
+ * `GET /activities-service/v1/journals/behaviors/user` is NOT the tracked set:
+ * it lists stock behaviours only, so a tracked custom behaviour is missing
+ * from it (verified live 2026-11-21: 309 there, 310 selected here).
+ * `complete` is false when there are no toggles or one lacks a boolean `selected`.
+ */
+export function projectBehaviorToggles(raw: unknown) {
+  const toggles: BehaviorToggle[] = [];
+  const seen = new Set<number>();
+  let complete = true;
+  for (const group of asArray(isObject(raw) ? raw.grouped_toggles : null)) {
+    for (const t of asArray(isObject(group) ? group.toggles : null)) {
+      const id = isObject(t) ? asNumber(t.id) : null;
+      if (!isObject(t) || id === null || !Number.isInteger(id) || typeof t.selected !== "boolean") {
+        complete = false;
+        continue;
+      }
+      if (seen.has(id)) continue;
+      seen.add(id);
+      toggles.push({
+        id,
+        title: asString(t.title),
+        internal_name: asString(t.internal_name),
+        question: asString(t.subtitle),
+        custom: t.custom === true || !BEHAVIORS_BY_ID.has(id),
+        selected: t.selected,
+      });
+    }
+  }
+  const tracked = toggles.filter((t) => t.selected);
   return {
-    ids,
-    count: total ?? ids.length,
-    custom_count: ids.filter((id) => !BEHAVIORS_BY_ID.has(id)).length,
-    complete: total === null || total <= ids.length,
+    toggles,
+    ids: tracked.map((t) => t.id),
+    count: tracked.length,
+    custom_count: tracked.filter((t) => t.custom).length,
+    complete: complete && toggles.length > 0,
   };
 }
 

@@ -8,10 +8,10 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { defineTool, respond, type ToolResult } from "../define.js";
 import { WRITE_DESTRUCTIVE } from "../annotations.js";
 import { PreferencesSetOut } from "../../schemas/settings_v2.js";
-import { projectDashboard, projectJournalPrefs, projectNotifications, projectTrackedBehaviors } from "../../projections/settings_v2.js";
+import { projectBehaviorToggles, projectDashboard, projectJournalPrefs, projectNotifications } from "../../projections/settings_v2.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
-import { asArray, asString, isObject } from "../../lib/walk.js";
+import { asString, isObject } from "../../lib/walk.js";
 import {
   CLOCK_FORMATS,
   GAUGE_METRICS,
@@ -22,7 +22,7 @@ import {
   normalizeOffset,
   zoneOffset,
 } from "../../lib/profile_settings.js";
-import { resolveBehavior, specFromTracker, trackerList, type BehaviorCatalog, type BehaviorSpec } from "../../lib/journal_behaviors.js";
+import { resolveBehavior, specFromTracker, type BehaviorCatalog, type BehaviorSpec } from "../../lib/journal_behaviors.js";
 import { BEHAVIORS } from "../../data/behaviors.js";
 
 const NAME = "whoop_preferences_set";
@@ -281,34 +281,28 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
   }
 
   async function planTracked(c: WhoopClient, track: Array<string | number>, untrack: Array<string | number>): Promise<Plan | ToolResult> {
-    // The PUT replaces the whole set, so read the current set fresh and refuse
-    // if it's incomplete (paging isn't known).
-    const raw = await c.get(P.tracked, {}, { fresh: true });
-    const current = projectTrackedBehaviors(raw);
-    if (!current.complete || current.ids.length === 0) {
+    // The PUT replaces the whole set, so the base must be the complete tracked
+    // set, read fresh. That is the customize screen's `selected` toggles:
+    // /activities-service/v1/journals/behaviors/user never lists custom
+    // behaviours, so a list built from it would silently untrack them.
+    const readToggles = async () => projectBehaviorToggles(await c.get(P.customize, {}, { fresh: true }));
+    const current = await readToggles().catch(() => null);
+    if (!current || !current.complete || current.ids.length === 0) {
       return fail("Couldn't read your full tracked-behaviour list, and WHOOP replaces the whole list on write. Nothing was sent.");
     }
     const specs = new Map<number, BehaviorSpec>();
-    for (const t of trackerList(raw)) {
-      const s = specFromTracker(t, true);
+    for (const t of current.toggles) {
+      // A custom toggle's internal_name is its title; stock ones carry the real internal name.
+      const s = specFromTracker({
+        id: t.id,
+        ...(t.title ? { title: t.title } : {}),
+        ...(t.custom ? { internal_name: `custom-${t.id}` } : t.internal_name ? { internal_name: t.internal_name } : {}),
+        ...(t.question ? { question_text: t.question } : {}),
+      }, t.selected);
       if (s) specs.set(s.id, s);
     }
     for (const b of BEHAVIORS) {
       if (!specs.has(b.behavior_tracker_id)) specs.set(b.behavior_tracker_id, specFromTracker({ id: b.behavior_tracker_id }, false)!);
-    }
-    // Untracked custom behaviours only appear on the customize screen.
-    const needCustomize = [...track, ...untrack].some((r) => !resolveBehavior(ref(r), { specs, source: "live", warning: null }).ok);
-    if (needCustomize) {
-      const v3 = await c.get(P.customize, {}, { fresh: true }).catch(() => null);
-      for (const group of asArray(isObject(v3) ? v3.grouped_toggles : null)) {
-        for (const t of asArray(isObject(group) ? group.toggles : null)) {
-          if (!isObject(t) || t.custom !== true) continue;
-          const id = Number(t.id);
-          if (Number.isInteger(id) && !specs.has(id)) {
-            specs.set(id, { id, title: asString(t.title) ?? `#${id}`, internal_name: `custom-${id}`, question: asString(t.subtitle), category: "Custom", custom: true, tracked: false, magnitude: null, time_label: null });
-          }
-        }
-      }
     }
     const catalog: BehaviorCatalog = { specs, source: "live", warning: null };
     const problems: Array<{ error: string; suggestions: Array<{ id: number; title: string }> }> = [];
@@ -341,7 +335,11 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
       before: { count: current.ids.length },
       target: { count: next.length, added, removed },
       noChange: added.length === 0 && removed.length === 0,
-      readBack: async () => projectTrackedBehaviors(await c.get(P.tracked, {}, { fresh: true })).ids,
+      readBack: async () => {
+        const after = await readToggles();
+        if (!after.complete) throw new Error("tracked flags missing");
+        return after.ids;
+      },
       afterOut: (a) => ({ count: (a as number[]).length, added, removed }),
       matches: (a) => eq([...(a as number[])].sort((x, y) => x - y), nextSet),
       warnings,

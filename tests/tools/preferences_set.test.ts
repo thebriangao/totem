@@ -8,6 +8,7 @@ const DASH_WRITE = "/user-preferences-service/v1/home/dashboard/customize";
 const NOTIF = "/notification-service/v1/notifications/user-settings/bff";
 const BLOCK = "/notification-service/v1/notifications/user-settings/block/namespace";
 const TRACKED = "/activities-service/v1/journals/behaviors/user";
+const CUSTOMIZE = "/journal-service/v3/journals/behaviors";
 
 async function call(whoop: ReturnType<typeof mockWhoop>, args: Record<string, unknown>) {
   const client = await connect(registerPreferencesSet, whoop);
@@ -124,31 +125,72 @@ describe("whoop_preferences_set: notification, journal_prefs", () => {
 });
 
 describe("whoop_preferences_set: tracked_behaviors", () => {
-  const list = (ids: number[]) => ({ total_count: ids.length, offset: ids.length, records: ids.map((id) => ({ id })) });
+  // Shaped like the live account (2026-11-21): the customize screen lists every
+  // behaviour with `selected`; the activities-service list has stock behaviours
+  // only and never shows a custom one, tracked or not.
+  const NAMES: Record<number, [string, string]> = {
+    1: ["Alcohol", "alcohol"], 2: ["Caffeine", "caffeine"], 3: ["Marijuana", "marijuana"],
+    171: ["Momentous Sleep Pack", "momentous-sleep-pack"], 163752: ["Probe Hip Mobility", "Probe Hip Mobility"],
+  };
+  const screen = (state: Record<number, boolean>) => ({
+    grouped_toggles: [{
+      title: "NOT SELECTED",
+      toggles: Object.entries(state).map(([id, selected]) => ({
+        id, title: NAMES[Number(id)]![0], internal_name: NAMES[Number(id)]![1], subtitle: "?", selected, custom: Number(id) === 163752,
+      })),
+    }],
+  });
+  const stockList = (ids: number[]) => ({ total_count: ids.length, offset: ids.length, records: ids.map((id) => ({ id })) });
+  const routes = (before: Record<number, boolean>, after: Record<number, boolean>) => ({
+    [CUSTOMIZE]: seq(screen(before), screen(after)),
+    [TRACKED]: stockList(Object.entries(before).filter(([id, sel]) => sel && Number(id) !== 163752).map(([id]) => Number(id))),
+  });
 
   it("read-modify-writes the full id list as strings", async () => {
-    const whoop = mockWhoop({ [TRACKED]: seq(list([1, 2, 171]), list([1, 171, 3])) });
+    const whoop = mockWhoop(routes({ 1: true, 2: true, 171: true, 3: false }, { 1: true, 2: false, 171: true, 3: true }));
     const { out } = await call(whoop, { setting: "tracked_behaviors", untrack: ["Caffeine"], track: [3] });
     expect(whoop.put).toHaveBeenCalledWith(TRACKED, ["1", "171", "3"]);
     expect(out).toMatchObject({ verified: true, after: { count: 3, added: ["Marijuana"], removed: ["Caffeine"] } });
     expect(out.warnings.join(" ")).toMatch(/only hides/);
   });
 
-  it("re-tracks an untracked custom behaviour found on the customize screen", async () => {
-    const whoop = mockWhoop({
-      [TRACKED]: seq(list([1]), list([1, 163752])),
-      "/journal-service/v3/journals/behaviors": { grouped_toggles: [{ toggles: [{ id: "163752", title: "Probe Hip Mobility", custom: true, selected: false }] }] },
-    });
-    const { out } = await call(whoop, { setting: "tracked_behaviors", track: ["Probe Hip Mobility"] });
+  it("keeps a tracked custom behaviour in the list when another behaviour changes", async () => {
+    const whoop = mockWhoop(routes({ 1: true, 2: true, 163752: true }, { 1: true, 2: false, 163752: true }));
+    const { out } = await call(whoop, { setting: "tracked_behaviors", untrack: ["Caffeine"] });
     expect(whoop.put).toHaveBeenCalledWith(TRACKED, ["1", "163752"]);
-    expect(out.verified).toBe(true);
+    expect(out).toMatchObject({ verified: true, before: { count: 3 }, after: { count: 2, removed: ["Caffeine"] } });
   });
 
-  it("refuses when the current list is incomplete", async () => {
-    const whoop = mockWhoop({ [TRACKED]: { total_count: 400, offset: 2, records: [{ id: 1 }, { id: 2 }] } });
-    const { result } = await call(whoop, { setting: "tracked_behaviors", track: [3] });
-    expect(result.isError).toBe(true);
-    expect(whoop.put).not.toHaveBeenCalled();
+  it("tracks an untracked custom behaviour and verifies it from the customize screen", async () => {
+    const whoop = mockWhoop(routes({ 1: true, 163752: false }, { 1: true, 163752: true }));
+    const { out } = await call(whoop, { setting: "tracked_behaviors", track: ["Probe Hip Mobility"] });
+    expect(whoop.put).toHaveBeenCalledWith(TRACKED, ["1", "163752"]);
+    expect(out).toMatchObject({ updated: true, verified: true, after: { count: 2, added: ["Probe Hip Mobility"] } });
+  });
+
+  it("untracks a tracked custom behaviour", async () => {
+    const whoop = mockWhoop(routes({ 1: true, 163752: true }, { 1: true, 163752: false }));
+    const { out } = await call(whoop, { setting: "tracked_behaviors", untrack: [163752] });
+    expect(whoop.put).toHaveBeenCalledWith(TRACKED, ["1"]);
+    expect(out).toMatchObject({ updated: true, verified: true, after: { count: 1, removed: ["Probe Hip Mobility"] } });
+    expect(out.warnings.join(" ")).toMatch(/can't be deleted/);
+  });
+
+  it("reports verified:false when the tracked set reads back unchanged", async () => {
+    const same = { 1: true, 2: true, 3: false };
+    const whoop = mockWhoop(routes(same, same));
+    const { out } = await call(whoop, { setting: "tracked_behaviors", track: [3] });
+    expect(out).toMatchObject({ updated: true, verified: false });
+  });
+
+  it("refuses when the customize screen can't give the tracked flags", async () => {
+    const noFlags = { grouped_toggles: [{ toggles: [{ id: "1", title: "Alcohol" }, { id: "2", title: "Caffeine" }] }] };
+    for (const broken of [noFlags, { grouped_toggles: [] }, new Error("down")]) {
+      const whoop = mockWhoop({ [CUSTOMIZE]: broken, [TRACKED]: stockList([1, 2]) });
+      const { result } = await call(whoop, { setting: "tracked_behaviors", track: [3] });
+      expect(result.isError).toBe(true);
+      expect(whoop.put).not.toHaveBeenCalled();
+    }
   });
 });
 

@@ -11,7 +11,7 @@ import {
   projectDashboard,
   projectJournalPrefs,
   projectNotifications,
-  projectTrackedBehaviors,
+  projectBehaviorToggles,
 } from "../../projections/settings_v2.js";
 
 const NAME = "whoop_preferences";
@@ -21,9 +21,11 @@ const SECTIONS = {
   ai: { path: "/ai-conversation-service/v1/settings", project: projectAiSettings },
   dashboard: { path: "/home-service/v2/home/dashboard/customize", project: projectDashboard },
   tracked_behaviors: {
-    path: "/activities-service/v1/journals/behaviors/user",
+    // The customize screen: /activities-service/v1/journals/behaviors/user leaves out custom behaviours.
+    path: "/journal-service/v3/journals/behaviors",
     project: (raw: unknown) => {
-      const t = projectTrackedBehaviors(raw);
+      const t = projectBehaviorToggles(raw);
+      if (!t.complete) throw new Error("WHOOP's behaviour list came back without tracked flags.");
       return { count: t.count, custom: t.custom_count };
     },
   },

@@ -8,7 +8,20 @@ const ROUTES = {
   "/notification-service/v1/notifications/user-settings/bff": fixture("notification_settings.json"),
   "/ai-conversation-service/v1/settings": fixture("ai_settings.json"),
   "/home-service/v2/home/dashboard/customize": fixture("dashboard_customize.json"),
-  "/activities-service/v1/journals/behaviors/user": { total_count: 3, offset: 3, records: [{ id: 1 }, { id: 2 }, { id: 163752 }] },
+  // The customize screen (live shape): every behaviour with `selected`; the custom one is tracked.
+  "/journal-service/v3/journals/behaviors": {
+    grouped_toggles: [{
+      title: "NOT SELECTED",
+      toggles: [
+        { id: "1", title: "Alcohol", internal_name: "alcohol", selected: true, custom: false },
+        { id: "2", title: "Caffeine", internal_name: "caffeine", selected: true, custom: false },
+        { id: "3", title: "Marijuana", internal_name: "marijuana", selected: false, custom: false },
+        { id: "163752", title: "Probe Hip Mobility", internal_name: "Probe Hip Mobility", selected: true, custom: true },
+      ],
+    }],
+  },
+  // WHOOP's stock list never includes custom behaviours (live 2026-11-21); it must not be the count's source.
+  "/activities-service/v1/journals/behaviors/user": { total_count: 2, offset: 2, records: [{ id: 1 }, { id: 2 }] },
 };
 
 describe("whoop_preferences projections", () => {
@@ -59,6 +72,22 @@ describe("whoop_preferences tool", () => {
     expect(out).not.toHaveProperty("ai");
     expect(out.journal).toMatchObject({ journal_enabled: true });
     expect(out.errors).toEqual([{ section: "ai", error: "500" }]);
+  });
+
+  it("counts tracked behaviours from the customize screen, custom ones included", async () => {
+    const whoop = mockWhoop(ROUTES);
+    const client = await connect(registerPreferences, whoop);
+    const out = parse(await client.callTool({ name: "whoop_preferences", arguments: { include: ["tracked_behaviors"] } }));
+    expect(out.tracked_behaviors).toEqual({ count: 3, custom: 1 });
+    expect(whoop.get).toHaveBeenCalledWith("/journal-service/v3/journals/behaviors");
+  });
+
+  it("reports an error instead of a count when the tracked flags are missing", async () => {
+    const whoop = mockWhoop({ ...ROUTES, "/journal-service/v3/journals/behaviors": { grouped_toggles: [{ toggles: [{ id: "1", title: "Alcohol" }] }] } });
+    const client = await connect(registerPreferences, whoop);
+    const out = parse(await client.callTool({ name: "whoop_preferences", arguments: { include: ["tracked_behaviors"] } }));
+    expect(out).not.toHaveProperty("tracked_behaviors");
+    expect(out.errors[0]).toMatchObject({ section: "tracked_behaviors" });
   });
 
   it("stays inside the description budgets", async () => {
