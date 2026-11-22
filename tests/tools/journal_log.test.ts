@@ -308,6 +308,8 @@ describe("whoop_journal_log: validation (nothing is sent)", () => {
     ["step value not a choice", { date: D, behaviors: [{ id: 177, magnitude: 7 }] }, /0=Slight, 1=Moderate, 2=Intense/],
     ["time on a behaviour without a time question", { date: D, behaviors: [{ id: 177, time: "2026-11-20T10:00:00.000Z" }] }, /doesn't ask for a time/],
     ["future time", { date: D, behaviors: [{ id: 1, time: "2099-01-01T10:00:00.000Z" }] }, /future/],
+    // No offset would be read in the server's zone (UTC on a hosted totem), hours off the member's clock.
+    ["time without an offset", { date: D, behaviors: [{ id: 1, time: "2026-11-20T10:00:00" }] }, /with an offset/],
     ["magnitude with answered_yes false", { date: D, behaviors: [{ id: 2, answered_yes: false, magnitude: 2 }] }, /only goes with answered_yes:true/],
     ["set and unset together", { date: D, behaviors: [{ id: 2 }], unset: [2] }, /both set and unset/],
     ["listed twice", { date: D, behaviors: [{ id: 2 }, { name: "Caffeine" }] }, /listed twice/],
@@ -321,6 +323,14 @@ describe("whoop_journal_log: validation (nothing is sent)", () => {
       expect(whoop.put).not.toHaveBeenCalled();
     });
   }
+
+  it("accepts a time with Z, ±HH:MM or WHOOP's ±HHMM offset, and epoch seconds", async () => {
+    for (const time of ["2026-11-20T10:00:00.000Z", "2026-11-20T02:00:00-08:00", "2026-11-20T10:00:00+0000", 1795168800]) {
+      const whoop = whoopFor({ [D]: [draft({})] });
+      const { out } = await call(whoop, { date: D, behaviors: [{ id: 1, time }], confirm: false });
+      expect(Date.parse(out.will_execute.body_summary.changes[0].time)).toBe(Date.parse("2026-11-20T10:00:00Z"));
+    }
+  });
 
   it("suggests close names for an unknown behaviour", async () => {
     const whoop = whoopFor({ [D]: [draft({})] });

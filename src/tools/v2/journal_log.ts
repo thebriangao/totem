@@ -49,7 +49,7 @@ const BehaviorInput = z.object({
   answered_yes: z.boolean().optional().describe("Default true: unanswered rows are invisible in the app."),
   magnitude: z.number().nullable().optional().describe("Range: a number in range. Step: the choice value. null clears it."),
   magnitude_label: z.string().optional().describe("Step behaviours: the choice label (e.g. Moderate) instead of the value."),
-  time: z.union([z.string(), z.number()]).nullable().optional().describe("ISO datetime or epoch seconds, if the behaviour asks a time. null clears it."),
+  time: z.union([z.string(), z.number()]).nullable().optional().describe("ISO datetime with an offset, or epoch seconds. null clears it."),
 });
 
 interface PlannedRow {

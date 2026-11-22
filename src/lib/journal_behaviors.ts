@@ -337,7 +337,9 @@ export function toEpochSeconds(value: string | number): number | null {
     if (!Number.isFinite(value) || value > 1e11 || value < 0) return null; // ms or garbage
     return Math.round(value);
   }
-  if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
+  // The offset is required: without one, Date.parse reads the time in this
+  // host's zone (UTC on a hosted totem), hours off the member's clock.
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(value)) return null;
   const ms = Date.parse(value);
   return Number.isNaN(ms) ? null : Math.round(ms / 1000);
 }
