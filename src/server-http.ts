@@ -82,14 +82,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
   }, 5 * 60_000);
   sweep.unref();
 
-  async function getOrCreateSession(existingSessionId: string | undefined): Promise<Session> {
-    if (existingSessionId) {
-      const existing = sessions.get(existingSessionId);
-      if (existing) {
-        existing.lastSeen = Date.now();
-        return existing;
-      }
-    }
+  async function createSession(): Promise<Session> {
     const newId = randomUUID();
     const newServer = new McpServer({ name: "totem", version: "1.5.1" });
     registerTools(newServer, client);
@@ -233,7 +226,21 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     try {
       const sessionIdHeader = req.headers["mcp-session-id"];
       const sid = typeof sessionIdHeader === "string" ? sessionIdHeader : undefined;
-      const session = await getOrCreateSession(sid);
+      const existing = sid ? sessions.get(sid) : undefined;
+      // A session id we no longer hold (idle-swept or lost to a restart) must get
+      // 404 per the MCP spec: that is the client's cue to re-initialize. Spinning up
+      // a fresh uninitialized transport instead answers 400 "Server not initialized",
+      // which clients treat as fatal and never recover from.
+      if (sid && !existing) {
+        res.status(404).json({
+          jsonrpc: "2.0",
+          error: { code: -32001, message: "Session not found" },
+          id: null,
+        });
+        return;
+      }
+      const session = existing ?? (await createSession());
+      session.lastSeen = Date.now();
       await session.transport.handleRequest(req, res, req.body);
     } catch (err) {
       console.error("[totem] request error:", err);
