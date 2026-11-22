@@ -9,6 +9,7 @@ import { PreferencesV2Out } from "../../schemas/settings_v2.js";
 import {
   projectAiSettings,
   projectDashboard,
+  dashboardOptions,
   projectJournalPrefs,
   projectNotifications,
   projectBehaviorToggles,
@@ -19,7 +20,7 @@ const SECTIONS = {
   journal: { path: "/journal-service/v1/journals/preferences", project: projectJournalPrefs },
   notifications: { path: "/notification-service/v1/notifications/user-settings/bff", project: projectNotifications },
   ai: { path: "/ai-conversation-service/v1/settings", project: projectAiSettings },
-  dashboard: { path: "/home-service/v2/home/dashboard/customize", project: projectDashboard },
+  dashboard: { path: "/home-service/v2/home/dashboard/customize", project: (raw: unknown) => ({ ...projectDashboard(raw), options: dashboardOptions(raw) }) },
   tracked_behaviors: {
     // The customize screen: /activities-service/v1/journals/behaviors/user leaves out custom behaviours.
     path: "/journal-service/v3/journals/behaviors",
@@ -38,7 +39,7 @@ export function registerPreferences(server: McpServer, client: WhoopClient): voi
     name: NAME,
     description:
       "Account preferences: journal flags, notification namespaces (false = blocked), AI coach settings, the home dashboard (2 focus " +
-      "gauges and pinned metrics) and how many journal behaviours you track. Change them with whoop_preferences_set.",
+      "gauges, pinned metrics and the keys to choose from) and how many journal behaviours you track.",
     input: {
       include: z.array(z.enum(ALL)).min(1).optional().describe("Default all"),
     },

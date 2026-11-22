@@ -1,11 +1,13 @@
-// whoop_profile include=health. No test account has these features, so the
-// locked and empty shapes below are synthetic copies of what WHOOP answered on
-// 2026-11-22, and the unlocked ones are invented to exercise the guarded paths.
+// whoop_health (EXPERIMENTAL). No test account has these features, so the
+// locked, empty and not-set-up shapes below are synthetic copies of what WHOOP
+// answered on 2026-11-22, and the filled-in ones are invented to exercise the
+// guarded paths: what the tool does with a shape it hasn't seen.
 import { describe, expect, it } from "vitest";
-import { registerProfile } from "../../src/tools/v2/profile.js";
-import { projectAfib, projectLabs, projectLockable } from "../../src/projections/health_features.js";
+import { registerHealth } from "../../src/tools/v2/health.js";
+import { nextToken, passThrough, projectEcgAbout, projectLabs, projectLabTests, projectLockable } from "../../src/projections/health_features.js";
 import { screenContent } from "../../src/lib/screen_content.js";
-import { WhoopApiError } from "../../src/whoop/errors.js";
+import { WhoopApiError, WhoopAuthExpiredError } from "../../src/whoop/errors.js";
+import { todayIso } from "../../src/lib/dates.js";
 import { connect, mockWhoop, parse } from "./journal_profile_helpers.js";
 
 const LOCK = (header: string, description: string) => ({
@@ -36,90 +38,158 @@ const labs = (rows: unknown[]) => ({
   ],
 });
 const LABS_EMPTY = labs([biomarker("ldl", "LDL Cholesterol", "--", null, "UNAVAILABLE"), biomarker("hba1c", "HbA1c", "--", null, "UNAVAILABLE")]);
-
-const PROFILE = {
-  "/users-service/v2/bootstrap": { account: { user_id: 7 }, user: { id: 7 }, profile: { timezone_offset: "-0800" }, membership: {}, bio_data: {} },
-  "/profile-service/v1/profile/bff/edit": {},
-  "/users-service/v1/stealth-mode": false,
-  "/users-service/v1/hidden-metrics/BODY_COMP": { is_hidden: false },
-  "/users-service/v1/hidden-metrics/HEALTHSPAN": { is_hidden: false },
+const LABS_FULL = labs([
+  biomarker("ldl", "LDL Cholesterol", "92", "mg/dL", "OPTIMAL"),
+  biomarker("hba1c", "HbA1c", "--", null, "UNAVAILABLE"),
+  biomarker("vitd", "Vitamin D", "24", "ng/mL", "OUT_OF_RANGE"),
+]);
+const HISTORY = (items: unknown[]) => ({ title: "Lab History", paginated_records: { sections: [{ id: "s", items }], next_token: null } });
+const EMPTY_TILE = { type: "EMPTY_TILE", content: { id: "have_other_tests_tile", title: "Have other labs?", image_url: "https://x/e.png" } };
+const ECG_ABOUT = {
+  page_title: "ABOUT ECG",
+  information_items: [{ info_label: "Software Version", info_value: "1.0" }, { info_label: "Manufacturer", info_value: "WHOOP, Inc." }],
+  tile_items: [{ tile_label: "Instructions", caret_icon: "CARET", destination: { screen: "X" } }],
 };
+const notFound = (path: string, body: string) => new WhoopApiError(404, path, body, "404");
 
-describe("whoop_profile include=health", () => {
-  it("reports locked, empty and not-set-up features without guessing", async () => {
-    const whoop = mockWhoop({
-      ...PROFILE,
-      "/healthspan-service/v1/healthspan/bff": HEALTHSPAN_LOCKED,
-      "/sage-service/v1/sage/bff": SAGE_LOCKED,
-      "/advanced-labs-service/v1/advanced-labs/biomarkers/summary": LABS_EMPTY,
-      "/arrhythmia-service/v2/afibhistory/screen": new WhoopApiError(404, "/arrhythmia-service/v2/afibhistory/screen", "No anf user found for userId 7"),
-    });
-    const out = parse(await (await connect(registerProfile, whoop)).callTool({ name: "whoop_profile", arguments: { include: ["health"] } }));
-    expect(out.health).toEqual({
-      healthspan: { status: "locked", message: "21 SLEEPS TO UNLOCK: Log 21 sleeps in the last month. Keep wearing your WHOOP 24/7 to get insights." },
-      blood_pressure: { status: "locked", message: "UPGRADE FOR ACCESS: Unlock Blood Pressure Insights by upgrading to WHOOP Life." },
-      advanced_labs: { status: "no_data", message: expect.stringContaining("No lab results") },
-      afib: { status: "not_set_up", message: "Not set up on this account." },
-    });
+async function health(routes: Record<string, unknown>, args: Record<string, unknown>) {
+  const whoop = mockWhoop(routes);
+  const out = parse(await (await connect(registerHealth, whoop)).callTool({ name: "whoop_health", arguments: args }));
+  return { out, calls: whoop.get.mock.calls.map((c) => [c[0], c[1] ?? {}] as [string, Record<string, unknown>]) };
+}
+
+describe("whoop_health", () => {
+  it("says experimental on every answer and reports a locked Healthspan exactly, for today by default", async () => {
+    const { out, calls } = await health({ "/healthspan-service/v1/healthspan/bff": HEALTHSPAN_LOCKED }, { feature: "healthspan" });
+    expect(out).toEqual({
+      feature: "healthspan", experimental: true, date: todayIso(), status: "locked",
+      message: "21 SLEEPS TO UNLOCK: Log 21 sleeps in the last month. Keep wearing your WHOOP 24/7 to get insights.",
+    }); // (an empty warnings list is dropped from the wire)
+    expect(calls).toEqual([["/healthspan-service/v1/healthspan/bff", { date: todayIso() }]]);
   });
 
-  it("isn't read unless asked", async () => {
-    const whoop = mockWhoop(PROFILE);
-    const out = parse(await (await connect(registerProfile, whoop)).callTool({ name: "whoop_profile", arguments: {} }));
-    expect(out).not.toHaveProperty("health");
-    expect(whoop.get.mock.calls.map((c) => c[0])).not.toContain("/healthspan-service/v1/healthspan/bff");
+  it("reads blood pressure for the date asked", async () => {
+    const { out, calls } = await health({ "/sage-service/v1/sage/bff": SAGE_LOCKED }, { feature: "blood_pressure", date: "2026-11-20" });
+    expect(out).toMatchObject({ feature: "blood_pressure", experimental: true, date: "2026-11-20", status: "locked", message: expect.stringContaining("WHOOP Life") });
+    expect(calls).toEqual([["/sage-service/v1/sage/bff", { date: "2026-11-20" }]]);
   });
 
-  it("keeps the other features when one read fails", async () => {
-    const whoop = mockWhoop({
-      ...PROFILE,
-      "/healthspan-service/v1/healthspan/bff": new Error("boom"),
-      "/sage-service/v1/sage/bff": SAGE_LOCKED,
-      "/advanced-labs-service/v1/advanced-labs/biomarkers/summary": LABS_EMPTY,
-      "/arrhythmia-service/v2/afibhistory/screen": { title: "AFib history" },
-    });
-    const out = parse(await (await connect(registerProfile, whoop)).callTool({ name: "whoop_profile", arguments: { include: ["health"] } }));
-    const health = out.health as Record<string, { status: string }>;
-    expect(health.healthspan).toEqual({ status: "unavailable", message: "boom" });
-    expect(health.blood_pressure!.status).toBe("locked");
-    expect(health.afib).toMatchObject({ status: "available", unverified: true, content: { title: "AFib history" } });
-  });
-});
-
-describe("health feature projections", () => {
-  it("passes an unlocked screen through as unverified content without UI plumbing", () => {
-    const out = projectLockable({
-      unlocked_content: {
-        header: { title_display: "WHOOP AGE", value_display: "31.2", icon_url: "https://x/i.png", text_color: "#fff" },
-        pace: { label: "Pace of aging", value: 0.8, destination: { screen: "X" } },
+  it("passes an unlocked Healthspan through without UI plumbing", async () => {
+    const { out } = await health({
+      "/healthspan-service/v1/healthspan/bff": {
+        unlocked_content: { header: { title_display: "WHOOP AGE", value_display: "31.2", icon_url: "https://x/i.png", text_color: "#fff" }, pace: { label: "Pace of aging", value: 0.8, destination: { screen: "X" } } },
+        locked_content: null,
       },
-      locked_content: null,
-    });
-    expect(out).toEqual({
-      status: "available", unverified: true,
-      content: { header: { title_display: "WHOOP AGE", value_display: "31.2" }, pace: { label: "Pace of aging", value: 0.8 } },
-    });
+    }, { feature: "healthspan" });
+    expect(out).toMatchObject({ status: "available", content: { header: { title_display: "WHOOP AGE", value_display: "31.2" }, pace: { label: "Pace of aging", value: 0.8 } } });
   });
 
-  it("lists only the lab biomarkers that have a result", () => {
-    const out = projectLabs(labs([
-      biomarker("ldl", "LDL Cholesterol", "92", "mg/dL", "OPTIMAL"),
-      biomarker("hba1c", "HbA1c", "--", null, "UNAVAILABLE"),
-      biomarker("vitd", "Vitamin D", "24", "ng/mL", "OUT_OF_RANGE"),
-    ]));
-    expect(out).toEqual({
-      status: "available", unverified: true,
+  it("afib: not set up on a 404; a day by date; the next page by cursor", async () => {
+    const screen = "/arrhythmia-service/v2/afibhistory/screen";
+    const notSet = await health({ [screen]: notFound(screen, "No anf user found for userId 7") }, { feature: "afib" });
+    expect(notSet.out).toMatchObject({ feature: "afib", experimental: true, status: "not_set_up" });
+
+    const day = await health({ "/arrhythmia-service/v1/history/bff": { title: "Nov 20", events: [{ label: "Irregular rhythm", time_display: "3:12 AM" }] } }, { feature: "afib", date: "2026-11-20" });
+    expect(day.calls).toEqual([["/arrhythmia-service/v1/history/bff", { historyDate: "2026-11-20" }]]);
+    expect(day.out).toMatchObject({ status: "available", date: "2026-11-20", content: { events: [{ label: "Irregular rhythm" }] } });
+
+    const first = await health({ [screen]: { sections: [{ title: "November" }], pagination: { next_token: "tok-2" } } }, { feature: "afib" });
+    expect(first.out).toMatchObject({ status: "available", next_cursor: "tok-2" });
+    const next = await health({ "/arrhythmia-service/v2/afibhistory/paginated": { sections: [] } }, { feature: "afib", cursor: "tok-2" });
+    expect(next.calls).toEqual([["/arrhythmia-service/v2/afibhistory/paginated", { next_token: "tok-2" }]]);
+  });
+
+  it("labs: no results is no_data; results list the biomarkers that have one, with the tests", async () => {
+    const SUM = "/advanced-labs-service/v1/advanced-labs/biomarkers/summary";
+    const HIST = "/advanced-labs-service/v1/advanced-labs/tests/history";
+    const none = await health({ [SUM]: LABS_EMPTY, [HIST]: HISTORY([EMPTY_TILE]) }, { feature: "labs" });
+    expect(none.out).toMatchObject({ feature: "labs", experimental: true, status: "no_data", message: expect.stringContaining("No lab results") });
+    expect(none.out).not.toHaveProperty("tests");
+
+    const full = await health({ [SUM]: LABS_FULL, [HIST]: HISTORY([EMPTY_TILE, { type: "TEST_TILE", content: { id: "t-1", title: "Baseline panel", date_display: "Oct 2", image_url: "https://x" } }]) }, { feature: "labs" });
+    expect(full.out).toMatchObject({
+      status: "available",
       biomarkers: [
         { id: "ldl", name: "LDL Cholesterol", value: "92", unit: "mg/dL", status: "OPTIMAL" },
         { id: "vitd", name: "Vitamin D", value: "24", unit: "ng/mL", status: "OUT_OF_RANGE" },
       ],
+      tests: [{ type: "TEST_TILE", content: { id: "t-1", title: "Baseline panel", date_display: "Oct 2" } }],
     });
-    expect(projectLabs({ items: [] }).status).toBe("unavailable");
+
+    const noHistory = await health({ [SUM]: LABS_FULL, [HIST]: new Error("down") }, { feature: "labs" });
+    expect(noHistory.out).toMatchObject({ status: "available", warnings: ["Lab history unavailable: down"] });
   });
 
-  it("says when WHOOP sends neither content nor a lock", () => {
+  it("labs with an id: a biomarker's history, else a test's results and insights, else no_data", async () => {
+    const B = "/advanced-labs-service/v1/advanced-labs/biomarkers/";
+    const bio = await health({ [`${B}ldl`]: { title: "LDL Cholesterol", recordings: [{ value: "92", date_display: "Oct 2" }], next_token: "p2" } }, { feature: "labs", id: "ldl", cursor: "p1" });
+    expect(bio.calls).toEqual([[`${B}ldl`, { next_token: "p1" }]]);
+    expect(bio.out).toMatchObject({ status: "available", id: "ldl", content: { recordings: [{ value: "92" }] }, next_cursor: "p2" });
+
+    // Shaped like the live answer (2026-11-22) for a biomarker without results.
+    const EMPTY_BIOMARKER = {
+      navigation_title: "BIOMARKER DETAILS",
+      header: { title: "LDL Cholesterol", subtitle: "Cholesterol carried by LDL particles.", pills: ["Heart Health"] },
+      sections: [
+        { id: "empty_tile", items: [{ type: "EMPTY_TILE", content: { id: "biomarker_empty_data", title: "Add Lab Results", primary_button: { title: "SELECT TESTING FREQUENCY" } } }] },
+        { id: "learn_more_carousel", items: [{ type: "EXPANDABLE_LIST", content: { title: "Learn more", items: [] } }] },
+      ],
+      analytics: { value: "UNAVAILABLE", label: "ldl_cholesterol" },
+      status: "UNAVAILABLE",
+    };
+    const empty = await health({ [`${B}ldl_cholesterol`]: EMPTY_BIOMARKER }, { feature: "labs", id: "ldl_cholesterol" });
+    expect(empty.out).toMatchObject({
+      status: "no_data", id: "ldl_cholesterol", message: "No results for LDL Cholesterol yet.",
+      content: { name: "LDL Cholesterol", about: "Cholesterol carried by LDL particles.", tags: ["Heart Health"] },
+    });
+    // Without the status field, the empty tile plus the education list still reads as empty.
+    const { status: _s, ...noStatus } = EMPTY_BIOMARKER;
+    expect((await health({ [`${B}ldl_cholesterol`]: noStatus }, { feature: "labs", id: "ldl_cholesterol" })).out).toMatchObject({ status: "no_data" });
+
+    const test = await health({
+      [`${B}t-1`]: notFound(`${B}t-1`, "no biomarker"),
+      "/advanced-labs-service/v1/advanced-labs/tests/t-1": { title: "Baseline panel" },
+      "/advanced-labs-service/v1/advanced-labs/insights": { insights: [{ title: "Raise vitamin D" }] },
+    }, { feature: "labs", id: "t-1" });
+    expect(test.out).toMatchObject({ status: "available", id: "t-1", content: { test: { title: "Baseline panel" }, insights: { insights: [{ title: "Raise vitamin D" }] } } });
+    expect(test.calls).toContainEqual(["/advanced-labs-service/v1/advanced-labs/insights", { testId: "t-1" }]);
+
+    const missing = await health({
+      [`${B}zzz`]: notFound(`${B}zzz`, "no"),
+      "/advanced-labs-service/v1/advanced-labs/tests/zzz": notFound("/t", "no"),
+      "/advanced-labs-service/v1/advanced-labs/insights": notFound("/i", "no"),
+    }, { feature: "labs", id: "zzz" });
+    expect(missing.out).toMatchObject({ status: "no_data", message: expect.stringContaining("No biomarker or lab test zzz") });
+  });
+
+  it("ecg: device info only, and says recordings can't be read", async () => {
+    const { out } = await health({ "/ecg-service/v1/ecg/about": ECG_ABOUT }, { feature: "ecg" });
+    expect(out).toEqual({
+      feature: "ecg", experimental: true, status: "not_readable",
+      about: { "Software Version": "1.0", Manufacturer: "WHOOP, Inc." },
+      message: expect.stringContaining("no route totem knows of that lists ECG recordings"),
+    });
+  });
+
+  it("never hides an expired login behind a feature status", async () => {
+    const whoop = mockWhoop({ "/healthspan-service/v1/healthspan/bff": new WhoopAuthExpiredError("expired") });
+    const res = await (await connect(registerHealth, whoop)).callTool({ name: "whoop_health", arguments: { feature: "healthspan" } });
+    expect(res.isError).toBe(true);
+  });
+});
+
+describe("health feature projections", () => {
+  it("say when WHOOP sends neither content nor a lock", () => {
     expect(projectLockable({ unlocked_content: null, locked_content: null }).status).toBe("unavailable");
-    expect(projectAfib({}).status).toBe("available");
+    expect(projectLabs({ items: [] }).status).toBe("unavailable");
+    expect(projectLabTests(HISTORY([EMPTY_TILE]))).toBeNull();
+    expect(projectEcgAbout({})).toEqual({});
+  });
+
+  it("find WHOOP's page token wherever it sits", () => {
+    expect(nextToken({ a: { b: [{ nextToken: "x" }] } })).toBe("x");
+    expect(nextToken({ next_token: null, list: [] })).toBeNull();
+    expect(passThrough({ rows: [1], paging: { next_token: "n" } })).toMatchObject({ status: "available", next_cursor: "n" });
   });
 });
 

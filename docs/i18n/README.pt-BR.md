@@ -9,7 +9,7 @@ Pergunte ao Claude, ao ChatGPT, ao Cursor ou a qualquer app MCP sobre sua recupe
   <a href="#primeiros-passos">Primeiros passos</a> ·
   <a href="#conecte-seus-apps">Conecte seus apps</a> ·
   <a href="#hospedagem">Hospedagem</a> ·
-  <a href="../../TOOLS.md">As 40 ferramentas</a> ·
+  <a href="../../TOOLS.md">As 41 ferramentas</a> ·
   <a href="#perguntas-frequentes">Perguntas frequentes</a>
 </p>
 
@@ -28,7 +28,7 @@ Pergunte ao Claude, ao ChatGPT, ao Cursor ou a qualquer app MCP sobre sua recupe
 
 O totem é um pequeno servidor [MCP](https://modelcontextprotocol.io) de código aberto que conversa com o WHOOP do mesmo jeito que o app do WHOOP. Você mesmo o executa, no seu computador ou em um servidor na nuvem que seja seu, e seus apps de IA se conectam a ele. Seus dados só passam entre o WHOOP, o seu servidor e os apps que você conectar.
 
-- **40 ferramentas.** Recuperação, estágios do sono, esforço, estresse, frequência cardíaca, tendências, treinos, Strength Trainer, diário, WHOOP Coach, peso, acompanhamento do ciclo, Smart Alarm, perfil e configurações. [A lista completa](../../TOOLS.md).
+- **41 ferramentas.** Recuperação, estágios do sono, esforço, estresse, frequência cardíaca, tendências, treinos, Strength Trainer, diário, WHOOP Coach, peso, acompanhamento do ciclo, Smart Alarm, perfil e configurações, além de Healthspan, resultados de exames e histórico de FA (experimental). [A lista completa](../../TOOLS.md).
 - **Escrever é seguro por padrão.** Toda ferramenta que muda algo mostra uma prévia antes e não faz nada até o app confirmar.
 - **Respostas pequenas.** As ferramentas devolvem dados compactos (cerca de 1,5 KB numa chamada padrão), então não consomem seu contexto.
 - **Um comando só.** `totem local` ou `totem cloud` ajuda você a entrar no WHOOP e configura todos os apps de IA que encontrar.
@@ -144,7 +144,7 @@ Mais em [SECURITY.md](../../SECURITY.md).
 | `totem status` / `ping` / `logs` | Verificar o servidor e o login |
 | `totem deploy` | Publicar esta versão no seu servidor |
 | `totem update` | Atualizar o totem (`--check`, `--auto on`) |
-| `totem tools` | Listar as 40 ferramentas |
+| `totem tools` | Listar as 41 ferramentas |
 
 `totem <command> --help` explica cada um.
 

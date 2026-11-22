@@ -1,6 +1,6 @@
-# The 40 tools
+# The 41 tools
 
-What totem gives an AI app: 23 tools that read your WHOOP data and 17 that change it.
+What totem gives an AI app: 24 tools that read your WHOOP data and 17 that change it.
 This page is written from the tool registry (`npx tsx scripts/tools-md.ts`), so it says exactly what an app sees.
 
 - **Changes need a yes.** A tool that writes returns a preview of what it would send, and does nothing until it is called again with `confirm: true`. Your app shows you the preview first.
@@ -15,6 +15,7 @@ This page is written from the tool registry (`npx tsx scripts/tools-md.ts`), so 
 - [WHOOP Coach](#whoop-coach)
 - [Body](#body)
 - [Plans and alarms](#plans-and-alarms)
+- [Health features (experimental)](#health-features-experimental)
 - [Profile, settings and community](#profile-settings-and-community)
 - [Anything else](#anything-else)
 
@@ -391,7 +392,7 @@ The weekly plan and Smart Alarm.
 
 ### `whoop_weekly_plan`
 
-The Weekly Plan for the Monday–Sunday week containing a date (default today): plan name, days left, % accomplished and each goal's target (steps/day or minutes/week), days met and running total. Change goals with whoop_weekly_plan_set.
+The Weekly Plan for the Monday–Sunday week containing a date (default today): plan name, days left, % accomplished and each goal's target (steps/day or minutes/week), days met and running total.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -432,17 +433,32 @@ Change Smart Alarm. create/edit a recurring schedule (edit merges; mode NO_ALARM
 
 Add `confirm: true` to make the change.
 
+## Health features (experimental)
+
+WHOOP's paid health features: Healthspan, blood pressure, AFib history, Advanced Labs and ECG. Built without an account that has them, so untested.
+
+### `whoop_health`
+
+EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them); ecg: device info only (no route to recordings).
+
+| Input | Type | Notes |
+|---|---|---|
+| `feature` (required) | `healthspan`, `blood_pressure`, `afib`, `labs`, `ecg` |  |
+| `date` | string |  |
+| `id` | string |  |
+| `cursor` | string |  |
+
 ## Profile, settings and community
 
 Your profile, heart-rate zones, app settings, milestones and teams.
 
 ### `whoop_profile`
 
-Your profile: name, email, birthday, gender, physiological baseline, height (m), weight (kg), unit system, location, max and resting HR, membership, hidden metrics and stealth mode. include adds hr_zones (bpm), entitlements (off features and why), integrations, community privacy and health (Healthspan, blood pressure, labs, AFib).
+Your profile: name, email, birthday, gender, physiological baseline, height (m), weight (kg), unit system, location, max and resting HR, membership, hidden metrics and stealth mode. include adds hr_zones (bpm), entitlements (features that are off, and why), integrations and community privacy.
 
 | Input | Type | Notes |
 |---|---|---|
-| `include` | list of `hr_zones`, `entitlements`, `integrations`, `privacy`, `health` |  |
+| `include` | list of `hr_zones`, `entitlements`, `integrations`, `privacy` |  |
 
 ### `whoop_profile_update` (changes data)
 
@@ -480,7 +496,7 @@ Add `confirm: true` to make the change.
 
 ### `whoop_preferences`
 
-Account preferences: journal flags, notification namespaces (false = blocked), AI coach settings, the home dashboard (2 focus gauges and pinned metrics) and how many journal behaviours you track. Change them with whoop_preferences_set.
+Account preferences: journal flags, notification namespaces (false = blocked), AI coach settings, the home dashboard (2 focus gauges, pinned metrics and the keys to choose from) and how many journal behaviours you track.
 
 | Input | Type | Notes |
 |---|---|---|
@@ -497,8 +513,8 @@ Change one account setting, picked by setting: hidden_metric (metric, hidden), s
 | `hidden` | boolean |  |
 | `enabled` | boolean | notification: false blocks the namespace |
 | `namespace` | `StressSummary`, `GPS`, `ConversationalCheckIn`, `CheckIn` |  |
-| `gauges` | list of string | 2 of pinned's values; not RECOVERY or DAY_STRAIN |
-| `pinned` | list of `REM_SLEEP_DURATION`, `CALORIES`, `STEPS`, `SLEEP_PERFORMANCE`, `IN_SLEEP_EFFICIENCY`, `AVERAGE_HR`, `TOTAL_VOLUME_LOAD`, `RECOVERY`, `DAY_STRAIN`, `RHR`, `HR_ZONES_4_5`, `VO2_MAX`, `PREGNANCY_WEEK`, `STRAIN_AND_RECOVERY`, `CGM`, `RESTORATIVE_SLEEP_PERCENT`, `MENSTRUAL_CYCLE_INSIGHTS`, `STRESS_MONITOR`, `SLEEP_CONSISTENCY`, `HR_ZONES_ALL`, `WEIGHT`, `TIME_IN_BED`, `STRENGTH_ACTIVITY_TIME`, `HRV`, `RESPIRATORY_RATE`, `HR_ZONES_1_3`, `SLEEP_NEED`, `SLEEP_HOURS`, `SLEEP_NEED_FROM_SLEEP_DEBT_POST`, `BODY_COMPOSITION_LEAN` | In order; replaces the whole list |
+| `gauges` | list of string | 2 metric keys; not RECOVERY or DAY_STRAIN |
+| `pinned` | list of string | Metric keys in order; replaces the list |
 | `journal_enabled` | boolean |  |
 | `journal_autopop_enabled` | boolean |  |
 | `ai_autopop_enabled` | boolean |  |

@@ -9,7 +9,7 @@ Frag Claude, ChatGPT, Cursor oder jede andere MCP-App nach deiner Erholung, dein
   <a href="#los-gehts">Los geht's</a> ·
   <a href="#apps-verbinden">Apps verbinden</a> ·
   <a href="#hosting">Hosting</a> ·
-  <a href="../../TOOLS.md">Die 40 Tools</a> ·
+  <a href="../../TOOLS.md">Die 41 Tools</a> ·
   <a href="#häufige-fragen">Häufige Fragen</a>
 </p>
 
@@ -28,7 +28,7 @@ Frag Claude, ChatGPT, Cursor oder jede andere MCP-App nach deiner Erholung, dein
 
 totem ist ein kleiner Open-Source-[MCP](https://modelcontextprotocol.io)-Server, der mit WHOOP so spricht wie die WHOOP-App. Du betreibst ihn selbst, auf deinem Computer oder auf einem Cloud-Server, der dir gehört, und deine KI-Apps verbinden sich damit. Deine Daten fließen nur zwischen WHOOP, deinem Server und den Apps, die du verbindest.
 
-- **40 Tools.** Erholung, Schlafphasen, Belastung, Stress, Herzfrequenz, Trends, Workouts, Strength Trainer, Tagebuch, WHOOP Coach, Gewicht, Zyklus-Tracking, Smart Alarm, Profil und Einstellungen. [Die vollständige Liste](../../TOOLS.md).
+- **41 Tools.** Erholung, Schlafphasen, Belastung, Stress, Herzfrequenz, Trends, Workouts, Strength Trainer, Tagebuch, WHOOP Coach, Gewicht, Zyklus-Tracking, Smart Alarm, Profil und Einstellungen, dazu Healthspan, Laborwerte und Vorhofflimmern-Verlauf (experimentell). [Die vollständige Liste](../../TOOLS.md).
 - **Schreiben ist standardmäßig sicher.** Jedes Tool, das etwas ändert, zeigt zuerst eine Vorschau und tut nichts, bis die App bestätigt.
 - **Kleine Antworten.** Die Tools liefern kompakte Daten (etwa 1,5 KB bei einem Standardaufruf) und belegen deinen Kontext nicht unnötig.
 - **Ein Befehl genügt.** `totem local` oder `totem cloud` meldet dich bei WHOOP an und richtet jede KI-App ein, die es findet.
@@ -144,7 +144,7 @@ Mehr dazu in [SECURITY.md](../../SECURITY.md).
 | `totem status` / `ping` / `logs` | Server und Anmeldung prüfen |
 | `totem deploy` | Diese Version auf deinen Server deployen |
 | `totem update` | totem aktualisieren (`--check`, `--auto on`) |
-| `totem tools` | Die 40 Tools auflisten |
+| `totem tools` | Die 41 Tools auflisten |
 
 `totem <command> --help` erklärt jeden Befehl.
 

@@ -9,7 +9,7 @@ Claude、ChatGPT、Cursor などの MCP アプリに、リカバリー、睡眠�
   <a href="#はじめに">はじめに</a> ·
   <a href="#アプリをつなぐ">アプリをつなぐ</a> ·
   <a href="#ホスティング">ホスティング</a> ·
-  <a href="../../TOOLS.md">40 のツール</a> ·
+  <a href="../../TOOLS.md">41 のツール</a> ·
   <a href="#よくある質問">よくある質問</a>
 </p>
 
@@ -28,7 +28,7 @@ Claude、ChatGPT、Cursor などの MCP アプリに、リカバリー、睡眠�
 
 totem は小さなオープンソースの [MCP](https://modelcontextprotocol.io) サーバーで、WHOOP アプリと同じ方法で WHOOP と通信します。自分のパソコンか、自分が持つクラウドサーバーで自分で動かし、そこに AI アプリをつなぎます。データは WHOOP、あなたのサーバー、つないだアプリの間だけを流れます。
 
-- **40 のツール。** リカバリー、睡眠ステージ、ストレイン、ストレス、心拍数、トレンド、ワークアウト、Strength Trainer、ジャーナル、WHOOP Coach、体重、サイクル記録、Smart Alarm、プロフィールと設定。[一覧はこちら](../../TOOLS.md)。
+- **41 のツール。** リカバリー、睡眠ステージ、ストレイン、ストレス、心拍数、トレンド、ワークアウト、Strength Trainer、ジャーナル、WHOOP Coach、体重、サイクル記録、Smart Alarm、プロフィールと設定、さらに Healthspan、血液検査の結果、心房細動の履歴（試験的）。[一覧はこちら](../../TOOLS.md)。
 - **書き込みは最初から安全。** データを変えるツールはまずプレビューを返し、アプリが確認するまで何もしません。
 - **答えが小さい。** ツールはコンパクトなデータを返す（標準の呼び出しで約 1.5 KB）ので、コンテキストを圧迫しません。
 - **コマンド一つで準備完了。** `totem local` か `totem cloud` が WHOOP へのログインを手伝い、見つけた AI アプリをすべて設定します。
@@ -144,7 +144,7 @@ npm install -g @thebriangao/totem
 | `totem status` / `ping` / `logs` | サーバーとログインを確認 |
 | `totem deploy` | このバージョンをサーバーにデプロイ |
 | `totem update` | totem を更新（`--check`、`--auto on`） |
-| `totem tools` | 40 のツールを一覧表示 |
+| `totem tools` | 41 のツールを一覧表示 |
 
 `totem <command> --help` で各コマンドの説明が見られます。
 

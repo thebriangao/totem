@@ -123,6 +123,16 @@ const CASES: Record<string, { args?: Record<string, unknown>; routes: Record<str
       [`${SA}/smartalarm/preferences`]: fx("alarm_preferences.json"),
     },
   },
+  // Synthetic, shaped like the locked answer seen live on 2026-11-22.
+  whoop_health: {
+    args: { feature: "healthspan" },
+    routes: {
+      "/healthspan-service/v1/healthspan/bff": {
+        metadata: null, navigation_title: "HEALTHSPAN", unlocked_content: null,
+        locked_content: { locked_icon: "https://example.com/locked.png", header_text_display: "21 SLEEPS TO UNLOCK", description_display: "Log 21 sleeps in the last month.", button_text_display: "GOT IT" },
+      },
+    },
+  },
   whoop_profile: {
     routes: {
       // Synthetic, shaped like the 2026-11 responses (as in profile.test.ts).

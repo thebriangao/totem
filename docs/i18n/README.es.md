@@ -9,7 +9,7 @@ Pregúntale a Claude, ChatGPT, Cursor o cualquier app MCP por tu recuperación, 
   <a href="#primeros-pasos">Primeros pasos</a> ·
   <a href="#conecta-tus-apps">Conecta tus apps</a> ·
   <a href="#alojamiento">Alojamiento</a> ·
-  <a href="../../TOOLS.md">Las 40 herramientas</a> ·
+  <a href="../../TOOLS.md">Las 41 herramientas</a> ·
   <a href="#preguntas-frecuentes">Preguntas frecuentes</a>
 </p>
 
@@ -28,7 +28,7 @@ Pregúntale a Claude, ChatGPT, Cursor o cualquier app MCP por tu recuperación, 
 
 totem es un pequeño servidor [MCP](https://modelcontextprotocol.io) de código abierto que habla con WHOOP igual que la app de WHOOP. Lo ejecutas tú, en tu ordenador o en un servidor en la nube que sea tuyo, y tus apps de IA se conectan a él. Tus datos solo viajan entre WHOOP, tu servidor y las apps que conectes.
 
-- **40 herramientas.** Recuperación, fases del sueño, esfuerzo, estrés, frecuencia cardíaca, tendencias, entrenamientos, Strength Trainer, diario, WHOOP Coach, peso, seguimiento del ciclo, Smart Alarm, perfil y ajustes. [La lista completa](../../TOOLS.md).
+- **41 herramientas.** Recuperación, fases del sueño, esfuerzo, estrés, frecuencia cardíaca, tendencias, entrenamientos, Strength Trainer, diario, WHOOP Coach, peso, seguimiento del ciclo, Smart Alarm, perfil y ajustes, además de Healthspan, resultados de laboratorio e historial de FA (experimental). [La lista completa](../../TOOLS.md).
 - **Escribir es seguro por defecto.** Toda herramienta que cambia algo muestra antes una vista previa y no hace nada hasta que la app lo confirma.
 - **Respuestas pequeñas.** Las herramientas devuelven datos compactos (unos 1,5 KB en una llamada normal), así que no se comen tu contexto.
 - **Un solo comando.** `totem local` o `totem cloud` te ayuda a iniciar sesión en WHOOP y configura todas las apps de IA que encuentra.
@@ -144,7 +144,7 @@ Más en [SECURITY.md](../../SECURITY.md).
 | `totem status` / `ping` / `logs` | Comprobar el servidor y su sesión |
 | `totem deploy` | Desplegar esta versión en tu servidor |
 | `totem update` | Actualizar totem (`--check`, `--auto on`) |
-| `totem tools` | Listar las 40 herramientas |
+| `totem tools` | Listar las 41 herramientas |
 
 `totem <command> --help` explica cada uno.
 

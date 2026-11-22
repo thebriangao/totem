@@ -9,7 +9,7 @@
   <a href="#开始使用">开始使用</a> ·
   <a href="#连接你的应用">连接你的应用</a> ·
   <a href="#托管">托管</a> ·
-  <a href="../../TOOLS.md">40 个工具</a> ·
+  <a href="../../TOOLS.md">41 个工具</a> ·
   <a href="#常见问题">常见问题</a>
 </p>
 
@@ -28,7 +28,7 @@
 
 totem 是一个小型开源 [MCP](https://modelcontextprotocol.io) 服务器，它和 WHOOP 应用一样与 WHOOP 通信。你自己运行它，可以在自己的电脑上，也可以在你自己的云服务器上，然后让 AI 应用连接它。你的数据只在 WHOOP、你的服务器和你连接的应用之间传输。
 
-- **40 个工具。** 恢复、睡眠阶段、负荷、压力、心率、趋势、运动、Strength Trainer、日志、WHOOP Coach、体重、周期追踪、Smart Alarm、个人资料和设置。[完整列表](../../TOOLS.md)。
+- **41 个工具。** 恢复、睡眠阶段、负荷、压力、心率、趋势、运动、Strength Trainer、日志、WHOOP Coach、体重、周期追踪、Smart Alarm、个人资料和设置，以及 Healthspan、化验结果和房颤记录（实验性）。[完整列表](../../TOOLS.md)。
 - **写入默认是安全的。** 每个会修改数据的工具都会先给出预览，在应用确认之前不做任何改动。
 - **回答很小。** 工具返回紧凑的数据（默认调用约 1.5 KB），不会占满你的上下文窗口。
 - **一条命令完成设置。** `totem local` 或 `totem cloud` 会帮你登录 WHOOP，并设置它找到的每一个 AI 应用。
@@ -144,7 +144,7 @@ npm install -g @thebriangao/totem
 | `totem status` / `ping` / `logs` | 检查服务器和它的登录 |
 | `totem deploy` | 把当前版本部署到你的服务器 |
 | `totem update` | 更新 totem（`--check`、`--auto on`） |
-| `totem tools` | 列出 40 个工具 |
+| `totem tools` | 列出 41 个工具 |
 
 `totem <command> --help` 会解释每个命令。
 

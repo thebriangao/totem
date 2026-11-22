@@ -7,7 +7,7 @@ This is an unofficial description of a private API. WHOOP can change it at any t
 ## How it was mapped
 
 - **Captures.** The WHOOP iOS app (5.78.0) was run through mitmproxy on two accounts, and every request was recorded.
-- **A live probe.** Each of the 274 endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.
+- **A live probe.** Each of the 280 endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.
 - **The heart-rate series and the bulk day history** were checked live the same day, including that another person's user id is refused.
 - **Android routes.** [@Acetone1](https://github.com/Acetone1) shared the routes in WHOOP's Android app ([issue #5](https://github.com/thebriangao/totem/issues/5)). The ones that fit totem were called on the test account on 2026-11-22 and are marked "Android route" below.
 
@@ -437,20 +437,31 @@ Nothing here worked:
 | GET | `/community-service/v1/communities/memberships` | not-probed | Probes excluded social; capture says works. Own memberships only (D9). |
 | GET | `/community-service/v1/leaderboards/communities/{communityId}/{window}/{metric}/{kind}/user/{own_user_id}` | not-probed | Own leaderboard row only (D9); never the full board |
 
-### Health Monitor
+### Health Monitor and the paid health features
 
 | Method | Path | Verdict | Used by | Notes |
 |---|---|---|---|---|
 | GET | `/advanced-labs-service/v1/advanced-labs` | verified | – | upsell-only BFF without results; no whoop_labs in v2.0 |
 | GET | `/metrics-service/v1/metrics/user/{user_id}` | verified | whoop_day, whoop_now | continuous heart rate {values:[{time ms, data bpm}]}, sparse (holes, no padding); step must be 6, 60 or 600 (else 400); any window; another user's id → 403 |
-| GET | `/healthspan-service/v1/healthspan/bff` | verified | whoop_profile | Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_profile passes it through marked unverified. |
+| GET | `/healthspan-service/v1/healthspan/bff` | verified | whoop_health | Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_health passes it through (experimental). |
 | GET | `/healthspan-service/v1/widget` | verified | – | Android route (@Acetone1). {amoeba, locked_content}; locked on the test account. |
-| GET | `/sage-service/v1/sage/bff` | verified | whoop_profile | Android route (@Acetone1). ?date=. Blood Pressure Insights, same locked/unlocked shape; locked ('UPGRADE FOR ACCESS', WHOOP Life). |
+| GET | `/sage-service/v1/sage/bff` | verified | whoop_health | Android route (@Acetone1). ?date=. Blood Pressure Insights, same locked/unlocked shape; locked ('UPGRADE FOR ACCESS', WHOOP Life). |
 | GET | `/sage-service/v1/sage/manual/input` | verified | – | Android route (@Acetone1). Manual blood pressure screens (guidelines, reading input). |
-| GET | `/advanced-labs-service/v1/advanced-labs/biomarkers/summary` | verified | whoop_profile | Android route (@Acetone1). Pie chart plus SEARCHABLE_BIOMARKERS_LIST biomarkers[{id, title, value, unit, status_type}]: 100 rows, all '--' and UNAVAILABLE without results (46 KB). |
-| GET | `/advanced-labs-service/v1/advanced-labs/tests/history` | verified | – | Android route (@Acetone1). Lab History; one empty-tile section without tests. |
-| GET | `/arrhythmia-service/v2/afibhistory/screen` | verified | whoop_profile | Android route (@Acetone1). 404 'No anf user found' until irregular rhythm notifications are set up (also /v2/settings). |
-| GET | `/arrhythmia-service/v1/about` | verified | – | Android route (@Acetone1). Static regulatory page, as is /ecg-service/v1/ecg/about. The Android list has no read route for ECG readings. |
+| GET | `/advanced-labs-service/v1/advanced-labs/biomarkers/summary` | verified | whoop_health | Android route (@Acetone1). Pie chart plus SEARCHABLE_BIOMARKERS_LIST biomarkers[{id, title, value, unit, status_type}]: 100 rows, all '--' and UNAVAILABLE without results (46 KB). |
+| GET | `/advanced-labs-service/v1/advanced-labs/tests/history` | verified | whoop_health | Android route (@Acetone1). Lab History; one empty-tile section without tests. |
+| GET | `/arrhythmia-service/v2/afibhistory/screen` | verified | whoop_health | Android route (@Acetone1). 404 'No anf user found' until irregular rhythm notifications are set up (also /v2/settings). |
+| GET | `/arrhythmia-service/v1/about` | verified | – | Android route (@Acetone1). Static regulatory page. The Android list has no read route for ECG readings. |
+| GET | `/advanced-labs-service/v1/advanced-labs/biomarkers/{biomarker_id}` | verified | whoop_health | Android route (@Acetone1). ?next_token=. {navigation_title, header{title, subtitle, pills}, sections, status}; without results status UNAVAILABLE with an Add Lab Results tile (seen live); an unknown id is 404. Filled-in shape unseen. |
+| GET | `/ecg-service/v1/ecg/about` | verified | whoop_health | Android route (@Acetone1). {page_title, information_items[{info_label, info_value}]}: the ECG feature's regulatory facts. The Android list has no route that reads ECG recordings. |
+
+Don't use:
+
+| Method | Path | Verdict | Notes |
+|---|---|---|---|
+| GET | `/arrhythmia-service/v2/afibhistory/paginated` | not-exercised | Android route (@Acetone1). ?next_token=. The next page of AFib history. Used by whoop_health (experimental); never seen filled in: no test account has the feature. |
+| GET | `/arrhythmia-service/v1/history/bff` | not-exercised | Android route (@Acetone1). ?historyDate=. One day of AFib history. Used by whoop_health (experimental); never seen filled in: no test account has the feature. |
+| GET | `/advanced-labs-service/v1/advanced-labs/tests/{test_id}` | not-exercised | Android route (@Acetone1). One lab test's results; an unknown id is 404. Used by whoop_health (experimental); never seen filled in: no test account has the feature. |
+| GET | `/advanced-labs-service/v1/advanced-labs/insights` | not-exercised | Android route (@Acetone1). ?testId=. Insights for one lab test. Used by whoop_health (experimental); never seen filled in: no test account has the feature. |
 
 ### Developer API (the public API's v2 paths, readable with an app token)
 

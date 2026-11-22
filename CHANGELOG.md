@@ -9,7 +9,7 @@ v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), wi
 ### Upgrading from 1.x
 
 - Install with `npm install -g @thebriangao/totem` (a git checkout still works), then run `totem local` or `totem cloud` again. The old `.env` login is picked up once and moved to the new token file.
-- Tool names changed: 55 tools became 40. An app reads the new list on its own; saved prompts that name old tools need the new names ([TOOLS.md](TOOLS.md)).
+- Tool names changed: 55 tools became 41. An app reads the new list on its own; saved prompts that name old tools need the new names ([TOOLS.md](TOOLS.md)).
 - A server deployed by 1.x on Google Cloud Run keeps working with `totem deploy` and `totem logs`, but `totem cloud` no longer creates new ones.
 
 ### Added
@@ -25,16 +25,17 @@ v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), wi
 - **Continuous heart rate and a day table.** `whoop_day` returns heart rate every 10 minutes for a day, or a window down to 6-second steps, and a table of up to 180 days of recovery, HRV, RHR, sleep, strain and more in one call.
 - New tools on the current API: `whoop_now`, `whoop_weight` / `whoop_weight_log` (from #35), `whoop_cycle` / `whoop_cycle_log`, `whoop_weekly_plan` / `whoop_weekly_plan_set`, `whoop_milestones`, `whoop_smart_alarm` / `whoop_smart_alarm_set` (from #39), `whoop_memory` / `whoop_memory_set`, `whoop_community`, and Strength Trainer logging with units, templates and 1RM (from #40 and #49).
 - **Routes from WHOOP's Android app**, shared by @Acetone1 in #5 and checked on a test account first: `whoop_activity_edit` can merge activities (`merge`; WHOOP keeps the earliest and deletes the rest), `whoop_calendar` shows which days have a journal entry (`pillar: "journal"`), and `whoop_smart_alarm` gives the wake window and, for goal modes, the earliest time the strap may buzz.
-- **Paid health features in `whoop_profile`** (`include: ["health"]`): Healthspan, blood pressure insights, Advanced Labs biomarkers and AFib history. Locked, empty and not-set-up states are exact; no test account has these features unlocked, so unlocked content comes back marked `unverified`.
+- **`whoop_health` (experimental)** for WHOOP's paid health features: Healthspan, blood pressure insights, AFib history (by day, with paging), Advanced Labs (biomarkers with results, tests, one biomarker's history or one test's results and insights) and ECG. No test account has these features, so only their locked, empty and not-set-up answers have been seen; those are exact, and anything filled in comes back with its UI fields stripped. Every answer says `experimental: true`. ECG gives the feature's device information only: WHOOP's app API has no route we know of that reads recordings. Read-only on purpose; the consent page now lists it.
 - `whoop_raw` can send PATCH.
 - **The consent page names who is asking and where access goes.** A site is named only by the real address access is sent to, so a link that would send your data elsewhere can't call itself Claude. Deny sends the app a refusal.
 
 ### Changed
 
-- **40 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,990 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
+- **41 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,968 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
 - **Every write previews first** and does nothing until `confirm: true`; `whoop_raw` writes also need `allow_write`, with a denylist that can't be bypassed by an odd path.
 - **The `totem` CLI is redesigned**: one visual language (a brand stripe, full-width step rules, aligned facts, a Next box, a spinner with elapsed time), colour only as decoration, ASCII where Unicode can't be trusted, and every failure ends with the command that fixes it. `totem local` and `totem cloud` ask only what a person must decide.
 - **Hosts:** Fly.io (one 512 MB machine in iad, about $4 a month), Cloudflare (free), Railway (named service, volume through Railway's API when its CLI fails, builds watched to the end) and your own Docker host.
+- `whoop_preferences` lists the dashboard metric keys you can choose from, so `whoop_preferences_set` no longer spells all 30 out in its schema (it still checks them against what WHOOP offers your account).
 - Times in answers are in your WHOOP time zone; times you give may omit seconds or the offset (read on your clock).
 - Every dependency upgraded; `npm audit` clean. Node 24 or newer.
 

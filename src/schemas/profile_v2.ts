@@ -5,22 +5,6 @@ import { HrZonesV2Out } from "./settings_v2.js";
 
 const Pillar = z.object({ to: z.string(), trends: z.boolean(), daily: z.boolean() });
 
-const HealthFeature = z.object({
-  status: z.enum(["available", "locked", "not_set_up", "no_data", "unavailable"]),
-  message: z.string().nullable().optional(),
-  /** The unlocked shape has never been seen by totem's tests: fields may be missing or misnamed. */
-  unverified: z.literal(true).optional(),
-  content: z.unknown().optional(),
-  truncated: z.literal(true).optional(),
-  biomarkers: z.array(z.object({
-    id: z.string(),
-    name: z.string().nullable(),
-    value: z.string().nullable(),
-    unit: z.string().nullable(),
-    status: z.string().nullable(),
-  })).optional(),
-});
-
 export const ProfileV2Out = z.object({
   user_id: z.number().int().nullable(),
   first_name: z.string().nullable(),
@@ -63,13 +47,6 @@ export const ProfileV2Out = z.object({
     /** Sports whose sharing differs from the default. */
     activity_overrides: z.record(z.string(), z.string()).nullable(),
   }).nullable().optional(),
-  /** include=health (src/projections/health_features.ts). */
-  health: z.object({
-    healthspan: HealthFeature,
-    blood_pressure: HealthFeature,
-    advanced_labs: HealthFeature,
-    afib: HealthFeature,
-  }).optional(),
   warnings: z.array(z.string()),
 });
 

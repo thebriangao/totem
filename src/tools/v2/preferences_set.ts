@@ -16,7 +16,6 @@ import {
   CLOCK_FORMATS,
   GAUGE_METRICS,
   HIDDEN_METRICS,
-  KEY_METRICS,
   NOTIFICATION_NAMESPACES,
   candidateTimeZone,
   normalizeOffset,
@@ -89,10 +88,12 @@ export function registerPreferencesSet(server: McpServer, client: WhoopClient): 
       hidden: z.boolean().optional(),
       enabled: z.boolean().optional().describe("notification: false blocks the namespace"),
       namespace: z.enum(NOTIFICATION_NAMESPACES).optional(),
-      // Plain strings in the listed schema (pinned already spells the metric names out);
-      // planDashboard checks them against GAUGE_METRICS and lists the valid ones on a miss.
-      gauges: z.array(z.string()).length(2).optional().describe("2 of pinned's values; not RECOVERY or DAY_STRAIN"),
-      pinned: z.array(z.enum(KEY_METRICS)).optional().describe("In order; replaces the whole list"),
+      // Plain strings: whoop_preferences lists this account's keys (dashboard.options), and
+      // planDashboard checks both against what WHOOP offers and lists the valid ones on a
+      // miss. (An enum here cost ~520 characters of every tools/list for nothing: pinned
+      // replaces the whole list, so a caller reads the current one first anyway.)
+      gauges: z.array(z.string()).length(2).optional().describe("2 metric keys; not RECOVERY or DAY_STRAIN"),
+      pinned: z.array(z.string()).optional().describe("Metric keys in order; replaces the list"),
       journal_enabled: z.boolean().optional(),
       journal_autopop_enabled: z.boolean().optional(),
       ai_autopop_enabled: z.boolean().optional(),

@@ -1,4 +1,4 @@
-// The v2 tool surface is a contract: 40 tools (23 read, 17 write), every one annotated,
+// The v2 tool surface is a contract: 41 tools (24 read, 17 write), every one annotated,
 // plus 5 catalog resources. Changing it should be a deliberate edit to this file.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ import { render, SCREENS } from "../cli/screens.js";
 const READ = [
   "whoop_calendar", "whoop_coach_history", "whoop_community", "whoop_cycle", "whoop_day", "whoop_journal",
   "whoop_lift_exercise", "whoop_lift_library", "whoop_lift_sessions", "whoop_memory", "whoop_milestones", "whoop_now",
-  "whoop_preferences", "whoop_profile", "whoop_recovery", "whoop_sleep", "whoop_smart_alarm", "whoop_strain",
+  "whoop_health", "whoop_preferences", "whoop_profile", "whoop_recovery", "whoop_sleep", "whoop_smart_alarm", "whoop_strain",
   "whoop_stress", "whoop_trend", "whoop_weekly_plan", "whoop_weight", "whoop_workouts",
 ];
 const WRITE_ADDITIVE = ["whoop_activity_log", "whoop_lift_log"];
@@ -43,10 +43,10 @@ async function connect() {
 }
 
 describe("v2 tool registry", () => {
-  it("registers exactly the 40 tools, 23 read and 17 write", async () => {
+  it("registers exactly the 41 tools, 24 read and 17 write", async () => {
     const { tools } = await (await connect()).listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([...READ, ...WRITE_ADDITIVE, ...WRITE_DESTRUCTIVE].sort());
-    expect(READ_TOOLS).toHaveLength(23);
+    expect(READ_TOOLS).toHaveLength(24);
     expect(WRITE_TOOLS).toHaveLength(17);
   });
 
@@ -75,8 +75,9 @@ describe("v2 tool registry", () => {
     // characters for 55 tools and v2 started at 50,318 for 40; the budget is 20%
     // under v1 (36,226). whoop_day's heart-rate series and day table added 366
     // characters; plain-string time inputs (src/lib/instant.ts) took 189 back.
-    // Merge, the journal calendar, include=health and raw PATCH (2026-11-22) were
-    // paid for by trimming wording that repeated the schema. Measured now: 35,990.
+    // Merge, the journal calendar, raw PATCH and whoop_health (2026-11-22) were paid
+    // for by trimming wording that repeated the schema, and by moving the 30 dashboard
+    // metric keys out of whoop_preferences_set's schema into whoop_preferences' answer. Measured now: 35,968.
     const { tools } = await (await connect()).listTools();
     expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_000);
     // Write tools say once, the same way, that they preview by default.
@@ -142,13 +143,14 @@ describe("v2 tool registry", () => {
     await rejected("whoop_raw", { path: "/x", query: { a: { nested: true } } }); // record value types
   });
 
-  it("validates the dashboard gauges it no longer lists as an enum, and names the valid ones", async () => {
+  it("validates the dashboard keys it no longer lists as enums, and names the valid ones", async () => {
     const client = await connect();
     const gauges = (client: { listTools: () => Promise<{ tools: Array<{ name: string; inputSchema: unknown }> }> }) =>
       client.listTools().then(({ tools }) => (tools.find((t) => t.name === "whoop_preferences_set")!.inputSchema as { properties: Record<string, any> }).properties);
     const props = await gauges(client);
-    // pinned keeps the metric names; gauges takes two of them as plain strings.
-    expect(props.pinned.items.enum).toContain("HRV");
+    // Both take plain strings: whoop_preferences lists the keys, and the handler checks them.
+    expect(props.pinned).toMatchObject({ type: "array", items: { type: "string" } });
+    expect(props.pinned.items.enum).toBeUndefined();
     expect(props.gauges).toMatchObject({ type: "array", minItems: 2, maxItems: 2, items: { type: "string" } });
     expect(props.gauges.items.enum).toBeUndefined();
     const res = await client.callTool({ name: "whoop_preferences_set", arguments: { setting: "dashboard", gauges: ["HRV", "NOT_A_METRIC"] } });
@@ -177,14 +179,14 @@ describe("v2 tool registry", () => {
   it("states the same tool count wherever a person reads it", async () => {
     for (const file of ["package.json", "server.json"]) {
       const text = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-      expect(text, file).toMatch(/\b40 tools\b|\(40 total\)/);
+      expect(text, file).toMatch(/\b41 tools\b|\(41 total\)/);
       expect(text, file).not.toMatch(/\b55 tools\b|\(55 total\)/);
     }
     // The CLI doesn't carry a number or a list of its own: `totem tools` reads
     // the registry, so what it prints is what the server registers.
     const { text } = await render(SCREENS.find((s) => s.name === "tools")!);
-    expect(text).toMatch(/\b40 tools: 23 read your WHOOP data and 17 change it\b/);
+    expect(text).toMatch(/\b41 tools: 24 read your WHOOP data and 17 change it\b/);
     for (const name of [...READ, ...WRITE_ADDITIVE, ...WRITE_DESTRUCTIVE]) expect(text, name).toMatch(new RegExp(`\\b${name}\\b`));
-    expect(text.match(/\bwhoop_\w+/g)).toHaveLength(40);
+    expect(text.match(/\bwhoop_\w+/g)).toHaveLength(41);
   });
 });

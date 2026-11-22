@@ -2439,9 +2439,9 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "health",
     "verdict": "verified",
     "tools": [
-      "whoop_profile"
+      "whoop_health"
     ],
-    "notes": "Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_profile passes it through marked unverified."
+    "notes": "Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_health passes it through (experimental)."
   },
   {
     "method": "GET",
@@ -2457,7 +2457,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "health",
     "verdict": "verified",
     "tools": [
-      "whoop_profile"
+      "whoop_health"
     ],
     "notes": "Android route (@Acetone1). ?date=. Blood Pressure Insights, same locked/unlocked shape; locked ('UPGRADE FOR ACCESS', WHOOP Life)."
   },
@@ -2475,7 +2475,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "health",
     "verdict": "verified",
     "tools": [
-      "whoop_profile"
+      "whoop_health"
     ],
     "notes": "Android route (@Acetone1). Pie chart plus SEARCHABLE_BIOMARKERS_LIST biomarkers[{id, title, value, unit, status_type}]: 100 rows, all '--' and UNAVAILABLE without results (46 KB)."
   },
@@ -2484,7 +2484,9 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "path": "/advanced-labs-service/v1/advanced-labs/tests/history",
     "domain": "health",
     "verdict": "verified",
-    "tools": [],
+    "tools": [
+      "whoop_health"
+    ],
     "notes": "Android route (@Acetone1). Lab History; one empty-tile section without tests."
   },
   {
@@ -2493,7 +2495,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "health",
     "verdict": "verified",
     "tools": [
-      "whoop_profile"
+      "whoop_health"
     ],
     "notes": "Android route (@Acetone1). 404 'No anf user found' until irregular rhythm notifications are set up (also /v2/settings)."
   },
@@ -2503,7 +2505,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "health",
     "verdict": "verified",
     "tools": [],
-    "notes": "Android route (@Acetone1). Static regulatory page, as is /ecg-service/v1/ecg/about. The Android list has no read route for ECG readings."
+    "notes": "Android route (@Acetone1). Static regulatory page. The Android list has no read route for ECG readings."
   },
   {
     "method": "GET",
@@ -2528,5 +2530,65 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "verdict": "not-found",
     "tools": [],
     "notes": "Android route (@Acetone1). 404 'currently unavailable', as is the v2 year-in-review (seasonal)."
+  },
+  {
+    "method": "GET",
+    "path": "/arrhythmia-service/v2/afibhistory/paginated",
+    "domain": "health",
+    "verdict": "not-exercised",
+    "tools": [
+      "whoop_health"
+    ],
+    "notes": "Android route (@Acetone1). ?next_token=. The next page of AFib history. Used by whoop_health (experimental); never seen filled in: no test account has the feature."
+  },
+  {
+    "method": "GET",
+    "path": "/arrhythmia-service/v1/history/bff",
+    "domain": "health",
+    "verdict": "not-exercised",
+    "tools": [
+      "whoop_health"
+    ],
+    "notes": "Android route (@Acetone1). ?historyDate=. One day of AFib history. Used by whoop_health (experimental); never seen filled in: no test account has the feature."
+  },
+  {
+    "method": "GET",
+    "path": "/advanced-labs-service/v1/advanced-labs/biomarkers/{biomarker_id}",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_health"
+    ],
+    "notes": "Android route (@Acetone1). ?next_token=. {navigation_title, header{title, subtitle, pills}, sections, status}; without results status UNAVAILABLE with an Add Lab Results tile (seen live); an unknown id is 404. Filled-in shape unseen."
+  },
+  {
+    "method": "GET",
+    "path": "/advanced-labs-service/v1/advanced-labs/tests/{test_id}",
+    "domain": "health",
+    "verdict": "not-exercised",
+    "tools": [
+      "whoop_health"
+    ],
+    "notes": "Android route (@Acetone1). One lab test's results; an unknown id is 404. Used by whoop_health (experimental); never seen filled in: no test account has the feature."
+  },
+  {
+    "method": "GET",
+    "path": "/advanced-labs-service/v1/advanced-labs/insights",
+    "domain": "health",
+    "verdict": "not-exercised",
+    "tools": [
+      "whoop_health"
+    ],
+    "notes": "Android route (@Acetone1). ?testId=. Insights for one lab test. Used by whoop_health (experimental); never seen filled in: no test account has the feature."
+  },
+  {
+    "method": "GET",
+    "path": "/ecg-service/v1/ecg/about",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_health"
+    ],
+    "notes": "Android route (@Acetone1). {page_title, information_items[{info_label, info_value}]}: the ECG feature's regulatory facts. The Android list has no route that reads ECG recordings."
   }
 ];

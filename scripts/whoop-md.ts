@@ -24,7 +24,7 @@ const AREAS: Record<string, string> = {
   privacy: "Privacy",
   integrations: "Integrations",
   community: "Community",
-  health: "Health Monitor",
+  health: "Health Monitor and the paid health features",
   developer: "Developer API (the public API's v2 paths, readable with an app token)",
   auth: "Sign-in",
   misc: "Other",

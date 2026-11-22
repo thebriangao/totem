@@ -85,7 +85,7 @@ describe("consent page: who is asking, and where access goes", () => {
 
   it("lists what the client will be able to do", () => {
     const html = page();
-    expect(CONSENT_PERMISSIONS).toHaveLength(7);
+    expect(CONSENT_PERMISSIONS).toHaveLength(8);
     for (const p of CONSENT_PERMISSIONS) expect(html).toContain(`<li>${p}</li>`);
     // Writes are said plainly, not folded into "access".
     expect(CONSENT_PERMISSIONS.filter((p) => /write/i.test(p)).length).toBeGreaterThanOrEqual(3);

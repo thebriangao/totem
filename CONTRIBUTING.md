@@ -29,7 +29,7 @@ src/
 │   ├── oauth_provider.ts  OAuth 2.1 for apps that connect to a server
 │   └── consent_page.ts, connect_page.ts   the two pages a person sees
 ├── tools/
-│   ├── register.ts        the 40 tools, in order
+│   ├── register.ts        the 41 tools, in order
 │   └── v2/                one file per tool
 ├── projections/v2/      WHOOP's responses turned into the compact shapes tools return
 ├── lib/                 dates, time zones, times as tools take them, install links, helpers

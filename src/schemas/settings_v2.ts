@@ -37,6 +37,8 @@ export const DashboardOut = z.object({
   /** Your two focus gauges (RECOVERY and DAY_STRAIN are always shown too). */
   gauges: z.array(z.string()),
   pinned: z.array(z.string()),
+  /** whoop_preferences only: the metric keys this account can choose from (the write tool takes these). */
+  options: z.object({ gauges: z.array(z.string()), pinnable: z.array(z.string()) }).optional(),
 });
 
 export const PreferencesV2Out = z.object({

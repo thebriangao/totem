@@ -1,4 +1,4 @@
-// The v2 tool surface: 40 tools (23 read, 17 write) and 5 catalog resources.
+// The v2 tool surface: 41 tools (24 read, 17 write) and 5 catalog resources.
 // Reads are consolidated (one tool per question a person asks); writes stay
 // split by risk so each tool's MCP annotation means something.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -45,6 +45,7 @@ import { registerMilestones } from "./v2/milestones.js";
 import { registerSmartAlarm } from "./v2/smart_alarm.js";
 import { registerSmartAlarmSet } from "./v2/smart_alarm_set.js";
 import { registerProfile } from "./v2/profile.js";
+import { registerHealth } from "./v2/health.js";
 import { registerProfileUpdate } from "./v2/profile_update.js";
 import { registerHrZonesSet } from "./v2/hr_zones_set.js";
 import { registerPreferences } from "./v2/preferences.js";
@@ -58,7 +59,7 @@ import { installSlimToolList } from "./slim_schema.js";
 
 type Register = (server: McpServer, client: WhoopClient) => void;
 
-/** Read-only tools (23). */
+/** Read-only tools (24). */
 export const READ_TOOLS: readonly Register[] = [
   registerDay, registerRecovery, registerSleep, registerStrain, registerStress, registerNow, registerTrend, registerCalendar,
   registerWorkouts,
@@ -66,7 +67,7 @@ export const READ_TOOLS: readonly Register[] = [
   registerJournal,
   registerCoachHistory, registerMemory,
   registerWeight, registerCycle, registerWeeklyPlan, registerMilestones,
-  registerSmartAlarm, registerProfile, registerPreferences,
+  registerSmartAlarm, registerProfile, registerPreferences, registerHealth,
   registerCommunity,
 ];
 

@@ -9,7 +9,7 @@ Posez des questions à Claude, ChatGPT, Cursor ou n'importe quelle appli MCP sur
   <a href="#pour-commencer">Pour commencer</a> ·
   <a href="#connecter-vos-applis">Connecter vos applis</a> ·
   <a href="#hébergement">Hébergement</a> ·
-  <a href="../../TOOLS.md">Les 40 outils</a> ·
+  <a href="../../TOOLS.md">Les 41 outils</a> ·
   <a href="#questions-fréquentes">Questions fréquentes</a>
 </p>
 
@@ -28,7 +28,7 @@ Posez des questions à Claude, ChatGPT, Cursor ou n'importe quelle appli MCP sur
 
 totem est un petit serveur [MCP](https://modelcontextprotocol.io) open source qui parle à WHOOP comme le fait l'appli WHOOP. Vous le faites tourner vous-même, sur votre ordinateur ou sur un serveur cloud qui vous appartient, et vos applis d'IA s'y connectent. Vos données ne circulent qu'entre WHOOP, votre serveur et les applis que vous connectez.
 
-- **40 outils.** Récupération, phases de sommeil, effort, stress, fréquence cardiaque, tendances, séances, Strength Trainer, journal, WHOOP Coach, poids, suivi du cycle, Smart Alarm, profil et réglages. [La liste complète](../../TOOLS.md).
+- **41 outils.** Récupération, phases de sommeil, effort, stress, fréquence cardiaque, tendances, séances, Strength Trainer, journal, WHOOP Coach, poids, suivi du cycle, Smart Alarm, profil et réglages, ainsi que Healthspan, résultats d'analyses et historique de FA (expérimental). [La liste complète](../../TOOLS.md).
 - **Écrire est sûr par défaut.** Chaque outil qui modifie quelque chose affiche d'abord un aperçu et ne fait rien tant que l'appli n'a pas confirmé.
 - **Des réponses courtes.** Les outils renvoient des données compactes (environ 1,5 Ko pour un appel standard), elles n'encombrent donc pas votre contexte.
 - **Une seule commande.** `totem local` ou `totem cloud` vous connecte à WHOOP et configure toutes les applis d'IA qu'il trouve.
@@ -144,7 +144,7 @@ Plus de détails dans [SECURITY.md](../../SECURITY.md).
 | `totem status` / `ping` / `logs` | Vérifier le serveur et sa connexion |
 | `totem deploy` | Déployer cette version sur votre serveur |
 | `totem update` | Mettre totem à jour (`--check`, `--auto on`) |
-| `totem tools` | Lister les 40 outils |
+| `totem tools` | Lister les 41 outils |
 
 `totem <command> --help` explique chacune.
 

@@ -9,7 +9,7 @@ Ask Claude, ChatGPT, Cursor or any MCP app about your recovery, sleep and traini
   <a href="#get-started">Get started</a> ·
   <a href="#connect-your-apps">Connect your apps</a> ·
   <a href="#hosting">Hosting</a> ·
-  <a href="TOOLS.md">The 40 tools</a> ·
+  <a href="TOOLS.md">The 41 tools</a> ·
   <a href="#faq">FAQ</a>
 </p>
 
@@ -25,7 +25,7 @@ Ask Claude, ChatGPT, Cursor or any MCP app about your recovery, sleep and traini
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tools-40-6f6e6a?style=flat-square" alt="40 tools">
+  <img src="https://img.shields.io/badge/tools-41-6f6e6a?style=flat-square" alt="41 tools">
   <img src="https://img.shields.io/badge/Node-24%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node 24+">
   <img src="https://img.shields.io/badge/MCP-Streamable_HTTP_%2B_stdio-6f6e6a?style=flat-square" alt="MCP">
   <img src="https://img.shields.io/badge/license-MIT-6f6e6a?style=flat-square" alt="MIT">
@@ -35,7 +35,7 @@ Ask Claude, ChatGPT, Cursor or any MCP app about your recovery, sleep and traini
 
 totem is a small open-source [MCP](https://modelcontextprotocol.io) server that talks to WHOOP the way the WHOOP app does. You run it yourself, on your computer or on a cloud server you own, and your AI apps connect to it. Your data goes only between WHOOP, your server and the apps you connect.
 
-- **40 tools.** Recovery, sleep stages, strain, stress, heart rate, trends, workouts, Strength Trainer, journal, WHOOP Coach, weight, cycle tracking, Smart Alarm, profile and settings. [The full list](TOOLS.md).
+- **41 tools.** Recovery, sleep stages, strain, stress, heart rate, trends, workouts, Strength Trainer, journal, WHOOP Coach, weight, cycle tracking, Smart Alarm, profile and settings, plus Healthspan, lab results and AFib history (experimental). [The full list](TOOLS.md).
 - **Writes are safe by default.** Every tool that changes something shows a preview first and does nothing until the app confirms.
 - **Small answers.** Tools return compact data (about 1.5 KB for a default call), so they don't eat your context window.
 - **One-command setup.** `totem local` or `totem cloud` logs you in to WHOOP and sets up every AI app it finds.
@@ -151,7 +151,7 @@ More in [SECURITY.md](SECURITY.md).
 | `totem status` / `ping` / `logs` | Check the server and its login |
 | `totem deploy` | Deploy this version to your server |
 | `totem update` | Update totem (`--check`, `--auto on`) |
-| `totem tools` | List the 40 tools |
+| `totem tools` | List the 41 tools |
 
 `totem <command> --help` explains each one.
 

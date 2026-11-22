@@ -115,7 +115,7 @@ export const SCREENS: Screen[] = [
   { name: "help-update", command: "totem update --help", about: "Help for one command with options." },
   { name: "error-unknown-command", command: "totem staus", about: "A mistyped command: says so, suggests the nearest, exit 2." },
   { name: "error-not-set-up", command: "totem logs", about: "A server command before anything is set up." },
-  { name: "tools", command: "totem tools", about: "The 40 tools, read from the real registry." },
+  { name: "tools", command: "totem tools", about: "The 41 tools, read from the real registry." },
 
   // ── local ──────────────────────────────────────────────────────────────
   { name: "local", command: "totem local", about: "Local setup, happy path: first run, Claude Desktop found.", setup: (w) => mkdirSync(join(w.home, "Library", "Application Support", "Claude"), { recursive: true }) },

@@ -205,10 +205,11 @@ export function consentClient(redirectUri: string, registeredName?: string): Con
   return known ? { ...known, destination } : { name: destination, logo: null, destination };
 }
 
-/** What a connected client can do, in plain words. The 40 tools, grouped. */
+/** What a connected client can do, in plain words. The 41 tools, grouped. */
 export const CONSENT_PERMISSIONS = [
   "Read recovery, sleep and strain",
   "Read stress, trends and heart rate",
+  "Read Healthspan, lab results and AFib history",
   "Read workouts and lifts",
   "Write activities and lifts",
   "Read and write journal, weight and cycle",
