@@ -61,6 +61,22 @@ export function releaseSettledJsonStreams(transport: StreamableHTTPServerTranspo
   return released;
 }
 
+/**
+ * The port from PORT, then MCP_HTTP_PORT, then 3000. `||`, not `??`: a host
+ * that injects PORT="" for an unset variable used to get Number("") = 0, a
+ * random port nothing was pointed at (same reasoning as PUBLIC_URL below). A
+ * value that isn't a port fails here with its name, not as a bare RangeError
+ * from listen().
+ */
+export function resolvePort(env: Record<string, string | undefined>): number {
+  const raw = env.PORT || env.MCP_HTTP_PORT || "3000";
+  const port = Number(raw);
+  if (!/^\d+$/.test(raw.trim()) || port > 65535) {
+    throw new Error(`Invalid port ${JSON.stringify(raw)} (from PORT / MCP_HTTP_PORT): expected a number from 0 to 65535.`);
+  }
+  return port;
+}
+
 export interface HttpServerHandle {
   /** The port actually bound (the OS picks one when 0 was requested). */
   port: number;
@@ -74,7 +90,7 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
       "MCP_AUTH_TOKEN must be set and at least 16 chars. Generate one with `openssl rand -hex 32`.",
     );
   }
-  const port = opts.port ?? Number(process.env.PORT ?? process.env.MCP_HTTP_PORT ?? 3000);
+  const port = opts.port ?? resolvePort(process.env);
   const host = opts.host ?? "0.0.0.0";
   const password = process.env.AUTH_PASSWORD ?? "";
   // `||` not `??`: an empty PUBLIC_URL (e.g. a host that injects "" for an unset

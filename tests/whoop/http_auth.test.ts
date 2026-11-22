@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { startHttpServer, type HttpServerHandle } from "../../src/server-http.js";
+import { startHttpServer, resolvePort, type HttpServerHandle } from "../../src/server-http.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
 
 // Port 0: the OS picks a free port, so parallel runs (other worktrees, a stale
@@ -184,6 +184,21 @@ describe("HTTP transport: startup", () => {
     ]);
     expect(closed).toBe("closed");
     await stream.body?.cancel().catch(() => {});
+  });
+});
+
+describe("resolvePort", () => {
+  it("falls back past an empty PORT instead of binding a random port", () => {
+    expect(resolvePort({ PORT: "" })).toBe(3000); // was Number("") = 0
+    expect(resolvePort({ PORT: "", MCP_HTTP_PORT: "8123" })).toBe(8123);
+    expect(resolvePort({})).toBe(3000);
+    expect(resolvePort({ PORT: "8080", MCP_HTTP_PORT: "8123" })).toBe(8080);
+  });
+
+  it("names the variable when the value isn't a port", () => {
+    for (const PORT of ["abc", "80a", "-1", "70000", "3000.5"]) {
+      expect(() => resolvePort({ PORT }), PORT).toThrow(/Invalid port .*PORT/);
+    }
   });
 });
 
