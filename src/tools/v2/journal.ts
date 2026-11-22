@@ -7,7 +7,7 @@ import type { WhoopClient } from "../../whoop/client.js";
 import { defineTool, respond } from "../define.js";
 import { READ_ONLY } from "../annotations.js";
 import { JournalV2Out } from "../../schemas/journal_v2.js";
-import { loadBehaviorCatalog, parseDraft } from "../../lib/journal_behaviors.js";
+import { isDraftBody, loadBehaviorCatalog, parseDraft } from "../../lib/journal_behaviors.js";
 import { projectBehaviorCatalog, projectBehaviorImpacts, projectJournalDay } from "../../projections/journal_v2.js";
 import { projectBehaviorImpact } from "../../projections/behavior_impact.js";
 import { todayIso } from "../../lib/dates.js";
@@ -46,6 +46,8 @@ export function registerJournal(server: McpServer, client: WhoopClient): void {
         : Promise.resolve(null),
     ]);
 
+    // An empty day still has `journal.tracked_behaviors: []`; a body without it isn't an empty day.
+    if (!isDraftBody(rawDraft)) warnings.push("WHOOP's journal response had an unexpected shape, so this day may not really be empty.");
     const out: Record<string, unknown> = { ...projectJournalDay(parseDraft(rawDraft, d), { includeUnanswered: wants.has("unanswered") }) };
 
     if (catalog) {

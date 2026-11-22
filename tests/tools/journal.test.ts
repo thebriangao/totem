@@ -71,6 +71,17 @@ describe("whoop_journal tool", () => {
     expect(out).not.toHaveProperty("unanswered");
     expect(text.length).toBeLessThan(1500);
     expect(whoop.get).toHaveBeenCalledTimes(1);
+    expect(out).not.toHaveProperty("warnings");
+  });
+
+  it("doesn't pass off an unrecognisable response as an empty day", async () => {
+    // Live: an empty day is 200 with journal.tracked_behaviors: [] (no warning); a body without it is something else.
+    const empty = { journal: { tracked_behaviors: [], notes: null, user_reviewed: false } };
+    const real = await connect(registerJournal, mockWhoop({ [DRAFT]: empty }));
+    expect(parse(await real.callTool({ name: "whoop_journal", arguments: { date: DATE } }))).toEqual({ date: DATE, reviewed: false });
+    const odd = await connect(registerJournal, mockWhoop({ [DRAFT]: { message: "moved" } }));
+    const out = parse(await odd.callTool({ name: "whoop_journal", arguments: { date: DATE } }));
+    expect(out.warnings.join(" ")).toMatch(/unexpected shape/);
   });
 
   it("filters the live catalog by search (171 included) and category (custom)", async () => {
