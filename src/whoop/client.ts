@@ -87,8 +87,13 @@ class RequestCache {
         // Whoop finishes scoring it would be misleading. A load superseded by a
         // newer one for the same key (a fresh read) must not overwrite it.
         const latest = this.latestLoad.get(key) === seq;
-        if (policy && latest && generation === this.generation && !containsPendingState(value)) {
-          this.store(key, value, policy);
+        if (latest && generation === this.generation) {
+          // The newest read replaces what was cached even when it can't be kept
+          // itself (a pending record, an oversized body). Otherwise a fresh read
+          // that came back pending left the older entry in place, and the next
+          // ordinary read served data from before the one just returned.
+          const kept = policy !== null && !containsPendingState(value) && this.store(key, value, policy);
+          if (!kept) this.evict(key);
         }
         return value;
       })
@@ -113,14 +118,20 @@ class RequestCache {
     }
   }
 
-  private store(key: string, value: unknown, policy: { ttlMs: number; tags: readonly string[] }): void {
+  private evict(key: string): void {
+    const entry = this.values.get(key);
+    if (entry) this.delete(key, entry);
+  }
+
+  /** Returns whether the value was kept. */
+  private store(key: string, value: unknown, policy: { ttlMs: number; tags: readonly string[] }): boolean {
     let bytes = 0;
     try {
       bytes = Buffer.byteLength(JSON.stringify(value));
     } catch {
-      return; // Never let cache accounting affect a successful API response.
+      return false; // Never let cache accounting affect a successful API response.
     }
-    if (bytes > MAX_CACHE_BYTES) return;
+    if (bytes > MAX_CACHE_BYTES) return false;
     const existing = this.values.get(key);
     if (existing) this.delete(key, existing);
     const entry: CacheEntry = {
@@ -136,6 +147,7 @@ class RequestCache {
       if (!oldest) break;
       this.delete(oldest[0], oldest[1]);
     }
+    return this.values.has(key);
   }
 
   private delete(key: string, entry: CacheEntry): void {

@@ -233,6 +233,25 @@ describe("WhoopClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("stops serving the older cached value after a fresh read that can't itself be cached", async () => {
+    const workouts = (records: unknown[]) => new Response(JSON.stringify({ records }), { status: 200 });
+    fetchMock
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }]))
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }, { id: 2, score_state: "PENDING" }]))
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }, { id: 2, score_state: "SCORED" }]));
+    const client = makeClient();
+    const path = "/developer/v2/activity/workout";
+
+    await client.get(path);                                                    // cached
+    const fresh = await client.get<{ records: unknown[] }>(path, {}, { fresh: true }); // pending → not cacheable
+    expect(fresh.records).toHaveLength(2);
+    // This used to return the first response again: one workout, older than
+    // the two the caller had just been shown.
+    const next = await client.get<{ records: unknown[] }>(path);
+    expect(next.records).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("never lets an older read overwrite a newer fresh read's cached value", async () => {
     let resolveOld!: (response: Response) => void;
     fetchMock
