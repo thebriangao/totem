@@ -13,7 +13,7 @@
 // installs); GitHub Releases supplies the notes/dates shown in the picker. No
 // separate hosting — the tags / registry / releases ARE the index.
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { delimiter as pathDelimiter, dirname, resolve } from "node:path";
 import {
   c, capture, captureAsync, spin, withSpinner, select, promptYesNo, ping, httpGet, commandExists,
 } from "./ui.js";
@@ -264,8 +264,13 @@ function xmlEscape(s: string): string {
 }
 
 // A launchd LaunchAgent that runs `totem update --auto-run` every intervalSec.
-export function launchdPlist(programArgs: string[], intervalSec: number, workingDir: string, logPath: string): string {
+// `path` becomes the job's PATH: launchd starts jobs with /usr/bin:/bin:/usr/sbin:/sbin,
+// where npm and the deploy CLIs usually aren't.
+export function launchdPlist(programArgs: string[], intervalSec: number, workingDir: string, logPath: string, path?: string): string {
   const args = programArgs.map((a) => `    <string>${xmlEscape(a)}</string>`).join("\n");
+  const env = path
+    ? `  <key>EnvironmentVariables</key>\n  <dict>\n    <key>PATH</key>\n    <string>${xmlEscape(path)}</string>\n  </dict>\n`
+    : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -282,7 +287,7 @@ ${args}
   <false/>
   <key>WorkingDirectory</key>
   <string>${xmlEscape(workingDir)}</string>
-  <key>StandardOutPath</key>
+${env}  <key>StandardOutPath</key>
   <string>${xmlEscape(logPath)}</string>
   <key>StandardErrorPath</key>
   <string>${xmlEscape(logPath)}</string>
@@ -294,10 +299,27 @@ ${args}
 // One cron line, tagged so we can find + remove exactly ours. Every word is
 // quoted for sh (cron hands the line to `sh -c`), and `%` is escaped: cron ends
 // the command at a bare `%` and feeds the rest to it as stdin.
-export function cronLine(programArgs: string[], root: string, logPath: string): string {
+// `path`, when given, is exported first: cron's own PATH is /usr/bin:/bin.
+export function cronLine(programArgs: string[], root: string, logPath: string, path?: string): string {
   const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`.replace(/%/g, "\\%");
   const word = (s: string): string => (/^[A-Za-z0-9_/.:=@+-]+$/.test(s) ? s : shq(s));
-  return `0 */6 * * * cd ${shq(root)} && ${programArgs.map(word).join(" ")} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
+  const setPath = path ? `export PATH=${shq(path)}; ` : "";
+  return `0 */6 * * * ${setPath}cd ${shq(root)} && ${programArgs.map(word).join(" ")} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
+}
+
+/**
+ * The PATH a scheduled run gets: this node's directory (where npm lives) ahead
+ * of the PATH `totem update --auto on` was run with, which can see git and the
+ * deploy CLI. launchd and cron would otherwise start the job with a bare system
+ * PATH, where `npm install` and `fly deploy` fail with ENOENT.
+ */
+export function schedulerPath(
+  execPath: string = process.execPath,
+  envPath: string = process.env.PATH ?? "",
+  delimiter: string = pathDelimiter,
+): string {
+  const dirs = [dirname(execPath), ...envPath.split(delimiter)].map((d) => d.trim()).filter(Boolean);
+  return [...new Set(dirs)].join(delimiter);
 }
 
 export function isAutoOn(): boolean {
@@ -319,14 +341,14 @@ async function enableAuto(ctx: UpdateCtx): Promise<boolean> {
   if (process.platform === "darwin") {
     const p = plistPath();
     mkdirSync(resolve(home(), "Library", "LaunchAgents"), { recursive: true });
-    writeFileSync(p, launchdPlist(args, AUTO_INTERVAL_SEC, ctx.root, log));
+    writeFileSync(p, launchdPlist(args, AUTO_INTERVAL_SEC, ctx.root, log, schedulerPath()));
     await captureAsync("launchctl", ["unload", p]); // ignore if not loaded
     const load = await captureAsync("launchctl", ["load", p]);
     if (load.code !== 0) { console.log(c.red(`  ✗ couldn't load the launchd agent: ${lastLine(load)}`)); return false; }
     console.log(c.green("  ✓ auto-update on") + c.gray(`  — checks every 6h via launchd (${p})`));
   } else if (process.platform === "linux") {
     const existing = capture("crontab", ["-l"]).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
-    existing.push(cronLine(args, ctx.root, log));
+    existing.push(cronLine(args, ctx.root, log, schedulerPath()));
     const set = await captureAsync("crontab", ["-"], { input: existing.join("\n") + "\n" });
     if (set.code !== 0) { console.log(c.red(`  ✗ couldn't write crontab: ${lastLine(set)}`)); return false; }
     console.log(c.green("  ✓ auto-update on") + c.gray("  — checks every 6h via cron"));
