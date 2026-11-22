@@ -32,8 +32,11 @@ export const LiftSessionOut = z.object({
   start: IsoDateTime.nullable(),
   end: IsoDateTime.nullable(),
   strain: z.number().nullable(),
-  /** details = scored (cardio-details: per-set HR, %1RM); history = unscored (exercise history); none = no sets found. */
-  src: z.enum(["details", "history", "none"]),
+  /**
+   * details = scored (cardio-details: per-set HR, %1RM); history = unscored, sets read from
+   * exercise history; unscored = sets not read (the sweep is opt-in); none = swept, no sets found.
+   */
+  src: z.enum(["details", "history", "unscored", "none"]),
   volume: z.number().nullable(),
   msk_pct: z.number().nullable(),
   /** Only when it differs from the response's unit. */

@@ -19,15 +19,19 @@ import {
 } from "../../projections/lift_sessions.js";
 import type { LiftCard } from "../../projections/lift_cards.js";
 import { walkHistory } from "../../lib/lift_history.js";
+import { readActivityAs } from "../../lib/activity_records.js";
 import { WhoopApiError } from "../../whoop/errors.js";
 import { get } from "../../whoop/bff.js";
 import { runPaced } from "../../lib/concurrency.js";
-import { todayIso } from "../../lib/dates.js";
+import { isoDay, todayIso } from "../../lib/dates.js";
 
 const TOOL = "whoop_lift_sessions";
 const MAX_SPAN_DAYS = 60;
 const DEFAULT_SPAN_DAYS = 14;
 const DAY_CHUNK = 3;
+// The unscored sweep (opt-in): WHOOP has no read for one workout's sets, only
+// per-exercise history, so it costs up to PR_PAGES requests plus one or more per
+// exercise the account has a PR tile for (live: 30–45 requests for 25 exercises).
 const PR_PAGES = 6; // exercises probed for unscored sessions: 10 per page
 const HISTORY_PAGES = 4; // 5 workouts per page
 const PACE = { concurrency: 3, jitterMaxMs: 120 };
@@ -92,7 +96,7 @@ async function historyIndex(client: WhoopClient, wanted: Set<string>, notBefore:
     const next = Number(get(raw, "next_exercise_offset"));
     offset = Number.isFinite(next) && next > offset ? next : offset + 10;
   }
-  if (more) warnings.push(`Unscored sessions matched against your ${exercises.size} most recent exercises only.`);
+  if (more) warnings.push(`Unscored sessions were matched against the first ${exercises.size} exercises of your PR list only; an exercise beyond them is missing.`);
 
   const index: CardIndex = new Map();
   await runPaced([...exercises].map(([exerciseId, name]) => () =>
@@ -105,6 +109,17 @@ async function historyIndex(client: WhoopClient, wanted: Set<string>, notBefore:
       }
     })), PACE);
   return index;
+}
+
+/**
+ * How far back the sweep pages each exercise's history: a day before the oldest
+ * wanted activity, not the whole requested range. `fallbackDay` when a start is unknown.
+ */
+function sweepFloor(activities: HomeActivity[], fallbackDay: string): string {
+  const starts = activities.map((a) => a.start);
+  if (starts.length === 0 || starts.some((s) => !s)) return `${fallbackDay}T00:00:00.000Z`;
+  const oldest = Math.min(...starts.map((s) => Date.parse(s!)));
+  return new Date(oldest - 86_400_000).toISOString();
 }
 
 /** True when any activity started within the last 2 h (its history may still be catching up). */
@@ -123,18 +138,19 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
   defineTool(server, {
     name: TOOL,
     description:
-      "Strength sessions, newest first (default last 14 days, max 60; 5 per call): any activity with Strength Trainer sets, any sport, scored or not. Each exercise: id, sets (\"3x5\"; timed in s), top [weight, reps], volume, best medal. include sets adds rows [weight, reps] (or [weight, reps, pct_1rm, avg_hr] when scored). src history = unscored (no HR/%1RM). Weights in `unit`. Names: whoop_lift_library search. activity_id reads one activity.",
+      "Strength sessions, newest first (default last 14 days, max 60; 3 per call): any activity with Strength Trainer sets, any sport. Each exercise: id, sets (\"3x5\"; timed in s), top [weight, reps], volume, best medal. include sets adds rows [weight, reps] (or [weight, reps, pct_1rm, avg_hr] when scored). An unscored session lists as src unscored with no exercises: include unscored, or activity_id, reads its sets from exercise history (slow: a request per exercise you have a PR in; no HR/%1RM). Weights in `unit`. Names: whoop_lift_library search.",
     input: {
       start_date: z.iso.date().optional().describe("Default end_date minus 13 days."),
       end_date: z.iso.date().optional().describe("Default today."),
       activity_id: z.string().optional().describe("Read one activity instead of a range."),
-      limit: z.number().int().min(1).max(20).default(5),
-      include: z.array(z.enum(["sets"])).optional().describe("sets = per-set rows."),
+      limit: z.number().int().min(1).max(20).default(3),
+      include: z.array(z.enum(["sets", "unscored"])).optional().describe("sets = per-set rows; unscored = read unscored sessions' sets."),
     },
     annotations: READ_ONLY,
   }, async ({ start_date, end_date, activity_id, limit, include }) => {
     const warnings: string[] = [];
     const withRows = include?.includes("sets") ?? false;
+    const sweep = include?.includes("unscored") ?? false;
     const today = todayIso();
 
     if (activity_id) {
@@ -146,12 +162,17 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
         if (!(e instanceof WhoopApiError && e.status === 400)) throw e;
         warnings.push("Activity details unavailable while pending; sets come from exercise history.");
       }
-      const activity = activityFromDetail(activity_id, detail, today);
+      let activity = activityFromDetail(activity_id, detail, today);
+      if (!activity.start) {
+        // The raw record answers in every state: its window bounds the history paging below.
+        const record = await readActivityAs(client, activity_id, "CARDIO").catch(() => null);
+        if (record?.start) activity = { ...activity, internal_name: activity.internal_name ?? record.type, start: record.start, end: record.end };
+      }
+      if (activity.start) activity.date = isoDay(new Date(activity.start));
       let session: Session | null;
       if (hasLiftData(detail)) session = buildSession(activity, detail, parseCardioDetails(detail), "details", withRows);
       else {
-        const notBefore = activity.start ?? `${addDays(today, -MAX_SPAN_DAYS)}T00:00:00.000Z`;
-        session = fromIndex(activity, detail, await historyIndex(client, new Set([activity_id]), notBefore, recent([activity]), warnings), withRows);
+        session = fromIndex(activity, detail, await historyIndex(client, new Set([activity_id]), sweepFloor([activity], addDays(today, -MAX_SPAN_DAYS)), recent([activity]), warnings), withRows);
       }
       if (!session) warnings.push("This activity has no Strength Trainer sets.");
       const hoisted = hoistUnit(session ? [session] : []);
@@ -193,13 +214,23 @@ export function registerLiftSessions(server: McpServer, client: WhoopClient): vo
     }
     if (detailFailures) warnings.push(`${detailFailures} activity detail read(s) failed.`);
 
-    if (candidates.size > 0) {
+    if (candidates.size > 0 && sweep) {
       const list = [...candidates.values()].map((c) => c.activity);
-      const index = await historyIndex(client, new Set(candidates.keys()), `${addDays(start, -1)}T00:00:00.000Z`, recent(list), warnings);
+      const index = await historyIndex(client, new Set(candidates.keys()), sweepFloor(list, addDays(start, -1)), recent(list), warnings);
       for (const { activity, detail } of candidates.values()) {
         const s = fromIndex(activity, detail, index, withRows);
         if (s) sessions.push(s);
       }
+    } else if (candidates.size > 0) {
+      // Default: no sweep. Strength Trainer workouts are listed without their sets;
+      // other unscored sports are left out (only the sweep can tell whether sets were attached).
+      let listed = 0;
+      for (const { activity, detail } of candidates.values()) {
+        if (activity.internal_name !== STRENGTH_TRAINER) continue;
+        sessions.push(buildSession(activity, detail, { exercises: [], volume: null, unit: null }, "unscored", withRows));
+        listed++;
+      }
+      if (listed) warnings.push(`${listed} unscored session(s) listed without exercises; include ["unscored"] (or activity_id) reads their sets from exercise history.`);
     }
 
     sessions.sort((a, b) => (b.start ?? "").localeCompare(a.start ?? ""));
