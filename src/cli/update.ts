@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 import {
   c, capture, captureAsync, spin, withSpinner, select, promptYesNo, ping, httpGet, commandExists,
 } from "./ui.js";
+import { pkgBin } from "./spawn.js";
 
 // What index.ts hands us so this module stays free of the command registry.
 export interface UpdateCtx {
@@ -45,16 +46,25 @@ const home = (): string => process.env.HOME ?? process.env.USERPROFILE ?? "~";
 const autoLogPath = (root: string): string => resolve(root, ".totem-autoupdate.log");
 
 // ── semver ────────────────────────────────────────────────────────────────
-// Compare two x.y.z strings (leading "v" ignored). -1 / 0 / 1.
+// Compare two x.y.z[-pre] strings (leading "v" ignored). -1 / 0 / 1. A
+// prerelease sorts below its release (1.6.0-rc.1 < 1.6.0).
 export function compareSemver(a: string, b: string): number {
-  const pa = a.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
-  const pb = b.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const [coreA = "", preA = ""] = a.replace(/^v/, "").split(/-(.*)/s);
+  const [coreB = "", preB = ""] = b.replace(/^v/, "").split(/-(.*)/s);
+  const pa = coreA.split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = coreB.split(".").map((n) => parseInt(n, 10) || 0);
   for (let i = 0; i < 3; i++) {
     const d = (pa[i] ?? 0) - (pb[i] ?? 0);
     if (d !== 0) return d < 0 ? -1 : 1;
   }
-  return 0;
+  if (preA === preB) return 0;
+  if (!preA) return 1;
+  if (!preB) return -1;
+  return Math.sign(preA.localeCompare(preB, "en", { numeric: true }));
 }
+
+// Only plain x.y.z releases are installable — never prereleases.
+export const isRelease = (v: string): boolean => /^\d+\.\d+\.\d+$/.test(v);
 export function isNewer(candidate: string, current: string): boolean {
   return compareSemver(candidate, current) > 0;
 }
@@ -126,7 +136,7 @@ async function fetchVersions(ctx: UpdateCtx): Promise<VersionInfo[]> {
     const out = capture("npm", ["view", ctx.pkgName, "versions", "--json"]).stdout.trim();
     try {
       const parsed = JSON.parse(out) as string[] | string;
-      versions = Array.isArray(parsed) ? parsed : [parsed];
+      versions = (Array.isArray(parsed) ? parsed : [parsed]).filter(isRelease);
     } catch { versions = []; }
   }
   versions = [...new Set(versions)].sort((a, b) => compareSemver(b, a));
@@ -145,9 +155,9 @@ async function staged(label: string, fn: () => Promise<{ code: number; stdout: s
   return false;
 }
 
-// Pull/install `target`, rebuild, and (if deployed) redeploy + health-check.
-// Returns 0 on success. `latest` is used only to decide latest-vs-pinned git path.
-async function applyVersion(ctx: UpdateCtx, target: VersionInfo, latest: VersionInfo): Promise<number> {
+// Check out/install `target`, rebuild, and (if deployed) redeploy + health-check.
+// Returns 0 on success.
+export async function applyVersion(ctx: UpdateCtx, target: VersionInfo): Promise<number> {
   console.log(c.bold(`\n  Updating to v${target.version}`) + c.gray("  ────────────────────────────"));
 
   if (ctx.isGit) {
@@ -160,18 +170,15 @@ async function applyVersion(ctx: UpdateCtx, target: VersionInfo, latest: Version
       return 1;
     }
     if (!(await staged("fetching releases from GitHub", () => captureAsync("git", ["fetch", "--tags", "--quiet", "origin"], { cwd: ctx.root })))) return 1;
-    if (target.version === latest.version) {
-      // Latest lives on main; make sure we're on the branch, then fast-forward.
-      const branch = capture("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: ctx.root }).stdout.trim();
-      if (branch !== "main" && !(await staged("switching to main", () => captureAsync("git", ["checkout", "main"], { cwd: ctx.root })))) return 1;
-      if (!(await staged("pulling latest code", () => captureAsync("git", ["pull", "--ff-only", "origin", "main"], { cwd: ctx.root })))) return 1;
-    } else {
-      // A pinned older/newer version is a tag → detached checkout.
-      if (!(await staged(`checking out ${target.tag}`, () => captureAsync("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root })))) return 1;
-    }
+    // Every version — latest included — is its release tag → detached checkout.
+    // Never `main`: that's unreleased code, and on a fork clone origin/main can
+    // even be older than the release we're claiming to install.
+    if (!(await staged(`checking out ${target.tag}`, () => captureAsync("git", ["checkout", "--quiet", target.tag], { cwd: ctx.root })))) return 1;
     if (!(await staged("installing dependencies", () => captureAsync("npm", ["install"], { cwd: ctx.root })))) return 1;
-    const tsc = resolve(ctx.root, "node_modules", ".bin", "tsc");
-    if (!(await staged("building", () => captureAsync(process.execPath, [tsc], { cwd: ctx.root })))) return 1;
+    const tsc = pkgBin(ctx.root, "typescript", "tsc");
+    if (!(await staged("building", async () => tsc
+      ? captureAsync(process.execPath, [tsc], { cwd: ctx.root })
+      : { code: 1, stdout: "", stderr: "typescript isn't installed in node_modules" }))) return 1;
   } else {
     if (!(await staged(`installing ${ctx.pkgName}@${target.version}`, () => captureAsync("npm", ["install", "-g", `${ctx.pkgName}@${target.version}`])))) return 1;
   }
@@ -287,7 +294,8 @@ ${args}
 // One cron line, tagged so we can find + remove exactly ours.
 export function cronLine(programArgs: string[], root: string, logPath: string): string {
   const cmd = programArgs.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(" ");
-  return `0 */6 * * * cd ${root} && ${cmd} >> ${logPath} 2>&1 # ${AUTO_LABEL}`;
+  const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`;
+  return `0 */6 * * * cd ${shq(root)} && ${cmd} >> ${shq(logPath)} 2>&1 # ${AUTO_LABEL}`;
 }
 
 export function isAutoOn(): boolean {
@@ -373,7 +381,7 @@ async function runInteractive(ctx: UpdateCtx): Promise<number> {
     if (!(await promptYesNo(`\n  You're already on v${ctx.version} (the latest). Re-apply anyway?`, false))) { console.log(c.gray("  Nothing to do.")); return 0; }
   }
 
-  const code = await applyVersion(ctx, target, latest);
+  const code = await applyVersion(ctx, target);
   if (code !== 0) return code;
 
   // After a successful apply, manage the auto-update toggle.
@@ -416,7 +424,7 @@ async function runAuto(ctx: UpdateCtx): Promise<number> {
   if (!latest) { console.log(`[totem auto-update ${stamp}] no version list (offline?) — skipping`); return 0; }
   if (!isNewer(latest.version, ctx.version)) { console.log(`[totem auto-update ${stamp}] up to date on v${ctx.version}`); return 0; }
   console.log(`[totem auto-update ${stamp}] new release v${latest.version} (was v${ctx.version}) — applying`);
-  const code = await applyVersion(ctx, latest, latest);
+  const code = await applyVersion(ctx, latest);
   console.log(`[totem auto-update ${stamp}] ${code === 0 ? `done → v${latest.version}` : `FAILED (exit ${code})`}`);
   return code;
 }

@@ -23,25 +23,43 @@ RUN npx tsc && npm prune --omit=dev
 FROM node:24-alpine AS runtime
 WORKDIR /app
 
-# Run as a non-root user. node:alpine ships with a `node` user (uid 1000).
-USER node
+# The WHOOP login lives in /data/tokens.json. WHOOP rotates the refresh token on
+# every refresh, so /data must be a volume (Fly [mounts], a Railway volume,
+# `docker run -v totem-data:/data`) or the login is lost on restart.
+#
+# Volumes mount owned by root, so the container starts as root, hands the token
+# directory to the unprivileged `node` user (uid 1000), and drops to it with
+# su-exec before the server starts. The server itself never runs as root.
+RUN apk add --no-cache su-exec \
+ && mkdir -p /data && chown node:node /data && chmod 700 /data \
+ && printf '%s\n' \
+    '#!/bin/sh' \
+    'set -e' \
+    'file="${TOTEM_TOKEN_FILE:-/data/tokens.json}"' \
+    'dir="$(dirname "$file")"' \
+    'if [ "$(id -u)" = "0" ]; then' \
+    '  mkdir -p "$dir"' \
+    '  for p in "$dir" "$file" "$file.lock"; do if [ -e "$p" ]; then chown node:node "$p" || true; fi; done' \
+    '  chmod 700 "$dir" 2>/dev/null || true' \
+    '  exec su-exec node "$@"' \
+    'fi' \
+    'exec "$@"' \
+    > /usr/local/bin/totem-entrypoint \
+ && chmod 755 /usr/local/bin/totem-entrypoint
 
 COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/package.json ./
 
-# These three env vars are required at runtime. Set them via your host's
-# secrets mechanism (`fly secrets set`, Railway env, docker run -e, etc.):
-#   WHOOP_EMAIL                   — your Whoop account email
-#   WHOOP_IOS_BEARER_TOKEN        — from `totem auth` on your Mac
-#   WHOOP_COGNITO_REFRESH_TOKEN   — from `totem auth` on your Mac
-#   MCP_AUTH_TOKEN                — random secret your MCP client will send
-#
-# (Or just run `totem cloud` — it builds, deploys, and sets all of this.)
+# Runtime settings. Set MCP_AUTH_TOKEN (and optionally AUTH_PASSWORD +
+# PUBLIC_URL) via your host's secrets (`fly secrets set`, Railway variables,
+# docker run -e …). No WHOOP tokens go in the environment: the server starts
+# without a login, and `totem auth` pushes one to POST /admin/tokens, which
+# writes the token file. (Or just run `totem cloud`: it does all of this.)
 #
 # This image forces HTTP transport.
 ENV MCP_TRANSPORT=http
-ENV WHOOP_TOKEN_STORE=memory
+ENV TOTEM_TOKEN_FILE=/data/tokens.json
 ENV NODE_ENV=production
 ENV PORT=3000
 
@@ -50,4 +68,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/health || exit 1
 
+ENTRYPOINT ["/usr/local/bin/totem-entrypoint"]
 CMD ["node", "dist/server.js"]

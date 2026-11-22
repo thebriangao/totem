@@ -21,3 +21,8 @@ WHOOP.md
 LICENSE
 Dockerfile
 .dockerignore
+# A WHOOP login must never be baked into an image (in case TOTEM_TOKEN_FILE
+# points inside the repo); deployments get theirs from `totem auth`.
+tokens.json*
+**/tokens.json*
+*.tmp

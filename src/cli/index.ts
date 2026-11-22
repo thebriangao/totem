@@ -7,8 +7,9 @@
 //   - Single-file CLI dispatcher.
 //   - `ROOT` is the package root, resolved from `import.meta.url` so the CLI
 //     always operates on its install dir regardless of cwd.
-//   - Commands that wrap dev tooling spawn the local node_modules/.bin binaries
-//     (tsx, vitest, tsc) so a `npm link`-ed install picks up the right versions.
+//   - Commands that wrap dev tooling run the local tsx/vitest/tsc JS entries
+//     with node (not the .bin shims, which break on Windows) so a `npm link`-ed
+//     install picks up the right versions.
 //   - Commands that wrap Fly assume `fly` is on the system PATH.
 //   - Banner uses 24-bit truecolor ANSI escapes (RGB); honors NO_COLOR and
 //     skips colors if stdout is not a TTY.
@@ -21,6 +22,11 @@ import { request as httpsRequest } from "node:https";
 import { runCloudSetup, runLocalSetup } from "./setup.js";
 import { runUpdate } from "./update.js";
 import { runScript } from "./ui.js";
+import { runAuth } from "./auth.js";
+import { readLocalStatus } from "./auth_flow.js";
+import { resolveTokenFilePath } from "../whoop/token_store.js";
+import { readEnvFile } from "../lib/env_file.js";
+import { spawnArgs, pkgBin, claudeDesktopConfigPath } from "./spawn.js";
 
 // ── locate package root ──────────────────────────────────────────────────
 // This file lives at one of:
@@ -149,26 +155,26 @@ const commands: Record<string, Cmd> = {
   build: {
     group: "Local",
     desc: "Compile TypeScript to dist/",
-    run: async () => run(npmBin("tsc"), []),
+    run: async () => run(process.execPath, [npmBin("typescript", "tsc")]),
   },
   test: {
     group: "Local",
     desc: "Run the test suite (vitest)",
     usage: "totem test [test-filter]",
-    run: async (args) => run(npmBin("vitest"), ["run", ...args]),
+    run: async (args) => run(process.execPath, [npmBin("vitest"), "run", ...args]),
   },
   typecheck: {
     group: "Local",
     desc: "Run `tsc --noEmit`",
-    run: async () => run(npmBin("tsc"), ["--noEmit"]),
+    run: async () => run(process.execPath, [npmBin("typescript", "tsc"), "--noEmit"]),
   },
 
   // ── Setup ────────────────────────────────────────────────────────────
   auth: {
     group: "Setup",
-    desc: "Log into Whoop + save tokens. Auto-detects first-time vs re-auth and local vs deployed — pushes new tokens to your deployment (Fly/Railway/Cloud Run/custom) when there is one. Run it for setup or when the ~30-day token expires",
-    usage: "totem auth [--app <fly-app>]",
-    run: async (args) => runScript(ROOT, "scripts/cognito_bootstrap", args),
+    desc: "Log into WHOOP in a browser. Saves the login on this machine, or pushes it to your deployment when there is one (the server keeps it fresh from then on). `--status` shows where the login lives",
+    usage: "totem auth [--paste] [--local] [--url <server>] [--status]",
+    run: async (args) => runAuth(ROOT, args),
   },
 
   // ── Deployed ─────────────────────────────────────────────────────────
@@ -180,8 +186,15 @@ const commands: Record<string, Cmd> = {
       const d = detectDeploy();
       if (!d) { console.error(c.red("No deployment found. Run `totem cloud` to set one up.")); return 1; }
       switch (d.platform) {
-        case "fly":
+        case "fly": {
+          const toml = resolve(ROOT, "fly.toml");
+          if (existsSync(toml) && !/^\[mounts\]/m.test(readFileSync(toml, "utf8"))) {
+            console.log(c.gray("fly.toml has no [mounts]: the server keeps its WHOOP login on the machine's disk and loses it on restart."));
+            console.log(c.gray(`To keep it: fly volumes create totem_data --app ${d.app ?? "<app>"} --size 1, then add to fly.toml:`));
+            console.log(c.gray(`  [mounts]\n    source = "totem_data"\n    destination = "/data"`));
+          }
           return run("fly", ["deploy", ...(d.app ? ["-a", d.app] : []), ...args]);
+        }
         case "railway":
           if (d.app) await run("railway", ["link", "--project", d.app]);
           return run("railway", ["up", ...args]);
@@ -295,7 +308,11 @@ const commands: Record<string, Cmd> = {
       row("install root", ROOT);
       row("node", process.version);
       row("built (dist/)", built ? c.green("yes") : c.red("no — run `totem build`"));
-      row(".env", envExists ? c.green("present") : c.red("missing"));
+      row(".env", envExists ? c.green("present") : c.gray("none"));
+      const login = readLocalStatus(resolveTokenFilePath({ ...readEnvFile(resolve(ROOT, ".env")), ...process.env }));
+      row("whoop login", login.state === "tokens" ? c.green(`saved (${login.source})`) + c.gray(` · ${login.tokenFile}`)
+        : login.state === "handed-off" ? c.gray(`handed to ${login.handedOffTo}`)
+        : c.red(`${login.state === "none" ? "none" : "unreadable"} — run \`totem auth\``));
       if (d) {
         row("deployment", c.green(d.platform) + (d.app ? c.gray(` · ${d.app}`) : ""));
         if (d.region) row("region", d.region);
@@ -359,8 +376,7 @@ const commands: Record<string, Cmd> = {
         console.log("  " + c.brand("totem config http") + c.gray("    # remote deployment (uses mcp-remote bridge)"));
         return 1;
       }
-      const home = process.env.HOME ?? "~";
-      const cfgPath = resolve(home, "Library/Application Support/Claude/claude_desktop_config.json");
+      const cfgPath = claudeDesktopConfigPath();
       console.log(c.gray(`Edit:  ${cfgPath}`));
       console.log("");
       if (mode === "stdio") {
@@ -426,11 +442,11 @@ const aliases: Record<string, string> = {
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────
-function npmBin(name: string): string {
-  const path = resolve(ROOT, "node_modules", ".bin", name);
-  if (!existsSync(path)) {
-    console.error(c.red(`Missing dev dependency: ${name}`));
-    console.error(c.gray(`Expected at: ${path}`));
+function npmBin(pkg: string, bin: string = pkg): string {
+  const path = pkgBin(ROOT, pkg, bin);
+  if (!path) {
+    console.error(c.red(`Missing dev dependency: ${pkg}`));
+    console.error(c.gray(`Expected under: ${resolve(ROOT, "node_modules", pkg)}`));
     console.error(c.gray(`Run `) + c.bold(`cd ${ROOT} && npm install`) + c.gray(` first.`));
     process.exit(1);
   }
@@ -467,7 +483,7 @@ const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
 
 function run(cmd: string, args: string[], opts: SpawnOptions = {}): Promise<number> {
   return new Promise((res) => {
-    const child = spawn(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts });
+    const child = spawn(...spawnArgs(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts }));
     child.on("exit", (code, signal) => {
       if (signal) {
         console.error(c.red(`\nKilled by signal ${signal}`));

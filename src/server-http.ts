@@ -27,12 +27,19 @@ import { registerTools } from "./tools/register.js";
 import { WhoopOAuthProvider, renderConsentForm, setConsentSecurityHeaders } from "./whoop/oauth_provider.js";
 import { BUILD_ID } from "./build_info.js";
 import { isObject } from "./lib/walk.js";
+import { mountAdminTokens, type AdminTokensOptions } from "./server-admin.js";
 
 export interface HttpServerOptions {
   /** Bearer token clients must present + JWT signing secret. Required, ≥16 chars. */
   authToken: string;
   port?: number;
   host?: string;
+  /**
+   * The token manager. When given, POST/GET /admin/tokens (gated by the static
+   * MCP_AUTH_TOKEN) let `totem auth` push a new WHOOP login. See server-admin.ts.
+   */
+  tokens?: AdminTokensOptions["tokens"];
+  installationId?: () => string | undefined;
 }
 
 // Workaround for @modelcontextprotocol/sdk 1.30.0: JSON responses leave a
@@ -158,6 +165,11 @@ export async function startHttpServer(client: WhoopClient, opts: HttpServerOptio
     res.setHeader("x-totem-build", BUILD_ID);
     res.json({ status: "ok", build: BUILD_ID });
   });
+
+  // Login push from `totem auth` (static bearer only; see server-admin.ts).
+  if (opts.tokens) {
+    mountAdminTokens(app, { authToken: opts.authToken, tokens: opts.tokens, installationId: opts.installationId });
+  }
 
   // OAuth 2.1 authorization-server endpoints: /.well-known/oauth-authorization-server,
   // /.well-known/oauth-protected-resource/mcp, /authorize, /token, /register, /revoke.
