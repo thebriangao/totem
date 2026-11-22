@@ -147,6 +147,43 @@ describe("WhoopOAuthProvider — authorization code flow + PKCE", () => {
     })).toBeNull();
   });
 
+  it("a resource that isn't a URL doesn't mint a token that fails verification", async () => {
+    const p = provider();
+    const client = await registerClient(p, "https://claude.ai/cb");
+    const tokensFor = async (resource: string) => {
+      const code = new URL(p.consent({
+        clientId: client.client_id, redirectUri: "https://claude.ai/cb", codeChallenge: "x",
+        state: "", scopes: "", resource, password: PASSWORD,
+      })!).searchParams.get("code")!;
+      return p.exchangeAuthorizationCode(client, code);
+    };
+    // Used to throw TypeError: Invalid URL on every request → 500 from the bearer middleware.
+    const info = await p.verifyAccessToken((await tokensFor("not a url")).access_token);
+    expect(info.resource).toBeUndefined();
+    const withResource = await p.verifyAccessToken((await tokensFor("https://totem.example/mcp")).access_token);
+    expect(withResource.resource?.href).toBe("https://totem.example/mcp");
+  });
+
+  it("forgets authorization codes that were never redeemed", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const p = provider();
+      const client = await registerClient(p, "https://claude.ai/cb");
+      const approve = () => p.consent({
+        clientId: client.client_id, redirectUri: "https://claude.ai/cb", codeChallenge: "x",
+        state: "", scopes: "", resource: "", password: PASSWORD,
+      });
+      const held = (p as unknown as { codes: Map<string, unknown> }).codes;
+      for (let i = 0; i < 5; i++) approve();
+      expect(held.size).toBe(5);
+      vi.setSystemTime(Date.now() + 61_000);
+      approve();
+      expect(held.size).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("an authorization code is single-use", async () => {
     const p = provider();
     const redirect = "https://claude.ai/cb";

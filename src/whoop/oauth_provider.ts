@@ -200,14 +200,20 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       return null;
     }
 
+    // Codes are otherwise only removed when redeemed; drop the ones nobody came back for.
+    const now = Date.now();
+    for (const [stale, entry] of this.codes) if (entry.expiresAt < now) this.codes.delete(stale);
+
     const code = b64url(randomBytes(32));
     this.codes.set(code, {
       challenge: input.codeChallenge,
       redirectUri: input.redirectUri,
       clientId: input.clientId,
       scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : [],
-      resource: input.resource || undefined,
-      expiresAt: Date.now() + CODE_TTL_MS,
+      // The form posts this field back unchecked. A value that isn't a URL
+      // would be signed into the tokens and then throw in verifyAccessToken.
+      resource: URL.canParse(input.resource) ? input.resource : undefined,
+      expiresAt: now + CODE_TTL_MS,
     });
 
     const url = new URL(input.redirectUri);
@@ -319,7 +325,9 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
         scopes: (payload.scopes as string[]) ?? [],
         expiresAt: payload.exp as number,
       };
-      if (typeof payload.resource === "string") info.resource = new URL(payload.resource);
+      // canParse: a token must never fail verification with a TypeError (the
+      // bearer middleware answers anything but InvalidTokenError with a 500).
+      if (typeof payload.resource === "string" && URL.canParse(payload.resource)) info.resource = new URL(payload.resource);
       return info;
     }
     // Throw the SDK's typed error so the bearer middleware returns 401 (a
