@@ -190,6 +190,7 @@ export class FileTokenStore implements TokenStore {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw error;
     }
+    this.tighten();
     try {
       return parseTokenFile(text);
     } catch (error) {
@@ -200,6 +201,18 @@ export class FileTokenStore implements TokenStore {
   save(content: TokenFileContent): void {
     writeFileAtomic(this.path, serializeTokenFile(content));
     sweepStaleTemps(dirname(this.path));
+  }
+
+  /**
+   * A token file must be private. One that isn't (restored from a backup,
+   * copied by hand) is tightened to 0600 when it is read, not only when the
+   * next refresh replaces it.
+   */
+  private tighten(): void {
+    if (process.platform === "win32") return;
+    try {
+      if (statSync(this.path).mode & 0o077) chmodSync(this.path, 0o600);
+    } catch { /* not ours to change; the next save replaces it with a 0600 file */ }
   }
 
   version(): string | null {

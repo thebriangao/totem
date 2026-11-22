@@ -101,6 +101,14 @@ describe("FileTokenStore", () => {
     expect(readdirSync(dir).sort()).toEqual([".ba9876543210.4343.tmp", "notes.tmp", "tokens.json"]);
   });
 
+  posixOnly("tightens a token file that was left readable by others, as soon as it is read", () => {
+    const path = join(dir, "tokens.json");
+    writeFileSync(path, serializeTokenFile(record()), { mode: 0o644 }); // restored from a backup, copied by hand
+    chmodSync(path, 0o644);
+    expect(new FileTokenStore(path).load()).toEqual(record());
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+  });
+
   unixNonRoot("assertWritable fails fast on a read-only directory", () => {
     mkdirSync(join(dir, "ro"));
     chmodSync(join(dir, "ro"), 0o500);
