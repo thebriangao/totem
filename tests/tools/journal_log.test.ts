@@ -162,6 +162,15 @@ describe("whoop_journal_log: partial (default)", () => {
     expect(miss).not.toHaveProperty("actual");
   });
 
+  it("reports verified:false when a cleared magnitude or time is still stored", async () => {
+    const stored = { answered_yes: true, magnitude_input_value: 3, magnitude_input_label: "3", time_input_value: 1795237200 };
+    const whoop = whoopFor({ [D]: [draft({ 2: stored }), draft({ 2: stored })] });
+    const { out } = await call(whoop, { date: D, behaviors: [{ id: 2, magnitude: null, time: null }] });
+    expect(whoop.put.mock.calls[0]![1]).toEqual({ tracker_inputs: { [D]: { tracker_input_eggs: [{ behavior_tracker_id: 2, answered_yes: true }] } } });
+    expect(out.verified).toBe(false);
+    expect(out.mismatches.map((m: { field: string }) => m.field).sort()).toEqual(["magnitude", "time"]);
+  });
+
   it("reports a partial write when the second request fails", async () => {
     const whoop = whoopFor({ [D]: [draft({})] });
     whoop.put.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new WhoopApiError(400, PARTIAL, "x", "nope"));

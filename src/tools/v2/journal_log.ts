@@ -297,8 +297,10 @@ export function registerJournalLog(server: McpServer, client: WhoopClient): void
           if (!same) mismatches.push({ date: d, id: p.spec.id, field, expected, actual });
         };
         check("answered_yes", p.row.answered_yes ?? null, got?.answered_yes ?? null);
-        if (p.row.magnitude_input_value !== undefined) check("magnitude", p.row.magnitude_input_value, got?.magnitude_input_value ?? null);
-        if (p.row.time_input_value !== undefined) check("time", p.row.time_input_value, got?.time_input_value ?? null);
+        // WHOOP replaces a row whole, so a field that wasn't sent (cleared with
+        // null, or dropped by answered_yes:false) must read back empty too.
+        check("magnitude", p.row.magnitude_input_value ?? null, got?.magnitude_input_value ?? null);
+        check("time", p.row.time_input_value ?? null, got?.time_input_value ?? null);
       }
       if (full) {
         const expectNotes = notesPlan!.send === "" ? null : notesPlan!.send;
