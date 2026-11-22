@@ -180,7 +180,7 @@ Each person needs their own server and their own WHOOP login. A login can't be s
 Yes. The API depends on your account, not your strap.
 
 **Where does my data go?**
-From WHOOP to your server to the app you asked. totem keeps no copy beyond a few minutes of in-memory cache.
+From WHOOP to your server to the app you asked. totem keeps no copy, only a short in-memory cache of recent reads.
 
 ## Development
 
