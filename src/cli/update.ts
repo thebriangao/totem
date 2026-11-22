@@ -356,6 +356,22 @@ export function schedulerPath(
   return [...new Set(dirs)].join(delimiter);
 }
 
+/**
+ * The person's crontab without totem's line, or why it couldn't be read.
+ *
+ * `crontab -l` exits non-zero both when there is no crontab yet (start from an
+ * empty one) and when the crontab couldn't be read. Its output is empty either
+ * way, and writing back "everything but totem's line" after the second erased
+ * every job the person had.
+ */
+async function otherCronJobs(io: Io): Promise<{ ok: true; lines: string[]; hadTotem: boolean } | { ok: false; why: string }> {
+  const r = await io.sys.exec("crontab", ["-l"]);
+  // "no crontab for <user>" (cron, cronie); "can't open '<user>': No such file or directory" (BusyBox).
+  if (r.code !== 0 && !/no crontab|no such file/i.test(`${r.stderr}\n${r.stdout}`)) return { ok: false, why: lastLine(r) };
+  const all = r.code === 0 ? r.stdout.split("\n") : [];
+  return { ok: true, lines: all.filter((l) => l && !l.includes(AUTO_LABEL)), hadTotem: all.some((l) => l.includes(AUTO_LABEL)) };
+}
+
 export async function isAutoOn(io: Io): Promise<boolean> {
   const { sys } = io;
   if (sys.platform === "darwin") return existsSync(plistPath(sys.home));
@@ -384,8 +400,12 @@ async function enableAuto(ctx: UpdateCtx, io: Io): Promise<boolean> {
     }
     via = "launchd";
   } else if (sys.platform === "linux") {
-    const existing = (await sys.exec("crontab", ["-l"])).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
-    existing.push(cronLine(args, ctx.root, log, path));
+    const others = await otherCronJobs(io);
+    if (!others.ok) {
+      ui.problem("Couldn't read your crontab, so totem left it as it is.", { detail: others.why, fix: [["Try again", "totem update --auto on"]] });
+      return false;
+    }
+    const existing = [...others.lines, cronLine(args, ctx.root, log, path)];
     const set = await sys.exec("crontab", ["-"], { input: existing.join("\n") + "\n" });
     if (set.code !== 0) {
       ui.problem("cron wouldn't take the auto-update job.", { detail: lastLine(set), fix: [["Try again", "totem update --auto on"]] });
@@ -409,8 +429,13 @@ async function disableAuto(io: Io): Promise<boolean> {
     const p = plistPath(sys.home);
     if (existsSync(p)) { await sys.exec("launchctl", ["unload", p]); rmSync(p, { force: true }); }
   } else if (sys.platform === "linux") {
-    const kept = (await sys.exec("crontab", ["-l"])).stdout.split("\n").filter((l) => l && !l.includes(AUTO_LABEL));
-    await sys.exec("crontab", ["-"], { input: kept.length ? kept.join("\n") + "\n" : "\n" });
+    const others = await otherCronJobs(io);
+    if (!others.ok) {
+      ui.problem("Couldn't read your crontab, so totem left it as it is.", { detail: others.why, fix: [["Try again", "totem update --auto off"]] });
+      return false;
+    }
+    // Only a crontab with totem's line in it needs rewriting.
+    if (others.hadTotem) await sys.exec("crontab", ["-"], { input: others.lines.length ? others.lines.join("\n") + "\n" : "\n" });
   } else {
     ui.warn("totem schedules nothing on this system. If you scheduled it yourself, remove that.");
     return true;
