@@ -61,7 +61,7 @@ export function registerCycleLog(server: McpServer, client: WhoopClient): void {
     name: "whoop_cycle_log",
     description:
       "WRITE: log or undo a date's period (flow 0 light, 1 medium, 2 heavy) or ovulation, and/or flow (menstruation), cervical mucus and symptoms. yes:false undoes. Not both period and ovulation on one date; no future dates. " +
-      "Current flow and mucus are re-sent so symptom edits don't clear them; null clears one. Any flow except none also logs a period day, and a period on a fresh date creates a cycle that undo won't remove. Also writes journal rows. Preview unless confirm:true.",
+      "Current flow and mucus are re-sent so symptom edits don't clear them; null clears one. Any flow except none also logs a period day (to remove a period fully, also pass menstruation:null), and a period on a fresh date creates a cycle that undo won't remove. Also writes journal rows. Preview unless confirm:true.",
     input: {
       date: z.iso.date(),
       period: z.object({ yes: z.boolean(), flow: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional() }).optional(),
