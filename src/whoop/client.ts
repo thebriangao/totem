@@ -249,6 +249,14 @@ function cachePolicy(
     path.startsWith("/followers-service/") ||
     path.startsWith("/coaching-service/v1/health/bff/monitor")
   ) return null;
+  // Heart rate: a window that ended over a day ago is settled; anything newer can
+  // still gain readings when the strap syncs, so it is always read fresh.
+  if (path.startsWith("/metrics-service/")) {
+    const end = typeof query.end === "string" ? Date.parse(query.end) : NaN;
+    return Number.isFinite(end) && end < now() - 24 * 60 * 60_000 ? { ttlMs: 15 * 60_000, tags: ["daily"] } : null;
+  }
+  // Bulk cycle history spans many days, so it is short-lived and dropped by any activity, sleep or journal write.
+  if (path === "/core-details-bff/v0/cycles/details") return { ttlMs: 5 * 60_000, tags: ["daily", "activity", "sleep", "recovery"] };
   // Static catalogs change with app releases, not with user actions.
   if (
     path === "/activities-service/v1/sports" ||

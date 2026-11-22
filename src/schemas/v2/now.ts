@@ -10,6 +10,8 @@ export const NowV2Out = z.object({
   duration_min: z.number().int().nullable(),
   tracked_sleep: z.boolean(),
   latest_metrics_at: InstantOrNull,
+  /** The newest heart-rate reading WHOOP holds (as fresh as the strap's last sync). */
+  hr: z.object({ bpm: z.number().int(), at: IsoDateTime }).nullable(),
   stress: z.object({ level: NumOrNull, label: StrOrNull, state: StrOrNull }).nullable(),
   scores: z.object({
     recovery_pct: NumOrNull,

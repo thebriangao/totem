@@ -1,4 +1,5 @@
-// AUTO-GENERATED from whoop-testing/probes/2026-11-21/endpoints.json (live probe run, 2026-11-21).
+// AUTO-GENERATED from whoop-testing/probes/2026-11-21/endpoints.json (live probe run, 2026-11-21, plus the
+// heart-rate and bulk-history endpoints checked live the same day).
 // Do not edit by hand. Paths are templated; no real identifiers. Verdicts:
 //   verified = worked live and was read back; not-found / server-error-500 / service-only-401 = do not use.
 export interface EndpointEntry {
@@ -2259,5 +2260,34 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
       "whoop_cycle_log"
     ],
     "notes": "current day selections + live enums (menstruation, cervical_mucus, symptom ids)"
+  },
+  {
+    "method": "GET",
+    "path": "/metrics-service/v1/metrics/user/{user_id}",
+    "domain": "health",
+    "verdict": "verified",
+    "tools": [
+      "whoop_day",
+      "whoop_now"
+    ],
+    "notes": "continuous heart rate {values:[{time ms, data bpm}]}, sparse (holes, no padding); step must be 6, 60 or 600 (else 400); any window; another user's id → 403"
+  },
+  {
+    "method": "GET",
+    "path": "/core-details-bff/v0/cycles/details",
+    "domain": "activities",
+    "verdict": "verified",
+    "tools": [
+      "whoop_day"
+    ],
+    "notes": "bulk history {records:[{cycle, recovery, sleeps[], workouts[], v2_activities[]}]}, newest first, every cycle overlapping the window; window ≤200 days (else 400); recovery and sleeps not seen live (account never slept): hrv_rmssd is seconds, sleep durations ms"
+  },
+  {
+    "method": "GET",
+    "path": "/sleep-service/v1/sleep-events",
+    "domain": "sleep",
+    "verdict": "not-exercised",
+    "tools": [],
+    "notes": "hypnogram {during, type LIGHT/REM/SWS/DISTURBANCES} per other open-source clients; not called live (no sleep on the test account); whoop_sleep reads stages from sleep-details instead"
   }
 ];

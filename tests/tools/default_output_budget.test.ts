@@ -70,7 +70,14 @@ const CASES: Record<string, { args?: Record<string, unknown>; routes: Record<str
   whoop_sleep: { routes: DAY },
   whoop_strain: { routes: DAY },
   whoop_stress: { routes: DAY },
-  whoop_now: { routes: DAY },
+  // With the latest heart rate, so the measured default is the full one.
+  whoop_now: {
+    routes: {
+      ...DAY,
+      "/users-service/v2/bootstrap": { user: { id: 10000001 } },
+      "/metrics-service/v1/metrics/user/10000001": core("hr_60s"),
+    },
+  },
   whoop_trend: { args: { metrics: ["HRV"] }, routes: { "/progression-service/v3/trends/HRV": fx("trend_hrv.json") } },
   whoop_calendar: { routes: { "/home-service/v1/calendar/recovery": core("cal_recovery") } },
   whoop_workouts: {

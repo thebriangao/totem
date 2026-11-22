@@ -1,6 +1,6 @@
 // whoop_now: GET /activities-service/v1/user-state, today's stress-bff gauge, and
-// GET /home-service/v1/widget/overview (the cheapest score read). There is no
-// REST source for live heart rate (it is Bluetooth), so whoop_live_hr is gone.
+// GET /home-service/v1/widget/overview (the cheapest score read). The tool adds
+// the newest heart-rate reading from metrics-service (true live BPM is Bluetooth).
 import { displayNumber, get, isNode, isoInstant, str } from "./core_common.js";
 
 const KNOWN_STATES = ["workout", "sleep", "idle", "recovery"] as const;

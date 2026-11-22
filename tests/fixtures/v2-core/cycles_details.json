@@ -1,0 +1,199 @@
+{
+ "records": [
+  {
+   "cycle": {
+    "id": 1974212897,
+    "created_at": "2026-11-22T02:01:51.590+0000",
+    "updated_at": "2026-11-22T02:40:48.501+0000",
+    "scaled_strain": 2.924765546316831,
+    "during": "['2026-11-22T01:36:00.000Z','2026-11-23T01:36:00.000Z')",
+    "user_id": 10000001,
+    "sleep_need": null,
+    "predicted_end": "2026-11-23T01:36:00.000+0000",
+    "timezone_offset": "-0800",
+    "days": "['2026-11-22','2026-11-23')",
+    "intensity_score": null,
+    "data_state": "pending",
+    "day_strain": 2.02843787518394e-05,
+    "day_kilojoules": 396.1296709124983,
+    "day_avg_heart_rate": 86,
+    "day_max_heart_rate": 123,
+    "id_v2": 1974212897
+   },
+   "sleeps": [],
+   "recovery": null,
+   "workouts": [],
+   "v2_activities": []
+  },
+  {
+   "cycle": {
+    "id": 1974268448,
+    "created_at": "2026-11-22T02:39:09.240+0000",
+    "updated_at": "2026-11-22T06:34:18.443+0000",
+    "scaled_strain": 20.94764172449337,
+    "during": "['2026-11-21T11:30:00.000Z','2026-11-22T01:36:00.000Z')",
+    "user_id": 10000001,
+    "sleep_need": null,
+    "predicted_end": "2026-11-22T01:36:00.000+0000",
+    "timezone_offset": "-0800",
+    "days": "['2026-11-21','2026-11-22')",
+    "intensity_score": null,
+    "data_state": "complete",
+    "day_strain": 0.7009282996691325,
+    "day_kilojoules": 990.5640258789062,
+    "day_avg_heart_rate": 89,
+    "day_max_heart_rate": 170,
+    "id_v2": 1974268448
+   },
+   "sleeps": [],
+   "recovery": null,
+   "workouts": [
+    {
+     "during": "['2026-11-22T00:18:00.000Z','2026-11-22T00:20:00.000Z')",
+     "timezone_offset": "-08:00",
+     "survey_response_id": null,
+     "source": "user",
+     "cumulative_workout_intensity": 20.94764172449337,
+     "sport_id": 89,
+     "activity_id": "f3680536-d7c6-4bb8-ad73-73c714a38717",
+     "activity_version": 0,
+     "raw_intensity_score": 1.730396625987396e-08,
+     "percent_recorded": 1.0,
+     "kilojoules": 11.627906799316406,
+     "max_heart_rate": 94,
+     "average_heart_rate": 82,
+     "gps_data": null,
+     "msk_score": null,
+     "total_steps": null,
+     "score": 0.001022996031679213,
+     "zone_durations_v2": {
+      "zone90_to100_duration": 0.0,
+      "zone80_to90_duration": 0.0,
+      "zone70_to80_duration": 0.0,
+      "zone60_to70_duration": 0.0,
+      "zone50_to60_duration": 0.0,
+      "zone0_to50_duration": 120.0
+     },
+     "zone_durations": [
+      120.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "intensity_score": 0.001022996031679213
+    },
+    {
+     "during": "['2026-11-22T01:07:41.406Z','2026-11-22T01:08:41.406Z')",
+     "timezone_offset": "-08:00",
+     "survey_response_id": null,
+     "source": "user",
+     "cumulative_workout_intensity": 20.94764172449337,
+     "sport_id": 123,
+     "activity_id": "e6220ee1-f0fa-4139-b3e0-98adcb1bd636",
+     "activity_version": 1,
+     "raw_intensity_score": 0.6914297278364516,
+     "percent_recorded": 1.0,
+     "kilojoules": 11.309795379638672,
+     "max_heart_rate": 125,
+     "average_heart_rate": 102,
+     "gps_data": null,
+     "msk_score": {
+      "raw_cardio_intensity_score": 2.4116105123539455e-05,
+      "scaled_cardio_intensity_score": 3.2601430416107178,
+      "raw_msk_intensity_score": 0.9990000128746033,
+      "scaled_msk_intensity_score": 20.99463653564453,
+      "cardio_strain_contribution_percent": 3.490620346e-05
+     },
+     "total_steps": null,
+     "score": 20.94764172449337,
+     "zone_durations_v2": {
+      "zone90_to100_duration": 0.0,
+      "zone80_to90_duration": 0.0,
+      "zone70_to80_duration": 0.0,
+      "zone60_to70_duration": 0.0,
+      "zone50_to60_duration": 41.0,
+      "zone0_to50_duration": 19.0
+     },
+     "zone_durations": [
+      19.0,
+      41.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "intensity_score": 20.94764172449337
+    }
+   ],
+   "v2_activities": [
+    {
+     "id": "e6220ee1-f0fa-4139-b3e0-98adcb1bd636",
+     "cycle_id": 1974268448,
+     "user_id": 10000001,
+     "created_at": "2026-11-22T01:07:50.369+0000",
+     "updated_at": "2026-11-22T02:39:09.240+0000",
+     "version": 1,
+     "during": "['2026-11-22T01:07:41.406Z','2026-11-22T01:08:41.406Z')",
+     "timezone": "America/Los_Angeles",
+     "timezone_offset": null,
+     "source": "user",
+     "score_state": "complete",
+     "score_type": "CARDIO",
+     "type": "weightlifting_msk",
+     "translated_type": "Strength Trainer",
+     "source_id": null,
+     "activity_v1_id": null,
+     "cycle_id_v2": 1974268448,
+     "timezone_offset_from_model": "-08:00"
+    },
+    {
+     "id": "f3680536-d7c6-4bb8-ad73-73c714a38717",
+     "cycle_id": 1974268448,
+     "user_id": 10000001,
+     "created_at": "2026-11-22T01:18:42.156+0000",
+     "updated_at": "2026-11-22T02:39:09.240+0000",
+     "version": 0,
+     "during": "['2026-11-22T00:18:00.000Z','2026-11-22T00:20:00.000Z')",
+     "timezone": "America/Los_Angeles",
+     "timezone_offset": null,
+     "source": "user",
+     "score_state": "complete",
+     "score_type": "CARDIO",
+     "type": "commuting",
+     "translated_type": "Commuting",
+     "source_id": null,
+     "activity_v1_id": null,
+     "cycle_id_v2": 1974268448,
+     "timezone_offset_from_model": "-08:00"
+    }
+   ]
+  },
+  {
+   "cycle": {
+    "id": 1974266347,
+    "created_at": "2026-11-22T02:37:49.725+0000",
+    "updated_at": "2026-11-22T02:48:05.022+0000",
+    "scaled_strain": 0.0,
+    "during": "['2026-11-20T22:15:00.000Z','2026-11-21T11:30:00.000Z')",
+    "user_id": 10000001,
+    "sleep_need": null,
+    "predicted_end": "2026-11-21T11:30:00.000+0000",
+    "timezone_offset": "-0800",
+    "days": "['2026-11-20','2026-11-21')",
+    "intensity_score": null,
+    "data_state": "complete",
+    "day_strain": 0.0,
+    "day_kilojoules": 0.0,
+    "day_avg_heart_rate": 0,
+    "day_max_heart_rate": 0,
+    "id_v2": 1974266347
+   },
+   "sleeps": [],
+   "recovery": null,
+   "workouts": [],
+   "v2_activities": []
+  }
+ ]
+}

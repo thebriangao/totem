@@ -28,7 +28,7 @@ describe("whoop_now tool", () => {
   afterAll(unpinToday);
   afterEach(closeAll);
 
-  it("reads user-state, today's stress and the medium widget; has no BPM field", async () => {
+  it("reads user-state, today's stress and the medium widget, and answers without a heart rate when none can be read", async () => {
     const get = routedGet({
       // The strap last synced two hours before the pinned "now" (2026-11-21T20:00Z).
       "/activities-service/v1/user-state": { ...(fx("userstate") as object), latestMetricsProcessed: Date.parse("2026-11-21T18:00:00.000Z") },
@@ -38,7 +38,8 @@ describe("whoop_now tool", () => {
     const out = await call(await connect(registerNow, get), "whoop_now");
     expect(queryFor(get, "/home-service/v1/widget/overview")).toEqual({ widgetSize: "MEDIUM" });
     expect(paths(get)).not.toContain("/health-tab-bff/v1/health-tab");
-    expect(Object.keys(out)).not.toContain("current_bpm");
+    // No bootstrap or metrics route here: the optional heart-rate read fails and the snapshot is unaffected.
+    expect(out.hr).toBeUndefined();
     // Staleness is two flat fields, not a block that repeats latest_metrics_at and a constant.
     expect(out).toMatchObject({ latest_metrics_at: "2026-11-21T10:00:00-08:00", fetched_at: "2026-11-21T12:00:00-08:00", metrics_age_min: 120 });
     expect(out.freshness).toBeUndefined();

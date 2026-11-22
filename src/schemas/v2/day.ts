@@ -1,8 +1,34 @@
 import { z } from "zod";
+import { IsoDateTime } from "../primitives.js";
+import { HISTORY_COLUMNS } from "../../projections/v2/history.js";
 import {
   ActivityRowOut, CoachRecommendationOut, CycleOut, InstantOrNull, IntOrNull, IsoDate, KeyStatOut, NumOrNull,
   RecoveryStateOut, SleepNeedOut, StageMapOut, StrOrNull,
 } from "./core_common.js";
+
+/** Heart rate over a window: bpm[i] of a run is at run.start + i·step_s seconds; holes split runs. */
+export const HrWindowOut = z.object({
+  start: IsoDateTime,
+  end: IsoDateTime,
+  step_s: z.number().int(),
+  n: z.number().int(),
+  min: IntOrNull,
+  max: IntOrNull,
+  avg: IntOrNull,
+  runs: z.array(z.object({ start: IsoDateTime, bpm: z.array(z.number().int()) })),
+});
+
+/** whoop_day with end_date: one row per cycle day. Columns with no value on any day are left out. */
+export const DayRangeOut = z.object({
+  start_date: IsoDate,
+  end_date: IsoDate,
+  count: z.number().int(),
+  columns: z.array(z.enum(HISTORY_COLUMNS)),
+  rows: z.array(z.array(z.union([z.string(), z.number()]).nullable())),
+  /** Days WHOOP is still scoring (today, usually): partial numbers. */
+  pending: z.array(IsoDate),
+  warnings: z.array(z.string()),
+});
 
 export const DayOut = z.object({
   date: IsoDate,
@@ -47,5 +73,6 @@ export const DayOut = z.object({
   recommendations: z.array(CoachRecommendationOut),
   sleep_plan: SleepNeedOut.nullable().optional(),
   now: z.object({ state: z.string(), sport: StrOrNull, since: InstantOrNull }).nullable(),
+  hr: HrWindowOut.optional(),
 });
 export type DayOutT = z.infer<typeof DayOut>;

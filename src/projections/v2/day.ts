@@ -11,8 +11,9 @@ import { mainSleepTile, napsFromTiles, projectSleepDetails } from "./sleep.js";
 import { projectStrainV2 } from "./strain.js";
 import type { SleepNeed } from "./core_sleep_need.js";
 import { projectNow } from "./now.js";
+import type { HrWindow } from "./heart_rate.js";
 
-export const DAY_SECTIONS = ["scores", "sleep", "strain", "activities", "sleep_plan", "key_stats"] as const;
+export const DAY_SECTIONS = ["scores", "sleep", "strain", "activities", "sleep_plan", "key_stats", "hr"] as const;
 export type DaySection = (typeof DAY_SECTIONS)[number];
 
 export interface DayInput {
@@ -70,6 +71,8 @@ export interface DayV2 {
   recommendations: CoachRecommendation[];
   sleep_plan?: SleepNeed | null;
   now: { state: string; sport: string | null; since: string | null } | null;
+  /** Filled in by the tool: the series comes from another service than the day itself. */
+  hr?: HrWindow;
 }
 
 export function projectDay(input: DayInput): DayV2 {
