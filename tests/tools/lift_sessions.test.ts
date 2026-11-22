@@ -34,9 +34,11 @@ describe("whoop_lift_sessions", () => {
     expect(out.sessions).toHaveLength(1);
     const s = out.sessions[0];
     expect(s).toMatchObject({ id: SCORED, sport: "weightlifting_msk", src: "details", strain: 17.7, volume: 36720, msk_pct: 74 });
-    expect(s.exercises[0]).toMatchObject({ id: "LEGPRESS_PULLEYMACHINE", sets: "5x10", top: [200, 10], volume: 9600 });
-    expect(s.exercises[0].rows).toBeUndefined();
-    expect(JSON.stringify(out).length).toBeLessThan(2000);
+    // One row per exercise in exercise_cols order: no key is repeated per exercise.
+    expect(out.exercise_cols).toEqual(["id", "sets", "top", "volume", "medal"]);
+    expect(s.exercises[0]).toEqual(["LEGPRESS_PULLEYMACHINE", "5x10", [200, 10], 9600, "SILVER"]);
+    expect(s.exercises[7]).toEqual(["SITUPS_BODYWEIGHT", "3x20", null, 0, null]);
+    expect(JSON.stringify(out).length).toBeLessThan(850); // 8 exercises
     // calendar pruning: only the two marked days were fetched (in one paced chunk)
     const homeDates = get.mock.calls.filter((c) => c[0] === "/home-service/v1/home").map((c) => (c[1] as { date: string }).date);
     expect(homeDates.sort()).toEqual(["2026-05-22", "2026-05-23"]);
@@ -51,7 +53,8 @@ describe("whoop_lift_sessions", () => {
     });
     const client = await connect(registerLiftSessions, { get });
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { start_date: "2026-05-23", end_date: "2026-05-23", include: ["sets"] } }));
-    expect(out.sessions[0].exercises[0].rows).toEqual([[180, 10, null, null], [180, 10, null, 139], [200, 10, null, 150], [200, 10, null, 150], [200, 10, null, 152]]);
+    expect(out.exercise_cols).toEqual(["id", "sets", "top", "volume", "medal", "rows"]);
+    expect(out.sessions[0].exercises[0][5]).toEqual([[180, 10, null, null], [180, 10, null, 139], [200, 10, null, 150], [200, 10, null, 150], [200, 10, null, 152]]);
   });
 
   function unscoredDay() {
@@ -72,6 +75,7 @@ describe("whoop_lift_sessions", () => {
     expect(out.sessions).toHaveLength(1);
     expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "weightlifting_msk", src: "unscored", start: expect.stringContaining("2026-11-21") });
     expect(out.sessions[0].exercises).toBeUndefined();
+    expect(out.exercise_cols).toBeUndefined(); // no exercise rows, so no column names either
     expect(out.sessions[0]).not.toHaveProperty("strain"); // not scored: the tile's "0.0" is not a measurement
     expect(out.warnings.join()).toMatch(/1 unscored session.*include \["unscored"\]/);
     // calendar + home + cardio-details only: no PR pages, no per-exercise history
@@ -84,7 +88,7 @@ describe("whoop_lift_sessions", () => {
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { start_date: "2026-11-21", end_date: "2026-11-21", include: ["sets", "unscored"] } }));
     expect(out.sessions).toHaveLength(1);
     expect(out.sessions[0]).toMatchObject({ id: PENDING, src: "history", start: expect.stringContaining("2026-11-21") });
-    expect(out.sessions[0].exercises).toEqual([{ id: "BENCHPRESS_BARBELL", sets: "2x5", top: [100, 5], volume: 1000, medal: "GOLD", rows: [[100, 5], [100, 5]] }]);
+    expect(out.sessions[0].exercises).toEqual([["BENCHPRESS_BARBELL", "2x5", [100, 5], 1000, "GOLD", [[100, 5], [100, 5]]]]);
     // the deleted custom exercise's tile is not probed
     expect(get.mock.calls.some((c) => String(c[0]).includes("520AB719"))).toBe(false);
     // the walk is bounded by the session's start, not by the range: one history page per exercise
@@ -106,7 +110,8 @@ describe("whoop_lift_sessions", () => {
     const client = await connect(registerLiftSessions, { get });
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: PENDING } }));
     expect(out).toMatchObject({ from: "2026-11-21", to: "2026-11-21" });
-    expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "weightlifting_msk", src: "history", start: expect.stringContaining("2026-11-21"), exercises: [{ id: "BENCHPRESS_BARBELL", sets: "2x5" }] });
+    expect(out.sessions[0]).toMatchObject({ id: PENDING, sport: "weightlifting_msk", src: "history", start: expect.stringContaining("2026-11-21") });
+    expect(out.sessions[0].exercises.map((e: unknown[]) => e.slice(0, 2))).toEqual([["BENCHPRESS_BARBELL", "2x5"]]);
     expect(get.mock.calls.filter((c) => c[0] === BENCH_HISTORY)).toHaveLength(1);
   });
 
@@ -119,7 +124,8 @@ describe("whoop_lift_sessions", () => {
     });
     const client = await connect(registerLiftSessions, { get });
     const out = body(await client.callTool({ name: "whoop_lift_sessions", arguments: { activity_id: PENDING } }));
-    expect(out.sessions[0]).toMatchObject({ id: PENDING, src: "history", exercises: [{ id: "BENCHPRESS_BARBELL", sets: "2x5" }] });
+    expect(out.sessions[0]).toMatchObject({ id: PENDING, src: "history" });
+    expect(out.sessions[0].exercises.map((e: unknown[]) => e.slice(0, 2))).toEqual([["BENCHPRESS_BARBELL", "2x5"]]);
     expect(out.warnings.join()).toMatch(/pending/);
   });
 

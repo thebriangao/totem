@@ -26,6 +26,16 @@ export const SessionExerciseOut = z.object({
 });
 export type SessionExerciseOutT = z.infer<typeof SessionExerciseOut>;
 
+/**
+ * On the wire an exercise is one row in this column order (no keys repeated per
+ * exercise); with include sets a sixth cell holds the per-set rows.
+ */
+export const SESSION_EXERCISE_COLS = ["id", "sets", "top", "volume", "medal"] as const;
+export const SessionExerciseRow = z
+  .tuple([z.string(), z.string(), SetRow.nullable(), z.number().nullable(), MedalT.nullable()])
+  .rest(z.array(SetRow));
+export type SessionExerciseRowT = z.infer<typeof SessionExerciseRow>;
+
 export const LiftSessionOut = z.object({
   id: z.string(),
   sport: z.string().nullable(),
@@ -41,7 +51,7 @@ export const LiftSessionOut = z.object({
   msk_pct: z.number().nullable(),
   /** Only when it differs from the response's unit. */
   unit: UnitT.nullable(),
-  exercises: z.array(SessionExerciseOut),
+  exercises: z.array(SessionExerciseRow),
 });
 export type LiftSessionOutT = z.infer<typeof LiftSessionOut>;
 
@@ -49,6 +59,8 @@ export const LiftSessionsOut = z.object({
   from: z.iso.date(),
   to: z.iso.date(),
   unit: UnitT.nullable(),
+  /** Column names of every sessions[].exercises row; empty (so dropped) when no session lists exercises. */
+  exercise_cols: z.array(z.string()),
   sessions: z.array(LiftSessionOut),
   more: z.boolean(),
   warnings: Warnings,

@@ -25,13 +25,23 @@ describe("whoop_workouts list", () => {
     const homeDays = calls.filter((c) => c.path === HOME).map((c) => c.query.date).sort();
     expect(homeDays).toEqual(["2026-11-20", "2026-11-21"]); // 18 and 19 have no data
     expect(calls.filter((c) => c.path === CAL)).toHaveLength(1);
-    const rows = out.activities as Array<Record<string, unknown>>;
+    // Columnar rows: the keys are stated once in `columns`, not per activity.
+    expect(out.columns).toEqual(["activity_id", "type", "internal_name", "start", "min", "status", "strain"]);
+    const rows = out.rows as Array<Array<string | number | null>>;
     expect(out).toMatchObject({ start_date: "2026-11-18", end_date: "2026-11-21", count: 16 });
-    expect(rows.every((r) => r.type === "CARDIO" || r.type === "RECOVERY")).toBe(true);
-    expect(rows.find((r) => r.internal_name === "boxing")).toMatchObject({ type: "CARDIO", strain: 4.6, status: "COMPLETE" });
+    expect(rows).toHaveLength(16);
+    expect(rows.every((r) => r[1] === "CARDIO" || r[1] === "RECOVERY")).toBe(true);
+    // 16:24:37–16:27:03 is 2 whole minutes; local time with its offset.
+    expect(rows.find((r) => r[2] === "boxing")).toEqual(["70ad76a1-1e3c-4c8e-a026-903ff3175783", "CARDIO", "boxing", expect.stringMatching(/^2026-11-2\dT\d\d:24:37[+-]\d\d:\d\d$/), 2, "COMPLETE", 4.6]);
+    // A RECOVERY activity has no strain; an unscored CARDIO one has none yet.
+    expect(rows.find((r) => r[2] === "sauna")!.slice(4)).toEqual([10, "COMPLETE", null]);
+    expect(rows.find((r) => r[2] === "tennis")!.slice(4)).toEqual([5, "INCOMPLETE", null]);
+    // Display names that say more than the internal name are stated once.
+    expect(out.names).toEqual({ weightlifting_msk: "Strength Trainer", sauna: "Dry Sauna" });
     // Newest first, deduped across the two days' identical cards.
-    expect(new Set(rows.map((r) => r.activity_id)).size).toBe(rows.length);
-    expect(rows[0]!.internal_name).toBe("weightlifting_msk");
+    expect(new Set(rows.map((r) => r[0])).size).toBe(rows.length);
+    expect(rows[0]![2]).toBe("weightlifting_msk");
+    expect(JSON.stringify(out).length).toBeLessThan(2100); // 16 rows; the keyed form was 3,382
   });
 
   it("filters by types and sport, and keeps a default list short", async () => {
@@ -42,12 +52,15 @@ describe("whoop_workouts list", () => {
     });
     const client = await connect((s) => registerWorkouts(s, whoop));
     const sleeps = textOf(await client.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21", types: ["SLEEP"] } }));
-    expect(sleeps.activities).toEqual([expect.objectContaining({ activity_id: "addd5396-b934-4ae8-ba4e-a511762a0d53", type: "SLEEP" })]);
+    expect((sleeps.rows as unknown[][]).map((r) => r.slice(0, 2))).toEqual([["addd5396-b934-4ae8-ba4e-a511762a0d53", "SLEEP"]]);
     const golf = await client.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21", sport: "golf" } });
-    expect((textOf(golf).activities as unknown[]).length).toBe(2);
+    expect((textOf(golf).rows as unknown[]).length).toBe(2);
     const all = await client.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21", limit: 3 } });
     expect(textOf(all)).toMatchObject({ count: 3, truncated: true });
-    expect((all.content as Array<{ text: string }>)[0]!.text.length).toBeLessThan(1500);
+    expect((all.content as Array<{ text: string }>)[0]!.text.length).toBeLessThan(600);
+    // Nothing matched: no rows, so no column names or name map either.
+    const none = textOf(await client.callTool({ name: "whoop_workouts", arguments: { date: "2026-11-21", sport: "curling" } }));
+    expect(none).toEqual({ start_date: "2026-11-21", end_date: "2026-11-21", count: 0 });
   });
 
   it("checks every day when the calendar can't be read", async () => {
