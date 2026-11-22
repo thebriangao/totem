@@ -22,6 +22,8 @@ async function until(check: () => boolean, ms = 15_000): Promise<boolean> {
   }
   return check();
 }
+/** The signal the child wrote down, once it has written it (the file can exist before its contents). */
+const written = (dir: string): string => (existsSync(join(dir, "signal")) ? readFileSync(join(dir, "signal"), "utf8") : "");
 const alive = (pid: number): boolean => {
   try { process.kill(pid, 0); return true; } catch { return false; }
 };
@@ -57,8 +59,8 @@ describe.skipIf(process.platform === "win32")("the subprocess runner passes term
   it.each(["SIGTERM", "SIGHUP"] as const)("%s to the wrapper reaches the child, and both exit", async (signal) => {
     const exited = new Promise<number | null>((resolve) => wrapper!.once("exit", (code) => resolve(code)));
     wrapper!.kill(signal);
-    expect(await until(() => existsSync(join(dir, "signal")))).toBe(true);
-    expect(readFileSync(join(dir, "signal"), "utf8")).toBe(signal);
+    expect(await until(() => written(dir) !== "")).toBe(true);
+    expect(written(dir)).toBe(signal);
     // The wrapper waits for the child and reports the child's own exit code.
     expect(await exited).toBe(0);
     expect(await until(() => !alive(childPid))).toBe(true);
@@ -73,8 +75,8 @@ describe.skipIf(process.platform === "win32")("the subprocess runner passes term
     const exited = new Promise<number | null>((resolve) => wrapper!.once("exit", (code) => resolve(code)));
     wrapper!.kill("SIGINT");
     expect(await exited).toBe(130);
-    expect(await until(() => existsSync(join(dir, "signal")), 5_000)).toBe(true);
-    expect(readFileSync(join(dir, "signal"), "utf8")).toBe("SIGINT");
+    expect(await until(() => written(dir) !== "", 5_000)).toBe(true);
+    expect(written(dir)).toBe("SIGINT");
     expect(await until(() => !alive(childPid))).toBe(true);
   });
 });
