@@ -1,14 +1,18 @@
 // The CLI's visual language: one small set of primitives every screen is built
 // from, so `totem local`, `totem cloud`, `totem auth`, `totem update` and the
-// rest read as one tool.
+// rest read as one tool. It is plain on purpose, like the CLIs people already
+// use (gh, fly, vercel): text first, colour as a seasoning, no boxes or rails.
+// The one picture is the logo, at the top of the big flows.
 //
-//   header      title + one-line purpose behind the brand stripe, at the top
-//   step        "── 2/6  Secrets ────": a full-width rule, where you are in a flow
-//   ok/warn/fail/info   one-line results, each led by a mark
+//   banner      the logo (rasterized from the SVG) beside a title: home, cloud, local
+//   header      "totem <command>" and a one-line purpose, at the top of a command
+//   step        "[2/6] Secrets": where you are in a flow
+//   section     a bold title inside a screen
+//   ok/warn/fail/info   one-line results, each led by a mark: "✓ Deployed [1m 42s]"
 //   para/hint   wrapped prose: what is happening, what to do now
-//   rows        aligned key/value facts
-//   code        something to paste, alone on its line with no decoration
-//   next        the boxed "what to do now" block that ends a screen
+//   rows        aligned "Key: value" facts
+//   code        something to paste, alone on its line
+//   next        "Next" and what to do now
 //   problem     what went wrong + the exact commands that fix it
 //   task        a spinner with elapsed time for anything slow
 //   select/confirm/text/hidden   the four prompts
@@ -22,18 +26,18 @@
 //   - 80 columns at most, less on a narrow terminal; prose wraps, pasteable
 //     lines never get a border or a prefix.
 //   - Colour is decoration only: every state is also a glyph and a word. It
-//     is off for NO_COLOR, TERM=dumb and anything that isn't a terminal.
-//   - The basic ANSI colours, bold and dim, so the terminal's own theme
-//     decides the shades (truecolor greys vanish on a light background). The
-//     one exception is the brand colour, totem's ice blue (src/lib/brand.ts):
-//     exact where the terminal draws 24-bit colour, the nearest of 256
-//     otherwise, bright blue on a basic terminal, and the logo's darker fold
-//     shade when the terminal says its background is light.
+//     is off for NO_COLOR, TERM=dumb and anything that isn't a terminal. The
+//     logo is only drawn where there is colour.
+//   - One icy palette (see "colour"), bold and dim, nothing else. Exact where
+//     the terminal draws 24-bit colour, the nearest of 256 otherwise, the basic
+//     colours nearest in meaning on a basic terminal, and darker when the
+//     terminal says its background is light.
 //   - ASCII glyphs where Unicode can't be trusted (legacy Windows consoles,
 //     TERM=dumb/linux, a non-UTF-8 locale).
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 import { stripVTControlCharacters } from "node:util";
+import { logoPixels, type Pixel } from "./logo.js";
 
 // ── style ───────────────────────────────────────────────────────────────────
 
@@ -42,10 +46,12 @@ export interface Style {
   unicode: boolean;
   /** Columns to lay out for: the terminal's width, kept between 40 and 80. */
   width: number;
-  /** Colours the terminal can draw; only the brand colour uses more than the basic ones. Default "basic". */
+  /** Colours the terminal can draw; the palette and the logo use more than the basic ones where they can. Default "basic". */
   palette?: "basic" | "256" | "truecolor";
-  /** The terminal reports a light background (COLORFGBG), so the brand colour takes its darker shade. */
+  /** The terminal reports a light background (COLORFGBG), so every colour goes darker. */
   light?: boolean;
+  /** Draw the logo in a banner. Default: wherever there is colour and Unicode. */
+  logo?: boolean;
 }
 
 type Env = Record<string, string | undefined>;
@@ -86,44 +92,150 @@ export interface Glyphs {
   /** Menu path separator: Settings → Connectors. */
   arrow: string;
   pointer: string; ask: string; dot: string; ellipsis: string; dash: string;
-  h: string; v: string; tl: string; tr: string; bl: string; br: string;
-  /** The brand stripe down the left of a header. */
-  stripe: string;
   spinner: string[];
 }
 const UNICODE: Glyphs = {
   ok: "✓", fail: "✗", warn: "!", info: "•", arrow: "→", pointer: "›", ask: "?", dot: "·", ellipsis: "…", dash: "–",
-  h: "─", v: "│", tl: "╭", tr: "╮", bl: "╰", br: "╯", stripe: "▍",
   spinner: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
 };
 const ASCII: Glyphs = {
   ok: "+", fail: "x", warn: "!", info: "-", arrow: ">", pointer: ">", ask: "?", dot: "-", ellipsis: "...", dash: "-",
-  h: "-", v: "|", tl: "+", tr: "+", bl: "+", br: "+", stripe: "|",
   spinner: ["-", "\\", "|", "/"],
 };
 export const glyphs = (style: Style): Glyphs => (style.unicode ? UNICODE : ASCII);
 
 // ── colour ──────────────────────────────────────────────────────────────────
 
+// The brand's ice draws the logo and the brand word; the palette marks what
+// needs you:
+//   lead     the step you are on, the spinner, a question, the choice and the answer
+//   command  something to run or paste
+//   link     an address
+//   secret   the one-time connector password
+//   ok / warn / fail   done, a warning, a failure
+//   dim: everything secondary
 export interface Paint {
   bold(s: string): string; dim(s: string): string;
+  /** The palette's ok, warn and fail colours. */
   red(s: string): string; green(s: string): string; yellow(s: string): string;
-  /** The one accent: the brand stripe, step counters, things to copy, the selected choice. */
-  accent(s: string): string;
-  /** The brand colour, for the brand name, the header stripe and the Next box, so they stand apart from things to copy. */
+  /** Ice: the logo and the brand word. */
   brand(s: string): string;
+  /** A command to run or paste. */
+  accent(s: string): string;
+  /** Lead: the current step, the spinner, a question, the highlighted choice and the answer given. */
+  ask(s: string): string;
+  /** An address: the server and connector URLs. */
+  link(s: string): string;
+  /** The one-time connector password. */
+  secret(s: string): string;
 }
 
-/** The SGR code for the brand colour: ice #B7D3F2, or the fold #7A9CC6 on a light background. */
-export function brandSgr(style: Style): string {
-  if (style.palette === "truecolor") return style.light ? "38;2;122;156;198" : "38;2;183;211;242";
-  if (style.palette === "256") return style.light ? "38;5;110" : "38;5;153";
-  return "94";
+type Shade = "ice" | "fold";
+// [r, g, b] and the nearest xterm-256 colour, on a dark and on a light background.
+const SHADES: Record<"dark" | "light", Record<Shade, [rgb: string, x256: number, basic: number]>> = {
+  dark: { ice: ["183;211;242", 153, 94], fold: ["122;156;198", 110, 34] },
+  light: { ice: ["122;156;198", 110, 34], fold: ["79;111;153", 67, 34] },
+};
+
+/** The SGR code for a brand shade: ice #B7D3F2 (default) or fold #7A9CC6, a step darker on a light background. `bg` paints the cell behind. */
+export function brandSgr(style: Style, shade: Shade = "ice", bg = false): string {
+  const [rgb, x256, basic] = SHADES[style.light ? "light" : "dark"][shade];
+  if (style.palette === "truecolor") return `${bg ? 48 : 38};2;${rgb}`;
+  if (style.palette === "256") return `${bg ? 48 : 38};5;${x256}`;
+  return String(bg ? basic + 10 : basic);
+}
+
+export type Role = "lead" | "command" | "link" | "secret" | "ok" | "warn" | "fail";
+
+/**
+ * The palette: glacier colours beside the brand's ice, chosen in OKLCH so
+ * their lightness is even and no one colour shouts over the others. Warnings
+ * and failures stay warm, so a problem still reads as one. The terminal gets
+ * these hues at a lightness it can read: lighter on a dark background
+ * (onDark), darker on a light one (onLight).
+ */
+export const PALETTE: Record<Role, string> = {
+  lead: "#71C9FA", // glacier blue
+  command: "#72DEE4", // arctic cyan
+  link: "#B2B8F7", // frost lavender
+  secret: "#E5F4FE", // snow
+  ok: "#88E1D0", // glacial mint
+  warn: "#F0D49B", // winter sun
+  fail: "#EB8A99", // frostbite rose
+};
+/** A basic terminal has eight colours and its own idea of them: the nearest by meaning. */
+const BASIC_ROLE: Record<Role, number> = { lead: 36, command: 37, link: 36, secret: 37, ok: 32, warn: 33, fail: 31 };
+
+type Rgb = [number, number, number];
+const hexRgb = (hex: string): Rgb => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as Rgb;
+
+/** Relative luminance (WCAG): 0 for black, 1 for white. */
+const luminance = (rgb: Rgb): number => {
+  const [r, g, b] = rgb.map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+};
+
+/** WCAG contrast between two luminances: 1 (none) to 21 (black on white). */
+const contrast = (a: number, b: number): number => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+/** The dark background colours are judged against: #1E1E1E, a typical dark terminal theme. */
+const DARK_BG = luminance([30, 30, 30]);
+
+/**
+ * The same hue at the first lightness, walking from its own in steps of
+ * `step`, that has 4.5:1 contrast with a background of luminance `bg`
+ * (WCAG's bar for text).
+ */
+function readableOn([r, g, b]: Rgb, bg: number, step: number): Rgb {
+  const [R, G, B] = [r / 255, g / 255, b / 255];
+  const max = Math.max(R, G, B), min = Math.min(R, G, B), l = (max + min) / 2, d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  // The hue as a sixth of the circle, 0 to 6 (a remainder in JS keeps its sign, so wrap it).
+  const h = d === 0 ? 0 : max === R ? (((G - B) / d) % 6 + 6) % 6 : max === G ? (B - R) / d + 2 : (R - G) / d + 4;
+  const fromHsl = (L: number): Rgb => {
+    const C = (1 - Math.abs(2 * L - 1)) * s, X = C * (1 - Math.abs((h % 2) - 1)), m = L - C / 2;
+    const [r1, g1, b1] = h < 1 ? [C, X, 0] : h < 2 ? [X, C, 0] : h < 3 ? [0, C, X] : h < 4 ? [0, X, C] : h < 5 ? [X, 0, C] : [C, 0, X];
+    return [r1, g1, b1].map((v) => Math.round((v + m) * 255)) as Rgb;
+  };
+  for (let L = l; L >= 0 && L <= 1; L += step) {
+    const out = fromHsl(L);
+    if (contrast(luminance(out), bg) >= 4.5) return out;
+  }
+  return step < 0 ? [0, 0, 0] : [255, 255, 255];
+}
+
+/** Dark enough to read on white. Yellow and lime come down much further than violet. */
+export const onLight = (rgb: Rgb): Rgb => readableOn(rgb, 1, -0.01);
+/** Light enough to read on a dark terminal. Electric indigo comes up to a lavender. */
+export const onDark = (rgb: Rgb): Rgb => readableOn(rgb, DARK_BG, 0.01);
+
+/** The nearest of xterm's 256 colours: the 6×6×6 cube or the grey ramp. */
+export function xterm256([r, g, b]: Rgb): number {
+  const levels = [0, 95, 135, 175, 215, 255];
+  const near = (v: number): number => levels.reduce((best, l, i) => (Math.abs(l - v) < Math.abs(levels[best]! - v) ? i : best), 0);
+  const [ri, gi, bi] = [near(r), near(g), near(b)];
+  const grey = Math.max(0, Math.min(23, Math.round(((r + g + b) / 3 - 8) / 10)));
+  const dist = (x: Rgb): number => (x[0] - r) ** 2 + (x[1] - g) ** 2 + (x[2] - b) ** 2;
+  const cube: Rgb = [levels[ri]!, levels[gi]!, levels[bi]!];
+  const g8 = 8 + 10 * grey;
+  return dist(cube) <= dist([g8, g8, g8]) ? 16 + 36 * ri + 6 * gi + bi : 232 + grey;
+}
+
+/** The SGR code for one of the palette's colours. */
+export function roleSgr(style: Style, role: Role): string {
+  if (style.palette !== "truecolor" && style.palette !== "256") return String(BASIC_ROLE[role]);
+  const base = hexRgb(PALETTE[role]);
+  const rgb = style.light ? onLight(base) : onDark(base);
+  return style.palette === "truecolor" ? `38;2;${rgb.join(";")}` : `38;5;${xterm256(rgb)}`;
 }
 
 export function paint(style: Style): Paint {
-  const sgr = (open: number | string, close: number) => (s: string): string => (style.color && s ? `\x1b[${open}m${s}\x1b[${close}m` : s);
-  return { bold: sgr(1, 22), dim: sgr(2, 22), red: sgr(31, 39), green: sgr(32, 39), yellow: sgr(33, 39), accent: sgr(36, 39), brand: sgr(brandSgr(style), 39) };
+  const sgr = (open: number | string, close: number | string) => (s: string): string => (style.color && s ? `\x1b[${open}m${s}\x1b[${close}m` : s);
+  const role = (r: Role) => sgr(roleSgr(style, r), 39);
+  return {
+    bold: sgr(1, 22), dim: sgr(2, 22), red: role("fail"), green: role("ok"), yellow: role("warn"),
+    brand: sgr(brandSgr(style), 39),
+    accent: role("command"), ask: role("lead"), link: role("link"), secret: sgr(`1;${roleSgr(style, "secret")}`, "39;22"),
+  };
 }
 
 // ── text ────────────────────────────────────────────────────────────────────
@@ -213,11 +325,22 @@ export type Mark = "ok" | "fail" | "warn" | "info";
 /** A way out of a problem: what it does, and the exact command. */
 export type Fix = [label: string, command: string];
 
+/** Columns the logo takes, and the gap after it. */
+const LOGO_COLS = 12;
+const LOGO_ROWS = 5;
+const LOGO_GAP = 3;
+
 export interface Kit {
   style: Style;
   g: Glyphs;
   c: Paint;
+  /** Whether banner() draws the logo here. */
+  logo: boolean;
+  /** The logo with a title and purpose beside it; without a logo, header(). */
+  banner(title: string, subtitle?: string, meta?: string): string[];
+  /** "totem <command>" and its purpose under it. */
   header(title: string, subtitle?: string): string[];
+  /** "[2/6] Secrets". */
   step(n: number, total: number, title: string): string[];
   section(title: string): string[];
   mark(kind: Mark, text: string, detail?: string): string[];
@@ -225,25 +348,42 @@ export interface Kit {
   hint(text: string, indent?: number): string[];
   rows(pairs: Array<[key: string, value: string]>, indent?: number): string[];
   code(lines: string[], indent?: number): string[];
+  /** "Next" and what to do now. */
   next(lines: string[], title?: string): string[];
-  /** A question once it is answered: what stays on screen after a choice. */
+  /** A question as it is asked: "? Question (suffix)". */
+  question(question: string, suffix?: string): string;
+  /** A question once it is answered: "? Question answer", what stays on screen after a choice. */
   answered(question: string, answer: string): string;
   problem(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }, indent?: number): string[];
 }
+
+/** An http(s) address inside prose, without trailing punctuation. Capturing, so split() keeps it. */
+const URL_IN_TEXT = /(https?:\/\/[^\s)]*[^\s).,;:'"])/;
+/** A time a step took ("4s", "1m 42s"): shown in brackets, the rest of a detail in parentheses. */
+const TIME = /^\d+(m \d{2})?s$/;
 
 export function kit(style: Style): Kit {
   const g = glyphs(style);
   const c = paint(style);
   const W = style.width;
   const symbol: Record<Mark, string> = { ok: c.green(g.ok), fail: c.red(g.fail), warn: c.yellow(g.warn), info: c.dim(g.info) };
+  const logo = (style.logo ?? (style.color && style.unicode)) && style.unicode && W >= 56;
+  // Addresses in the link colour wherever they turn up, the rest in `rest`.
+  // Text that already carries colour is left as it is.
+  const urls = (text: string, rest: (s: string) => string = (s) => s): string =>
+    text.includes("\x1b[") ? text : text.split(URL_IN_TEXT).map((part, i) => (i % 2 ? c.link(part) : part ? rest(part) : "")).join("");
+  // Commands inside prose in the command colour: "…: totem status", "run: codex mcp login whoop".
+  const commands = (text: string): string =>
+    text.replace(/(: |run: )(totem [a-z][\w -]*|[a-z]+ mcp [\w -]+)(?=\)|\.?$)/, (_m, lead: string, cmd: string) => `${lead}${c.accent(cmd.trimEnd())}`);
 
   const mark = (kind: Mark, text: string, detail?: string): string[] => {
-    const body = wrap(text, W - 4);
-    const tail = detail ? `  ${c.dim(detail)}` : "";
-    // The detail rides on the last line when it fits, else gets its own.
-    const fits = visibleWidth(body[body.length - 1]!) + visibleWidth(tail) <= W - 4;
-    const lines = body.map((line, i) => `  ${i === 0 ? symbol[kind] : " "} ${line}${fits && i === body.length - 1 ? tail : ""}`);
-    if (detail && !fits) for (const d of wrap(detail, W - 4)) lines.push(`    ${c.dim(d)}`);
+    const lines = wrap(text, W - 2).map((line, i) => `${i === 0 ? symbol[kind] : " "} ${line}`);
+    if (!detail) return lines;
+    // "✓ Deployed [1m 42s]", "✓ Signed in to Fly (you@example.com)"; on its own line when it doesn't fit.
+    const tail = TIME.test(detail) ? `[${detail}]` : `(${detail})`;
+    const last = lines[lines.length - 1]!;
+    if (visibleWidth(last) + 1 + visibleWidth(tail) <= W) lines[lines.length - 1] = `${last} ${urls(tail, c.dim)}`;
+    else for (const d of wrap(detail, W - 2)) lines.push(`  ${urls(d, c.dim)}`);
     return lines;
   };
 
@@ -252,44 +392,58 @@ export function kit(style: Style): Kit {
     const pad = " ".repeat(indent);
     return pairs.flatMap(([key, value]) => {
       const lines = wrap(value, Math.max(16, W - indent - keyWidth));
-      return lines.map((line, i) => `${pad}${i === 0 ? c.dim(padEnd(key, keyWidth)) : " ".repeat(keyWidth)}${line}`);
+      return lines.map((line, i) => `${pad}${i === 0 ? c.dim(padEnd(`${key}:`, keyWidth)) : " ".repeat(keyWidth)}${urls(line)}`);
     });
   };
 
+  // "totem cloud": the brand word in ice, the whole title bold.
+  const name = (title: string): string => {
+    const [brandWord, ...rest] = title.split(" ");
+    return c.bold(`${c.brand(brandWord!)}${rest.length ? ` ${rest.join(" ")}` : ""}`);
+  };
+  const header = (title: string, subtitle?: string): string[] => [name(title), ...(subtitle ? wrap(subtitle, W).map((l) => c.dim(l)) : [])];
+
+  // Two pixels a cell: the upper in the foreground of a half block, the lower behind it.
+  const logoRows = (): string[] => {
+    const px = logoPixels(LOGO_COLS, LOGO_ROWS * 2);
+    const fg = (p: Exclude<Pixel, null>, ch: string): string => (style.color ? `\x1b[${brandSgr(style, p)}m${ch}\x1b[39m` : ch);
+    const cell = (top: Pixel, bottom: Pixel): string => {
+      if (!top && !bottom) return " ";
+      if (!top) return fg(bottom!, "▄");
+      if (!bottom) return fg(top, "▀");
+      if (top === bottom) return fg(top, "█");
+      return style.color ? `\x1b[${brandSgr(style, top)};${brandSgr(style, bottom, true)}m▀\x1b[39;49m` : "▀";
+    };
+    return Array.from({ length: LOGO_ROWS }, (_, r) => px[2 * r]!.map((top, x) => cell(top, px[2 * r + 1]![x]!)).join(""));
+  };
+
   return {
-    style, g, c,
-    header: (title, subtitle) => {
-      // "totem cloud": the brand word in its colour, the command after it.
-      const [brandWord, ...rest] = title.split(" ");
-      const name = `${c.bold(c.brand(brandWord!))}${rest.length ? ` ${c.bold(rest.join(" "))}` : ""}`;
-      const bar = c.brand(g.stripe);
-      return ["", `${bar} ${name}`, ...(subtitle ? wrap(subtitle, W - 2).map((l) => `${bar} ${c.dim(l)}`) : []), ""];
+    style, g, c, logo,
+    banner: (title, subtitle, meta) => {
+      if (!logo) return header(title, subtitle);
+      const textWidth = W - 1 - LOGO_COLS - LOGO_GAP;
+      // The title on the logo's second row, the purpose and meta under it.
+      const text = ["", name(title), ...(subtitle ? wrap(subtitle, textWidth).map((l) => c.dim(l)) : []), ...(meta ? [c.dim(meta)] : [])];
+      const art = logoRows();
+      return Array.from({ length: Math.max(art.length, text.length) }, (_, i) => {
+        const left = ` ${art[i] ?? " ".repeat(LOGO_COLS)}`;
+        return text[i] ? `${left}${" ".repeat(LOGO_GAP)}${text[i]}` : art[i] ? left : "";
+      });
     },
-    step: (n, total, title) => {
-      const head = `${g.h}${g.h} ${n}/${total}  ${title} `;
-      const rule = g.h.repeat(Math.max(2, W - visibleWidth(head)));
-      return ["", `${c.dim(`${g.h}${g.h}`)} ${c.accent(`${n}/${total}`)}  ${c.bold(title)} ${c.dim(rule)}`];
-    },
-    section: (title) => {
-      const rule = g.h.repeat(Math.max(2, W - visibleWidth(title) - 1));
-      return ["", `${c.bold(title)} ${c.dim(rule)}`];
-    },
-    answered: (question, answer) => `${c.green(g.ok)} ${c.bold(question)} ${c.dim(g.dot)} ${c.accent(answer)}`,
+    header,
+    step: (n, total, title) => [`${c.dim(`[${n}/${total}]`)} ${c.bold(title)}`],
+    section: (title) => [title.includes("\x1b[") ? c.bold(title) : urls(title, c.bold)],
+    question: (question, suffix = "") => `${c.ask(g.ask)} ${c.bold(question)}${suffix ? " " + c.dim(suffix) : ""}`,
+    answered: (question, answer) => `${c.ask(g.ask)} ${c.bold(question)} ${c.ask(answer)}`,
     mark,
-    para: (text, indent = 2) => wrapHanging(text, W - indent).map((l) => " ".repeat(indent) + l),
-    hint: (text, indent = 4) => wrap(text, W - indent).map((l) => " ".repeat(indent) + c.dim(l)),
+    para: (text, indent = 0) => wrapHanging(text, W - indent).map((l) => " ".repeat(indent) + l),
+    hint: (text, indent = 2) => wrap(text, W - indent).map((l) => " ".repeat(indent) + c.dim(l)),
     rows,
-    code: (lines, indent = 4) => lines.map((l) => " ".repeat(indent) + c.accent(l)),
+    code: (lines, indent = 2) => lines.map((l) => " ".repeat(indent) + c.accent(l)),
     next: (lines, title = "Next") => {
-      // │ + space + inner + space + │: the box is inner + 4 columns wide.
-      const body = lines.flatMap((l) => (l === "" ? [""] : wrapHanging(l, W - 4)));
-      const inner = Math.max(visibleWidth(title) + 2, ...body.map(visibleWidth));
-      return [
-        "",
-        c.brand(`${g.tl}${g.h} `) + c.bold(title) + c.brand(` ${g.h.repeat(inner - 1 - visibleWidth(title))}${g.tr}`),
-        ...body.map((l) => `${c.brand(g.v)} ${padEnd(l, inner)} ${c.brand(g.v)}`),
-        c.brand(`${g.bl}${g.h.repeat(inner + 2)}${g.br}`),
-      ];
+      // Numbered steps keep their number in the lead colour, commands in theirs.
+      const body = lines.flatMap((l) => (l === "" ? [""] : wrapHanging(commands(urls(l)), W - 2).map((w) => w.replace(/^(\d+\.)(?= )/, (m) => c.ask(m)))));
+      return [c.bold(title), ...body.map((l) => (l === "" ? "" : `  ${l}`))];
     },
     problem: (what, opts = {}, indent = 0) => {
       const pad = " ".repeat(indent);
@@ -374,12 +528,12 @@ export interface UiOptions {
 
 export class Ui {
   readonly style: Style;
-  readonly kit: Kit;
   readonly live: boolean;
   readonly canAsk: boolean;
   protected readonly write: (text: string) => void;
   protected readonly writeErr: (text: string) => void;
   protected readonly now: () => number;
+  readonly kit: Kit;
 
   constructor(opts: UiOptions = {}) {
     this.style = opts.style ?? detectStyle();
@@ -400,9 +554,11 @@ export class Ui {
     this.write(text + "\n");
   }
   lines(lines: string[]): void { for (const l of lines) this.line(l); }
-  header(title: string, subtitle?: string): void { this.lines(this.kit.header(title, subtitle)); }
-  step(n: number, total: number, title: string): void { this.lines(this.kit.step(n, total, title)); }
-  section(title: string): void { this.lines(this.kit.section(title)); }
+  /** The logo and a title, at the top of a big flow. */
+  banner(title: string, subtitle?: string, meta?: string): void { this.lines(["", ...this.kit.banner(title, subtitle, meta), ""]); }
+  header(title: string, subtitle?: string): void { this.lines(["", ...this.kit.header(title, subtitle), ""]); }
+  step(n: number, total: number, title: string): void { this.lines(["", ...this.kit.step(n, total, title)]); }
+  section(title: string): void { this.lines(["", ...this.kit.section(title)]); }
   ok(text: string, detail?: string): void { this.lines(this.kit.mark("ok", text, detail)); }
   warn(text: string, detail?: string): void { this.lines(this.kit.mark("warn", text, detail)); }
   fail(text: string, detail?: string): void { this.lines(this.kit.mark("fail", text, detail)); }
@@ -411,14 +567,15 @@ export class Ui {
   hint(text: string, indent?: number): void { this.lines(this.kit.hint(text, indent)); }
   rows(pairs: Array<[string, string]>, indent?: number): void { this.lines(this.kit.rows(pairs, indent)); }
   code(lines: string[], indent?: number): void { this.lines(this.kit.code(lines, indent)); }
-  next(lines: string[], title?: string): void { this.lines(this.kit.next(lines, title)); }
-  /** What went wrong and how to fix it, inside a flow (indented under its step). */
+  /** "Next" and what to do now. */
+  next(lines: string[], title?: string): void { this.lines(["", ...this.kit.next(lines, title)]); }
+  /** What went wrong and how to fix it, inside a flow. */
   problem(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }): void {
-    this.lines(this.kit.problem(what, opts, 2));
+    this.lines(this.kit.problem(what, opts));
   }
-  /** A problem that ends the command: goes to stderr, flush left. */
+  /** A problem that ends the command: goes to stderr. */
   error(what: string, opts?: { detail?: string | string[] | undefined; fix?: Fix[] | undefined }): void {
-    for (const l of this.kit.problem(what, opts, 0)) this.writeErr(l + "\n");
+    for (const l of this.kit.problem(what, opts)) this.writeErr(l + "\n");
   }
 
   // progress ──────────────────────────────────────────────────────────────
@@ -441,11 +598,12 @@ export class Ui {
     let detail = "";
     let frame = 0;
     const draw = (): void => {
-      const elapsed = duration(this.now() - started);
-      const head = `  ${c.accent(g.spinner[frame++ % g.spinner.length]!)} ${label}${elapsed && this.now() - started >= 3000 ? c.dim(` ${elapsed}`) : ""}`;
-      const room = this.style.width - visibleWidth(head) - 3;
-      const tail = detail && room > 8 ? c.dim(`  ${detail.length > room ? detail.slice(0, room - 1) + g.ellipsis : detail}`) : "";
-      this.write(`${CLEAR_LINE}${head}${tail}`);
+      const ms = this.now() - started;
+      const clock = ms >= 3000 ? ` ${c.dim(`[${duration(ms)}]`)}` : "";
+      const head = `${c.ask(g.spinner[frame++ % g.spinner.length]!)} ${label}`;
+      const room = this.style.width - visibleWidth(head) - visibleWidth(clock) - 3;
+      const tail = detail && room > 8 ? `  ${c.dim(detail.length > room ? detail.slice(0, room - 1) + g.ellipsis : detail)}` : "";
+      this.write(`${CLEAR_LINE}${head}${tail}${clock}`);
     };
     this.write(HIDE_CURSOR);
     draw();
@@ -481,13 +639,13 @@ export class Ui {
         rl.close();
       }
     }
+    this.blank = false;
     if (line === null) throw new InputClosedError(question);
     return line.trim();
   }
 
   protected q(question: string, suffix = ""): string {
-    const { c, g } = this.kit;
-    return `${c.accent(g.ask)} ${c.bold(question)}${suffix ? " " + c.dim(suffix) : ""}`;
+    return this.kit.question(question, suffix);
   }
 
   /**
@@ -501,7 +659,7 @@ export class Ui {
       if (a === "") return defaultYes;
       if (a === "y" || a === "yes") return true;
       if (a === "n" || a === "no") return false;
-      this.hint("Answer y or n.", 2);
+      this.hint("Answer y or n.");
     }
     return false;
   }
@@ -520,6 +678,7 @@ export class Ui {
   async hidden(question: string): Promise<string> {
     const query = `${this.q(question, "(hidden)")}${this.kit.c.dim(":")} `;
     const stdin = process.stdin;
+    this.blank = false;
     if (!stdin.isTTY) {
       this.write(query);
       const line = await pipedLine();
@@ -556,7 +715,7 @@ export class Ui {
         const on = i === selected;
         const hint = ch.hint && room >= 12 ? c.dim(ch.hint.length > room ? ch.hint.slice(0, room - 1) + g.ellipsis : ch.hint) : "";
         const label = hint ? padEnd(ch.label, labelWidth) : ch.label;
-        return `  ${on ? c.accent(g.pointer) : " "} ${on ? c.accent(label) : label}${hint}`;
+        return `  ${on ? c.ask(g.pointer) : " "} ${on ? c.ask(label) : label}${hint}`;
       }),
     ];
   }
@@ -574,13 +733,13 @@ export class Ui {
       const { c } = this.kit;
       const labelWidth = Math.max(...choices.map((ch) => visibleWidth(ch.label))) + 3;
       this.line(this.q(question));
-      choices.forEach((ch, i) => this.line(`  ${c.accent(String(i + 1))}. ${ch.hint ? padEnd(ch.label, labelWidth) + c.dim(ch.hint) : ch.label}`));
+      choices.forEach((ch, i) => this.line(`  ${c.ask(String(i + 1))}. ${ch.hint ? padEnd(ch.label, labelWidth) + c.dim(ch.hint) : ch.label}`));
       for (let attempt = 0; attempt < 3; attempt++) {
         const raw = await this.answer(`  ${c.dim(`Number (${idx + 1}):`)} `, question);
         if (raw === "") return idx;
         const picked = Number(raw);
         if (Number.isInteger(picked) && picked >= 1 && picked <= n) return picked - 1;
-        this.hint(`Enter a number from 1 to ${n}.`, 2);
+        this.hint(`Enter a number from 1 to ${n}.`);
       }
       throw new InputClosedError(question);
     }
@@ -590,6 +749,7 @@ export class Ui {
       for (const l of this.menu(question, choices, idx, active)) this.write(`${CLEAR_LINE}${l}\n`);
     };
     render(true, true);
+    this.blank = false;
     this.write(HIDE_CURSOR);
     stdin.setRawMode(true);
     stdin.resume();

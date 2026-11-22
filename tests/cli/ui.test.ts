@@ -1,9 +1,11 @@
 // The visual language's primitives (src/cli/ui.ts): when colour and Unicode are
 // used, and that each primitive lays out within the width it is given.
+import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it } from "vitest";
+import { logoPixels } from "../../src/cli/logo.js";
 import {
-  brandSgr, detectStyle, duration, glyphs, kit, listOf, maskSecrets, padEnd, paint, shellLines, truncate, Ui, visibleWidth, when, wrap,
-  wrapHanging, type Style,
+  brandSgr, detectStyle, duration, glyphs, kit, listOf, maskSecrets, onDark, onLight, padEnd, paint, PALETTE, roleSgr, shellLines, truncate, Ui,
+  visibleWidth, when, wrap, wrapHanging, xterm256, type Role, type Style,
 } from "../../src/cli/ui.js";
 
 const tty = { isTTY: true, columns: 120 };
@@ -54,11 +56,64 @@ describe("detectStyle: the brand colour", () => {
     expect(brandSgr({ ...light, palette: "256" })).toBe("38;5;110");
     expect(detectStyle(tty, { ...utf8, COLORFGBG: "15;default;0" }, "darwin").light).toBe(false);
   });
-  it("is the only colour beyond the basic ones, and is off with colour", () => {
+  it("draws the brand word and the logo in ice, and what needs you in the palette", () => {
+    const st = style({ color: true, palette: "truecolor" });
+    const p = paint(st);
+    const fg = (role: Role): string => `\x1b[${roleSgr(st, role)}m`;
+    const rgb = (hex: string): string => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(";");
+    expect(roleSgr(st, "lead")).toBe(`38;2;${rgb(PALETTE.lead)}`); // already readable on a dark terminal: as given
+    expect(p.ask("?")).toBe(`${fg("lead")}?\x1b[39m`); // questions and choices
+    expect(p.accent("totem logs")).toBe(`${fg("command")}totem logs\x1b[39m`); // commands
+    expect(p.link("https://x.example/mcp")).toBe(`${fg("link")}https://x.example/mcp\x1b[39m`); // addresses
+    expect(p.secret("pw")).toBe(`\x1b[1;${roleSgr(st, "secret")}mpw\x1b[39;22m`); // the one-time password, bold
+    expect([p.green("✓"), p.yellow("!"), p.red("✗")]).toEqual([`${fg("ok")}✓\x1b[39m`, `${fg("warn")}!\x1b[39m`, `${fg("fail")}✗\x1b[39m`]);
+    expect(brandSgr(style({ palette: "256" }), "fold")).toBe("38;5;110");
+    expect(brandSgr(style({ palette: "truecolor" }), "ice", true)).toBe("48;2;183;211;242");
+    const k = kit(st);
+    expect(k.header("totem cloud")[0]).toBe("\x1b[1m\x1b[38;2;183;211;242mtotem\x1b[39m cloud\x1b[22m"); // the brand word in ice
+    expect(k.answered("Host?", "Fly.io")).toBe(`${fg("lead")}?\x1b[39m \x1b[1mHost?\x1b[22m ${fg("lead")}Fly.io\x1b[39m`);
+    // Addresses take the link colour in details, rows and the Next block; the rest keeps its style.
+    expect(k.mark("ok", "Login sent", "https://x.example")[0]).toContain(`\x1b[2m(\x1b[22m${fg("link")}https://x.example\x1b[39m\x1b[2m)\x1b[22m`);
+    expect(k.rows([["Address", "https://x.example/mcp"]])[0]).toContain(`${fg("link")}https://x.example/mcp\x1b[39m`);
+    expect(k.next(["Every app: https://x.example/connect"]).join("\n")).toContain(`Every app: ${fg("link")}https://x.example/connect\x1b[39m`);
+    expect(k.rows([["URL", p.link("https://y.example")]])[0]).toContain(`${fg("link")}https://y.example\x1b[39m`); // already coloured: untouched
+  });
+
+  it("brings each colour to 4.5:1: darker on white, lighter on a dark terminal", () => {
+    const lum = (rgb: number[]): number => {
+      const [r, g, b] = rgb.map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const dark = lum([30, 30, 30]);
+    for (const hex of Object.values(PALETTE)) {
+      const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+      const light = onLight(rgb), lifted = onDark(rgb);
+      for (const out of [light, lifted]) expect(out.every((v) => Number.isInteger(v) && v >= 0 && v <= 255), hex).toBe(true);
+      expect(1.05 / (lum(light) + 0.05), hex).toBeGreaterThanOrEqual(4.5);
+      expect((lum(lifted) + 0.05) / (dark + 0.05), hex).toBeGreaterThanOrEqual(4.5);
+    }
+    // A colour that already reads is left as it is; a dark one comes up, keeping its hue.
+    expect(onDark([113, 201, 250])).toEqual([113, 201, 250]);
+    const indigo = onDark([102, 16, 242]);
+    expect(indigo[2]).toBeGreaterThan(indigo[0]);
+    expect(lum(indigo)).toBeGreaterThan(lum([102, 16, 242]));
+    expect(roleSgr(style({ palette: "truecolor", light: true }), "lead")).not.toBe(roleSgr(style({ palette: "truecolor" }), "lead"));
+  });
+
+  it("finds the nearest of 256 colours on a terminal without 24-bit colour, and the basic one nearest in meaning below that", () => {
+    expect(xterm256([255, 0, 0])).toBe(196);
+    expect(xterm256([128, 128, 128])).toBe(244);
+    expect(roleSgr(style({ palette: "256" }), "lead")).toMatch(/^38;5;\d+$/);
+    expect(roleSgr(style(), "fail")).toBe("31");
+    expect(roleSgr(style(), "lead")).toBe("36");
+  });
+
+  it("are off without colour", () => {
     const p = paint(style({ color: true, palette: "truecolor" }));
     expect(p.brand("totem")).toBe("\x1b[38;2;183;211;242mtotem\x1b[39m");
-    expect(p.accent("x")).toBe("\x1b[36mx\x1b[39m");
+    expect(paint(style({ color: true })).accent("x")).toBe("\x1b[37mx\x1b[39m"); // basic terminal: its white
     expect(paint(style({ palette: "truecolor" })).brand("totem")).toBe("totem");
+    expect(paint(style({ palette: "truecolor" })).accent("totem")).toBe("totem");
   });
 });
 
@@ -82,7 +137,7 @@ describe("detectStyle: glyphs", () => {
   it("every Unicode glyph has an ASCII stand-in of the same shape", () => {
     const u = glyphs(style());
     const a = glyphs(style({ unicode: false }));
-    for (const key of ["ok", "fail", "warn", "info", "pointer", "ask", "h", "v", "tl", "tr", "bl", "br"] as const) {
+    for (const key of ["ok", "fail", "warn", "info", "pointer", "ask"] as const) {
       expect(a[key], key).toMatch(/^[\x21-\x7e]$/);
       expect(visibleWidth(u[key]), key).toBe(1);
     }
@@ -150,39 +205,43 @@ describe("text helpers", () => {
 describe("primitives", () => {
   const widths = [80, 60, 40];
 
-  it.each(widths)("the next box is a closed rectangle within %i columns", (width) => {
+  it.each(widths)("next is a bold title and its steps under it, within %i columns", (width) => {
     for (const unicode of [true, false]) {
       const k = kit(style({ width, unicode }));
-      const box = k.next(["1. Add the connector in claude.ai (its settings are opening in your browser).", '2. Ask it: "How did I sleep last night?"', "", "See this again: totem connect"]).slice(1);
-      const w = visibleWidth(box[0]!);
-      expect(w).toBeLessThanOrEqual(width);
-      for (const line of box) expect(visibleWidth(line)).toBe(w);
-      const g = k.g;
-      expect(box[0]!.startsWith(`${g.tl}${g.h} Next `) && box[0]!.endsWith(g.tr)).toBe(true);
-      expect(box.at(-1)).toBe(`${g.bl}${g.h.repeat(w - 2)}${g.br}`);
-      for (const line of box.slice(1, -1)) expect(line.startsWith(`${g.v} `) && line.endsWith(` ${g.v}`)).toBe(true);
+      const [title, ...body] = k.next(["1. Add the connector in claude.ai (its settings are opening in your browser).", '2. Ask it: "How did I sleep last night?"', "", "See this again: totem connect"]);
+      expect(title).toBe("Next");
+      for (const line of body) {
+        expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+        expect(line === "" || line.startsWith("  ")).toBe(true);
+      }
+      expect(body[0]!.startsWith("  1. Add the connector")).toBe(true);
     }
   });
 
-  it("the next box fits its content instead of filling the line", () => {
-    const box = kit(style()).next(["Restart your client."]).slice(1);
-    expect(box).toEqual(["╭─ Next ───────────────╮", "│ Restart your client. │", "╰──────────────────────╯"]);
+  it("next keeps step numbers in the lead colour and commands in theirs, so they stand out from the prose", () => {
+    const lead = "\x1b[36m", command = "\x1b[37m"; // a basic terminal's nearest
+    const body = kit(style({ color: true })).next(["1. Restart your client.", "2. If ChatGPT asks you to sign in again, run: codex mcp login whoop", "Check the server: totem status"]).slice(1);
+    expect(body[0]).toBe(`  ${lead}1.\x1b[39m Restart your client.`);
+    expect(body.join("\n")).toContain(`run: ${command}codex mcp login whoop\x1b[39m`);
+    expect(body.at(-1)).toBe(`  Check the server: ${command}totem status\x1b[39m`);
   });
 
-  it("rows align their values, and wrap long ones under themselves", () => {
+  it("rows align their values after a colon, and wrap long ones under themselves", () => {
     expect(kit(style({ width: 40 })).rows([["Host", "Fly.io"], ["Volume", "totem_data, 1 GB: keeps the WHOOP login across restarts"]])).toEqual([
-      "  Host     Fly.io",
-      "  Volume   totem_data, 1 GB: keeps the",
+      "  Host:    Fly.io",
+      "  Volume:  totem_data, 1 GB: keeps the",
       "           WHOOP login across restarts",
     ]);
   });
 
-  it("a mark's detail rides on the line when it fits, else goes below", () => {
+  it("a mark's detail follows it: a time in brackets, anything else in parentheses, on its own line when it doesn't fit", () => {
     const k = kit(style({ width: 40 }));
-    expect(k.mark("ok", "Deployed", "1m 42s")).toEqual(["  ✓ Deployed  1m 42s"]);
-    expect(k.mark("ok", "Added the whoop server to Cursor", "~/.cursor/mcp.json")).toEqual(["  ✓ Added the whoop server to Cursor", "    ~/.cursor/mcp.json"]);
-    expect(k.mark("fail", "x")[0]).toBe("  ✗ x");
-    expect(kit(style({ unicode: false })).mark("ok", "Deployed")).toEqual(["  + Deployed"]);
+    expect(k.mark("ok", "Deployed", "1m 42s")).toEqual(["✓ Deployed [1m 42s]"]);
+    expect(k.mark("ok", "Volume created", "4s")).toEqual(["✓ Volume created [4s]"]);
+    expect(k.mark("ok", "Signed in to Fly", "you@example.com")).toEqual(["✓ Signed in to Fly (you@example.com)"]);
+    expect(k.mark("ok", "Added the whoop server to Cursor", "~/.cursor/mcp.json")).toEqual(["✓ Added the whoop server to Cursor", "  ~/.cursor/mcp.json"]);
+    expect(k.mark("fail", "x")[0]).toBe("✗ x");
+    expect(kit(style({ unicode: false })).mark("ok", "Deployed")).toEqual(["+ Deployed"]);
   });
 
   it("a problem says what went wrong, then lines up the commands that fix it", () => {
@@ -194,26 +253,59 @@ describe("primitives", () => {
   });
 
   it("a problem shows a command's output line by line, continuing long lines indented", () => {
-    const lines = kit(style({ width: 40 })).problem("Deploying failed.", { detail: ["==> Building image", "Error: failed to fetch an image or build from source"] }, 2);
+    const lines = kit(style({ width: 40 })).problem("Deploying failed.", { detail: ["==> Building image", "Error: failed to fetch an image or build from source"] });
     expect(lines).toEqual([
-      "  ✗ Deploying failed.",
-      "    ==> Building image",
-      "    Error: failed to fetch an image or",
-      "      build from source",
+      "✗ Deploying failed.",
+      "  ==> Building image",
+      "  Error: failed to fetch an image or",
+      "    build from source",
     ]);
   });
 
   it("something to paste stands alone: indentation only, no border or prefix", () => {
-    expect(kit(style({ color: false })).code(["totem auth --paste"])).toEqual(["    totem auth --paste"]);
-    expect(kit(style({ color: true })).code(["totem auth"])[0]).toBe("    \x1b[36mtotem auth\x1b[39m");
+    expect(kit(style({ color: false })).code(["totem auth --paste"])).toEqual(["  totem auth --paste"]);
+    expect(kit(style({ color: true })).code(["totem auth"])[0]).toBe("  \x1b[37mtotem auth\x1b[39m");
   });
 
-  it("step shows where you are", () => {
-    const [blank, line] = kit(style()).step(2, 6, "Secrets");
-    expect(blank).toBe("");
-    // A full-width rule: where you are, then the step's name.
-    expect(line).toBe(`── 2/6  Secrets ${"─".repeat(64)}`);
-    expect([...line!].length).toBe(80);
+  it("step is the count in brackets and the title", () => {
+    expect(kit(style()).step(2, 6, "Secrets")).toEqual(["[2/6] Secrets"]);
+    expect(kit(style({ unicode: false })).step(3, 3, "Connect your apps")).toEqual(["[3/3] Connect your apps"]);
+  });
+
+  it("header is the command, then its purpose", () => {
+    expect(kit(style({ width: 40 })).header("totem auth", "Log in to WHOOP. The login is saved on this computer.")).toEqual([
+      "totem auth",
+      "Log in to WHOOP. The login is saved on",
+      "this computer.",
+    ]);
+  });
+
+  it("questions are asked and answered on one line", () => {
+    const k = kit(style());
+    expect(k.question("Deploy this?", "(Y/n)")).toBe("? Deploy this? (Y/n)");
+    expect(k.answered("Where should the server run?", "Fly.io")).toBe("? Where should the server run? Fly.io");
+  });
+
+  it("banner draws the logo beside the title where there is colour, and falls back to a header", () => {
+    const coloured = kit(style({ color: true, palette: "truecolor" })).banner("totem cloud", "Deploy your own server.");
+    expect(coloured).toHaveLength(5); // the logo's five rows, the text beside them
+    expect(coloured[1]).toContain("\x1b[1m\x1b[38;2;183;211;242mtotem\x1b[39m cloud\x1b[22m");
+    expect(coloured.every((l) => visibleWidth(l) <= 80)).toBe(true);
+    expect(kit(style({ color: true, palette: "truecolor" })).logo).toBe(true);
+    // No colour, ASCII, a narrow terminal or logo: false: no picture.
+    for (const s of [style(), style({ color: true, unicode: false }), style({ color: true, width: 50 }), style({ color: true, logo: false })]) {
+      expect(kit(s).logo).toBe(false);
+      expect(stripVTControlCharacters(kit(s).banner("totem cloud", "Deploy your own server.")[0]!)).toBe("totem cloud");
+    }
+  });
+
+  it("the logo is rasterized from the SVG: a hexagon, the same turned half a circle", () => {
+    const px = logoPixels(12, 10);
+    expect(px).toHaveLength(10);
+    const turned = px.map((row) => [...row].reverse()).reverse();
+    expect(turned).toEqual(px);
+    expect(px[0]!.filter(Boolean).length).toBeLessThan(px[4]!.filter(Boolean).length); // pointed at the top
+    expect(px.flat()).toContain("fold");
   });
 });
 
@@ -232,8 +324,7 @@ describe("Ui", () => {
     ui.line();
     ui.next(["Done."]);
     expect(out.join("")).not.toMatch(/\n\n\n/);
-    expect(out.join("")).toContain("▍ totem local\n▍ Run totem on this computer.\n\n── 1/3  Prerequisites ");
-    expect(out.join("")).toContain("\n  ✓ Node.js 24.3.0\n\n╭─ Next");
+    expect(out.join("")).toBe(["", "totem local", "Run totem on this computer.", "", "[1/3] Prerequisites", "✓ Node.js 24.3.0", "", "Next", "  Done.", ""].join("\n"));
   });
 
   it("without a terminal, slow work gets one plain line and fast work none", async () => {
@@ -241,7 +332,7 @@ describe("Ui", () => {
     expect(await ui.task("Checking who is signed in", async () => 1)).toBe(1);
     expect(out).toEqual([]);
     await ui.task("Building and deploying on Fly", async () => undefined, { slow: true });
-    expect(out.join("")).toBe("  • Building and deploying on Fly…\n");
+    expect(out.join("")).toBe("• Building and deploying on Fly…\n");
     expect(out.join("")).not.toMatch(/\x1b|\r/); // no cursor movement into a log
   });
 

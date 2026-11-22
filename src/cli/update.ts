@@ -223,7 +223,7 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
       const rebuilt = await ui.task(`Rebuilding ${ctx.version}`, async () => (await install()).code === 0 && (await build()).code === 0);
       if (rebuilt) ui.ok(`Back on ${ctx.version}; nothing changed`);
       else ui.warn(`Back on ${ctx.version}'s source, but it didn't rebuild.`, "run: npm install && totem build");
-      ui.rows([[RETRY[0], ui.kit.c.accent(RETRY[1])]], 4);
+      ui.rows([[RETRY[0], ui.kit.c.accent(RETRY[1])]], 2);
     };
     // Every version, the latest included, is its release tag: a detached
     // checkout. Never `main`: that is unreleased code, and on a fork's clone
@@ -425,12 +425,12 @@ async function enableAuto(ctx: UpdateCtx, io: Io): Promise<boolean> {
     via = "cron";
   } else {
     ui.warn("Auto-update isn't available on this system.");
-    ui.para("To get the same, schedule this command every 6 hours:", 4);
+    ui.para("To get the same, schedule this command every 6 hours:", 2);
     ui.code([args.join(" ")]);
     return false;
   }
   ui.ok("Auto-update is on", `checks every 6 hours, through ${via}`);
-  ui.rows([["Log", tildify(log, sys.home)], ["Turn it off", "totem update --auto off"]], 4);
+  ui.rows([["Log", tildify(log, sys.home)], ["Turn it off", "totem update --auto off"]], 2);
   return true;
 }
 
@@ -529,7 +529,7 @@ async function runCheck(ctx: UpdateCtx, io: Io): Promise<number> {
   ui.line();
   if (isNewer(latest.version, ctx.version)) {
     ui.warn(`An update is available: ${latest.version}.`);
-    ui.rows([["Install it", ui.kit.c.accent("totem update")]], 4);
+    ui.rows([["Install it", ui.kit.c.accent("totem update")]], 2);
   } else {
     ui.ok("Up to date");
   }

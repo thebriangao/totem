@@ -1,21 +1,21 @@
 
-▍ totem update
-▍ Version 1.5.1 is installed.
+totem update
+Version 1.5.1 is installed.
 
 ? Which version? (↑↓, Enter)
   › 1.6.0   latest · 2026-11-18 · Browser login, 40 tools
     1.5.1   installed · 2026-10-02 · Fix .env quoting
     1.5.0   2026-09-20 · Journal fixes
     1.4.2   2026-06-07
-✓ Which version? · 1.6.0
+? Which version? 1.6.0
 
-Install 1.6.0 ──────────────────────────────────────────────────────────────────
-  ✓ Releases fetched
-  ✓ Checked out v1.6.0
-  • Installing dependencies…
-  ✗ Installing dependencies failed.
-    npm error code ENOTFOUND
-    npm error network request to https://registry.npmjs.org/zod failed,
-      reason: getaddrinfo ENOTFOUND registry.npmjs.org
-  ✓ Back on 1.5.1; nothing changed
-    Try again   totem update
+Install 1.6.0
+✓ Releases fetched
+✓ Checked out v1.6.0
+• Installing dependencies…
+✗ Installing dependencies failed.
+  npm error code ENOTFOUND
+  npm error network request to https://registry.npmjs.org/zod failed, reason:
+    getaddrinfo ENOTFOUND registry.npmjs.org
+✓ Back on 1.5.1; nothing changed
+  Try again:  totem update

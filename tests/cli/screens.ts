@@ -105,11 +105,18 @@ const onFly = (world: FakeWorld): void => writeDeployRecord(world.root, { platfo
 const onLocal = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "local" });
 const onCustom = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "custom", app: "totem", url: "https://whoop.example.com", mcp_auth_token: TOKEN });
 const loggedIn = { state: "tokens" as const, source: "browser", savedAt: "2026-11-02T08:00:00.000Z", refreshedAt: "2026-11-21T20:00:00.000Z", accessExpiresAt: "2026-11-21T21:00:00.000Z", owner: null };
+/** The host each cloud screen deploys to, chosen by name so the menu's order can change. */
+const host = (name: string): [string, string] => ["Where should the server run?", name];
+const FLY = host("Fly.io");
+
 const down: NonNullable<WorldOptions["http"]> = (url) => (url.includes("api.github.com") ? undefined : { status: 0, body: "", ms: 3000, error: "ECONNREFUSED" });
 
 export const SCREENS: Screen[] = [
   // ── help and errors ────────────────────────────────────────────────────
-  { name: "help", command: "totem", about: "Bare `totem` and `totem help`." },
+  { name: "home", command: "totem", about: "Bare `totem` before anything is set up: the logo, and where to start." },
+  { name: "home-server", command: "totem", about: "Bare `totem` with a server on Fly: where it runs and the commands for it.", setup: onFly },
+  { name: "home-local", command: "totem", about: "Bare `totem` on a local install with a WHOOP login.", world: { auth: { local: loggedIn } }, setup: onLocal },
+  { name: "help", command: "totem help", about: "Every command, grouped." },
   { name: "help-auth", command: "totem auth --help", about: "Help for one command." },
   { name: "help-cloud", command: "totem help cloud", about: "Help for one command, the other way to ask." },
   { name: "help-update", command: "totem update --help", about: "Help for one command with options." },
@@ -143,35 +150,35 @@ export const SCREENS: Screen[] = [
   },
 
   // ── cloud ──────────────────────────────────────────────────────────────
-  { name: "cloud-fly", command: "totem cloud", about: "Cloud setup on Fly.io, happy path with a stubbed host.", world: { exec: fly() } },
+  { name: "cloud-fly", command: "totem cloud", about: "Cloud setup on Fly.io, happy path with a stubbed host.", world: { exec: fly(), answers: [FLY] } },
   {
     name: "cloud-fly-deploy-failed", command: "totem cloud", about: "A failed step: the build fails on Fly; the person stops.",
     world: {
       exec: fly((a, w) => { if (a.startsWith("deploy")) { w.clock.t += 41_000; return { code: 1, stdout: "==> Building image\n#8 [builder 4/6] RUN npm ci\n#8 ERROR: process \"/bin/sh -c npm ci\" did not complete successfully: exit code 1\n", stderr: "Error: failed to fetch an image or build from source: error building: exit code 1\n" }; } return undefined; }),
-      answers: [["What now?", 1]],
+      answers: [FLY, ["What now?", 1]],
     },
   },
   {
     name: "cloud-fly-host-echoes-secrets", command: "totem cloud", about: "A host CLI fails and echoes what it was given: the secrets in its output are blanked.",
     world: {
       exec: fly((a, _w) => (a.startsWith("secrets import") ? { code: 1, stdout: "", stderr: `Error: could not set secrets\nMCP_AUTH_TOKEN=${TOKEN}\nAUTH_PASSWORD=${PASSWORD}\n` } : undefined)),
-      answers: [["What now?", 1]],
+      answers: [FLY, ["What now?", 1]],
     },
   },
-  { name: "cloud-cancelled", command: "totem cloud", about: "The plan is declined: nothing is created.", world: { exec: fly(), answers: [["Deploy this?", 2]] } },
+  { name: "cloud-cancelled", command: "totem cloud", about: "The plan is declined: nothing is created.", world: { exec: fly(), answers: [FLY, ["Deploy this?", 2]] } },
   {
     name: "cloud-server-not-answering", command: "totem cloud", about: "The deploy works but the server never answers /health.",
-    world: { exec: fly(), http: () => ({ status: 0, body: "", ms: 3000, error: "ENOTFOUND" }) },
+    world: { exec: fly(), answers: [FLY], http: () => ({ status: 0, body: "", ms: 3000, error: "ENOTFOUND" }) },
   },
-  { name: "cloud-cloudflare", command: "totem cloud", about: "Cloud setup on Cloudflare Workers (free plan).", world: { exec: cloudflare, answers: [["Where should the server run?", 1]] } },
-  { name: "cloud-railway", command: "totem cloud", about: "Cloud setup on Railway.", world: { exec: railway, answers: [["Where should the server run?", 2]] } },
+  { name: "cloud-cloudflare", command: "totem cloud", about: "Cloud setup on Cloudflare Workers (free plan).", world: { exec: cloudflare, answers: [host("Cloudflare")] } },
+  { name: "cloud-railway", command: "totem cloud", about: "Cloud setup on Railway.", world: { exec: railway, answers: [host("Railway")] } },
   {
     name: "cloud-custom", command: "totem cloud", about: "Cloud setup on your own Docker host.",
-    world: { answers: [["Where should the server run?", 3], ["Public https URL", "totem.example.com"]] },
+    world: { answers: [host("My own server"), ["Public https URL", "totem.example.com"]] },
   },
   {
     name: "cloud-fly-cli-missing", command: "totem cloud", about: "The host's CLI isn't installed and the person declines to install it.",
-    world: { missing: ["fly", "flyctl"], answers: [["Install it with Homebrew?", false], ["Install it with its install script?", false]] },
+    world: { missing: ["fly", "flyctl"], answers: [FLY, ["Install it with Homebrew?", false], ["Install it with its install script?", false]] },
   },
 
   // ── connect ────────────────────────────────────────────────────────────
@@ -247,4 +254,4 @@ export const SCREENS: Screen[] = [
 ];
 
 /** The screens the brief names: snapshot-tested one by one. */
-export const KEY_SCREENS = ["help", "local", "cloud-fly", "auth-server", "auth-fail-browser-closed", "update-check-available", "cloud-fly-deploy-failed", "update-failed-step"];
+export const KEY_SCREENS = ["home", "help", "local", "cloud-fly", "auth-server", "auth-fail-browser-closed", "update-check-available", "cloud-fly-deploy-failed", "update-failed-step"];

@@ -102,8 +102,8 @@ With a cloud server, each app sends you to totem's sign-in page once. It shows w
 
 | Host | Cost | Notes |
 |---|---|---|
-| **Fly.io** (recommended) | About $4 a month: one 512 MB machine in Virginia and a 1 GB volume | Always on. At the time of writing Fly doesn't bill personal accounts for less than $5 a month. |
-| **Cloudflare Workers** | Free plan (100,000 requests a day) | No machine to look after. The login lives in a Durable Object. |
+| **Cloudflare Workers** (recommended) | Free plan (100,000 requests a day) | No machine to look after. The login lives in a Durable Object. |
+| **Fly.io** | About $4 a month: one 512 MB machine in Virginia and a 1 GB volume | Always on. At the time of writing Fly doesn't bill personal accounts for less than $5 a month. |
 | **Railway** | Railway's paid plan | A dashboard and logs in the browser. |
 | **Your own server** | Yours | Any Docker host. Use the image `ghcr.io/thebriangao/totem` or build the Dockerfile, and mount a volume at `/data`. |
 

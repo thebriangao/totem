@@ -13,11 +13,16 @@ import { describe, expect, it } from "vitest";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import { PLAIN, visibleWidth, type Style } from "../../src/cli/ui.js";
+import { paint, PLAIN, roleSgr, visibleWidth, type Role, type Style } from "../../src/cli/ui.js";
 import { PASSWORD, terminalPage, TOKEN } from "./helpers.js";
 import { KEY_SCREENS, SCREENS, render, type Screen } from "./screens.js";
 
 const COLOR: Style = { color: true, unicode: true, width: 80, palette: "truecolor" };
+/** The default theme's accents as this style draws them, and the one-time password's codes. */
+const ACCENTS = [
+  ...(["lead", "command", "link", "secret", "ok", "warn", "fail"] as Role[]).map((r) => roleSgr(COLOR, r)),
+  ...[...paint(COLOR).secret("x").matchAll(/\x1b\[([^m]*)m/g)].map((m) => m[1]!),
+];
 const ASCII: Style = { color: false, unicode: false, width: 80 };
 const NARROW: Style = { color: false, unicode: true, width: 48 };
 const screen = (name: string): Screen => {
@@ -57,10 +62,17 @@ describe("every screen", () => {
 
   it.each(SCREENS.map((s) => [s.name, s] as const))("%s: colour only decorates", async (_name, s) => {
     const plain = (await render(s)).text;
-    const coloured = (await render(s, COLOR)).text;
-    // Only bold, dim, four of the basic colours, the brand colour (ice #B7D3F2) and their resets.
-    for (const code of coloured.match(/\x1b\[[^m]*m/g) ?? []) expect(code).toMatch(/^\x1b\[(1|2|22|31|32|33|36|39|38;2;183;211;242)m$/);
+    // The logo is the one picture, drawn only where there is colour: leave it out to compare.
+    const coloured = (await render(s, { ...COLOR, logo: false })).text;
+    // Only bold, dim, the two brand shades (ice #B7D3F2, fold #7A9CC6), the theme's accents and their resets.
+    const allowed = new Set(["1", "2", "22", "39", "38;2;183;211;242", "38;2;122;156;198", ...ACCENTS]);
+    for (const code of coloured.match(/\x1b\[[^m]*m/g) ?? []) expect(allowed.has(code.slice(2, -1)), JSON.stringify(code)).toBe(true);
     expect(stripVTControlCharacters(coloured)).toBe(plain);
+    // With the logo, only its two shades are added, in front of the cell and behind it.
+    const withLogo = (await render(s, COLOR)).text;
+    for (const code of withLogo.match(/\x1b\[[^m]*m/g) ?? []) {
+      expect(allowed.has(code.slice(2, -1)) || /^\x1b\[(49|39;49|38;2;(183;211;242|122;156;198)(;48;2;(183;211;242|122;156;198))?)m$/.test(code), JSON.stringify(code)).toBe(true);
+    }
   });
 
   it.each(SCREENS.map((s) => [s.name, s] as const))("%s: is pure ASCII when the terminal can't show Unicode", async (_name, s) => {
@@ -76,7 +88,7 @@ describe("secrets", () => {
   it("the connector password appears once, in the connect card, and nowhere before it", async () => {
     const { text } = await render(screen("cloud-fly"));
     expect(text.split(PASSWORD)).toHaveLength(2);
-    expect(text.indexOf(PASSWORD)).toBeGreaterThan(text.indexOf("6/6  Connect your apps"));
+    expect(text.indexOf(PASSWORD)).toBeGreaterThan(text.indexOf("[6/6] Connect your apps"));
   });
 
   // "Early" is before the deploy finished. Once the server has the password it

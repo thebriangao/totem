@@ -37,7 +37,10 @@ export class ScriptedUi extends Ui {
   }
 
   override async select(question: string, choices: Choice[], defaultIndex = 0): Promise<number> {
-    const idx = this.take(question, defaultIndex);
+    // An answer is the choice's position, or its label.
+    const pick = this.take<number | string>(question, defaultIndex);
+    const idx = typeof pick === "string" ? choices.findIndex((ch) => ch.label === pick) : pick;
+    if (idx < 0 || idx >= choices.length) throw new Error(`"${question}" has no choice ${JSON.stringify(pick)}`);
     // The menu as it was offered, then the line it folds into once answered.
     this.lines(this.menu(question, choices, idx, true));
     this.line(this.kit.answered(question, choices[idx]!.label));
@@ -221,15 +224,16 @@ const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;"
 
 /** The body of a terminal screenshot page: SGR colours as spans. */
 export function ansiToHtml(text: string): string {
-  const colors: Record<number, string> = { 31: "red", 32: "green", 33: "yellow", 35: "magenta", 36: "cyan", 94: "bright-blue" };
-  // The two 256-colour brand shades (ui.ts brandSgr); others render uncoloured.
-  const xterm: Record<number, string> = { 153: "#afd7ff", 110: "#87afd7" };
-  let bold = false, dim = false, color = "", rgb = "";
+  const colors: Record<number, string> = { 31: "red", 32: "green", 33: "yellow", 34: "blue", 35: "magenta", 36: "cyan", 94: "bright-blue" };
+  const backs: Record<number, string> = { 44: "#3b5f8f", 104: "#79c0ff" };
+  // The 256-colour brand shades (ui.ts brandSgr); others render uncoloured.
+  const xterm: Record<number, string> = { 153: "#afd7ff", 110: "#87afd7", 67: "#5f87af" };
+  let bold = false, dim = false, color = "", rgb = "", bg = "";
   let html = "";
   const open = (): string => {
     const cls = [bold ? "b" : "", dim ? "d" : "", color].filter(Boolean).join(" ");
-    const style = rgb ? ` style="color:${rgb}"` : "";
-    return cls || style ? `<span${cls ? ` class="${cls}"` : ""}${style}>` : "";
+    const style = [rgb ? `color:${rgb}` : "", bg ? `background:${bg}` : ""].filter(Boolean).join(";");
+    return cls || style ? `<span${cls ? ` class="${cls}"` : ""}${style ? ` style="${style}"` : ""}>` : "";
   };
   for (const part of text.split(/(\x1b\[[0-9;]*m)/)) {
     const m = part.match(/^\x1b\[([0-9;]*)m$/);
@@ -242,11 +246,15 @@ export function ansiToHtml(text: string): string {
       const code = codes[i]!;
       if (code === 38 && codes[i + 1] === 2) { rgb = `rgb(${codes.slice(i + 2, i + 5).join(",")})`; color = ""; i += 4; }
       else if (code === 38 && codes[i + 1] === 5) { rgb = xterm[codes[i + 2]!] ?? ""; color = ""; i += 2; }
-      else if (code === 0) { bold = false; dim = false; color = ""; rgb = ""; }
+      else if (code === 48 && codes[i + 1] === 2) { bg = `rgb(${codes.slice(i + 2, i + 5).join(",")})`; i += 4; }
+      else if (code === 48 && codes[i + 1] === 5) { bg = xterm[codes[i + 2]!] ?? ""; i += 2; }
+      else if (code === 0) { bold = false; dim = false; color = ""; rgb = ""; bg = ""; }
       else if (code === 1) bold = true;
       else if (code === 2) dim = true;
       else if (code === 22) { bold = false; dim = false; }
       else if (code === 39) { color = ""; rgb = ""; }
+      else if (code === 49) bg = "";
+      else if (backs[code]) bg = backs[code]!;
       else if (colors[code]) { color = colors[code]!; rgb = ""; }
     }
   }
@@ -269,7 +277,7 @@ export function terminalPage(title: string, ansi: string, columns = 80): string 
         font: 14px/1.22 Menlo, "SF Mono", Consolas, "DejaVu Sans Mono", monospace; }
   .b { font-weight: 700; color: #f2f5f8; }
   .d { color: #8b949e; }
-  .red { color: #ff7b72; } .green { color: #56d364; } .yellow { color: #e3b341; } .cyan { color: #6cc7e0; } .magenta { color: #d2a8ff; } .bright-blue { color: #79c0ff; }
+  .red { color: #ff7b72; } .green { color: #56d364; } .yellow { color: #e3b341; } .cyan { color: #6cc7e0; } .blue { color: #6f9bd1; } .magenta { color: #d2a8ff; } .bright-blue { color: #79c0ff; }
   .b.d { color: #8b949e; font-weight: 400; }
 </style></head>
 <body><div class="win"><div class="bar"><i></i><i></i><i></i><span>${esc(title)}</span></div><pre>${ansiToHtml(ansi)}</pre></div></body></html>

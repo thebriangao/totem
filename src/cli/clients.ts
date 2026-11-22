@@ -231,20 +231,20 @@ export function recipeLines(recipe: Recipe, k: Kit, sys: Pick<Sys, "home" | "pla
   const width = k.style.width;
   switch (recipe.kind) {
     case "steps":
-      return recipe.steps.flatMap((s) => k.para(withSep(s, k), 4));
+      return recipe.steps.flatMap((s) => k.para(withSep(s, k), 2));
     case "link":
-      return [...k.code([recipe.url], 4), ...k.para(withSep(recipe.after, k), 4)];
+      return [...k.code([recipe.url], 2), ...k.para(withSep(recipe.after, k), 2)];
     case "unavailable":
-      return k.hint(recipe.why, 4);
+      return k.hint(recipe.why, 2);
     case "command":
       return [
-        ...k.code(shellLines(recipe.argv, width - 4, sys.platform), 4),
-        ...recipe.then.flatMap((t) => (t.includes(PATH_SEP) ? k.para(withSep(t, k), 4) : k.code([t], 4))),
+        ...k.code(shellLines(recipe.argv, width - 4, sys.platform), 2),
+        ...recipe.then.flatMap((t) => (t.includes(PATH_SEP) ? k.para(withSep(t, k), 2) : k.code([t], 2))),
       ];
     case "file":
       return [
-        ...k.para(`Add to ${tildify(recipe.path, sys.home)}:`, 4),
-        ...k.code(recipeJson(recipe), 4),
+        ...k.para(`Add to ${tildify(recipe.path, sys.home)}:`, 2),
+        ...k.code(recipeJson(recipe), 2),
       ];
   }
 }
@@ -267,8 +267,8 @@ export function connectCard(k: Kit, sys: Pick<Sys, "home" | "platform" | "has" |
   const lines: string[] = [];
   if (target.kind === "remote") {
     lines.push(...k.rows([
-      ["URL", k.c.accent(target.mcpUrl)],
-      ["Password", data.password ? `${k.c.bold(data.password)}${data.copied ? k.c.dim("  (copied to the clipboard)") : ""}` : "the connector password from totem cloud"],
+      ["URL", k.c.link(target.mcpUrl)],
+      ["Password", data.password ? `${k.c.secret(data.password)}${data.copied ? k.c.dim("  (copied to the clipboard)") : ""}` : "the connector password from totem cloud"],
     ]));
     if (data.password) lines.push(...k.hint("totem shows the password this once. Save it in your password manager.", 2));
     lines.push("");
@@ -285,21 +285,21 @@ export function connectCard(k: Kit, sys: Pick<Sys, "home" | "platform" | "has" |
     lines.push(...k.rows([
       ...able.map((cl): [string, string] => [cl.name, k.c.accent(`totem connect ${cl.id}`)]),
       ["Another client", k.c.accent("totem connect other")],
-    ], 4));
+    ]));
     lines.push("", ...k.para("claude.ai connects over the internet, so it needs a deployed server: totem cloud"));
     return lines;
   }
   for (const client of CLIENTS.filter((cl) => cl.featured)) {
     const recipe = client.recipe(target, sys as Sys);
-    lines.push("", `  ${k.c.bold(client.name)}`);
+    lines.push("", k.c.bold(client.name));
     // A config file is totem's to write (one command), not JSON to paste by hand.
     // `totem connect <client> --print` still shows the entry itself.
-    if (recipe.kind === "file") lines.push(...k.code([`totem connect ${client.id}`], 4), ...k.para(withSep(recipe.after, k), 4));
+    if (recipe.kind === "file") lines.push(...k.code([`totem connect ${client.id}`], 2), ...k.para(withSep(recipe.after, k), 2));
     else lines.push(...recipeLines(recipe, k, sys));
   }
-  lines.push("", `  ${k.c.bold("Another client")}`);
-  lines.push(...k.para("Give it the URL. If it can't sign in through a browser, send the server's token as a bearer header instead:", 4));
-  lines.push(...k.code(["Authorization: Bearer $(totem token)"], 4));
+  lines.push("", k.c.bold("Another client"));
+  lines.push(...k.para("Give it the URL. If it can't sign in through a browser, send the server's token as a bearer header instead:", 2));
+  lines.push(...k.code(["Authorization: Bearer $(totem token)"], 2));
   return lines;
 }
 
@@ -420,7 +420,7 @@ export async function applyRecipe(io: Io, client: Client, recipe: Recipe): Promi
           return applyRecipe(io, client, recipe.fallback);
         }
         ui.warn(error.message.split(recipe.path).join(shown));
-        ui.para(`Add this under "${recipe.key}" in that file yourself:`, 4);
+        ui.para(`Add this under "${recipe.key}" in that file yourself:`, 2);
         ui.code(JSON.stringify({ [SERVER_NAME]: recipe.entry }, null, 2).split("\n"));
         return { done: false, steps: [`Add the entry above to ${shown}.`, withSep(recipe.after, k)] };
       }
@@ -454,7 +454,7 @@ export async function applyRecipe(io: Io, client: Client, recipe: Recipe): Promi
         return { done: true, steps: [withSep(recipe.after, k)] };
       }
       ui.problem(`${cmd} ${args.slice(0, 2).join(" ")} failed.`, { detail: lastLine(r) });
-      ui.para("Run it yourself:", 4);
+      ui.para("Run it yourself:", 2);
       byHand();
       return { done: false, steps: ["Run the command above.", withSep(recipe.after, k)] };
     }

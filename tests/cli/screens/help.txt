@@ -2,8 +2,7 @@
 totem 1.5.1
 Your WHOOP data in Claude, ChatGPT and other AI apps, over MCP.
 
-Usage
-  totem <command> [options]
+Usage: totem <command> [options]
 
 Set up
   cloud       Deploy your own server; connect claude.ai, ChatGPT and others
@@ -32,5 +31,5 @@ Options
   -v, --version   Print the version
   --no-color      Plain output (NO_COLOR=1 does the same)
 
-New here? Start with  totem cloud
+New here? Start with totem cloud
 

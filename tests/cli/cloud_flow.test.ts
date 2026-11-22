@@ -22,8 +22,11 @@ const fly: NonNullable<WorldOptions["exec"]> = (_cmd, args) => {
 let world: FakeWorld | undefined;
 afterEach(() => { world?.cleanup(); world = undefined; });
 
+/** Fly unless the test picks another host (by name, so the menu's order can change). */
+const HOST = "Where should the server run?";
 async function cloud(opts: WorldOptions, setup: (w: FakeWorld) => void = () => {}): Promise<{ w: FakeWorld; code: number; text: string }> {
-  const w = fakeWorld(opts);
+  const answers = opts.answers ?? [];
+  const w = fakeWorld({ ...opts, answers: answers.some(([m]) => m === HOST) ? answers : [[HOST, "Fly.io"], ...answers] });
   world = w;
   setup(w);
   const app: AppCtx = { root: w.root, version: "1.5.1", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
@@ -117,7 +120,7 @@ describe("totem cloud: Cloudflare", () => {
     }
     return undefined;
   };
-  const pick: WorldOptions = { answers: [["Where should the server run?", 1]] };
+  const pick: WorldOptions = { answers: [[HOST, "Cloudflare"]] };
 
   it("passes the secrets in a private temporary file, deletes it, and records the workers.dev address", async () => {
     const seen: { file?: string | undefined; body?: string | undefined } = {};
@@ -157,7 +160,7 @@ describe("totem cloud: cancelling the plan", () => {
 // The own-server flow writes the server's secrets to .env.deploy and says the
 // file is readable only by you. That has to hold when the file already existed.
 describe.skipIf(process.platform === "win32")("totem cloud: .env.deploy", () => {
-  const ownServer: WorldOptions = { answers: [["Where should the server run?", 3], ["Public https URL", "totem.example.com"]] };
+  const ownServer: WorldOptions = { answers: [[HOST, "My own server"], ["Public https URL", "totem.example.com"]] };
   const mode = (path: string): string => (statSync(path).mode & 0o777).toString(8);
 
   it("is 0600 when the flow creates it", async () => {

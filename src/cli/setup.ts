@@ -267,14 +267,14 @@ export async function runConnect(root: string, args: string[], io: Io = realIo()
     // A remote install is finished by signing in from the client, on the server's
     // own page, so the address and which password it wants come first.
     if (target.kind === "remote" && recipe.kind !== "unavailable") {
-      ui.rows([["URL", ui.kit.c.accent(target.mcpUrl)], ["Password", "the connector password from totem cloud"]]);
+      ui.rows([["URL", ui.kit.c.link(target.mcpUrl)], ["Password", "the connector password from totem cloud"]]);
       ui.line();
     }
     // totem sets the client up itself when that is a file or the client's own
     // command (for a server, both hold only its address). Steps in a client's
     // settings, and --print, are shown instead.
     if (print || recipe.kind === "steps" || recipe.kind === "unavailable") {
-      ui.line(`  ${ui.kit.c.bold(client.name)}`);
+      ui.line(ui.kit.c.bold(client.name));
       ui.lines(recipeLines(recipe, ui.kit, sys));
       return recipe.kind === "unavailable" ? 1 : 0;
     }
@@ -317,7 +317,7 @@ async function ensureLocalLogin(root: string, io: Io): Promise<boolean> {
 export async function runLocalSetup(root: string, io: Io = realIo()): Promise<number> {
   const { ui } = io;
   const TOTAL = 3;
-  ui.header("totem local", "Run totem on this computer and connect your AI apps to it.");
+  ui.banner("totem local", "Run totem on this computer and connect your AI apps to it.");
 
   // `totem local` records this install as local. If it is recorded as deployed,
   // that record (and the server's token in it) is what `totem auth`, `status`
@@ -349,9 +349,9 @@ export async function runLocalSetup(root: string, io: Io = realIo()): Promise<nu
 
 type Platform = "fly" | "railway" | "cloudflare" | "custom";
 const HOSTS: Array<{ id: Platform; name: string; hint: string }> = [
-  { id: "fly", name: "Fly.io", hint: "one small always-on machine, about $4 a month (recommended)" },
-  { id: "cloudflare", name: "Cloudflare", hint: "Workers free plan; no card, no machine to look after" },
-  { id: "railway", name: "Railway", hint: "a managed service with a dashboard, on Railway's paid plan" },
+  { id: "cloudflare", name: "Cloudflare", hint: "Workers free plan; no card, no machine (recommended)" },
+  { id: "fly", name: "Fly.io", hint: "one always-on machine, about $4 a month" },
+  { id: "railway", name: "Railway", hint: "managed, with a dashboard; needs Railway's paid plan" },
   { id: "custom", name: "My own server", hint: "any Docker host; totem prints the commands" },
 ];
 
@@ -828,7 +828,7 @@ async function deployCloudflare(d: Deploy): Promise<string | null> {
       run: async (set) => {
         const r = await sys.exec("npx", wrangler(["deploy", "--name", d.appName, "--secrets-file", secretsFile]), {
           cwd: d.root,
-          onLine: (line) => (d.verbose ? ui.hint(redact(d, line), 4) : set(line)),
+          onLine: (line) => (d.verbose ? ui.hint(redact(d, line), 2) : set(line)),
         });
         url = workersDevUrl(`${r.stdout}\n${r.stderr}`, d.appName) ?? url;
         return r;
@@ -1042,7 +1042,7 @@ export interface CloudOptions {
 export async function runCloudSetup(root: string, io: Io = realIo(), opts: CloudOptions = {}): Promise<number> {
   const { ui, sys } = io;
   const TOTAL = 6;
-  ui.header("totem cloud", "Deploy your own totem server and connect your AI apps to it.");
+  ui.banner("totem cloud", "Deploy your own totem server and connect your AI apps to it.");
 
   // This flow ends by writing the new server into .totem-deploy.json, over what
   // is there. For a server that is already deployed, that record is the only
@@ -1146,8 +1146,8 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
     const handedOver = sys.copy(password);
     ui.line();
     ui.rows([
-      ["URL", ui.kit.c.accent(mcpUrl)],
-      ["Password", `${ui.kit.c.bold(password)}${handedOver ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
+      ["URL", ui.kit.c.link(mcpUrl)],
+      ["Password", `${ui.kit.c.secret(password)}${handedOver ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
     ]);
     ui.hint("The connector password is already set on the server, and totem shows it this once. Save it in your password manager.", 2);
   };
@@ -1179,8 +1179,8 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   ui.step(6, TOTAL, "Connect your apps");
   const copied = !ownPassword && sys.copy(password);
   ui.rows([
-    ["URL", ui.kit.c.accent(mcpUrl)],
-    ["Password", ownPassword ? "the one you chose" : `${ui.kit.c.bold(password)}${copied ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
+    ["URL", ui.kit.c.link(mcpUrl)],
+    ["Password", ownPassword ? "the one you chose" : `${ui.kit.c.secret(password)}${copied ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
   ]);
   if (!ownPassword) ui.hint("totem shows the password this once. Save it in your password manager.", 2);
   ui.line();

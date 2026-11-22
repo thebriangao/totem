@@ -26,7 +26,7 @@ async function update(...args: string[]): Promise<{ w: FakeWorld; code: number; 
 describe("an npm install never takes a prerelease", () => {
   it("--check reports the newest plain release as the latest", async () => {
     const { text } = await update("--check");
-    expect(text).toMatch(/Latest\s+1\.6\.0\b/);
+    expect(text).toMatch(/Latest:\s+1\.6\.0\b/);
     expect(text).toContain("An update is available: 1.6.0.");
     expect(text).not.toMatch(/2\.0\.0|rc|beta/);
   });

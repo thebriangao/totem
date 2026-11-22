@@ -183,7 +183,7 @@ async function showStatus(root: string, flags: AuthFlags, io: Io, deps: AuthDeps
   const env = deps.cliEnv(resolve(root, ".env"));
   const local = deps.readLocalStatus(resolveTokenFilePath(env));
   ui.header("totem auth --status", "Where the WHOOP login lives and when it was last refreshed.");
-  ui.line(ui.kit.c.bold("This computer"));
+  ui.section("This computer");
   ui.rows(localRows(local, sys.home));
   const target = resolveAuthTarget(readDeployRecord(root), { url: flags.url }, env);
   if (target.kind !== "remote") {

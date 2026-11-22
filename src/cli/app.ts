@@ -151,7 +151,7 @@ async function deploy(args: string[], app: AppCtx, io: Io): Promise<number> {
     const toml = resolve(app.root, "fly.toml");
     if (existsSync(toml) && !/^\[mounts\]/m.test(readFileSync(toml, "utf8"))) {
       ui.warn("fly.toml has no [mounts]: the server keeps its WHOOP login on the machine's own disk and loses it on every restart.");
-      ui.para("To keep it, create a volume and mount it, then deploy again:", 4);
+      ui.para("To keep it, create a volume and mount it, then deploy again:", 2);
       ui.code([`fly volumes create totem_data --app ${d.app ?? "<app>"} --size 1`, "", "[mounts]", '  source = "totem_data"', '  destination = "/data"']);
       ui.line();
     }
@@ -222,7 +222,7 @@ async function ping(_args: string[], app: AppCtx, io: Io): Promise<number> {
   }
   ui.header("totem ping");
   if (await health(io, cleanUrl(d.url))) return 0;
-  ui.rows([["Read its logs", ui.kit.c.accent("totem logs")], ["The full picture", ui.kit.c.accent("totem status")]], 4);
+  ui.rows([["Read its logs", ui.kit.c.accent("totem logs")], ["The full picture", ui.kit.c.accent("totem status")]], 2);
   return 1;
 }
 
@@ -275,7 +275,7 @@ async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
   }
   const up = await health(io, cleanUrl(d.url));
   if (!up) {
-    ui.rows([["Read its logs", ui.kit.c.accent("totem logs")], ...(d.platform === "custom" ? [] : [["Deploy it again", ui.kit.c.accent("totem deploy")] as [string, string]])], 4);
+    ui.rows([["Read its logs", ui.kit.c.accent("totem logs")], ...(d.platform === "custom" ? [] : [["Deploy it again", ui.kit.c.accent("totem deploy")] as [string, string]])], 2);
     return 1;
   }
   const token = d.mcp_auth_token;
@@ -319,11 +319,13 @@ export function toolsScreen(k: Kit, tools: { read: string[]; write: string[] }):
     return rows;
   };
   return [
+    "",
     ...k.header("totem tools", `${total} tools: ${tools.read.length} read your WHOOP data and ${tools.write.length} change it. A tool that changes something returns a preview and does nothing until the client confirms.`),
-    k.c.bold(`Read (${tools.read.length})`),
+    "",
+    ...k.section(`Read ${k.c.dim(`(${tools.read.length})`)}`),
     ...grid(tools.read),
     "",
-    k.c.bold(`Write (${tools.write.length})`),
+    ...k.section(`Write ${k.c.dim(`(${tools.write.length})`)}`),
     ...grid(tools.write),
     "",
     ...k.hint("What each one does: TOOLS.md", 0),
@@ -372,7 +374,7 @@ const commands: Record<string, Command> = {
     group: "Set up",
     summary: "Deploy your own server; connect claude.ai, ChatGPT and others",
     usage: "totem cloud [--verbose]",
-    about: "Guides you through deploying totem to Fly.io, Railway, Google Cloud Run or your own Docker host: pick a host, confirm the plan, wait for the deploy, log in to WHOOP in a browser window, then connect your clients. Nothing is created before you confirm the plan.",
+    about: "Guides you through deploying totem to Cloudflare, Fly.io, Railway or your own Docker host: pick a host, confirm the plan, wait for the deploy, log in to WHOOP in a browser window, then connect your clients. Nothing is created before you confirm the plan.",
     options: [["--verbose", "Show the host CLI's full output instead of one progress line"]],
     examples: ["totem cloud"],
     run: (args, app, io) => runCloudSetup(app.root, io, { verbose: args.includes("--verbose") }),
@@ -546,29 +548,34 @@ const own = <T>(table: Record<string, T>, key: string): T | undefined => (Object
 
 // ── help ─────────────────────────────────────────────────────────────────────
 
+const TAGLINE = "Your WHOOP data in Claude, ChatGPT and other AI apps, over MCP.";
+
+/** Commands as a two-column table: the command in its colour, what it does beside it. */
+function commandRows(k: Kit, entries: Array<[name: string, summary: string]>, nameWidth?: number): string[] {
+  const w = nameWidth ?? Math.max(...entries.map(([n]) => n.length)) + 3;
+  const room = k.style.width - 2 - w;
+  return entries.flatMap(([name, summary]) =>
+    wrap(summary, room).map((line, i) => `  ${i === 0 ? k.c.accent(padEnd(name, w)) : " ".repeat(w)}${line}`));
+}
+
+/** "totem 2.0.0" and the tagline. */
+const totemTitle = (k: Kit, version: string): string[] => {
+  const [first, ...rest] = k.header("totem", TAGLINE);
+  return [`${first} ${k.c.dim(version)}`, ...rest];
+};
+
 export function helpScreen(k: Kit, app: Pick<AppCtx, "version">): string[] {
+  const lines = ["", ...totemTitle(k, app.version), "", `${k.c.bold("Usage:")} totem <command> [options]`];
+  // One column width for every group, so the summaries line up down the page.
   const nameWidth = Math.max(...Object.keys(commands).map((n) => n.length)) + 3;
-  const lines = [
-    "",
-    `${k.c.bold("totem")} ${k.c.dim(app.version)}`,
-    ...k.para("Your WHOOP data in Claude, ChatGPT and other AI apps, over MCP.", 0),
-    "",
-    k.c.bold("Usage"),
-    "  totem <command> [options]",
-  ];
   for (const group of GROUPS) {
-    lines.push("", k.c.bold(group));
-    for (const [name, cmd] of Object.entries(commands)) {
-      if (cmd.group !== group) continue;
-      // Summaries are written to fit; on a narrow terminal they wrap under themselves.
-      wrap(cmd.summary, k.style.width - 2 - nameWidth).forEach((line, i) => lines.push(`  ${i === 0 ? k.c.accent(padEnd(name, nameWidth)) : " ".repeat(nameWidth)}${line}`));
-    }
+    lines.push("", ...k.section(group));
+    lines.push(...commandRows(k, Object.entries(commands).filter(([, cmd]) => cmd.group === group).map(([name, cmd]) => [name, cmd.summary]), nameWidth));
   }
-  lines.push("", k.c.bold("Options"));
-  for (const [flag, text] of [["-h, --help", "Show this; totem <command> --help for one command"], ["-v, --version", "Print the version"], ["--no-color", "Plain output (NO_COLOR=1 does the same)"]] as const) {
-    wrap(text, k.style.width - 2 - 16).forEach((line, i) => lines.push(`  ${i === 0 ? padEnd(flag, 16) : " ".repeat(16)}${line}`));
-  }
-  lines.push("", `New here? Start with  ${k.c.accent("totem cloud")}`, "");
+  lines.push("", ...k.section("Options"));
+  const flags: Array<[string, string]> = [["-h, --help", "Show this; totem <command> --help for one command"], ["-v, --version", "Print the version"], ["--no-color", "Plain output (NO_COLOR=1 does the same)"]];
+  lines.push(...flags.flatMap(([flag, text]) => wrap(text, k.style.width - 2 - 16).map((line, i) => `  ${i === 0 ? padEnd(flag, 16) : " ".repeat(16)}${line}`)));
+  lines.push("", `New here? Start with ${k.c.accent("totem cloud")}`, "");
   return lines;
 }
 
@@ -579,12 +586,36 @@ export function commandHelp(k: Kit, name: string): string[] | null {
     const w = Math.max(...pairs.map(([a]) => a.length)) + 3;
     return pairs.flatMap(([a, b]) => wrap(b, k.style.width - 2 - w).map((line, i) => `  ${i === 0 ? padEnd(a, w) : " ".repeat(w)}${line}`));
   };
-  const lines = ["", k.c.bold(`totem ${name}`), ...k.para(cmd.about, 0), "", k.c.bold("Usage"), `  ${cmd.usage}`];
-  if (cmd.options?.length) lines.push("", k.c.bold("Options"), ...table(cmd.options));
-  if (cmd.env?.length) lines.push("", k.c.bold("Environment"), ...table(cmd.env));
-  if (cmd.examples?.length) lines.push("", k.c.bold("Examples"), ...cmd.examples.map((e) => `  ${k.c.accent(e)}`));
+  const lines = ["", ...k.header(`totem ${name}`), ...k.para(cmd.about), "", `${k.c.bold("Usage:")} ${cmd.usage}`];
+  if (cmd.options?.length) lines.push("", ...k.section("Options"), ...table(cmd.options));
+  if (cmd.env?.length) lines.push("", ...k.section("Environment"), ...table(cmd.env));
+  if (cmd.examples?.length) lines.push("", ...k.section("Examples"), ...k.code(cmd.examples));
   lines.push("");
   return lines;
+}
+
+/** What bare `totem` knows without the network: where it runs, and the login on this computer. */
+export interface HomeState { deploy: DeployInfo | null; login?: { state: string; savedAt?: string | null | undefined } | undefined }
+
+/** Bare `totem`: the logo, where this install stands, and the commands that matter from here. */
+export function homeScreen(k: Kit, app: Pick<AppCtx, "version">, state: HomeState): string[] {
+  const top = k.logo ? ["", ...k.banner("totem", TAGLINE, `version ${app.version}`)] : ["", ...totemTitle(k, app.version)];
+  const summary = (name: string): [string, string] => [`totem ${name}`, commands[name]!.summary];
+  const d = state.deploy;
+  const body: string[] = [""];
+  if (!d) {
+    body.push(...k.section("Get started"), ...commandRows(k, [summary("cloud"), summary("local")]));
+  } else if (d.platform === "local") {
+    body.push(...k.section("Runs on this computer"));
+    if (state.login?.state === "tokens") body.push(...k.mark("ok", "WHOOP login saved", when(state.login.savedAt)));
+    else body.push(...k.mark("warn", "No WHOOP login on this computer", "totem auth"));
+    body.push("", ...commandRows(k, [summary("connect"), summary("status"), summary("update")]));
+  } else {
+    body.push(...k.section(`Runs on ${HOST_NAME[d.platform] ?? d.platform}${d.app ? ` ${k.c.dim(`(${d.app})`)}` : ""}`));
+    if (d.url) body.push(`  ${k.c.link(cleanUrl(d.url))}`);
+    body.push("", ...commandRows(k, [summary("status"), summary("connect"), summary("logs"), summary("update")]));
+  }
+  return [...top, ...body, "", `Every command: ${k.c.accent("totem help")}`, ""];
 }
 
 /** The command a mistyped one most likely meant, if one is close. */
@@ -614,7 +645,14 @@ export function nearest(name: string): string | null {
 export async function runCli(argv: string[], app: AppCtx, io: Io): Promise<number> {
   const { ui } = io;
   let [name, ...args] = argv;
-  if (name === undefined || name === "help" || name === "-h" || name === "--help") {
+  if (name === undefined) {
+    const deploy = detectDeploy(app.root, io.sys.env);
+    const auth = io.auth ?? realAuthDeps;
+    const login = deploy?.platform === "local" ? auth.readLocalStatus(resolveTokenFilePath(auth.cliEnv(resolve(app.root, ".env")))) : undefined;
+    ui.lines(homeScreen(ui.kit, app, { deploy, login }));
+    return 0;
+  }
+  if (name === "help" || name === "-h" || name === "--help") {
     const topic = name === "help" ? args[0] : undefined;
     if (topic) {
       const help = commandHelp(ui.kit, own(ALIASES, topic)?.[0] ?? topic);
