@@ -137,6 +137,16 @@ describe("WhoopOAuthProvider — authorization code flow + PKCE", () => {
     expect(p.checkPassword("")).toBe(false);
   });
 
+  it("issues no code when no password is configured, even for an empty password", async () => {
+    const p = new WhoopOAuthProvider({ signingSecret: SECRET, password: "", staticToken: STATIC });
+    const client = await registerClient(p, "https://claude.ai/cb");
+    expect(p.checkPassword("")).toBe(false);
+    expect(p.consent({
+      clientId: client.client_id, redirectUri: "https://claude.ai/cb", codeChallenge: "x",
+      state: "", scopes: "", resource: "", password: "",
+    })).toBeNull();
+  });
+
   it("an authorization code is single-use", async () => {
     const p = provider();
     const redirect = "https://claude.ai/cb";

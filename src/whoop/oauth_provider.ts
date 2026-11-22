@@ -217,7 +217,10 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   }
 
   checkPassword(password: string): boolean {
-    return constantTimeEqual(password, this.password);
+    // No password configured means the OAuth path is off, not that the empty
+    // password is correct ("" equals "" under the comparison below). The HTTP
+    // route also refuses, but the gate shouldn't rest on one caller's `if`.
+    return this.password.length > 0 && constantTimeEqual(password, this.password);
   }
 
   // A bad grant must be the SDK's InvalidGrantError: the token endpoint maps it
