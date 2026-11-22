@@ -70,7 +70,7 @@ function previewFor(plan: AskPlan) {
     mode: plan.thread ? "continue listed thread" : plan.newThread ? "new thread" : "today's thread (created if needed)",
     source_id: plan.thread ? null : AGENT_SOURCES[plan.agent]!.source_id,
     image_bytes: plan.image ? plan.image.bytes : null,
-    warning: "The coach can create, edit or delete activities, save memories and draft templates if the message asks; its writes come back in actions.",
+    warning: "The coach can create, edit or delete activities, save memories and draft templates if the message asks. Activity writes come back in actions; a saved memory shows only in the reply text.",
   });
 }
 
@@ -80,7 +80,7 @@ export function registerCoachAsk(server: McpServer, client: WhoopClient, timing:
     {
       name: TOOL,
       description:
-        "Ask WHOOP Coach (AI) and wait for the full reply (up to ~60 s). One thread per agent per local day; thread continues a fingerprint from whoop_coach_history, new_thread starts fresh. agent daily_outlook / day_in_review generates (or opens) the current cycle's report. The coach really creates, edits and deletes activities, saves memories and builds draft templates when asked (it usually asks for an in-chat yes first); every write it made is listed in actions. Optional image. Preview unless confirm:true.",
+        "Ask WHOOP Coach (AI) and wait for the full reply (up to ~60 s). One thread per agent per local day; thread continues a fingerprint from whoop_coach_history, new_thread starts fresh. agent daily_outlook / day_in_review generates (or opens) the current cycle's report. The coach really creates, edits and deletes activities, saves memories and builds draft templates when asked (it usually asks for an in-chat yes first). Activity and journal writes are listed in actions and draft templates in cards; a saved memory shows only in the reply text. Optional image. Preview unless confirm:true.",
       input: coachAskInput,
       annotations: openWorld(WRITE_DESTRUCTIVE),
     },

@@ -87,6 +87,18 @@ describe("whoop_coach_ask through MCP", () => {
     expect(tools[0]!.description!.length).toBeLessThanOrEqual(600);
   });
 
+  it("doesn't promise that every coach write shows up in actions", async () => {
+    // A memory save carries no ICON_MARKDOWN_CALLOUT (live 2026-11-21: the turn
+    // that stored a goal memory was two text messages and nothing else).
+    const client = await connect((server) => registerCoachAsk(server, mockClient({}).client));
+    const { tools } = await client.listTools();
+    expect(tools[0]!.description).not.toMatch(/every write/);
+    expect(tools[0]!.description).toMatch(/saved memory shows only in the reply text/);
+    const preview = body(await client.callTool({ name: "whoop_coach_ask", arguments: { message: "Remember I run on Tuesdays" } }));
+    const warning = String((preview.will_execute as { body_summary: { warning: string } }).body_summary.warning);
+    expect(warning).toMatch(/saved memory shows only in the reply text/);
+  });
+
   it("returns validation errors as tool errors", async () => {
     const m = mockClient({});
     const client = await connect((server) => registerCoachAsk(server, m.client));
@@ -199,6 +211,26 @@ describe("askCoach send path", () => {
     expect(out.text).toBe("I'll pull your data…");
     expect(out.warnings.join(" ")).toMatch(/whoop_coach_history \{view:"transcript"/);
     expect(out.suggestions).toEqual([]);
+  });
+
+  it("a memory-saving reply has no badge, so actions stays empty", async () => {
+    // The turn WHOOP returned live when the coach stored a goal memory.
+    const saved = {
+      id: "turn-1", turn_status: "COMPLETE", turn_number: 13,
+      messages: [
+        { role: "user", items: [{ type: "MARKDOWN_CHAT_TEXT", content: { text: "Please remember this about me: my goal is to run a 10k race in March 2027." } }] },
+        { role: "assistant", items: [{ type: "MARKDOWN_CHAT_TEXT", content: { text: "I’ll remember that you’re aiming to run a 10K race in March 2027." } }] },
+        { role: "assistant", items: [{ type: "MARKDOWN_CHAT_TEXT", content: { text: "Remembered: **run a 10K race in March 2027**. It’s already in your tracked goals, too." } }] },
+      ],
+    };
+    const m = mockClient({
+      post: (path) => (path === `${AI}/conversation` ? { turns: [] } : { id: "turn-1" }),
+      get: (path) => (path.endsWith("/suggestions") ? { suggestions: [] } : saved),
+    });
+    const out = await askCoach(m.client, planAsk({ ...base, message: "Please remember this about me: my goal is to run a 10k race in March 2027." }, DAY), fakeTiming());
+    expect(out.text).toContain("Remembered");
+    expect(out.actions).toEqual([]);
+    expect(out.warnings).toEqual([]);
   });
 
   it("stops at WHOOP's FAILED status instead of polling out the timeouts", async () => {
