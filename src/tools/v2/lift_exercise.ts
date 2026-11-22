@@ -25,7 +25,7 @@ import { todayIso } from "../../lib/dates.js";
 import { errorMessage, liftError } from "../../lib/lift_tool.js";
 
 const TOOL = "whoop_lift_exercise";
-const PR_PAGES = 5;
+const PR_PAGES = 3; // 30 rows (about 1.7 KB) per call; `next` continues
 const INCLUDES = ["history", "records", "one_rep_max", "progression", "instructions"] as const;
 type Include = (typeof INCLUDES)[number];
 

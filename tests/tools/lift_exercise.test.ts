@@ -64,4 +64,20 @@ describe("whoop_lift_exercise", () => {
     const resumed = body(await client.callTool({ name: "whoop_lift_exercise", arguments: { cursor: "20" } }));
     expect(resumed.prs).toHaveLength(6);
   });
+
+  it("a long PR list stops at 30 rows per call (about 1.7 KB) and hands back a cursor", async () => {
+    const page = (offset: number) => ({
+      tiles: Array.from({ length: 10 }, (_, i) => ({ exercise_id: `BENCHPRESS${offset + i}_BARBELL`, name: `Bench Press ${offset + i} - Barbell`, volume_input_value: "100", volume_input_units: "lbs" })),
+      show_more: true,
+      next_exercise_offset: offset + 10,
+    });
+    const get = routes({ "/weightlifting-service/v3/prs": (q) => page((q.offset as number | undefined) ?? 0) });
+    const client = await connect(registerLiftExercise, { get });
+    const result = await client.callTool({ name: "whoop_lift_exercise", arguments: {} });
+    const out = body(result);
+    expect(out.prs).toHaveLength(30);
+    expect(out.next).toBe("30");
+    expect(get).toHaveBeenCalledTimes(3);
+    expect((result.content as Array<{ text: string }>)[0]!.text.length).toBeLessThan(2000);
+  });
 });
