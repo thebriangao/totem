@@ -1,0 +1,228 @@
+{
+ "entitlements": {
+  "fertility-insights": {
+   "entitled": true,
+   "reasons": null
+  },
+  "advanced-labs-refer-a-friend": {
+   "entitled": true,
+   "reasons": null
+  },
+  "natural-cycles-integration": {
+   "entitled": true,
+   "reasons": null
+  },
+  "shop": {
+   "entitled": true,
+   "reasons": null
+  },
+  "advanced-labs-subscription": {
+   "entitled": true,
+   "reasons": null
+  },
+  "bp_trends": {
+   "entitled": false,
+   "reasons": [
+    {
+     "reason_type": "MEMBERSHIP_TYPE",
+     "current_value": "SUBSCRIBER",
+     "required_value": "MEDICARE"
+    }
+   ]
+  },
+  "shepherd": {
+   "entitled": false,
+   "reasons": [
+    {
+     "reason_type": "MEMBERSHIP_TIER",
+     "current_value": "WHOOP Peak",
+     "required_value": "WHOOP Life"
+    },
+    {
+     "reason_type": "STRAP_TYPE",
+     "current_value": "Goose",
+     "required_value": "Maverick"
+    },
+    {
+     "reason_type": "REGION",
+     "current_value": "US",
+     "required_value": "AE,AT,AU,AX,BE,BG,BH,CA,CH,CY,CZ,DE,DK,EE,ES,FI,FR,GB,GR,HK,HR,HU,IE,IN,IS,IT,LT,LU,LV,MT,NL,NO,NZ,PL,PT,QA,RO,SA,SE,SI,SK,TR"
+    }
+   ]
+  },
+  "hormonal-insights": {
+   "entitled": true,
+   "reasons": null
+  },
+  "gifting": {
+   "entitled": true,
+   "reasons": null
+  },
+  "loon": {
+   "entitled": true,
+   "reasons": null
+  },
+  "tortoise": {
+   "entitled": true,
+   "reasons": null
+  },
+  "moments": {
+   "entitled": true,
+   "reasons": null
+  },
+  "journal": {
+   "entitled": true,
+   "reasons": null
+  },
+  "clinician-in-the-loop": {
+   "entitled": false,
+   "reasons": [
+    {
+     "reason_type": "MEMBERSHIP_TIER",
+     "current_value": "WHOOP Peak",
+     "required_value": "WHOOP Life"
+    }
+   ]
+  },
+  "stress-monitor": {
+   "entitled": true,
+   "reasons": null
+  },
+  "natural-cycles-integration-fda": {
+   "entitled": true,
+   "reasons": null
+  },
+  "health-monitor": {
+   "entitled": true,
+   "reasons": null
+  },
+  "sage": {
+   "entitled": false,
+   "reasons": [
+    {
+     "reason_type": "STRAP_TYPE",
+     "current_value": "Goose",
+     "required_value": "Maverick"
+    },
+    {
+     "reason_type": "MEMBERSHIP_TIER",
+     "current_value": "WHOOP Peak",
+     "required_value": "WHOOP Life"
+    }
+   ]
+  },
+  "digital-whoop-labs": {
+   "entitled": true,
+   "reasons": null
+  },
+  "device-subscription-management": {
+   "entitled": true,
+   "reasons": null
+  },
+  "labrador": {
+   "entitled": false,
+   "reasons": [
+    {
+     "reason_type": "MEMBERSHIP_TIER",
+     "current_value": "WHOOP Peak",
+     "required_value": "WHOOP Life"
+    },
+    {
+     "reason_type": "STRAP_TYPE",
+     "current_value": "Goose",
+     "required_value": "Maverick"
+    }
+   ]
+  },
+  "healthex-integration": {
+   "entitled": true,
+   "reasons": null
+  },
+  "shop-tab": {
+   "entitled": true,
+   "reasons": null
+  },
+  "sanguine-waitlist": {
+   "entitled": false,
+   "reasons": [
+    {
+     "reason_type": "REGION",
+     "current_value": "US",
+     "required_value": "AE,BH,DE,ES,FR,GB,IE,IN,IT,KW,QA,SA"
+    }
+   ]
+  },
+  "community": {
+   "entitled": true,
+   "reasons": null
+  },
+  "hsa-fsa": {
+   "entitled": true,
+   "reasons": null
+  },
+  "advanced-labs-uploads": {
+   "entitled": true,
+   "reasons": null
+  },
+  "followers": {
+   "entitled": true,
+   "reasons": null
+  },
+  "refer-a-friend": {
+   "entitled": true,
+   "reasons": null
+  },
+  "grail-galleri": {
+   "entitled": true,
+   "reasons": null
+  },
+  "lingo-integration": {
+   "entitled": true,
+   "reasons": null
+  },
+  "device-integrations": {
+   "entitled": true,
+   "reasons": null
+  },
+  "device": {
+   "entitled": true,
+   "reasons": null
+  }
+ },
+ "context": {
+  "current_membership_tier": "WHOOP Peak",
+  "past_membership_tiers": [],
+  "past_strap_types": [],
+  "membership_type": "SUBSCRIBER"
+ },
+ "tier_feature_map": [
+  {
+   "tier": "WHOOP One",
+   "features": [
+    "loon"
+   ]
+  },
+  {
+   "tier": "WHOOP Peak",
+   "features": [
+    "health-monitor",
+    "labrador",
+    "tortoise",
+    "loon",
+    "stress-monitor"
+   ]
+  },
+  {
+   "tier": "WHOOP Life",
+   "features": [
+    "health-monitor",
+    "labrador",
+    "tortoise",
+    "loon",
+    "sage",
+    "shepherd",
+    "stress-monitor"
+   ]
+  }
+ ]
+}

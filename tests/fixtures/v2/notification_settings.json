@@ -1,0 +1,29 @@
+{
+ "title": "NOTIFICATIONS",
+ "settings": [
+  {
+   "title": "DAILY STRESS SUMMARY",
+   "subtitle": "WHOOP provides a daily summary of your cumulative stress.",
+   "push_namespace": "StressSummary",
+   "active": true
+  },
+  {
+   "title": "TRAVEL INSIGHTS",
+   "subtitle": "Get insights from WHOOP when you travel.",
+   "push_namespace": "GPS",
+   "active": true
+  },
+  {
+   "title": "CONVERSATIONAL CHECK INS",
+   "subtitle": "Receive notifications based on conversations you've had with WHOOP.",
+   "push_namespace": "ConversationalCheckIn",
+   "active": true
+  },
+  {
+   "title": "DATA DRIVEN CHECK INS",
+   "subtitle": "Receive notifications based on patterns WHOOP notices in your data.",
+   "push_namespace": "CheckIn",
+   "active": true
+  }
+ ]
+}
