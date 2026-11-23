@@ -293,12 +293,19 @@ export function resolveTokenFilePath(
 ): string {
   const explicit = envGet(env, "TOTEM_TOKEN_FILE");
   if (explicit) return platform === "win32" ? win32.resolve(explicit) : resolve(explicit);
-  if (platform === "win32") {
-    const appData = envGet(env, "APPDATA") || win32.join(home, "AppData", "Roaming");
-    return win32.join(appData, "totem", "tokens.json");
-  }
+  return (platform === "win32" ? win32.join : join)(configDir(env, platform, home), "tokens.json");
+}
+
+/**
+ * totem's own folder for this person: %APPDATA%\totem on Windows, else
+ * $XDG_CONFIG_HOME/totem or ~/.config/totem. The WHOOP login and the record of
+ * where the server runs live here, never in the install itself, which an
+ * `npm install -g` replaces wholesale and may not even let its user write to.
+ */
+export function configDir(env: Env = process.env, platform: NodeJS.Platform = process.platform, home: string = homedir()): string {
+  if (platform === "win32") return win32.join(envGet(env, "APPDATA") || win32.join(home, "AppData", "Roaming"), "totem");
   const xdg = envGet(env, "XDG_CONFIG_HOME");
-  return join(xdg && xdg.startsWith("/") ? xdg : join(home, ".config"), "totem", "tokens.json");
+  return join(xdg && xdg.startsWith("/") ? xdg : join(home, ".config"), "totem");
 }
 
 /** The legacy .env keys v1 kept the tokens in. */

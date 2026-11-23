@@ -17,8 +17,9 @@ Deploy your own totem server and connect your AI apps to it.
 [2/6] Secrets
 ✓ MCP_AUTH_TOKEN generated (64 random characters; the server's own key)
 ✓ Connector password generated (you get it at the end, once)
-  Both are set on the server. The token is also kept in .totem-deploy.json
-  (readable only by you), so totem auth can reach the server.
+  Both are set on the server. The token is also kept in
+  ~/.config/totem/deploy.json (readable only by you), so totem auth can reach
+  the server.
 
 [3/6] Deploy
   Host:     Fly.io, as you@example.com

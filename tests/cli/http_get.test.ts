@@ -58,7 +58,7 @@ describe("health checks over plain http", () => {
   it("`totem ping` succeeds against an http deployment", async () => {
     world = fakeWorld();
     world.io.sys.httpGet = httpGet;
-    writeDeployRecord(world.root, { platform: "custom", url: base });
+    writeDeployRecord(world.root, { platform: "custom", url: base }, world.io.sys);
     const app = { root: world.root, version: "1.5.1", pkgName: "x", pkgPath: join(world.root, "package.json"), cliEntry: "x" };
     expect(await runCli(["ping"], app, world.io)).toBe(0);
     expect(world.transcript()).toMatch(/The server is up \(answered in \d+ ms, build abc1234/);

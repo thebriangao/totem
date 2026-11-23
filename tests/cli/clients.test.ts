@@ -173,7 +173,7 @@ describe("totem connect <client> against a deployed server", () => {
     const w = fakeWorld(typeof opts === "function" ? {} : opts);
     world = w;
     if (typeof opts === "function") opts(w);
-    writeDeployRecord(w.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN });
+    writeDeployRecord(w.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN }, w.io.sys);
     const app: AppCtx = { root: w.root, version: "1.5.1", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
     return { code: await runCli(argv, app, w.io), text: w.transcript(), w };
   };
@@ -248,7 +248,7 @@ describe("OpenCode: the older entry and commented config files", () => {
       const cfg = join(w.home, ".config", "opencode");
       mkdirSync(cfg, { recursive: true });
       writeFileSync(join(cfg, "opencode.json"), '{\n  // mine\n  "theme": "dark",\n}\n');
-      writeDeployRecord(w.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN });
+      writeDeployRecord(w.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN }, w.io.sys);
       const app: AppCtx = { root: w.root, version: "1.5.1", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
       const code = await runCli(["connect", "opencode"], app, w.io);
       expect(code).toBe(0);
@@ -266,7 +266,7 @@ describe("totem connect, everything found", () => {
     const w = fakeWorld({ exec: (cmd) => (cmd === "claude" ? (() => { throw new Error("EACCES: permission denied"); })() : undefined) });
     try {
       mkdirSync(join(w.home, ".cursor"), { recursive: true });
-      writeDeployRecord(w.root, { platform: "local" });
+      writeDeployRecord(w.root, { platform: "local" }, w.io.sys);
       mkdirSync(join(w.root, "dist"), { recursive: true });
       writeFileSync(join(w.root, "dist", "server.js"), "");
       const app: AppCtx = { root: w.root, version: "2.0.0", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };

@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { realAuthDeps, runAuth } from "./auth.js";
 import { CLIENTS, tildify } from "./clients.js";
-import { readDeployRecord } from "./deploy_record.js";
+import { configFile, readDeployRecord, type Where } from "./deploy_record.js";
 import { runCloudSetup, runConnect, runLocalSetup } from "./setup.js";
 import { pkgBin } from "./spawn.js";
 import { scriptCommand, type ExecResult, type Io } from "./sys.js";
@@ -51,16 +51,24 @@ const WRANGLER = ["--yes", "wrangler@4"];
 const cleanUrl = (u: string): string => u.replace(/\/+$/, "");
 
 /**
- * Where the server is deployed: the `.totem-deploy.json` record written by
+ * The fly.toml a Fly deploy uses: the one `totem cloud` wrote in totem's config
+ * folder, else (installs before 2.0) one in the install, else none.
+ */
+export function flyConfigPath(root: string, sys: Where): string | null {
+  return [configFile(sys, "fly.toml"), resolve(root, "fly.toml")].find((f) => existsSync(f)) ?? null;
+}
+
+/**
+ * Where the server is deployed: the deploy record written by
  * `totem cloud` / `totem local`, else (deploys older than the record) the Fly
  * app named by $FLY_APP or fly.toml.
  */
-export function detectDeploy(root: string, env: Record<string, string | undefined>): DeployInfo | null {
-  const record = readDeployRecord(root);
+export function detectDeploy(root: string, sys: Where): DeployInfo | null {
+  const record = readDeployRecord(root, sys);
   if (record) return record;
-  let app = env.FLY_APP || null;
-  const toml = resolve(root, "fly.toml");
-  if (!app && existsSync(toml)) app = readFileSync(toml, "utf8").match(/^app\s*=\s*['"]([^'"]+)['"]/m)?.[1] ?? null;
+  let app = sys.env.FLY_APP || null;
+  const toml = flyConfigPath(root, sys);
+  if (!app && toml) app = readFileSync(toml, "utf8").match(/^app\s*=\s*['"]([^'"]+)['"]/m)?.[1] ?? null;
   return app ? { platform: "fly", app, url: `https://${app}.fly.dev` } : null;
 }
 
@@ -68,7 +76,7 @@ const NOT_SET_UP: Fix[] = [["Run on this computer", "totem local"], ["Deploy a s
 
 /** The deployment, or an explanation printed and null. */
 function remoteDeploy(app: AppCtx, io: Io, what: string): DeployInfo | null {
-  const d = detectDeploy(app.root, io.sys.env);
+  const d = detectDeploy(app.root, io.sys);
   if (d && d.platform !== "local") return d;
   if (d) io.ui.error(`${what} is for a deployed server. This install runs on this computer.`, { fix: [["Deploy a server", "totem cloud"]] });
   else io.ui.error("totem isn't set up yet.", { fix: NOT_SET_UP });
@@ -101,11 +109,15 @@ function hostCli(io: Io, d: DeployInfo, command: string): string | null {
   return null;
 }
 
-/** The host commands that deploy this install's code again, in order. `fly` is the Fly binary to use. */
-export function deployCommands(d: DeployInfo, extra: string[] = [], fly = "fly"): Array<[cmd: string, args: string[]]> | null {
+/**
+ * The host commands that deploy this install's code again, in order. `fly` is
+ * the Fly binary to use; `flyConfig` the fly.toml to deploy with (it keeps the
+ * volume mount), when there is one.
+ */
+export function deployCommands(d: DeployInfo, extra: string[] = [], fly = "fly", flyConfig: string | null = null): Array<[cmd: string, args: string[]]> | null {
   switch (d.platform) {
     case "fly":
-      return [[fly, ["deploy", ...(d.app ? ["-a", d.app] : []), ...extra]]];
+      return [[fly, ["deploy", ...(flyConfig ? ["--config", flyConfig] : []), ...(d.app ? ["-a", d.app] : []), ...extra]]];
     case "railway":
       return [...(d.app ? [["railway", ["link", "--project", d.app]] as [string, string[]]] : []), ["railway", ["up", "--ci", ...(d.service ? ["--service", d.service] : []), ...extra]]];
     case "cloudflare":
@@ -120,9 +132,9 @@ export function deployCommands(d: DeployInfo, extra: string[] = [], fly = "fly")
 
 /** `totem deploy` with its output captured (for the updater). */
 export async function redeployCaptured(app: AppCtx, io: Io, onLine: (line: string) => void): Promise<ExecResult> {
-  const d = detectDeploy(app.root, io.sys.env);
+  const d = detectDeploy(app.root, io.sys);
   const fly = ["fly", "flyctl"].find((n) => io.sys.has(n)) ?? "fly";
-  const commands = d ? deployCommands(d, [], fly) : null;
+  const commands = d ? deployCommands(d, [], fly, flyConfigPath(app.root, io.sys)) : null;
   if (!commands) return { code: 1, stdout: "", stderr: "no deployment that totem can deploy to" };
   let last: ExecResult = { code: 0, stdout: "", stderr: "" };
   for (const [cmd, args] of commands) {
@@ -145,12 +157,12 @@ async function deploy(args: string[], app: AppCtx, io: Io): Promise<number> {
   }
   const cli = hostCli(io, d, "totem deploy");
   if (!cli) return 1;
-  const commands = deployCommands(d, extra, cli)!;
+  const toml = d.platform === "fly" ? flyConfigPath(app.root, io.sys) : null;
+  const commands = deployCommands(d, extra, cli, toml)!;
   ui.header("totem deploy", `Deploy this install's code to ${HOST_NAME[d.platform] ?? d.platform}${d.app ? ` (${d.app})` : ""}.`);
   if (d.platform === "fly") {
-    const toml = resolve(app.root, "fly.toml");
-    if (existsSync(toml) && !/^\[mounts\]/m.test(readFileSync(toml, "utf8"))) {
-      ui.warn("fly.toml has no [mounts]: the server keeps its WHOOP login on the machine's own disk and loses it on every restart.");
+    if (toml && !/^\[mounts\]/m.test(readFileSync(toml, "utf8"))) {
+      ui.warn(`${tildify(toml, io.sys.home)} has no [mounts]: the server keeps its WHOOP login on the machine's own disk and loses it on every restart.`);
       ui.para("To keep it, create a volume and mount it, then deploy again:", 2);
       ui.code([`fly volumes create totem_data --app ${d.app ?? "<app>"} --size 1`, "", "[mounts]", '  source = "totem_data"', '  destination = "/data"']);
       ui.line();
@@ -229,7 +241,7 @@ async function ping(_args: string[], app: AppCtx, io: Io): Promise<number> {
 async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
   const { ui, sys } = io;
   const auth = io.auth ?? realAuthDeps;
-  const d = detectDeploy(app.root, sys.env);
+  const d = detectDeploy(app.root, sys);
   ui.header("totem status");
   const rows: Array<[string, string]> = [["Version", app.version], ["Install", tildify(app.root, sys.home)]];
   if (!d) {
@@ -239,7 +251,7 @@ async function status(args: string[], app: AppCtx, io: Io): Promise<number> {
     return 1;
   }
   const local = d.platform === "local";
-  rows.push(["Runs on", local ? "this computer, started by your AI client" : `${HOST_NAME[d.platform] ?? d.platform}${d.app ? `, ${d.platform === "railway" ? "project" : d.platform === "cloudrun" ? "service" : d.platform === "cloudflare" ? "Worker" : "app"} ${d.app}` : ""}`]);
+  rows.push(["Runs on", local ? "this computer, started by your AI client" : `${HOST_NAME[d.platform] ?? d.platform}${d.app && d.platform !== "custom" ? `, ${d.platform === "railway" ? "project" : d.platform === "cloudrun" ? "service" : d.platform === "cloudflare" ? "Worker" : "app"} ${d.app}` : ""}`]);
   if (d.url) rows.push(["Address", cleanUrl(d.url)]);
   ui.rows(rows);
   ui.line();
@@ -460,7 +472,7 @@ const commands: Record<string, Command> = {
     run: (args, app, io) => runUpdate(args, {
       root: app.root, version: app.version, pkgPath: app.pkgPath, pkgName: app.pkgName, cliEntry: app.cliEntry,
       isGit: existsSync(resolve(app.root, ".git")),
-      detectDeploy: () => detectDeploy(app.root, io.sys.env),
+      detectDeploy: () => detectDeploy(app.root, io.sys),
       redeploy: (onLine) => redeployCaptured(app, io, onLine),
     }, io),
   },
@@ -611,7 +623,7 @@ export function homeScreen(k: Kit, app: Pick<AppCtx, "version">, state: HomeStat
     else body.push(...k.mark("warn", "No WHOOP login on this computer", "totem auth"));
     body.push("", ...commandRows(k, [summary("connect"), summary("status"), summary("update")]));
   } else {
-    body.push(...k.section(`Runs on ${HOST_NAME[d.platform] ?? d.platform}${d.app ? ` ${k.c.dim(`(${d.app})`)}` : ""}`));
+    body.push(...k.section(`Runs on ${HOST_NAME[d.platform] ?? d.platform}${d.app && d.platform !== "custom" ? ` ${k.c.dim(`(${d.app})`)}` : ""}`));
     if (d.url) body.push(`  ${k.c.link(cleanUrl(d.url))}`);
     body.push("", ...commandRows(k, [summary("status"), summary("connect"), summary("logs"), summary("update")]));
   }
@@ -646,7 +658,7 @@ export async function runCli(argv: string[], app: AppCtx, io: Io): Promise<numbe
   const { ui } = io;
   let [name, ...args] = argv;
   if (name === undefined) {
-    const deploy = detectDeploy(app.root, io.sys.env);
+    const deploy = detectDeploy(app.root, io.sys);
     const auth = io.auth ?? realAuthDeps;
     const login = deploy?.platform === "local" ? auth.readLocalStatus(resolveTokenFilePath(auth.cliEnv(resolve(app.root, ".env")))) : undefined;
     ui.lines(homeScreen(ui.kit, app, { deploy, login }));

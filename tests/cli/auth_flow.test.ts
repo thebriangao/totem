@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -7,7 +7,7 @@ import {
   readLocalStatus, resolveAuthTarget, retireLegacyEnv, saveLocalLogin, validateLogin, type WhoopLogin,
 } from "../../src/cli/auth_flow.js";
 import { flyToml } from "../../src/cli/setup.js";
-import { readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
+import { deployRecordPath, readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
 import { CognitoError } from "../../src/whoop/cognito.js";
 import { WEB_CLIENT_ID } from "../../src/whoop/constants.js";
 import { FileTokenStore, type TokenRecord } from "../../src/whoop/token_store.js";
@@ -192,10 +192,32 @@ describe("pushLogin", () => {
 });
 
 describe("deploy record", () => {
-  it("is written 0600 because it holds the MCP_AUTH_TOKEN", () => {
-    writeDeployRecord(dir, { platform: "fly", app: "a", url: "https://a.fly.dev", mcp_auth_token: "secret" });
-    expect(readDeployRecord(dir)).toEqual({ platform: "fly", app: "a", url: "https://a.fly.dev", mcp_auth_token: "secret" });
-    if (process.platform !== "win32") expect(statSync(join(dir, ".totem-deploy.json")).mode & 0o777).toBe(0o600);
+  // The person's config folder, not the install: `npm install -g` replaces the install on every update.
+  const where = (): { home: string; env: Record<string, string | undefined>; platform: NodeJS.Platform } => ({ home: join(dir, "home"), env: {}, platform: process.platform });
+  const install = (): string => join(dir, "install");
+
+  it("is written 0600 in totem's config folder because it holds the MCP_AUTH_TOKEN", () => {
+    writeDeployRecord(install(), { platform: "fly", app: "a", url: "https://a.fly.dev", mcp_auth_token: "secret" }, where());
+    expect(readDeployRecord(install(), where())).toEqual({ platform: "fly", app: "a", url: "https://a.fly.dev", mcp_auth_token: "secret" });
+    expect(deployRecordPath(where())).toBe(process.platform === "win32" ? join(dir, "home", "AppData", "Roaming", "totem", "deploy.json") : join(dir, "home", ".config", "totem", "deploy.json"));
+    if (process.platform !== "win32") expect(statSync(deployRecordPath(where())).mode & 0o777).toBe(0o600);
+    expect(existsSync(join(install(), ".totem-deploy.json"))).toBe(false);
+  });
+
+  it("moves a record an older install kept in itself, on first read", () => {
+    mkdirSync(install(), { recursive: true });
+    writeFileSync(join(install(), ".totem-deploy.json"), JSON.stringify({ platform: "fly", app: "old", url: "https://old.fly.dev", mcp_auth_token: "t" }));
+    expect(readDeployRecord(install(), where())).toMatchObject({ app: "old", mcp_auth_token: "t" });
+    expect(existsSync(join(install(), ".totem-deploy.json"))).toBe(false);
+    expect(JSON.parse(readFileSync(deployRecordPath(where()), "utf8"))).toMatchObject({ app: "old" });
+  });
+
+  it("is per person: two homes sharing one install keep their own", () => {
+    const other = { ...where(), home: join(dir, "other") };
+    writeDeployRecord(install(), { platform: "local" }, where());
+    writeDeployRecord(install(), { platform: "custom", url: "https://x.example" }, other);
+    expect(readDeployRecord(install(), where())).toEqual({ platform: "local" });
+    expect(readDeployRecord(install(), other)).toMatchObject({ platform: "custom" });
   });
 });
 
@@ -230,7 +252,7 @@ describe("totem auth --url for a server from a Deploy button", () => {
       const app = { root: w.root, version: "2.0.0", pkgName: "@thebriangao/totem", pkgPath: join(w.root, "package.json"), cliEntry: join(w.root, "dist", "cli", "index.js") };
       const code = await runCli(["auth", "--url", "https://totem.you.workers.dev"], app, w.io);
       expect(code).toBe(0);
-      expect(readDeployRecord(w.root)).toEqual({ platform: "cloudflare", url: "https://totem.you.workers.dev", mcp_auth_token: TOKEN });
+      expect(readDeployRecord(w.root, w.io.sys)).toEqual({ platform: "cloudflare", url: "https://totem.you.workers.dev", mcp_auth_token: TOKEN });
       expect(w.transcript()).not.toContain(TOKEN);
     } finally {
       w.cleanup();

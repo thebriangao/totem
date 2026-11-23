@@ -101,9 +101,9 @@ const github: NonNullable<WorldOptions["http"]> = (url) => (url.includes("api.gi
 /** A git checkout: the updater treats the install as one when .git exists. */
 const gitCheckout = (world: FakeWorld): void => { mkdirSync(join(world.root, ".git")); };
 
-const onFly = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN });
-const onLocal = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "local" });
-const onCustom = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "custom", app: "totem", url: "https://whoop.example.com", mcp_auth_token: TOKEN });
+const onFly = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "fly", app: "totem-a1b2c3", url: "https://totem-a1b2c3.fly.dev", mcp_auth_token: TOKEN }, world.io.sys);
+const onLocal = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "local" }, world.io.sys);
+const onCustom = (world: FakeWorld): void => writeDeployRecord(world.root, { platform: "custom", app: "totem", url: "https://whoop.example.com", mcp_auth_token: TOKEN }, world.io.sys);
 const loggedIn = { state: "tokens" as const, source: "browser", savedAt: "2026-11-02T08:00:00.000Z", refreshedAt: "2026-11-21T20:00:00.000Z", accessExpiresAt: "2026-11-21T21:00:00.000Z", owner: null };
 /** The host each cloud screen deploys to, chosen by name so the menu's order can change. */
 const host = (name: string): [string, string] => ["Where should the server run?", name];

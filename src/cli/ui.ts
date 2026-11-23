@@ -299,6 +299,9 @@ export function when(iso: string | null | undefined): string {
   return Number.isNaN(t.getTime()) ? iso : `${t.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
+/** A path as one shell word: quoted when it has a space or a quote in it. */
+export const shellPath = (p: string): string => (/[\s'"]/.test(p) ? `"${p.replace(/"/g, '\\"')}"` : p);
+
 /**
  * One shell command as lines of at most `width` columns, split between
  * arguments with a trailing backslash so the block still pastes as one

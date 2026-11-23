@@ -11,9 +11,10 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter as pathDelimiter, dirname, resolve } from "node:path";
 import { lastLine, tildify } from "./clients.js";
+import { configFile } from "./deploy_record.js";
 import { pkgBin } from "./spawn.js";
 import { realIo, type ExecResult, type Io } from "./sys.js";
-import { duration, listOf, shellLines } from "./ui.js";
+import { duration, listOf, shellLines, shellPath } from "./ui.js";
 
 // What the dispatcher hands over, so this module doesn't know the commands.
 export interface UpdateCtx {
@@ -287,14 +288,16 @@ export async function applyVersion(ctx: UpdateCtx, target: VersionInfo, io: Io =
 // container, and how it is run varies, so print the recipe to adapt.
 function selfHostSteps(io: Io, ctx: UpdateCtx, d: DeployInfo): void {
   const { ui, sys } = io;
-  const envFile = existsSync(resolve(ctx.root, ".env.deploy")) ? ".env.deploy" : "<your env file>";
+  // The env file `totem cloud` wrote: in totem's config folder (installs before 2.0: .env.deploy in the install).
+  const envFile = [configFile(sys, "deploy.env"), resolve(ctx.root, ".env.deploy")].find((f) => existsSync(f));
+  const envArg = envFile ? shellPath(envFile) : "<your env file>";
   ui.para("totem can't reach a self-hosted container. This install is updated; on the host that runs the server:");
   ui.line();
   ui.para("1. Get this version there (git pull the checkout, or copy it over).");
   ui.para("2. Rebuild the image:");
-  ui.code(["docker build -t totem ."], 5);
+  ui.code(shellLines(["docker", "build", "-t", "totem", shellPath(ctx.root)], ui.style.width - 7, sys.platform), 5);
   ui.para("3. Stop the old container, then start the new image the way you did before:");
-  ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", envFile, "totem"], ui.style.width - 7, sys.platform), 5);
+  ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", envArg, "totem"], ui.style.width - 7, sys.platform), 5);
   if (d.url) {
     ui.para("4. Check it:");
     ui.code([`curl ${cleanUrl(d.url)}/health`], 5);

@@ -53,4 +53,4 @@ Not a security issue (open a normal issue): wrong or empty data, a WHOOP API cha
 
 - Generate `MCP_AUTH_TOKEN` with `openssl rand -hex 32`, set it only as a secret on the host, and never put it in a URL. If it leaks, set a new one and deploy again; every app then signs in again.
 - If your WHOOP login may have leaked, change your WHOOP password on WHOOP's site, then run `totem auth` for a fresh login.
-- Never commit `.env*`, `.totem-deploy.json` or a token file; `.gitignore` excludes them.
+- Never commit `.env*`, `.totem-deploy.json` or a token file; `.gitignore` excludes them. totem 2 keeps its own records (`deploy.json`, `fly.toml`, `deploy.env`) in `~/.config/totem/`, outside the checkout.

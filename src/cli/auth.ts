@@ -20,7 +20,7 @@ import {
   pushLogin, readLocalStatus, readTokenFile, resolveAuthTarget, retireLegacyEnv, saveLocalLogin, validateLogin,
   type AuthTarget, type LocalStatus, type PushResult, type RemoteStatus, type WhoopLogin,
 } from "./auth_flow.js";
-import { platformForUrl, readDeployRecord, updateDeployRecord, writeDeployRecord } from "./deploy_record.js";
+import { deployRecordPath, platformForUrl, readDeployRecord, updateDeployRecord, writeDeployRecord } from "./deploy_record.js";
 import { resolveTokenFilePath } from "../whoop/token_store.js";
 import { tildify } from "./clients.js";
 import { realIo, type Io } from "./sys.js";
@@ -185,7 +185,7 @@ async function showStatus(root: string, flags: AuthFlags, io: Io, deps: AuthDeps
   ui.header("totem auth --status", "Where the WHOOP login lives and when it was last refreshed.");
   ui.section("This computer");
   ui.rows(localRows(local, sys.home));
-  const target = resolveAuthTarget(readDeployRecord(root), { url: flags.url }, env);
+  const target = resolveAuthTarget(readDeployRecord(root, io.sys), { url: flags.url }, env);
   if (target.kind !== "remote") {
     if (local.state === "none" || local.state === "unreadable") ui.error("No WHOOP login yet.", { fix: [["Log in", "totem auth"]] });
     return local.state === "none" || local.state === "unreadable" ? 1 : 0;
@@ -235,15 +235,15 @@ async function pushToDeployment(
     const sending = token;
     const r = await ui.task(`Sending the login to ${target.url}`, () => deps.pushLogin(target.url, sending, login, { userId }, { allowHttp }));
     if (r.ok) {
-      const record = readDeployRecord(root);
+      const record = readDeployRecord(root, io.sys);
       if (prompted && record?.url && record.url.replace(/\/+$/, "") === target.url) {
-        updateDeployRecord(root, { mcp_auth_token: token });
-        ui.hint("Saved the MCP_AUTH_TOKEN in .totem-deploy.json (readable only by you).");
+        updateDeployRecord(root, { mcp_auth_token: token }, io.sys);
+        ui.hint(`Saved the MCP_AUTH_TOKEN in ${tildify(deployRecordPath(io.sys), io.sys.home)} (readable only by you).`);
       } else if (!record) {
         // A server from a Deploy button: remember it, so connect, status and
         // the next auth know where it is.
-        writeDeployRecord(root, { platform: platformForUrl(target.url), url: target.url, mcp_auth_token: token });
-        ui.hint("Remembered this server in .totem-deploy.json (readable only by you): totem connect and totem status use it.");
+        writeDeployRecord(root, { platform: platformForUrl(target.url), url: target.url, mcp_auth_token: token }, io.sys);
+        ui.hint(`Remembered this server in ${tildify(deployRecordPath(io.sys), io.sys.home)} (readable only by you): totem connect and totem status use it.`);
       }
       return { ok: true, status: r.status };
     }
@@ -289,7 +289,7 @@ export async function runAuth(
 
   const envPath = resolve(root, ".env");
   const env = deps.cliEnv(envPath);
-  const target = opts.target ?? resolveAuthTarget(readDeployRecord(root), flags, env);
+  const target = opts.target ?? resolveAuthTarget(readDeployRecord(root, io.sys), flags, env);
   const localFile = resolveTokenFilePath(env);
   if (!opts.embedded) {
     ui.header("totem auth", target.kind === "remote"

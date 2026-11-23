@@ -16,14 +16,14 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { pkgBin } from "./spawn.js";
 import { realAuthDeps, runAuth } from "./auth.js";
-import { readDeployRecord, writeDeployRecord } from "./deploy_record.js";
+import { configFile, deployRecordPath, readDeployRecord, writeDeployRecord } from "./deploy_record.js";
 import { migrateFromEnv, resolveTokenFilePath, writeFileAtomic } from "../whoop/token_store.js";
 import {
   CLIENTS, FIRST_QUESTION, SERVER_NAME, applyRecipe, connectCard, findClient, lastLine, recipeLines, tildify,
   type Client, type Target,
 } from "./clients.js";
 import { realIo, type ExecResult, type Io } from "./sys.js";
-import { duration, listOf, maskSecrets, shellLines, when, type Choice, type Fix } from "./ui.js";
+import { type Choice, duration, type Fix, listOf, maskSecrets, shellLines, shellPath, when } from "./ui.js";
 
 const NODE_MIN = 24;
 export const FLY_VOLUME = "totem_data";
@@ -136,7 +136,7 @@ function localTarget(root: string, io: Io): Extract<Target, { kind: "local" }> {
 
 /** Where this install runs, from the deploy record: a server with a URL, or this computer. */
 export function installTarget(root: string, io: Io): Target {
-  const record = readDeployRecord(root);
+  const record = readDeployRecord(root, io.sys);
   if (record && record.platform !== "local" && record.url) return { kind: "remote", mcpUrl: `${record.url.replace(/\/+$/, "")}/mcp` };
   return localTarget(root, io);
 }
@@ -322,7 +322,7 @@ export async function runLocalSetup(root: string, io: Io = realIo()): Promise<nu
   // `totem local` records this install as local. If it is recorded as deployed,
   // that record (and the server's token in it) is what `totem auth`, `status`
   // and `logs` use: don't drop it without asking.
-  const record = readDeployRecord(root);
+  const record = readDeployRecord(root, io.sys);
   if (record && record.platform !== "local" && record.url) {
     ui.warn(`This install is set up for the server at ${record.url}.`);
     ui.hint("Setting it up locally makes this computer forget that server (the server itself keeps running). A local server and a deployment must not share one WHOOP login.");
@@ -337,7 +337,7 @@ export async function runLocalSetup(root: string, io: Io = realIo()): Promise<nu
 
   ui.step(2, TOTAL, "WHOOP login");
   if (!(await ensureLocalLogin(root, io))) return 1;
-  writeDeployRecord(root, { platform: "local" });
+  writeDeployRecord(root, { platform: "local" }, io.sys);
 
   ui.step(3, TOTAL, "Connect your apps");
   const { steps } = await connectInstalled(io, localTarget(root, io));
@@ -547,8 +547,11 @@ async function deployFly(d: Deploy): Promise<string | null> {
     if (made === "cancelled") return null;
     volume = made === "ok";
   }
-  // Minimal fly.toml so `fly deploy` asks nothing (it builds the Dockerfile).
-  writeFileSync(resolve(d.root, "fly.toml"), flyToml(d.appName, volume));
+  // Minimal fly.toml so `fly deploy` asks nothing (it builds the Dockerfile in
+  // the install). It lives in totem's config folder, not the install, which an
+  // npm update replaces: without it the next deploy would drop the volume.
+  const flyConfig = configFile(sys, "fly.toml");
+  writeFileAtomic(flyConfig, flyToml(d.appName, volume), 0o644);
 
   // Secrets: `secrets import` reads KEY=value lines from stdin, so the token and
   // password never appear on a command line. Staged, they apply on deploy.
@@ -565,7 +568,7 @@ async function deployFly(d: Deploy): Promise<string | null> {
 
   const deployed = await runStep(d, {
     label: "Building and deploying on Fly", done: "Deployed", slow: true,
-    run: hostCommand(d, fly, ["deploy", "--app", d.appName, "--ha=false"]),
+    run: hostCommand(d, fly, ["deploy", "--config", flyConfig, "--app", d.appName, "--ha=false"]),
   });
   return deployed === "ok" ? url : null;
 }
@@ -861,21 +864,24 @@ async function askUrl(io: Io, question: string): Promise<string> {
 // secrets) go into an env file rather than onto the screen.
 async function deployCustom(d: Deploy): Promise<string | null> {
   const { ui, sys } = d.io;
-  const envFile = resolve(d.root, ".env.deploy");
+  // In totem's config folder, beside the deploy record: the install may be an
+  // npm folder that the next update replaces.
+  const envFile = configFile(sys, "deploy.env");
   // Replaced, not written in place: a mode given to writeFileSync only applies
-  // to a file it creates, so an .env.deploy that was already there (from an
-  // earlier run, or copied in) kept whatever permissions it had while the next
-  // line called it "readable only by you".
+  // to a file it creates, so a file that was already there (from an earlier
+  // run, or copied in) kept whatever permissions it had while the next line
+  // called it "readable only by you".
   writeFileAtomic(envFile, Object.entries(d.env).map(([k, v]) => `${k}=${v}`).join("\n") + "\nPUBLIC_URL=https://CHANGE-ME-to-your-public-https-address\n");
   const width = ui.style.width - 7;
-  ui.ok("Settings written", `${tildify(envFile, sys.home)}, readable only by you`);
+  const shown = tildify(envFile, sys.home);
+  ui.ok("Settings written", `${shown}, readable only by you`);
   ui.para("That file holds the server's secrets. totem doesn't run Docker for you; these are the steps:");
   ui.line();
-  ui.para("1. In .env.deploy, set PUBLIC_URL to the https address the server will have.");
-  ui.para("2. On your Docker host, in this directory (copy it there, with .env.deploy, if it is another machine), build the image:");
-  ui.code(["docker build -t totem ."], 5);
+  ui.para(`1. In ${shown}, set PUBLIC_URL to the https address the server will have.`);
+  ui.para("2. Build the image from totem's folder (for another machine, copy the folder and that file there first):");
+  ui.code(shellLines(["docker", "build", "-t", "totem", shellPath(d.root)], width, sys.platform), 5);
   ui.para("3. Start it. The totem-data volume keeps the WHOOP login across restarts:");
-  ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", ".env.deploy", "totem"], width, sys.platform), 5);
+  ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", shellPath(envFile), "totem"], width, sys.platform), 5);
   ui.para("4. Put it behind HTTPS at that address (a reverse proxy, a tunnel, or your host's TLS).");
   ui.line();
   return askUrl(d.io, "Public https URL, once the server is up");
@@ -1044,15 +1050,15 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   const TOTAL = 6;
   ui.banner("totem cloud", "Deploy your own totem server and connect your AI apps to it.");
 
-  // This flow ends by writing the new server into .totem-deploy.json, over what
+  // This flow ends by writing the new server into the deploy record, over what
   // is there. For a server that is already deployed, that record is the only
   // copy of its MCP_AUTH_TOKEN on this computer (what `totem auth`, `status`
   // and `token` reach it with), and the server itself keeps running and
   // billing: don't replace it without asking.
-  const existing = readDeployRecord(root);
+  const existing = readDeployRecord(root, io.sys);
   if (existing && existing.platform !== "local" && existing.url) {
     ui.warn(`This install already has a server at ${existing.url}.`);
-    ui.hint("Deploying another makes this computer forget that one: its token leaves .totem-deploy.json, and the server keeps running until you remove it on its host. To deploy this install's code to it again: totem deploy");
+    ui.hint(`Deploying another makes this computer forget that one: its token leaves ${tildify(deployRecordPath(io.sys), io.sys.home)}, and the server keeps running until you remove it on its host. To deploy this install's code to it again: totem deploy`);
     if (!(await ui.confirm("Deploy a new server anyway?", false))) {
       ui.hint("Nothing changed. To connect a client to the server: totem connect");
       return 1;
@@ -1074,7 +1080,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   let ownPassword = false;
   ui.ok("MCP_AUTH_TOKEN generated", "64 random characters; the server's own key");
   ui.ok("Connector password generated", "you get it at the end, once");
-  ui.hint("Both are set on the server. The token is also kept in .totem-deploy.json (readable only by you), so totem auth can reach the server.");
+  ui.hint(`Both are set on the server. The token is also kept in ${tildify(deployRecordPath(io.sys), io.sys.home)} (readable only by you), so totem auth can reach the server.`);
 
   // No WHOOP tokens in the host's environment: the server starts without a
   // login, and step 5 sends one to its token file over POST /admin/tokens.
@@ -1135,7 +1141,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
     platform, app: d.appName, url,
     ...(platform === "fly" ? { region: FLY_REGION } : platform === "railway" ? { service: RAILWAY_SERVICE } : {}),
     mcp_auth_token: mcpToken,
-  });
+  }, io.sys);
   const mcpUrl = `${url.replace(/\/+$/, "")}/mcp`;
   // The server has had the connector password since the deploy finished, and
   // this run is the only time totem can show it. A flow that stops before the

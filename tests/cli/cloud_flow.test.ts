@@ -2,10 +2,10 @@
 // but stopped short of the last screen, and a second run over an existing
 // deployment. Driven with the fake world (helpers.ts): no host, no login.
 import { afterEach, describe, expect, it } from "vitest";
-import { chmodSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { runCli, type AppCtx } from "../../src/cli/app.js";
-import { readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
+import { configFile, readDeployRecord, writeDeployRecord } from "../../src/cli/deploy_record.js";
 import { secretForms } from "../../src/cli/setup.js";
 import type { ExecResult } from "../../src/cli/sys.js";
 import { fakeWorld, PASSWORD, TOKEN, type FakeWorld, type WorldOptions } from "./helpers.js";
@@ -51,7 +51,7 @@ describe("totem cloud: the deploy finished but the server isn't answering yet", 
 
   it("records the server, so totem ping / auth can pick it up", async () => {
     const { w } = await cloud(notAnswering);
-    expect(readDeployRecord(w.root)).toMatchObject({ platform: "fly", app: "totem-c0ffee", url: "https://totem-c0ffee.fly.dev", mcp_auth_token: TOKEN });
+    expect(readDeployRecord(w.root, w.io.sys)).toMatchObject({ platform: "fly", app: "totem-c0ffee", url: "https://totem-c0ffee.fly.dev", mcp_auth_token: TOKEN });
   });
 
   it("shows nothing for a password the person chose themselves", async () => {
@@ -130,7 +130,7 @@ describe("totem cloud: Cloudflare", () => {
     expect(() => statSync(seen.file!)).toThrow();
     expect(w.commands.join("\n")).not.toContain(TOKEN);
     expect(w.commands.join("\n")).not.toContain(PASSWORD);
-    expect(readDeployRecord(w.root)).toMatchObject({ platform: "cloudflare", app: "totem-c0ffee", url: "https://totem-c0ffee.you.workers.dev", mcp_auth_token: TOKEN });
+    expect(readDeployRecord(w.root, w.io.sys)).toMatchObject({ platform: "cloudflare", app: "totem-c0ffee", url: "https://totem-c0ffee.you.workers.dev", mcp_auth_token: TOKEN });
     expect(text).toContain("Signed in to Cloudflare");
     expect(text).toContain("you@example.com");
   });
@@ -157,24 +157,32 @@ describe("totem cloud: cancelling the plan", () => {
   });
 });
 
-// The own-server flow writes the server's secrets to .env.deploy and says the
+// The own-server flow writes the server's secrets to deploy.env in totem's
+// config folder (never the install, which an npm update replaces) and says the
 // file is readable only by you. That has to hold when the file already existed.
-describe.skipIf(process.platform === "win32")("totem cloud: .env.deploy", () => {
+describe.skipIf(process.platform === "win32")("totem cloud: deploy.env", () => {
   const ownServer: WorldOptions = { answers: [[HOST, "My own server"], ["Public https URL", "totem.example.com"]] };
   const mode = (path: string): string => (statSync(path).mode & 0o777).toString(8);
+  const envFile = (w: FakeWorld): string => configFile(w.io.sys, "deploy.env");
 
-  it("is 0600 when the flow creates it", async () => {
+  it("is 0600 when the flow creates it, and the Docker steps name it and the install by full path", async () => {
     const { w, text } = await cloud(ownServer);
     expect(text).toContain("readable only by you");
-    expect(mode(join(w.root, ".env.deploy"))).toBe("600");
+    expect(mode(envFile(w))).toBe("600");
+    expect(existsSync(join(w.root, ".env.deploy"))).toBe(false);
+    // A long path continues the command on the next line ("\" at the end): read it as one.
+    const oneLine = text.replace(/ \\\n\s*/g, " ");
+    expect(oneLine).toContain(`--env-file ${envFile(w).split(w.home).join("/Users/you")}`);
+    expect(oneLine).toContain(`docker build -t totem ${w.root.split(w.home).join("/Users/you")}`);
   });
 
   it("is 0600 when a world-readable one was already there", async () => {
     const { w } = await cloud(ownServer, (world_) => {
-      writeFileSync(join(world_.root, ".env.deploy"), "MCP_AUTH_TOKEN=from-an-earlier-run\n");
-      chmodSync(join(world_.root, ".env.deploy"), 0o644);
+      mkdirSync(dirname(envFile(world_)), { recursive: true });
+      writeFileSync(envFile(world_), "MCP_AUTH_TOKEN=from-an-earlier-run\n");
+      chmodSync(envFile(world_), 0o644);
     });
-    const file = join(w.root, ".env.deploy");
+    const file = envFile(w);
     expect(readFileSync(file, "utf8")).toContain(`MCP_AUTH_TOKEN=${TOKEN}`);
     expect(mode(file)).toBe("600");
   });
@@ -216,14 +224,14 @@ describe("totem cloud: a host CLI echoes a chosen password back, escaped", () =>
 // without a word, leaving the first one running, billed, and out of reach.
 describe("totem cloud: this install already has a server", () => {
   const OLD = { platform: "fly", app: "totem-old", url: "https://totem-old.fly.dev", mcp_auth_token: "0ld".repeat(21) + "0" };
-  const deployed = (w: FakeWorld): void => writeDeployRecord(w.root, OLD);
+  const deployed = (w: FakeWorld): void => writeDeployRecord(w.root, OLD, w.io.sys);
 
   it("asks first, and by default changes nothing", async () => {
     const { w, code, text } = await cloud({ exec: fly }, deployed);
     expect(code).toBe(1);
     expect(text).toContain("This install already has a server at https://totem-old.fly.dev.");
     expect(text).toContain("? Deploy a new server anyway? (y/N)");
-    expect(readDeployRecord(w.root)).toEqual(OLD);
+    expect(readDeployRecord(w.root, w.io.sys)).toEqual(OLD);
     // Nothing was asked of the host, and no host was even chosen.
     expect(w.commands).toEqual([]);
     expect(text).not.toContain("1/6  Host");
@@ -232,13 +240,13 @@ describe("totem cloud: this install already has a server", () => {
   it("deploys a new one when told to", async () => {
     const { w, code } = await cloud({ exec: fly, answers: [["Deploy a new server anyway?", true]] }, deployed);
     expect(code).toBe(0);
-    expect(readDeployRecord(w.root)).toMatchObject({ app: "totem-c0ffee", mcp_auth_token: TOKEN });
+    expect(readDeployRecord(w.root, w.io.sys)).toMatchObject({ app: "totem-c0ffee", mcp_auth_token: TOKEN });
   });
 
   it("doesn't ask on a first run, or over a local install", async () => {
     expect((await cloud({ exec: fly })).text).not.toContain("already has a server");
     world?.cleanup();
-    expect((await cloud({ exec: fly }, (w) => writeDeployRecord(w.root, { platform: "local" }))).text).not.toContain("already has a server");
+    expect((await cloud({ exec: fly }, (w) => writeDeployRecord(w.root, { platform: "local" }, w.io.sys))).text).not.toContain("already has a server");
   });
 });
 

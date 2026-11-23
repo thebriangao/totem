@@ -133,7 +133,7 @@ Logging in again is the same command: `totem auth`. On a server you can check it
 
 ## Security
 
-- **Your server, your keys.** A cloud server has two secrets of its own: `MCP_AUTH_TOKEN` (the server's key, kept in `.totem-deploy.json` on your computer) and the connector password you type when an app connects.
+- **Your server, your keys.** A cloud server has two secrets of its own: `MCP_AUTH_TOKEN` (the server's key, kept in `~/.config/totem/deploy.json` on your computer) and the connector password you type when an app connects.
 - **The sign-in page names the destination.** It shows the real address access goes to (claude.ai, chatgpt.com, an app on your own computer), never just the name an app claims.
 - **Nothing else is contacted.** The only outgoing traffic is to WHOOP. No telemetry, no analytics.
 - **Writes need confirmation,** and `whoop_raw` writes also need `allow_write`.
