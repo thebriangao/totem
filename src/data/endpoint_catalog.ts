@@ -1,6 +1,7 @@
 // AUTO-GENERATED from whoop-testing/probes/2026-11-21/endpoints.json (live probe run, 2026-11-21, plus the
 // heart-rate and bulk-history endpoints checked live the same day; the last block is @Acetone1's Android
-// routes, checked on the test account on 2026-11-22).
+// routes, checked on the test account on 2026-11-22). The social endpoints (community leaderboards and
+// followers-service) come from the 2026-11-21 captures: the probe skipped them, so they are not-probed.
 // Do not edit by hand. Paths are templated; no real identifiers. Verdicts:
 //   verified = worked live and was read back; not-found / server-error-500 / service-only-401 = do not use.
 export interface EndpointEntry {
@@ -385,13 +386,101 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
   },
   {
     "method": "GET",
+    "path": "/community-service/v1/leaderboards/communities/{communityId}/{window}/{metric}/{kind}",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [
+      "whoop_community"
+    ],
+    "notes": "Probes excluded social; capture 200×109 (404×89: no data in the window). A community's full ranking, paged by offset and limit; window is a date or average/week|month (averages add startDate, endDate, includeCompliance, complianceCutoff). Other people's names and scores: read live, never cached (D9)."
+  },
+  {
+    "method": "GET",
     "path": "/community-service/v1/leaderboards/communities/{communityId}/{window}/{metric}/{kind}/user/{own_user_id}",
     "domain": "community",
     "verdict": "not-probed",
     "tools": [
       "whoop_community"
     ],
-    "notes": "Own leaderboard row only (D9); never the full board"
+    "notes": "Your own row on that board (404 when you have no data in the window); whoop_community shows it beside the full ranking."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/badging",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [],
+    "notes": "Probes excluded social; capture 200×10. {show_community_badge}."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/followers-home/following",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [
+      "whoop_community"
+    ],
+    "notes": "Probes excluded social; capture 200×3. The people you follow, with the scores each shares with you: read live, never cached (D9)."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/followers-home/manage/FOLLOWING",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [],
+    "notes": "Probes excluded social; capture 200×10. The manage-following screen's list."
+  },
+  {
+    "method": "POST",
+    "path": "/followers-service/v1/following/{user_id}",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [],
+    "notes": "Probes excluded social; capture 200×53. Follow someone. A social write: whoop_raw only (D9)."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/moments/preview",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [],
+    "notes": "Probes excluded social; capture 200×3. An activity's share preview."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/onboarding",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [],
+    "notes": "Probes excluded social; capture 200×2. The follow-onboarding screen."
+  },
+  {
+    "method": "PUT",
+    "path": "/followers-service/v1/onboarding",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [],
+    "notes": "Probes excluded social; capture 200×1. Who can follow you. A social write: whoop_raw only (D9)."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/snapshots/daily/{user_id}",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [
+      "whoop_community"
+    ],
+    "notes": "Probes excluded social; capture 200×14 (404×81: they share nothing with you). One person's daily scores: read live, never cached (D9)."
+  },
+  {
+    "method": "GET",
+    "path": "/followers-service/v1/snapshots/{snapshot_id}/comments",
+    "domain": "community",
+    "verdict": "not-probed",
+    "tools": [
+      "whoop_community"
+    ],
+    "notes": "Probes excluded social; capture 200×10. Comments on a snapshot: read live, never cached (D9)."
   },
   {
     "method": "GET",
@@ -530,7 +619,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "verdict": "verified",
     "tools": [
       "whoop_calendar",
-      "whoop_workouts"
+      "whoop_workouts",
+      "whoop_lift_sessions"
     ],
     "notes": "byte-identical to recovery; use has_data to prune per-day walks. days_of_month[{date_value_display, has_data, cycle_id, day_state}]; no full date; future days can show has_data"
   },
@@ -788,7 +878,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "journal",
     "verdict": "verified",
     "tools": [
-      "whoop_behavior_impact"
+      "whoop_journal"
     ],
     "notes": "new accounts nest member-average impact_cards under HEADER_ITEMS_CARD; walk recursively"
   },
@@ -813,9 +903,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "path": "/behavior-impact-service/v1/impact/summary-card/{date}",
     "domain": "journal",
     "verdict": "verified",
-    "tools": [
-      "whoop_behavior_impact"
-    ],
+    "tools": [],
     "notes": "summary card"
   },
   {
@@ -824,7 +912,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "journal",
     "verdict": "exists-but-unclear",
     "tools": [
-      "whoop_behavior_impact"
+      "whoop_journal"
     ],
     "notes": "400 'Requested impact not found.' for member-average uuids; personal payload unverified live"
   },
@@ -933,7 +1021,11 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "path": "/journal-service/v3/journals/behaviors",
     "domain": "journal",
     "verdict": "verified",
-    "tools": [],
+    "tools": [
+      "whoop_journal_log",
+      "whoop_preferences",
+      "whoop_preferences_set"
+    ],
     "notes": "customize-journal BFF (toggles, custom flag, custom_behaviors_widget)"
   },
   {
@@ -1171,7 +1263,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "settings",
     "verdict": "verified",
     "tools": [
-      "whoop_preferences"
+      "whoop_preferences",
+      "whoop_preferences_set"
     ],
     "notes": "gauge_metrics[4] (0 RECOVERY, 2 DAY_STRAIN fixed), pinned/unpinned sections"
   },
@@ -1191,7 +1284,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "settings",
     "verdict": "verified",
     "tools": [
-      "whoop_hr_zones",
+      "whoop_profile",
       "whoop_hr_zones_set"
     ],
     "notes": "is_custom = manual_heart_rate_zones_form.toggle_value; zone_rows effective; default_hr_zones for reset"
@@ -1202,7 +1295,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "settings",
     "verdict": "verified",
     "tools": [
-      "whoop_hr_zones"
+      "whoop_profile",
+      "whoop_hr_zones_set"
     ],
     "notes": "zones ZONE_0..5; NO is_custom"
   },
@@ -1230,7 +1324,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "settings",
     "verdict": "verified",
     "tools": [
-      "whoop_preferences"
+      "whoop_preferences",
+      "whoop_preferences_set"
     ],
     "notes": "settings[{push_namespace StressSummary|GPS|ConversationalCheckIn|CheckIn, active}]"
   },
@@ -1376,7 +1471,10 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "verdict": "verified",
     "tools": [
       "whoop_profile",
-      "(client: unit helper, init_timezone)"
+      "(client: unit helper, init_timezone)",
+      "whoop_community",
+      "whoop_preferences_set",
+      "whoop_weight_log"
     ],
     "notes": "physiological_baseline always null; gender display strings; profile.weight follows latest weight reading"
   },
@@ -1649,7 +1747,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "verdict": "verified",
     "tools": [
       "whoop_lift_exercise",
-      "whoop_lift_log"
+      "whoop_lift_log",
+      "whoop_lift_exercise_set"
     ],
     "notes": "alive: catalog ids, custom uuids, deleted customs (deleted:true); row usable verbatim as exercise_details"
   },
@@ -1714,7 +1813,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "strength",
     "verdict": "verified",
     "tools": [
-      "whoop_lift_library"
+      "whoop_lift_library",
+      "whoop_lift_template"
     ],
     "notes": "WHOOP prebuilt workout detail"
   },
@@ -1764,7 +1864,9 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "path": "/weightlifting-service/v3/exercise/{id}",
     "domain": "strength",
     "verdict": "verified",
-    "tools": [],
+    "tools": [
+      "whoop_lift_exercise"
+    ],
     "notes": "UI BFF; don't parse"
   },
   {
@@ -1835,7 +1937,8 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "strength",
     "verdict": "verified",
     "tools": [
-      "whoop_lift_exercise"
+      "whoop_lift_exercise",
+      "whoop_lift_sessions"
     ],
     "notes": "tiles (no record_date/medal); stale tiles survive deletion; deleted customs flagged; dedupe by exercise_id"
   },
@@ -1881,7 +1984,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "domain": "trends",
     "verdict": "verified",
     "tools": [
-      "whoop_performance_assessment"
+      "whoop_recovery"
     ],
     "notes": "{is_assessment_needed, has_assessment, total_recoveries, required_recoveries, expected/next_assessment_during}"
   },

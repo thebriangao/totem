@@ -7,7 +7,7 @@ This is an unofficial description of a private API. WHOOP can change it at any t
 ## How it was mapped
 
 - **Captures.** The WHOOP iOS app (5.78.0) was run through mitmproxy on two accounts, and every request was recorded.
-- **A live probe.** Each of the 280 endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.
+- **A live probe.** 267 of the 290 endpoints below were then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. The rest were left alone on purpose, or (like the social endpoints, which the probe skipped) are known from the captures alone; their verdict says which.
 - **The heart-rate series and the bulk day history** were checked live the same day, including that another person's user id is refused.
 - **Android routes.** [@Acetone1](https://github.com/Acetone1) shared the routes in WHOOP's Android app ([issue #5](https://github.com/thebriangao/totem/issues/5)). The ones that fit totem were called on the test account on 2026-11-22 and are marked "Android route" below.
 
@@ -53,7 +53,7 @@ No real person's data appears in totem's tests or this page.
 | GET | `/entitlement-service/v1/entitlements` | verified | whoop_profile | entitlements{feature:{entitled, reasons[]}}, context{current_membership_tier}; explains 'feature unavailable' |
 | GET | `/health-service/v2/stress-bff/{date}` | verified | whoop_stress, whoop_now | ~145 KB; stress_state, gauge, graphs, sessions, trend_list |
 | GET | `/health-tab-bff/v1/health-tab` | verified | – | healthspan hero (locked), monitor tile, stress card, menstrual tile; no live-HR tile (live HR is BLE) → whoop_live_hr dropped |
-| GET | `/home-service/v1/calendar/overview` | verified | whoop_calendar, whoop_workouts | byte-identical to recovery; use has_data to prune per-day walks. days_of_month[{date_value_display, has_data, cycle_id, day_state}]; no full date; future days can show has_data |
+| GET | `/home-service/v1/calendar/overview` | verified | whoop_calendar, whoop_workouts, whoop_lift_sessions | byte-identical to recovery; use has_data to prune per-day walks. days_of_month[{date_value_display, has_data, cycle_id, day_state}]; no full date; future days can show has_data |
 | GET | `/home-service/v1/calendar/recovery` | verified | whoop_calendar | states LOW/MEDIUM/HIGH_RECOVERY\|NO_DATA. days_of_month[{date_value_display, has_data, cycle_id, day_state}]; no full date; future days can show has_data |
 | GET | `/home-service/v1/calendar/sleep` | verified | whoop_calendar | HIGH_SLEEP\|NO_DATA observed; LOW_SLEEP inferred. days_of_month[{date_value_display, has_data, cycle_id, day_state}]; no full date; future days can show has_data |
 | GET | `/home-service/v1/calendar/strain` | verified | whoop_calendar | states LOW_STRAIN\|HIGH_STRAIN\|NO_DATA. days_of_month[{date_value_display, has_data, cycle_id, day_state}]; no full date; future days can show has_data |
@@ -136,7 +136,7 @@ Don't use:
 
 | Method | Path | Verdict | Used by | Notes |
 |---|---|---|---|---|
-| GET | `/coaching-service/v1/performance-assessment/{reportType}/data/{ts}` | verified | whoop_performance_assessment | {is_assessment_needed, has_assessment, total_recoveries, required_recoveries, expected/next_assessment_during} |
+| GET | `/coaching-service/v1/performance-assessment/{reportType}/data/{ts}` | verified | whoop_recovery | {is_assessment_needed, has_assessment, total_recoveries, required_recoveries, expected/next_assessment_during} |
 | GET | `/progression-service/v3/trends/BODY_COMPOSITION/readings` | verified | – | alias of WEIGHT/readings (POST and DELETE {id} also verified; PUT untried); other graph keys → 400 'Unsupported graph key' |
 | GET | `/progression-service/v3/trends/WEIGHT/readings` | verified | whoop_weight | sections.records[].measurements[MEASUREMENT_BOX{id, weight (display), weight_details_screen{timestamp, weight_kg, body_fat_percent (fraction), lean_body_mass_kg, save_title}}], sections.next_token; query params ignored;  |
 | POST | `/progression-service/v3/trends/WEIGHT/readings` | verified | whoop_weight_log | 204 no id (re-list). Same-day POST adds. 0<kg≤275; body_fat fraction (>1 → 422). Latest-timestamp reading sets profile weight. |
@@ -159,24 +159,24 @@ Don't use:
 | Method | Path | Verdict | Used by | Notes |
 |---|---|---|---|---|
 | GET | `/progression-service/v3/exercise/{id}` | verified | whoop_lift_exercise | AVG VOLUME LOAD segments |
-| GET | `/weightlifting-service/v1/exercise/{id}` | verified | whoop_lift_exercise, whoop_lift_log | alive: catalog ids, custom uuids, deleted customs (deleted:true); row usable verbatim as exercise_details |
+| GET | `/weightlifting-service/v1/exercise/{id}` | verified | whoop_lift_exercise, whoop_lift_log, whoop_lift_exercise_set | alive: catalog ids, custom uuids, deleted customs (deleted:true); row usable verbatim as exercise_details |
 | GET | `/weightlifting-service/v1/link-workout` | verified | – | link screen (templates, AI auto-link) |
 | POST | `/weightlifting-service/v2/custom-exercise` | verified | whoop_lift_exercise_set | Create and edit (upsert by exercise_id). linked_exercise makes it trackable. laterality/exercise_type ignored. Bare 422. |
 | DELETE | `/weightlifting-service/v2/custom-exercise/{uuid}` | verified | whoop_lift_exercise_set | 204 idempotent soft delete; v1/exercise still returns deleted:true; v3/prs tile remains |
 | GET | `/weightlifting-service/v2/exercise` | verified | whoop://catalog/exercises, whoop_lift_log | 371 base rows + customs + filter_options |
-| GET | `/weightlifting-service/v2/prebuilt-workout-template/{id}` | verified | whoop_lift_library | WHOOP prebuilt workout detail |
+| GET | `/weightlifting-service/v2/prebuilt-workout-template/{id}` | verified | whoop_lift_library, whoop_lift_template | WHOOP prebuilt workout detail |
 | POST | `/weightlifting-service/v2/weightlifting-workout/activity` | verified | whoop_lift_log | Bare 422 on any schema error; 409 text on overlap (nothing deleted). weight in profile display unit. Saved window = union(during, set durings). Set without during = not performed. 0-rep weighted set wins a PR. |
 | POST | `/weightlifting-service/v2/weightlifting-workout/link-cardio-workout` | verified | whoop_lift_log | Attach sets to an existing activity. template_id:-1 works (no template). 422 without template_id; 409 already linked; no unlink. Works while link_workout_option_enabled is false. |
 | DELETE | `/weightlifting-service/v2/workout-template/{key}` | verified | whoop_lift_template | 204 idempotent |
 | GET | `/weightlifting-service/v2/workout-template/{key}` | verified | whoop_lift_library, whoop_lift_template | user templates and AI drafts (is_draft); 404 HTML for deleted/prebuilt |
-| GET | `/weightlifting-service/v3/exercise/{id}` | verified | – | UI BFF; don't parse |
+| GET | `/weightlifting-service/v3/exercise/{id}` | verified | whoop_lift_exercise | UI BFF; don't parse |
 | GET | `/weightlifting-service/v3/exercise/{id}/exercise_history` | verified | whoop_lift_exercise, whoop_lift_sessions | one card per workout; sets without during excluded |
 | GET | `/weightlifting-service/v3/exercise/{id}/personal_records` | verified | whoop_lift_exercise | cards per medal |
 | DELETE | `/weightlifting-service/v3/one-rep-max/manual-entry/{entry_id}` | verified | whoop_lift_exercise_set | 204; estimate reverts; re-delete 404 'No manual one rep max entry' |
 | GET | `/weightlifting-service/v3/one-rep-max/{exercise_id}` | verified | whoop_lift_exercise | value + Estimated/Manual; limits 1–999, 6 months back |
 | PUT | `/weightlifting-service/v3/one-rep-max/{exercise_id}` | verified | whoop_lift_exercise_set | 204. Create; with id = edit; same date w/o id = replace. Value in display unit. 400s: 1–999, >6 months back, future. e1rm_eligible not enforced. |
 | GET | `/weightlifting-service/v3/one-rep-max/{exercise_id}/history` | verified | whoop_lift_exercise, whoop_lift_exercise_set | MEASUREMENT_ENTRY_ITEMs; manual entry uuid only inside generic_interaction |
-| GET | `/weightlifting-service/v3/prs` | verified | whoop_lift_exercise | tiles (no record_date/medal); stale tiles survive deletion; deleted customs flagged; dedupe by exercise_id |
+| GET | `/weightlifting-service/v3/prs` | verified | whoop_lift_exercise, whoop_lift_sessions | tiles (no record_date/medal); stale tiles survive deletion; deleted customs flagged; dedupe by exercise_id |
 | GET | `/weightlifting-service/v3/workout-library` | verified | whoop_lift_library | my_workouts_list[{workout_template_key, name, source, created_at,…}], whoop_workouts_list[{id (string), title, paragraph, tag}]; no pagination; drafts not listed |
 | POST | `/weightlifting-service/v3/workout-template` | verified | whoop_lift_template | Create (no key or -1); edit in place with existing key (±source); unknown key silently creates new. Sets {number_of_reps, weight?, time_in_seconds?}. |
 
@@ -199,8 +199,8 @@ Don't use:
 | GET | `/activities-service/v1/journals/stats/user/{user_id}` | verified | whoop_journal | yes/no counts per behavior (own id) |
 | GET | `/ai-conversation-bff/v1/widget/journal/custom-behavior-proposal` | verified | – | proposal card (EDITABLE) |
 | PUT | `/ai-conversation-bff/v1/widget/journal/custom-behavior-proposal/commit/{proposalId}` | verified | – | Creates a PERMANENT custom behavior (body {}; POST 405; no body 422). Not wrapped. |
-| GET | `/behavior-impact-service/v1/impact` | verified | whoop_behavior_impact | new accounts nest member-average impact_cards under HEADER_ITEMS_CARD; walk recursively |
-| GET | `/behavior-impact-service/v1/impact/summary-card/{date}` | verified | whoop_behavior_impact | summary card |
+| GET | `/behavior-impact-service/v1/impact` | verified | whoop_journal | new accounts nest member-average impact_cards under HEADER_ITEMS_CARD; walk recursively |
+| GET | `/behavior-impact-service/v1/impact/summary-card/{date}` | verified | – | summary card |
 | GET | `/journal-service/v1/journals/behaviors/{id}` | verified | – | single tracker; works for custom ids |
 | GET | `/journal-service/v1/journals/preferences` | verified | whoop_preferences | {journal_enabled, journal_autopop_enabled, ai_autopop_enabled, …} |
 | PUT | `/journal-service/v1/journals/preferences` | verified | whoop_preferences_set | Merges keys; journal_enabled required (422 otherwise) |
@@ -209,7 +209,7 @@ Don't use:
 | GET | `/journal-service/v2/journals/behaviors` | verified | – | 308 records = totem bundle; excludes 171 and customs |
 | GET | `/journal-service/v2/journals/behaviors/user/{date}` | verified | whoop://catalog/behaviors, whoop_journal, whoop_journal_log | 309 incl. 171 + custom; full trackers with magnitude specs |
 | PUT | `/journal-service/v2/journals/entries/user/date/{date}` | verified | whoop_journal_log | Replace-all: unlisted rows deleted; omitted/'' notes → null. 400 text, atomic. One 204 didn't land during cycle reshuffle: read back. |
-| GET | `/journal-service/v3/journals/behaviors` | verified | – | customize-journal BFF (toggles, custom flag, custom_behaviors_widget) |
+| GET | `/journal-service/v3/journals/behaviors` | verified | whoop_journal_log, whoop_preferences, whoop_preferences_set | customize-journal BFF (toggles, custom flag, custom_behaviors_widget) |
 | GET | `/journal-service/v3/journals/date-picker/{date}` | verified | – | per-day status + fill_ratio |
 | GET | `/journal-service/v3/journals/drafts/mobile/{date}` | verified | whoop_journal, whoop_journal_log | tracked_behaviors[{behavior_tracker, tracker_input}], notes (null when empty), cycle_id (may change), keyed by date |
 | GET | `/journal-service/v3/journals/home-tile` | verified | – | 400 without date |
@@ -373,12 +373,12 @@ Don't use:
 
 | Method | Path | Verdict | Used by | Notes |
 |---|---|---|---|---|
-| GET | `/home-service/v2/home/dashboard/customize` | verified | whoop_preferences | gauge_metrics[4] (0 RECOVERY, 2 DAY_STRAIN fixed), pinned/unpinned sections |
+| GET | `/home-service/v2/home/dashboard/customize` | verified | whoop_preferences, whoop_preferences_set | gauge_metrics[4] (0 RECOVERY, 2 DAY_STRAIN fixed), pinned/unpinned sections |
 | POST | `/hr-zones-service/v1/bff/custom` | verified | whoop_hr_zones_set | 5 contiguous zones (gap/overlap → 400 'Invalid custom zones submitted'; 4 zones → 422); Z5 max clamped; reset = defaults + is_custom:false |
-| GET | `/hr-zones-service/v1/bff/settings` | verified | whoop_hr_zones, whoop_hr_zones_set | is_custom = manual_heart_rate_zones_form.toggle_value; zone_rows effective; default_hr_zones for reset |
-| GET | `/hr-zones-service/v1/bff/zones` | verified | whoop_hr_zones | zones ZONE_0..5; NO is_custom |
+| GET | `/hr-zones-service/v1/bff/settings` | verified | whoop_profile, whoop_hr_zones_set | is_custom = manual_heart_rate_zones_form.toggle_value; zone_rows effective; default_hr_zones for reset |
+| GET | `/hr-zones-service/v1/bff/zones` | verified | whoop_profile, whoop_hr_zones_set | zones ZONE_0..5; NO is_custom |
 | POST | `/hr-zones-service/v1/maxhr` | verified | whoop_hr_zones_set | 200 zones (HRR); 100/221/230 → 400; keeps custom zones but response shows defaults |
-| GET | `/notification-service/v1/notifications/user-settings/bff` | verified | whoop_preferences | settings[{push_namespace StressSummary\|GPS\|ConversationalCheckIn\|CheckIn, active}] |
+| GET | `/notification-service/v1/notifications/user-settings/bff` | verified | whoop_preferences, whoop_preferences_set | settings[{push_namespace StressSummary\|GPS\|ConversationalCheckIn\|CheckIn, active}] |
 | PUT | `/notification-service/v1/notifications/user-settings/block/namespace` | verified | whoop_preferences_set | block; idempotent; case-sensitive (unknown → 400 'Namespace does not exist') |
 | DELETE | `/notification-service/v1/notifications/user-settings/block/namespace/{ns}` | verified | whoop_preferences_set | unblock; unknown ns → 200 no-op |
 | PUT | `/profile-service/v1/profile` | verified | whoop_profile_update | Full replace → true / false (rejected). Omit city clears; omit baseline keeps; state required for US; gender MALE\|FEMALE\|NON_BINARY\|PREFER_NOT; birthday/country invalidate session. |
@@ -391,7 +391,7 @@ Don't use:
 | PUT | `/users-service/v1/stealth-mode` | verified | whoop_preferences_set | {enabled:true} or bare false → bare boolean |
 | POST | `/users-service/v1/users/preferences/time` | verified | whoop_preferences_set | clock_format write; same values → existing row. Never change timezone. |
 | PUT | `/users-service/v1/users/profile/offset` | verified | – | ZoneOffset parse; same-value write only; not for tools |
-| GET | `/users-service/v2/bootstrap` | verified | whoop_profile, (client: unit helper, init_timezone) | physiological_baseline always null; gender display strings; profile.weight follows latest weight reading |
+| GET | `/users-service/v2/bootstrap` | verified | whoop_profile, (client: unit helper, init_timezone), whoop_community, whoop_preferences_set, whoop_weight_log | physiological_baseline always null; gender display strings; profile.weight follows latest weight reading |
 | GET | `/users-service/v2/bootstrap/{account\|user\|membership}` | verified | – | sub-resources |
 
 Don't use:
@@ -430,12 +430,22 @@ Don't use:
 
 ### Community
 
-Nothing here worked:
+Seen working in the captures (the probe skipped these):
 
-| Method | Path | Verdict | Notes |
+| Method | Path | Used by | Notes |
 |---|---|---|---|
-| GET | `/community-service/v1/communities/memberships` | not-probed | Probes excluded social; capture says works. Own memberships only (D9). |
-| GET | `/community-service/v1/leaderboards/communities/{communityId}/{window}/{metric}/{kind}/user/{own_user_id}` | not-probed | Own leaderboard row only (D9); never the full board |
+| GET | `/community-service/v1/communities/memberships` | whoop_community | Probes excluded social; capture says works. Own memberships only (D9). |
+| GET | `/community-service/v1/leaderboards/communities/{communityId}/{window}/{metric}/{kind}` | whoop_community | Probes excluded social; capture 200×109 (404×89: no data in the window). A community's full ranking, paged by offset and limit; window is a date or average/week\|month (averages add startDate, endDate, includeCompliance, complianceCutoff). Other people's names and scores: read live, never cached (D9). |
+| GET | `/community-service/v1/leaderboards/communities/{communityId}/{window}/{metric}/{kind}/user/{own_user_id}` | whoop_community | Your own row on that board (404 when you have no data in the window); whoop_community shows it beside the full ranking. |
+| GET | `/followers-service/v1/badging` | – | Probes excluded social; capture 200×10. {show_community_badge}. |
+| GET | `/followers-service/v1/followers-home/following` | whoop_community | Probes excluded social; capture 200×3. The people you follow, with the scores each shares with you: read live, never cached (D9). |
+| GET | `/followers-service/v1/followers-home/manage/FOLLOWING` | – | Probes excluded social; capture 200×10. The manage-following screen's list. |
+| POST | `/followers-service/v1/following/{user_id}` | – | Probes excluded social; capture 200×53. Follow someone. A social write: whoop_raw only (D9). |
+| GET | `/followers-service/v1/moments/preview` | – | Probes excluded social; capture 200×3. An activity's share preview. |
+| GET | `/followers-service/v1/onboarding` | – | Probes excluded social; capture 200×2. The follow-onboarding screen. |
+| PUT | `/followers-service/v1/onboarding` | – | Probes excluded social; capture 200×1. Who can follow you. A social write: whoop_raw only (D9). |
+| GET | `/followers-service/v1/snapshots/daily/{user_id}` | whoop_community | Probes excluded social; capture 200×14 (404×81: they share nothing with you). One person's daily scores: read live, never cached (D9). |
+| GET | `/followers-service/v1/snapshots/{snapshot_id}/comments` | whoop_community | Probes excluded social; capture 200×10. Comments on a snapshot: read live, never cached (D9). |
 
 ### Health Monitor and the paid health features
 

@@ -45,6 +45,10 @@ const VERDICTS: Array<[string, string]> = [
 
 const cell = (s: string): string => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 const usable = (e: EndpointEntry): boolean => e.verdict.startsWith("verified") || e.verdict === "decided";
+/** Seen working in the captures but not called by the probe (the social endpoints, which the probe skipped). */
+const captured = (e: EndpointEntry): boolean => e.verdict === "not-probed";
+/** Never called by the probe: known from the captures, or left alone on purpose. */
+const uncalled = (e: EndpointEntry): boolean => ["not-probed", "not-exercised", "blocked-by-policy"].includes(e.verdict);
 
 export function whoopMarkdown(): string {
   const out: string[] = [
@@ -57,7 +61,7 @@ export function whoopMarkdown(): string {
     "## How it was mapped",
     "",
     `- **Captures.** The WHOOP iOS app (${IOS_APP_VERSION}) was run through mitmproxy on two accounts, and every request was recorded.`,
-    `- **A live probe.** Each of the ${ENDPOINT_CATALOG.length} endpoints below was then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. Each endpoint got a verdict.`,
+    `- **A live probe.** ${ENDPOINT_CATALOG.filter((e) => !uncalled(e)).length} of the ${ENDPOINT_CATALOG.length} endpoints below were then called on a test account through a proxy that paced requests to a person's speed and kept a record of every call. Writes were made, read back, and undone. The rest were left alone on purpose, or (like the social endpoints, which the probe skipped) are known from the captures alone; their verdict says which.`,
     "- **The heart-rate series and the bulk day history** were checked live the same day, including that another person's user id is refused.",
     "- **Android routes.** [@Acetone1](https://github.com/Acetone1) shared the routes in WHOOP's Android app ([issue #5](https://github.com/thebriangao/totem/issues/5)). The ones that fit totem were called on the test account on 2026-11-22 and are marked \"Android route\" below.",
     "",
@@ -89,14 +93,19 @@ export function whoopMarkdown(): string {
   for (const domain of domains) {
     const rows = ENDPOINT_CATALOG.filter((e) => e.domain === domain);
     const good = rows.filter(usable);
-    const bad = rows.filter((e) => !usable(e));
+    const seen = rows.filter(captured);
+    const bad = rows.filter((e) => !usable(e) && !captured(e));
     out.push("", `### ${AREAS[domain] ?? domain}`);
     if (good.length) {
       out.push("", "| Method | Path | Verdict | Used by | Notes |", "|---|---|---|---|---|");
       for (const e of good) out.push(`| ${e.method} | \`${cell(e.path)}\` | ${e.verdict} | ${cell(e.tools.join(", ")) || "–"} | ${cell(e.notes)} |`);
     }
+    if (seen.length) {
+      out.push("", good.length ? "Seen working in the captures, not probed:" : "Seen working in the captures (the probe skipped these):", "", "| Method | Path | Used by | Notes |", "|---|---|---|---|");
+      for (const e of seen) out.push(`| ${e.method} | \`${cell(e.path)}\` | ${cell(e.tools.join(", ")) || "–"} | ${cell(e.notes)} |`);
+    }
     if (bad.length) {
-      out.push("", good.length ? "Don't use:" : "Nothing here worked:", "", "| Method | Path | Verdict | Notes |", "|---|---|---|---|");
+      out.push("", good.length || seen.length ? "Don't use:" : "Nothing here worked:", "", "| Method | Path | Verdict | Notes |", "|---|---|---|---|");
       for (const e of bad) out.push(`| ${e.method} | \`${cell(e.path)}\` | ${e.verdict} | ${cell(e.notes)} |`);
     }
   }
