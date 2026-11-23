@@ -77,7 +77,8 @@ describe("v2 tool registry", () => {
     // characters; plain-string time inputs (src/lib/instant.ts) took 189 back.
     // Merge, the journal calendar, raw PATCH and whoop_health (2026-11-22) were paid
     // for by trimming wording that repeated the schema, and by moving the 30 dashboard
-    // metric keys out of whoop_preferences_set's schema into whoop_preferences' answer. Measured now: 35,964.
+    // metric keys out of whoop_preferences_set's schema into whoop_preferences' answer. Plain
+    // [min, max] arrays for whoop_hr_zones_set's zones took 57 more off. Measured at 2.0.0: 35,907.
     const { tools } = await (await connect()).listTools();
     expect(JSON.stringify(tools).length).toBeLessThanOrEqual(36_000);
     // Write tools say once, the same way, that they preview by default.

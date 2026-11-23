@@ -2,7 +2,7 @@
 
 All notable changes to this project. Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
-## [2.0.0] (unreleased)
+## [2.0.0] — 2026-11-23
 
 v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), with a new login, a smaller and cheaper tool surface, new hosts and a setup that takes one command.
 
@@ -33,9 +33,9 @@ v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), wi
 
 ### Changed
 
-- **41 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,964 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
+- **41 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,907 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
 - **Every write previews first** and does nothing until `confirm: true`; `whoop_raw` writes also need `allow_write`, with a denylist that can't be bypassed by an odd path.
-- **The `totem` CLI is redesigned**: one visual language (a brand stripe, full-width step rules, aligned facts, a Next box, a spinner with elapsed time), colour only as decoration, ASCII where Unicode can't be trusted, and every failure ends with the command that fixes it. `totem local` and `totem cloud` ask only what a person must decide.
+- **The `totem` CLI is redesigned**: plain, in the style of gh and fly (numbered steps, ✓ and ✗ results, aligned facts, a Next list, a spinner with elapsed time), with totem's logo at the top of the big flows and one icy palette used only as decoration, ASCII where Unicode can't be trusted, and every failure ends with the command that fixes it. `totem local` and `totem cloud` ask only what a person must decide.
 - **Hosts:** Fly.io (one 512 MB machine in iad, about $4 a month), Cloudflare (free), Railway (named service, volume through Railway's API when its CLI fails, builds watched to the end) and your own Docker host, which now asks the server's address first, writes it into `deploy.env` as `PUBLIC_URL`, takes addresses like `totem.home` or `localhost:3000` (warning when plain http won't reach web apps), and builds with the version so `/health` reports it.
 - `whoop_preferences` lists the dashboard metric keys you can choose from, so `whoop_preferences_set` no longer spells all 30 out in its schema (it still checks them against what WHOOP offers your account).
 - **totem asks before opening a page in your browser.** The Connect page, claude.ai's connector dialog and the Cloudflare and Fly sign-ins show their link in full first: Enter opens it, `n` leaves it to copy into the browser profile you want. A browser with several profiles opens links in the one used last, which may not be signed in to that account. Railway's sign-in already asks. The WHOOP login keeps its own temporary window.
