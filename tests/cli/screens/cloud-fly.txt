@@ -59,7 +59,10 @@ then closes the window and deletes the profile.
   Password:  Kq7m-Rt2x-Vb9n-Lp4w-Hd6s (copied to the clipboard)
   totem shows the password this once. Save it in your password manager.
 
-✓ Opened your server's Connect page (https://totem-c0ffee.fly.dev/connect)
+• Your server's Connect page
+  https://totem-c0ffee.fly.dev/connect
+? Open it in your browser? (Y/n)
+✓ Opened it in your browser
   It has a button for claude.ai, Cursor and VS Code, and the steps for every
   other app.
 

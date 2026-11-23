@@ -23,6 +23,7 @@ import {
   CLIENTS, FIRST_QUESTION, SERVER_NAME, applyRecipe, connectCard, findClient, lastLine, recipeLines, tildify,
   type Client, type Target,
 } from "./clients.js";
+import { offerLink } from "./links.js";
 import { realIo, type ExecResult, type Io } from "./sys.js";
 import { type Choice, duration, type Fix, listOf, maskSecrets, shellLines, shellPath, when } from "./ui.js";
 
@@ -224,12 +225,11 @@ function nextAfterConnect(io: Io, steps: string[]): void {
   io.ui.next([...all.map((s, i) => `${i + 1}. ${s}`), "", "Connect another app: totem connect"]);
 }
 
-/** The server's Connect page (a button or a step for every app), opened in the browser. */
-function showConnectPage(io: Io, mcpUrl: string): string {
+/** The server's Connect page (a button or a step for every app), offered to open in the browser. */
+async function showConnectPage(io: Io, mcpUrl: string): Promise<string> {
   const page = `${mcpUrl.replace(/\/mcp$/, "")}/connect`;
-  io.sys.openUrl(page);
-  io.ui.ok("Opened your server's Connect page", page);
-  io.ui.hint("It has a button for claude.ai, Cursor and VS Code, and the steps for every other app.");
+  await offerLink(io, "Your server's Connect page", page);
+  io.ui.hint("It has a button for claude.ai, Cursor and VS Code, and the steps for every other app.", 2);
   return page;
 }
 
@@ -286,7 +286,7 @@ export async function runConnect(root: string, args: string[], io: Io = realIo()
 
   ui.header("totem connect", `Connect your apps to ${where}.`);
   if (ui.canAsk && !print) {
-    if (target.kind === "remote") showConnectPage(io, target.mcpUrl);
+    if (target.kind === "remote") await showConnectPage(io, target.mcpUrl);
     const { steps } = await connectInstalled(io, target);
     nextAfterConnect(io, steps);
     return 0;
@@ -959,6 +959,40 @@ async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boo
 
 // ── the flow ─────────────────────────────────────────────────────────────────
 
+/** Where each host's sign-in link points, as its CLI prints it. */
+const CLOUDFLARE_SIGN_IN = /https:\/\/dash\.cloudflare\.com\/oauth2\/auth\?\S+/;
+const FLY_SIGN_IN = /https:\/\/fly\.io\/app\/auth\/cli\/[\w-]+/;
+
+/**
+ * A host's browser sign-in, without its CLI opening the browser by itself (it
+ * would land in whichever browser profile was used last, maybe one without the
+ * account). Run away from the terminal, Wrangler (with --browser=false) and
+ * flyctl print their link and wait for the approval instead: totem offers the
+ * link (offerLink), then waits too. If the sign-in finishes from a link pasted
+ * elsewhere before an answer, the question is taken back. Railway asks before
+ * opening anything, so it runs in the terminal as itself.
+ */
+async function browserSignIn(io: Io, host: string, cmd: string, args: string[], link: RegExp): Promise<ExecResult> {
+  const { ui, sys } = io;
+  let seen: (url: string) => void = () => {};
+  const shown = new Promise<string>((resolve) => { seen = resolve; });
+  const finished = new AbortController();
+  const result = sys.exec(cmd, args, { onLine: (line) => { const m = line.match(link); if (m) seen(m[0]); } })
+    .finally(() => finished.abort());
+  const url = await ui.task(`Starting the ${host} sign-in`, () => Promise.race([shown, result.then(() => null)]), { slow: true });
+  if (url !== null) {
+    const offered = await offerLink(io, `${host} sign-in`, url, finished.signal);
+    if (offered !== "withdrawn" && !finished.signal.aborted) await ui.task("Waiting for you to finish signing in", () => result);
+  }
+  return result;
+}
+
+/** The last thing a CLI said, for a problem's detail: its last error line, else its last line. */
+const lastWords = (r: ExecResult): string | undefined => {
+  const last = (text: string): string | undefined => text.split("\n").map((l) => l.trim()).filter(Boolean).pop();
+  return last(r.stderr) ?? last(r.stdout);
+};
+
 /** The host's CLI and a signed-in account. Returns the binary and who is signed in. */
 async function hostAccount(io: Io, platform: Platform, already: string[]): Promise<{ cli: string; account: string } | null> {
   const { ui, sys } = io;
@@ -971,8 +1005,8 @@ async function hostAccount(io: Io, platform: Platform, already: string[]): Promi
     if (!cli) return null;
     let account = await who(cli, ["auth", "whoami"]);
     if (!account) {
-      ui.info("Signing in to Fly; it opens your browser.");
-      if ((await sys.run(cli, ["auth", "login"])) !== 0) { ui.problem("The Fly sign-in didn't finish.", { fix: [["Sign in", `${cli} auth login`], ["Then", "totem cloud"]] }); return null; }
+      const r = await browserSignIn(io, "Fly", cli, ["auth", "login"], FLY_SIGN_IN);
+      if (r.code !== 0) { ui.problem("The Fly sign-in didn't finish.", { detail: lastWords(r), fix: [["Sign in", `${cli} auth login`], ["Then", "totem cloud"]] }); return null; }
       account = (await who(cli, ["auth", "whoami"])) ?? "your account";
     }
     ui.ok("Signed in to Fly", account);
@@ -983,7 +1017,7 @@ async function hostAccount(io: Io, platform: Platform, already: string[]): Promi
     if (!cli) return null;
     let account = await who(cli, ["whoami"]);
     if (!account) {
-      ui.info("Signing in to Railway; it opens your browser.");
+      ui.info("Signing in to Railway. It asks before opening your browser.");
       if ((await sys.run(cli, ["login"])) !== 0) { ui.problem("The Railway sign-in didn't finish.", { fix: [["Sign in", "railway login"], ["Then", "totem cloud"]] }); return null; }
       account = (await who(cli, ["whoami"])) ?? "your account";
     }
@@ -998,9 +1032,9 @@ async function hostAccount(io: Io, platform: Platform, already: string[]): Promi
     };
     let account = await whoami();
     if (!account) {
-      ui.info("Signing in to Cloudflare; it opens your browser.");
-      if ((await sys.run("npx", wrangler(["login"]))) !== 0) {
-        ui.problem("The Cloudflare sign-in didn't finish.", { fix: [["Sign in", "npx wrangler login"], ["Then", "totem cloud"]] });
+      const r = await browserSignIn(io, "Cloudflare", "npx", wrangler(["login", "--browser=false"]), CLOUDFLARE_SIGN_IN);
+      if (r.code !== 0) {
+        ui.problem("The Cloudflare sign-in didn't finish.", { detail: lastWords(r), fix: [["Sign in", "npx wrangler login"], ["Then", "totem cloud"]] });
         return null;
       }
       account = (await whoami()) ?? "your account";
@@ -1028,13 +1062,17 @@ async function switchAccount(io: Io, platform: Platform, cli: string, _already: 
   const { ui, sys } = io;
   if (platform === "cloudflare") {
     await sys.run("npx", wrangler(["logout"]));
-    if ((await sys.run("npx", wrangler(["login"]))) !== 0) { ui.fail("The sign-in didn't finish."); return null; }
+    const login = await browserSignIn(io, "Cloudflare", "npx", wrangler(["login", "--browser=false"]), CLOUDFLARE_SIGN_IN);
+    if (login.code !== 0) { ui.fail("The sign-in didn't finish.", lastWords(login)); return null; }
     const r = await sys.exec("npx", wrangler(["whoami"]));
     return cloudflareAccount(`${r.stdout}\n${r.stderr}`, r.code) ?? "your account";
   }
   const [out, login, whoami] = platform === "fly" ? [["auth", "logout"], ["auth", "login"], ["auth", "whoami"]] : [["logout"], ["login"], ["whoami"]];
   await sys.run(cli, out!);
-  if ((await sys.run(cli, login!)) !== 0) { ui.fail("The sign-in didn't finish."); return null; }
+  const signedIn = platform === "fly"
+    ? (await browserSignIn(io, "Fly", cli, login!, FLY_SIGN_IN)).code === 0
+    : (await sys.run(cli, login!)) === 0;
+  if (!signedIn) { ui.fail("The sign-in didn't finish."); return null; }
   const r = await sys.exec(cli, whoami!);
   return r.stdout.trim().replace(/\s+/g, " ").replace(/^Logged in as\s+/i, "") || "your account";
 }
@@ -1223,7 +1261,7 @@ export async function runCloudSetup(root: string, io: Io = realIo(), opts: Cloud
   ]);
   if (!ownPassword) ui.hint("totem shows the password this once. Save it in your password manager.", 2);
   ui.line();
-  const page = showConnectPage(io, mcpUrl);
+  const page = await showConnectPage(io, mcpUrl);
   const { steps } = await connectInstalled(io, { kind: "remote", mcpUrl });
   ui.next([
     ...(loggedIn ? [] : ["First, finish the WHOOP login: totem auth", ""]),

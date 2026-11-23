@@ -493,7 +493,7 @@ export interface Choice {
 // at once the first question's reader swallowed the lines meant for the next.
 interface PipedLines { lines: string[]; waiters: Array<(line: string | null) => void>; ended: boolean }
 const pipedReaders = new WeakMap<object, PipedLines>();
-function pipedLine(): Promise<string | null> {
+function pipedLine(signal?: AbortSignal): Promise<string | null> {
   const stdin = process.stdin;
   let state = pipedReaders.get(stdin);
   if (!state) {
@@ -504,11 +504,21 @@ function pipedLine(): Promise<string | null> {
     pipedReaders.set(stdin, fresh);
     state = fresh;
   }
+  if (signal?.aborted) return Promise.resolve(null);
   if (state.lines.length) return Promise.resolve(state.lines.shift()!);
   if (state.ended) return Promise.resolve(null);
   const waiting = state;
-  return new Promise((resolve) => waiting.waiters.push(resolve));
+  return new Promise((resolve) => {
+    // A withdrawn question gives up its place, so its line goes to the next one.
+    const take = (line: string | null): void => { signal?.removeEventListener("abort", drop); resolve(line); };
+    const drop = (): void => { const i = waiting.waiters.indexOf(take); if (i >= 0) waiting.waiters.splice(i, 1); resolve(null); };
+    waiting.waiters.push(take);
+    signal?.addEventListener("abort", drop, { once: true });
+  });
 }
+
+/** A question taken back before anyone answered it (see Ui.confirmUntil). */
+class Withdrawn extends Error {}
 
 const SHOW_CURSOR = "\x1b[?25h";
 const HIDE_CURSOR = "\x1b[?25l";
@@ -621,12 +631,13 @@ export class Ui {
 
   // prompts ───────────────────────────────────────────────────────────────
   /** One line of input, or InputClosedError when the input ended instead. */
-  protected async answer(query: string, question: string): Promise<string> {
+  protected async answer(query: string, question: string, signal?: AbortSignal): Promise<string> {
     let line: string | null;
     if (!process.stdin.isTTY) {
       this.write(query);
-      line = await pipedLine();
+      line = await pipedLine(signal);
       this.write("\n");
+      if (signal?.aborted) throw new Withdrawn();
     } else {
       // A fresh readline per question: a long-lived one breaks when a
       // subprocess in between (a login, a build) inherits stdin.
@@ -636,11 +647,13 @@ export class Ui {
       try {
         line = await new Promise<string | null>((resolve) => {
           rl.once("close", () => resolve(null));
-          rl.question(query).then(resolve).catch(() => resolve(null));
+          rl.question(query, signal ? { signal } : {}).then(resolve).catch(() => resolve(null));
         });
       } finally {
         rl.close();
       }
+      // Taken back: the question leaves the screen, as if never asked.
+      if (signal?.aborted) { this.write(CLEAR_LINE); throw new Withdrawn(); }
     }
     this.blank = false;
     if (line === null) throw new InputClosedError(question);
@@ -657,8 +670,26 @@ export class Ui {
    * not consent.
    */
   async confirm(question: string, defaultYes = true): Promise<boolean> {
+    return this.yesNo(question, defaultYes);
+  }
+
+  /**
+   * confirm(), unless `until` aborts first: something else settled it while
+   * totem was still asking (a sign-in finished from a link pasted elsewhere).
+   * Then the question leaves the screen and the answer is null.
+   */
+  async confirmUntil(question: string, until: AbortSignal, defaultYes = true): Promise<boolean | null> {
+    try {
+      return await this.yesNo(question, defaultYes, until);
+    } catch (error) {
+      if (error instanceof Withdrawn) return null;
+      throw error;
+    }
+  }
+
+  private async yesNo(question: string, defaultYes: boolean, signal?: AbortSignal): Promise<boolean> {
     for (let attempt = 0; attempt < 3; attempt++) {
-      const a = (await this.answer(`${this.q(question, defaultYes ? "(Y/n)" : "(y/N)")} `, question)).toLowerCase();
+      const a = (await this.answer(`${this.q(question, defaultYes ? "(Y/n)" : "(y/N)")} `, question, signal)).toLowerCase();
       if (a === "") return defaultYes;
       if (a === "y" || a === "yes") return true;
       if (a === "n" || a === "no") return false;

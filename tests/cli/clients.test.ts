@@ -206,17 +206,18 @@ describe("totem connect <client> against a deployed server", () => {
     expect(text).toContain('"url": "https://totem-a1b2c3.fly.dev/mcp"');
   });
 
-  it("opens claude.ai's Add custom connector dialog with the server filled in", async () => {
-    const { code, text } = await totem(["connect", "claude"]);
+  it("offers claude.ai's Add custom connector dialog with the server filled in, and opens it on a yes", async () => {
+    const { code, text, w } = await totem(["connect", "claude"]);
     expect(code).toBe(0);
-    expect(text).toContain("Opened claude.ai with the server filled in");
-    expect(text.replace(/\s+/g, "")).toContain("https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=WHOOP&connectorUrl=https%3A%2F%2Ftotem-a1b2c3.fly.dev%2Fmcp");
+    const link = "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=WHOOP&connectorUrl=https%3A%2F%2Ftotem-a1b2c3.fly.dev%2Fmcp";
+    expect(text).toContain(`claude.ai with the server filled in\n  ${link}\n? Open it in your browser? (Y/n)\n✓ Opened it in your browser`);
+    expect(w.commands).toContain(`open  ${link}`);
   });
 
   it("sets up claude.ai once when Claude Desktop is also there (one connector serves both)", async () => {
     const { text } = await totem(["connect"], (w) => mkdirSync(join(w.home, "Library", "Application Support", "Claude"), { recursive: true }));
-    expect(text.match(/Opened claude\.ai with the server filled in/g) ?? []).toHaveLength(1);
-    expect(text).toContain("Opened your server's Connect page");
+    expect(text.match(/claude\.ai with the server filled in/g) ?? []).toHaveLength(1);
+    expect(text).toContain("Your server's Connect page\n  https://totem-a1b2c3.fly.dev/connect");
   });
 });
 

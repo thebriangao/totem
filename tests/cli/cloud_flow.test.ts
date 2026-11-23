@@ -135,16 +135,71 @@ describe("totem cloud: Cloudflare", () => {
     expect(text).toContain("you@example.com");
   });
 
-  it("signs in with Wrangler when nobody is signed in", async () => {
+  // Wrangler would open the sign-in in whichever browser profile was used
+  // last, maybe one without the Cloudflare account. So it prints the link
+  // (--browser=false) and totem asks before opening it.
+  const LINK = "https://dash.cloudflare.com/oauth2/auth?response_type=code&client_id=54d1&state=abc";
+  const signIn = (): NonNullable<WorldOptions["exec"]> => {
+    let signedIn = false;
+    return (cmd, args) => {
+      const a = args.join(" ");
+      if (cmd === "npx" && a.endsWith("whoami")) return signedIn ? out("associated with the email you@example.com.\n") : { code: 1, stdout: "You are not authenticated. Please run `wrangler login`.\n", stderr: "" };
+      if (cmd === "npx" && a.includes("wrangler@4 login")) {
+        // Prints the link, then waits for the browser's approval.
+        return { ...out(`Attempting to login via OAuth...\nVisit this link to authenticate: ${LINK}\n`), finishes: new Promise((r) => setTimeout(r, 5)).then(() => { signedIn = true; }) };
+      }
+      return wrangler({})(cmd, args, undefined, undefined as never);
+    };
+  };
+
+  it("signs in with Wrangler's link, opened only after a yes", async () => {
+    const { w, text } = await cloud({ exec: signIn(), ...pick });
+    expect(w.commands).toContain("exec  npx --yes wrangler@4 login --browser=false");
+    expect(w.commands.some((c) => c.startsWith("run") && c.includes("wrangler@4 login"))).toBe(false);
+    expect(w.commands).toContain(`open  ${LINK}`);
+    expect(text).toContain(`Cloudflare sign-in\n  ${LINK}\n? Open it in your browser? (Y/n)\n✓ Opened it in your browser`);
+    expect(text).toContain("Signed in to Cloudflare (you@example.com)");
+  });
+
+  it("waits for a sign-in finished from the link pasted into another browser", async () => {
+    const { w, text } = await cloud({ exec: signIn(), ...pick, answers: [...pick.answers!, ["Open it in your browser?", false]] });
+    expect(w.commands).not.toContain(`open  ${LINK}`);
+    expect(text).toContain("Copy the link above into the browser you want to use.");
+    expect(text).toContain("Signed in to Cloudflare (you@example.com)");
+  });
+
+  it("says why when the sign-in doesn't finish", async () => {
+    const exec: NonNullable<WorldOptions["exec"]> = (cmd, args) => {
+      const a = args.join(" ");
+      if (cmd === "npx" && a.endsWith("whoami")) return { code: 1, stdout: "You are not authenticated.\n", stderr: "" };
+      if (cmd === "npx" && a.includes("wrangler@4 login")) return { code: 1, stdout: `Visit this link to authenticate: ${LINK}\n`, stderr: "✘ [ERROR] Timed out waiting for authorization code\n" };
+      return undefined;
+    };
+    const { code, text } = await cloud({ exec, ...pick });
+    expect(code).toBe(1);
+    expect(text).toContain("The Cloudflare sign-in didn't finish.");
+    expect(text).toContain("Timed out waiting for authorization code");
+  });
+});
+
+describe("totem cloud: signing in to Fly", () => {
+  // Away from a terminal, flyctl prints its link instead of opening it, and
+  // finishes on its own once the login is approved in a browser.
+  const LINK = "https://fly.io/app/auth/cli/0d2f9c8e7b6a4d3c";
+  it("offers flyctl's link instead of letting it open the browser", async () => {
     let signedIn = false;
     const exec: NonNullable<WorldOptions["exec"]> = (cmd, args) => {
       const a = args.join(" ");
-      if (cmd === "npx" && a.endsWith("whoami")) return signedIn ? out("associated with the email you@example.com.\n") : { code: 1, stdout: "You are not authenticated. Please run `wrangler login`.\n", stderr: "" };
-      return wrangler({})(cmd, args, undefined, undefined as never);
+      if (a === "auth whoami") return signedIn ? out("you@example.com\n") : { code: 1, stdout: "", stderr: "Error: no access token available. Please login with 'flyctl auth login'\n" };
+      if (a === "auth login") return { ...out(`Open this URL in a browser and approve the login:\n\n    ${LINK}\n\nThe login completes on its own once approved in a browser on this machine, within 15 minutes.\n`), finishes: new Promise((r) => setTimeout(r, 5)).then(() => { signedIn = true; }) };
+      return fly(cmd, args, undefined, undefined as never);
     };
-    const run: NonNullable<WorldOptions["run"]> = (cmd, args) => { if (cmd === "npx" && args.join(" ").endsWith("login")) signedIn = true; return undefined; };
-    const { w } = await cloud({ exec, run, ...pick });
-    expect(w.commands.some((c) => c.includes("wrangler@4 login"))).toBe(true);
+    const { w, text } = await cloud({ exec });
+    expect(w.commands).toContain("exec  fly auth login");
+    expect(w.commands.some((c) => c.startsWith("run") && c.includes("auth login"))).toBe(false);
+    expect(w.commands).toContain(`open  ${LINK}`);
+    expect(text).toContain(`Fly sign-in\n  ${LINK}\n`);
+    expect(text).toContain("Signed in to Fly (you@example.com)");
   });
 });
 

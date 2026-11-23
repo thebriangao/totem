@@ -53,6 +53,12 @@ export class ScriptedUi extends Ui {
     return yes;
   }
 
+  /** Taken back without an answer when `until` has already aborted (the sign-in finished first). */
+  override async confirmUntil(question: string, until: AbortSignal, defaultYes = true): Promise<boolean | null> {
+    if (until.aborted) return null;
+    return this.confirm(question, defaultYes);
+  }
+
   override async text(question: string, fallback = ""): Promise<string> {
     const typed = this.take(question, "");
     this.line(`${this.q(question, fallback ? `(${fallback})` : "")}: ${typed}`.trimEnd());
@@ -94,7 +100,11 @@ export interface WorldOptions {
   /** Commands that are NOT on PATH. */
   missing?: string[];
   /** Answer a captured command; undefined = success with no output. */
-  exec?: (cmd: string, args: string[], input: string | undefined, world: FakeWorld) => ExecResult | undefined;
+  /**
+   * A captured command's result. With `finishes`, it prints its output at once
+   * and exits only when that settles: a sign-in that waits for the browser.
+   */
+  exec?: (cmd: string, args: string[], input: string | undefined, world: FakeWorld) => (ExecResult & { finishes?: Promise<unknown> }) | undefined;
   /** Exit code of an attached command; undefined = 0. */
   run?: (cmd: string, args: string[], world: FakeWorld) => number | undefined;
   http?: (url: string) => Partial<HttpResult> | undefined;
@@ -192,7 +202,8 @@ export function fakeWorld(opts: WorldOptions = {}): FakeWorld {
       commands.push(`exec  ${cmd} ${args.join(" ")}${o.input !== undefined ? "  <stdin>" : ""}`);
       const r = opts.exec?.(cmd, args, o.input, world) ?? OK;
       if (o.onLine) for (const line of `${r.stdout}\n${r.stderr}`.split("\n")) if (line.trim()) o.onLine(line);
-      return r;
+      if ("finishes" in r && r.finishes) await r.finishes;
+      return { code: r.code, stdout: r.stdout, stderr: r.stderr };
     },
     httpGet: async (url) => {
       commands.push(`GET   ${url}`);

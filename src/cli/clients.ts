@@ -19,6 +19,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { basename, dirname, join } from "node:path";
 import { appConfigDir } from "./spawn.js";
 import { SERVER_NAME, claudeConnectorLink } from "../lib/install_links.js";
+import { offerLink } from "./links.js";
 import type { Io, Sys } from "./sys.js";
 import { shellLines, type Kit } from "./ui.js";
 
@@ -398,9 +399,7 @@ export async function applyRecipe(io: Io, client: Client, recipe: Recipe): Promi
       ui.lines(recipeLines(recipe, k, sys));
       return { done: false, steps: [`Add the connector in ${client.name}.`] };
     case "link":
-      sys.openUrl(recipe.url);
-      ui.ok(`Opened ${recipe.label} with the server filled in`, "in your browser");
-      ui.hint(`If nothing opened: ${recipe.url}`);
+      await offerLink(io, `${recipe.label} with the server filled in`, recipe.url);
       return { done: true, steps: [withSep(recipe.after, k)] };
     case "unavailable":
       ui.warn(recipe.why);

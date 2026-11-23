@@ -80,6 +80,23 @@ const cloudflare: Handler = (cmd, args, _input, world) => {
   return undefined;
 };
 
+/**
+ * Nobody signed in to Cloudflare yet: Wrangler prints its sign-in link
+ * (--browser=false) and waits for the browser, then the deploy goes as above.
+ */
+const cloudflareSignIn = (): Handler => {
+  // Kept on the world, so every render of the screen starts signed out.
+  return (cmd, args, input, world) => {
+    const a = args.join(" ");
+    if (cmd === "npx" && a.endsWith("wrangler@4 whoami") && !world.counts["cloudflare-signed-in"]) return { code: 1, stdout: "You are not authenticated. Please run `wrangler login`.\n", stderr: "" };
+    if (cmd === "npx" && a.includes("wrangler@4 login")) {
+      const link = "https://dash.cloudflare.com/oauth2/auth?response_type=code&client_id=54d11594-84e4-41aa-b438-e81b8fa78ee7&redirect_uri=http%3A%2F%2Flocalhost%3A8976%2Foauth%2Fcallback&scope=account%3Aread%20user%3Aread%20workers%3Awrite%20workers_scripts%3Awrite%20offline_access&state=Qm9vdHN0cmFw&code_challenge=c2lnbi1pbg&code_challenge_method=S256";
+      return { ...out(`Attempting to login via OAuth...\nVisit this link to authenticate: ${link}\n`), finishes: new Promise((r) => setTimeout(r, 5)).then(() => { world.counts["cloudflare-signed-in"] = 1; world.clock.t += 24_000; }) };
+    }
+    return cloudflare(cmd, args, input, world);
+  };
+};
+
 const versions: Handler = (cmd, args, _input, world) => {
   const a = args.join(" ");
   if (cmd === "git" && a.startsWith("tag")) return out("v1.6.0\nv1.5.1\nv1.5.0\nv1.4.2\n");
@@ -171,6 +188,11 @@ export const SCREENS: Screen[] = [
     world: { exec: fly(), answers: [FLY], http: () => ({ status: 0, body: "", ms: 3000, error: "ENOTFOUND" }) },
   },
   { name: "cloud-cloudflare", command: "totem cloud", about: "Cloud setup on Cloudflare Workers (free plan).", world: { exec: cloudflare, answers: [host("Cloudflare")] } },
+  { name: "cloud-cloudflare-sign-in", command: "totem cloud", about: "Cloudflare with nobody signed in: Wrangler's sign-in link is shown, and opened on Enter.", world: { exec: cloudflareSignIn(), answers: [host("Cloudflare")] } },
+  {
+    name: "cloud-cloudflare-sign-in-paste", command: "totem cloud", about: "The same, answering no to open the link in another browser profile instead.",
+    world: { exec: cloudflareSignIn(), answers: [host("Cloudflare"), ["Open it in your browser?", false]] },
+  },
   { name: "cloud-railway", command: "totem cloud", about: "Cloud setup on Railway.", world: { exec: railway, answers: [host("Railway")] } },
   {
     name: "cloud-custom", command: "totem cloud", about: "Cloud setup on your own Docker host.",
@@ -254,4 +276,4 @@ export const SCREENS: Screen[] = [
 ];
 
 /** The screens the brief names: snapshot-tested one by one. */
-export const KEY_SCREENS = ["home", "help", "local", "cloud-fly", "auth-server", "auth-fail-browser-closed", "update-check-available", "cloud-fly-deploy-failed", "update-failed-step"];
+export const KEY_SCREENS = ["home", "help", "local", "cloud-fly", "cloud-cloudflare-sign-in", "auth-server", "auth-fail-browser-closed", "update-check-available", "cloud-fly-deploy-failed", "update-failed-step"];

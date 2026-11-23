@@ -51,7 +51,8 @@ describe("every screen", () => {
     expect(text).not.toMatch(/\x1b/); // no escape codes when colour is off
     expect(text.trim().length).toBeGreaterThan(0);
     if (!isLog(s)) {
-      const wide = text.split("\n").filter((line) => visibleWidth(line) > 80);
+      // A line that is only a link may run long: totem never wraps one, so it copies whole.
+      const wide = text.split("\n").filter((line) => visibleWidth(line) > 80 && !/^\s*https?:\/\/\S+$/.test(line));
       expect(wide).toEqual([]);
     }
     // The server's token is never shown; the password only on the one screen that hands it over.
