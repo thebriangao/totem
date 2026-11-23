@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## Qué puedes preguntar
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../media/chat-answer-dark.png">
+    <img src="../media/chat-answer-light.png" width="820" alt="Claude respondiendo a «¿Qué tal va mi día?» con totem: una tabla con la recuperación, el sueño, el esfuerzo, el estrés, los pasos y las calorías de hoy, y notas sobre el sueño de anoche, el entrenamiento de hoy y el sueño que necesitas esta noche.">
+  </picture>
+</p>
+
 - "¿Qué tal dormí anoche y cómo se compara con el mes?"
 - "¿Por qué tengo la recuperación baja hoy?"
 - "Muéstrame mi VFC y mi frecuencia cardíaca en reposo de los últimos 90 días."

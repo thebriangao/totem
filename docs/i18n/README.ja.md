@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## 聞けること
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../media/chat-answer-dark.png">
+    <img src="../media/chat-answer-light.png" width="820" alt="totem を使って「今日の調子はどう？」に答える Claude。今日のリカバリー、睡眠、ストレイン、ストレス、歩数、カロリーの表と、昨夜の睡眠、今日のトレーニング、今夜必要な睡眠についてのメモ。">
+  </picture>
+</p>
+
 - 「昨夜はどれくらい眠れた？今月と比べてどう？」
 - 「今日のリカバリーが低いのはなぜ？」
 - 「過去 90 日の HRV と安静時心拍数を見せて。」

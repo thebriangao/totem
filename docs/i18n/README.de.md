@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## Was du fragen kannst
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../media/chat-answer-dark.png">
+    <img src="../media/chat-answer-light.png" width="820" alt="Claude beantwortet mit totem „Wie sieht mein Tag aus?“: eine Tabelle mit Erholung, Schlaf, Belastung, Stress, Schritten und Kalorien von heute, dazu Notizen zur letzten Nacht, zum heutigen Training und zum Schlafbedarf für heute Nacht.">
+  </picture>
+</p>
+
 - „Wie habe ich letzte Nacht geschlafen, und wie war das im Vergleich zum Monat?“
 - „Warum ist meine Erholung heute niedrig?“
 - „Zeig mir meine HRV und meinen Ruhepuls der letzten 90 Tage.“

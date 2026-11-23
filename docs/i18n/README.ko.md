@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## 물어볼 수 있는 것
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../media/chat-answer-dark.png">
+    <img src="../media/chat-answer-light.png" width="820" alt="totem으로 “오늘 컨디션 어때?”에 답하는 Claude. 오늘의 회복, 수면, 스트레인, 스트레스, 걸음 수, 칼로리를 담은 표와 어젯밤 수면, 오늘 운동, 오늘 밤 필요한 수면에 대한 메모.">
+  </picture>
+</p>
+
 - "어젯밤 잠은 어땠어? 이번 달과 비교하면?"
 - "오늘 회복이 왜 낮아?"
 - "지난 90일 동안의 HRV와 안정 시 심박수를 보여 줘."

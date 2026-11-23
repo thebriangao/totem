@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## 可以问什么
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../media/chat-answer-dark.png">
+    <img src="../media/chat-answer-light.png" width="820" alt="Claude 借助 totem 回答“我今天状态怎么样？”：一张表列出今天的恢复、睡眠、负荷、压力、步数和卡路里，后面是关于昨晚睡眠、今天训练和今晚睡眠需求的说明。">
+  </picture>
+</p>
+
 - “我昨晚睡得怎么样？和这个月相比呢？”
 - “为什么我今天的恢复这么低？”
 - “显示我过去 90 天的 HRV 和静息心率。”

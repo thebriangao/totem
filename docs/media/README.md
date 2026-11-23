@@ -8,6 +8,7 @@ The pictures the README and its translations use, and how each was made.
 |---|---|---|
 | `totem-local-light.svg`, `totem-local-dark.svg` | The hero at the top | An animated terminal with a 24-row window, generated from the CLI's real output (the light one in the colours the CLI uses on a light terminal): `npx tsx scripts/readme-media.ts` writes both. A test fails when either is stale. |
 | `how-it-works-light.svg`, `how-it-works-dark.svg` | "How it works" | Hand-drawn SVG. The two files differ only in colour. |
+| `chat-answer-light.png`, `chat-answer-dark.png` | "What you can ask" | Real screenshots of Claude Desktop answering with totem, light and dark, cropped to the conversation with rounded corners and a 1 px edge (`#d0d7de` light, `#30363d` dark), 1280 px wide, 128 colours. |
 | `connect-page-light.png`, `connect-page-dark.png` | "Connect your apps" | A screenshot of the real Connect page (`renderConnectPage`), 1040 px wide. |
 | `consent-page-light.png`, `consent-page-dark.png` | "Connect your apps" | A screenshot of the real sign-in page (`renderConsentForm`) as claude.ai sees it, 1040 px wide. |
 

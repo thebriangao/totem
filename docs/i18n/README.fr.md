@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## Ce que vous pouvez demander
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../media/chat-answer-dark.png">
+    <img src="../media/chat-answer-light.png" width="820" alt="Claude qui répond à « Comment se présente ma journée ? » avec totem : un tableau de la récupération, du sommeil, de l’effort, du stress, des pas et des calories du jour, puis des notes sur la nuit dernière, l’entraînement du jour et le sommeil nécessaire cette nuit.">
+  </picture>
+</p>
+
 - « Comment ai-je dormi cette nuit, et comment ça se compare au mois ? »
 - « Pourquoi ma récupération est-elle basse aujourd'hui ? »
 - « Montre ma VFC et ma fréquence cardiaque au repos sur les 90 derniers jours. »

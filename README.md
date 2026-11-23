@@ -97,6 +97,13 @@ npx @thebriangao/totem auth --url https://your-server-address
 
 ## What you can ask
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/chat-answer-dark.png">
+    <img src="docs/media/chat-answer-light.png" width="820" alt="Claude answering “How’s my day looking?” with totem: a table of today’s recovery, sleep, strain, stress, steps and calories, then notes on last night’s sleep, today’s training and tonight’s sleep need.">
+  </picture>
+</p>
+
 - "How did I sleep last night, and how does it compare to my month?"
 - "Why is my recovery low today?"
 - "Show my HRV and resting heart rate for the last 90 days."
