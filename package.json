@@ -50,9 +50,9 @@
     ".dockerignore"
   ],
   "scripts": {
-    "prepack": "tsc"
+    "prepack": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc"
   },
-  "_scripts_note": "All workflows are `totem <command>` (build, dev, dev:http, start, test, typecheck, auth, cloud, local, deploy, logs, ping, …). The only npm steps are `npm install` and, for the one-time build before the CLI is linked, `npx tsc`. See README → Get Started. `prepack` is not a workflow: npm runs it before `npm pack` / `npm publish` (and when installing from a git URL) so the tarball always carries a fresh dist/, which is where `bin` points.",
+  "_scripts_note": "All workflows are `totem <command>` (build, dev, dev:http, start, test, typecheck, auth, cloud, local, deploy, logs, ping, …). The only npm steps are `npm install` and, for the one-time build before the CLI is linked, `npx tsc`. See README → Get Started. `prepack` is not a workflow: npm runs it before `npm pack` / `npm publish` (and when installing from a git URL) so the tarball always carries a fresh dist/, which is where `bin` points. It empties dist/ first: tsc never deletes the output of a source file that is gone, so without that a package would ship compiled leftovers.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "dotenv": "^18.0.10",
