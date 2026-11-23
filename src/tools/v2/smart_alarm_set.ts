@@ -18,7 +18,7 @@ import { normalizeClockTime } from "../../lib/clock.js";
 import { WhoopApiError, WhoopServerError } from "../../whoop/errors.js";
 import { todayIso } from "../../lib/dates.js";
 import { wallClockIso } from "../../lib/timezone.js";
-import { readSmartAlarm, SA, SA_BFF } from "./smart_alarm.js";
+import { minusMinutes, readSmartAlarm, SA, SA_BFF } from "./smart_alarm.js";
 
 const SYNC = "Open the WHOOP app so the strap picks up the change; totem can't push alarms to the strap.";
 const NO_RETRY = "WHOOP answered 500. Totem never retries Smart Alarm writes (a bad one can break the account's alarm settings); the result below is what read back.";
@@ -76,17 +76,19 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
       wake_time: z.string().optional().describe("Latest wake time, 24h, e.g. 06:45"),
       enabled: z.boolean().optional().describe("The schedule's own on/off flag"),
       goal: z.enum(SAFE_ALARM_GOALS).optional().describe("single_alarm only; default EXACT_TIME_PERFORM"),
+      window_minutes: z.number().int().min(1).max(60).optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
   }, async (args) => {
-    const { action, schedule_id, days, mode, sleep_goal, wake_time, enabled, goal, confirm } = args;
+    const { action, schedule_id, days, mode, sleep_goal, wake_time, enabled, goal, window_minutes, confirm } = args;
     const scheduleAction = action === "create" || action === "edit";
     if (!scheduleAction && (days || mode || sleep_goal)) return toolError(`action:${action} takes no days, mode or sleep_goal.`);
     if ((action === "edit" || action === "delete") && !schedule_id) return toolError(`action:${action} needs schedule_id (from whoop_smart_alarm).`);
     if ((action === "create" || action === "enable" || action === "disable" || action === "single_alarm") && schedule_id) {
       return toolError(`action:${action} takes no schedule_id.`);
     }
+    if (window_minutes !== undefined && action !== "single_alarm") return toolError("window_minutes is only for single_alarm.");
     if (goal && action !== "single_alarm") return toolError("goal is only for single_alarm; schedules use mode (+ sleep_goal).");
     if ((action === "delete" || action === "enable" || action === "disable") && (wake_time || enabled !== undefined)) {
       return toolError(`action:${action} takes no wake_time or enabled.`);
@@ -231,7 +233,8 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
     const g = goal ?? "EXACT_TIME_PERFORM";
     if (!(SAFE_ALARM_GOALS as readonly string[]).includes(g)) return toolError(`goal ${g} isn't allowed.`);
     const on = true;
-    const body = { upper_time_bound: wake, goal: g, time_zone_offset: tzOffset(), schedule_enabled: false, enabled: on };
+    const windowStart = window_minutes === undefined ? null : minusMinutes(wake.slice(0, 5), window_minutes);
+    const body = { ...(windowStart ? { lower_time_bound: `${windowStart}:00`, window_minutes } : {}), upper_time_bound: wake, goal: g, time_zone_offset: tzOffset(), schedule_enabled: false, enabled: on };
     warnings.push("This turns the recurring master switch off: schedules stop setting alarms until you enable it again.");
     if (before.next_alarm === "unavailable") warnings.push("WHOOP can't currently read this account's alarm preferences (error); the write may fail. If so, fix Smart Alarm in the app.");
     const path = `${SA}/smartalarm/preferences`;
@@ -245,7 +248,7 @@ export function registerSmartAlarmSet(server: McpServer, client: WhoopClient): v
     }
     const after = await readSmartAlarm(client, true);
     const next = after.next_alarm;
-    const verified = next !== "unavailable" && next.goal === g && next.to === wake.slice(0, 5) && next.enabled === on
+    const verified = next !== "unavailable" && next.goal === g && next.to === wake.slice(0, 5) && (windowStart === null || next.from === windowStart) && next.enabled === on
       && after.master_switch === false;
     if (!verified) warnings.push(next === "unavailable" ? "The next alarm couldn't be read back (WHOOP error)." : "The next alarm didn't read back as requested.");
     return respondReceipt(null, verified, false, after);

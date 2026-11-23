@@ -430,6 +430,7 @@ Change Smart Alarm. create/edit a recurring schedule (edit merges; mode NO_ALARM
 | `wake_time` | string | Latest wake time, 24h, e.g. 06:45 |
 | `enabled` | boolean | The schedule's own on/off flag |
 | `goal` | `EXACT_TIME_PERFORM`, `EXACT_TIME_PEAK`, `EXACT_TIME_OPTIMIZE_SLEEP`, `IN_THE_GREEN`, `SLEEP_HEALTH_PEAK`, `SLEEP_HEALTH_PERFORM`, `SLEEP_HEALTH_GET_BY` | single_alarm only; default EXACT_TIME_PERFORM |
+| `window_minutes` | integer |  |
 
 Add `confirm: true` to make the change.
 
