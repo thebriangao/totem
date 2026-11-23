@@ -50,7 +50,12 @@ const notFound = (path: string, body: string) => new WhoopApiError(404, path, bo
 async function health(routes: Record<string, unknown>, args: Record<string, unknown>) {
   const whoop = mockWhoop(routes);
   const out = parse(await (await connect(registerHealth, whoop)).callTool({ name: "whoop_health", arguments: args }));
-  return { out, calls: whoop.get.mock.calls.map((c) => [c[0], c[1] ?? {}] as [string, Record<string, unknown>]) };
+  // The mock is typed with the path alone; the query rides along as a second argument.
+  const calls = whoop.get.mock.calls.map((c) => {
+    const [path, query] = c as unknown as [string, Record<string, unknown> | undefined];
+    return [path, query ?? {}] as [string, Record<string, unknown>];
+  });
+  return { out, calls };
 }
 
 describe("whoop_health", () => {

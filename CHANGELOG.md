@@ -8,7 +8,9 @@ v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), wi
 
 ### Upgrading from 1.x
 
-- Install with `npm install -g @thebriangao/totem` (a git checkout still works), then run `totem local` or `totem cloud` again. The old `.env` login is picked up once and moved to the new token file.
+- Install with `npm install -g @thebriangao/totem` (a git checkout still works), then run `totem local` or `totem cloud` again.
+- **A git checkout keeps its login:** the old `.env` login is picked up once and moved to `~/.config/totem/tokens.json`. That holds when 1.x's auto-update brings the checkout to 2.0 by itself too, and the apps it set up keep working.
+- **An npm install loses its login:** 1.x kept it in `.env` inside its own package folder, and `npm install -g` replaces that folder, `.env` and deploy record included. If totem says there's no WHOOP login after updating, run `totem auth` once.
 - Tool names changed: 55 tools became 41. An app reads the new list on its own; saved prompts that name old tools need the new names ([TOOLS.md](TOOLS.md)).
 - A server deployed by 1.x on Google Cloud Run keeps working with `totem deploy` and `totem logs`, but `totem cloud` no longer creates new ones.
 

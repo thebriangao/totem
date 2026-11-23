@@ -81,7 +81,7 @@ describe("the Connect page", () => {
       expect(attrs).toMatch(/class="copy" data-copy="[^"<]+" aria-label="Copy [^"]+"/);
       // Two icons, no text: copy, then the check a copy turns it into.
       expect(inner).toMatch(/^<svg class="ic"[^>]*aria-hidden="true">[\s\S]*<\/svg><svg class="done"[^>]*aria-hidden="true">[\s\S]*<\/svg>$/);
-      expect(inner.replace(/<[^>]+>/g, "")).toBe("");
+      expect(inner!.replace(/<[^>]+>/g, "")).toBe(""); // matched by the toMatch above
     }
     // What is copied is the text itself, never the coloured markup.
     expect(html).toContain(`data-copy="${MCP}"`);
