@@ -35,7 +35,7 @@ Ask Claude, ChatGPT, Cursor or any MCP app about your recovery, sleep and traini
 
 totem is a small open-source [MCP](https://modelcontextprotocol.io) server that talks to WHOOP the way the WHOOP app does. You run it yourself, on your computer or on a cloud server you own, and your AI apps connect to it. Your data goes only between WHOOP, your server and the apps you connect.
 
-- **41 tools.** Recovery, sleep stages, strain, stress, heart rate, trends, workouts, Strength Trainer, journal, WHOOP Coach, weight, cycle tracking, Smart Alarm, profile and settings, plus Healthspan, lab results and AFib history (experimental). [The full list](TOOLS.md).
+- **41 tools.** Recovery, sleep stages, strain, stress, heart rate, trends, workouts, Strength Trainer, journal, WHOOP Coach, weight, cycle tracking, Smart Alarm, profile and settings, plus Healthspan, and lab results and AFib history (experimental). [The full list](TOOLS.md).
 - **Writes are safe by default.** Every tool that changes something shows a preview first and does nothing until the app confirms.
 - **Small answers.** Tools return compact data (about 1.5 KB for a default call), so they don't eat your context window.
 - **One-command setup.** `totem local` or `totem cloud` logs you in to WHOOP and sets up every AI app it finds.

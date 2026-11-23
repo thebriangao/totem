@@ -69,7 +69,7 @@ describe("whoop_health", () => {
     expect(calls).toEqual([["/sage-service/v1/sage/bff", { date: "2026-11-20" }]]);
   });
 
-  it("passes an unlocked Healthspan through without UI plumbing", async () => {
+  it("passes an unrecognised unlocked screen through without UI plumbing", async () => {
     const { out } = await health({
       "/healthspan-service/v1/healthspan/bff": {
         unlocked_content: { header: { title_display: "WHOOP AGE", value_display: "31.2", icon_url: "https://x/i.png", text_color: "#fff" }, pace: { label: "Pace of aging", value: 0.8, destination: { screen: "X" } } },
@@ -77,6 +77,64 @@ describe("whoop_health", () => {
       },
     }, { feature: "healthspan" });
     expect(out).toMatchObject({ status: "available", content: { header: { title_display: "WHOOP AGE", value_display: "31.2" }, pace: { label: "Pace of aging", value: 0.8 } } });
+  });
+
+  // Shaped like the unlocked screen seen on a real account (2026-11-22); every number here is invented.
+  const amoeba = (age: string, diff: string, older: boolean, pace: string) => ({
+    style_values: {}, age_value_display: age, age_title_display: "WHOOP AGE", age_subtitle_display: `${diff} years ${older ? "older" : "younger"}`,
+    age_subtitle_style: older ? "OLDER" : "YOUNGER", years_difference_value_display: diff, years_difference_value_style: older ? "OLDER" : "YOUNGER",
+    years_difference_subtitle_display: older ? "YEARS OLDER" : "YEARS YOUNGER", pace_of_aging_display: pace, pace_of_aging_subtitle_display: "PACE OF AGING", is_calibrating: false,
+  });
+  const contributor = (t: string, top: string, bottom: string, unit: string, impact: string, style: string) => ({
+    title_display: t, is_enabled: true, is_open: false,
+    content: {
+      range_divisions: [{ style: "OLDER_1" }], top_range_value: { value_display: top, value_unit_display: unit, value_range_percentage: 0.5, style: "ENABLED", expanded_value_label_display: "6 Month avg." },
+      impact_value_display: impact, impact_value_label_display: "years", impact_value_style: style,
+      expanded_bottom_range_value: { value_display: bottom, value_unit_display: unit, value_range_percentage: 0.5, style: "ENABLED", expanded_value_label_display: "30 Day avg." },
+      expanded_items: [{ type: "HEALTHSPAN_VOW", content: { title_display: "Keep it up", subtitle_display: "…", destination: { screen: "TRENDS" } } }],
+    },
+  });
+  const section = (titleText: string, items: unknown[]) => ({ type: "TILE_SECTION", content: { title_display: titleText, primary_description_display: "6 Month avg.", secondary_description_display: "30 Day avg.", items: [{ type: "CONTRIBUTORS_CONTAINER", content: { contributors: items } }] } });
+  const HEALTHSPAN_UNLOCKED = {
+    navigation_title: "HEALTHSPAN", locked_content: null,
+    unlocked_content: {
+      date_picker: { current_date_range_display: "Jan 5 - Jan 11", previous_date_time: "2026-01-04" }, is_calibrating: false,
+      whoop_age_amoeba: amoeba("41.2", "2.3", false, "0.8x"), previous_whoop_age_amoeba: amoeba("41.6", "1.9", false, "1.2x"),
+      items: [
+        { type: "PACE_OF_AGING_METER", content: { title_display: "PACE OF AGING", ticks: [{ top_value_display: "-1.0x", is_current_value: false }] } },
+        section("Sleep", [contributor("SLEEP CONSISTENCY", "81%", "84%", "", "-0.6", "YOUNGER"), contributor("HOURS OF SLEEP", "7:10", "7:25", "h", "+0.2", "OLDER")]),
+        section("Strain", [contributor("TIME IN HR ZONES 1-3 (WEEKLY)", "2:40", "3:05", "h", "-0.4", "YOUNGER"), contributor("STEPS", "8,120", "9,004", "Steps", "+0.1", "OLDER")]),
+        section("Fitness", [contributor("VO₂ MAX", "44", "45", "ml/kg/min", "-1.0", "YOUNGER"), contributor("RHR", "51", "50", "bpm", "-0.3", "YOUNGER"), contributor("LEAN BODY MASS", "--", "--", "xx", "", "OLDER")]),
+      ],
+      featured_highlights: [], has_been_seen_by_user: true, has_onboarded: true, amoeba_onboarding_steps: [],
+    },
+  };
+
+  it("projects an unlocked Healthspan: WHOOP Age, signed years, pace, previous period and contributors", async () => {
+    const { out } = await health({ "/healthspan-service/v1/healthspan/bff": HEALTHSPAN_UNLOCKED }, { feature: "healthspan", date: "2026-01-08" });
+    expect(out).toMatchObject({ feature: "healthspan", experimental: false, status: "available", date: "2026-01-08" });
+    expect(out.healthspan).toEqual({
+      period: "Jan 5 - Jan 11", calibrating: false, whoop_age: 41.2, years_vs_actual_age: -2.3, pace_of_aging: 0.8,
+      previous: { whoop_age: 41.6, years_vs_actual_age: -1.9, pace_of_aging: 1.2 },
+      contributor_cols: ["area", "name", "long_avg", "recent_avg", "impact_years"],
+      contributors: [
+        ["Sleep", "Sleep consistency", "81%", "84%", -0.6],
+        ["Sleep", "Hours of sleep", "7:10 h", "7:25 h", 0.2],
+        ["Strain", "Time in HR zones 1-3 (weekly)", "2:40 h", "3:05 h", -0.4],
+        ["Strain", "Steps", "8,120 Steps", "9,004 Steps", 0.1],
+        ["Fitness", "VO₂ max", "44 ml/kg/min", "45 ml/kg/min", -1.0],
+        ["Fitness", "RHR", "51 bpm", "50 bpm", -0.3],
+        ["Fitness", "Lean body mass", null, null, null],
+      ],
+    });
+    expect(JSON.stringify(out)).not.toMatch(/destination|style|TRENDS/);
+  });
+
+  it("reads years older as positive, and keeps the sign WHOOP writes", async () => {
+    const older = structuredClone(HEALTHSPAN_UNLOCKED);
+    older.unlocked_content.whoop_age_amoeba = amoeba("47.0", "3.4", true, "1.3x");
+    const { out } = await health({ "/healthspan-service/v1/healthspan/bff": older }, { feature: "healthspan" });
+    expect(out.healthspan).toMatchObject({ whoop_age: 47, years_vs_actual_age: 3.4, pace_of_aging: 1.3 });
   });
 
   it("afib: not set up on a 404; a day by date; the next page by cursor", async () => {

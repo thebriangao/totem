@@ -2544,7 +2544,7 @@ export const ENDPOINT_CATALOG: readonly EndpointEntry[] = [
     "tools": [
       "whoop_health"
     ],
-    "notes": "Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_health passes it through (experimental)."
+    "notes": "Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). Unlocked shape seen on a second real account (2026-11-22): whoop_age_amoeba / previous_whoop_age_amoeba (age, years vs actual age, pace of aging), date_picker range, and TILE_SECTION > CONTRIBUTORS_CONTAINER contributors (6 month avg, 30 day avg, impact in years). whoop_health projects those."
   },
   {
     "method": "GET",

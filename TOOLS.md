@@ -15,7 +15,7 @@ This page is written from the tool registry (`npx tsx scripts/tools-md.ts`), so 
 - [WHOOP Coach](#whoop-coach)
 - [Body](#body)
 - [Plans and alarms](#plans-and-alarms)
-- [Health features (experimental)](#health-features-experimental)
+- [Health features](#health-features)
 - [Profile, settings and community](#profile-settings-and-community)
 - [Anything else](#anything-else)
 
@@ -433,13 +433,13 @@ Change Smart Alarm. create/edit a recurring schedule (edit merges; mode NO_ALARM
 
 Add `confirm: true` to make the change.
 
-## Health features (experimental)
+## Health features
 
-WHOOP's paid health features: Healthspan, blood pressure, AFib history and Advanced Labs. Built without an account that has them, so untested.
+WHOOP's paid health features. Healthspan is checked on a real account. Blood pressure, AFib history and Advanced Labs are experimental: built without an account that has them, so untested.
 
 ### `whoop_health`
 
-EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them).
+healthspan for a date: WHOOP Age, pace of aging, contributors. EXPERIMENTAL, untested (fields may be missing or misnamed): blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them).
 
 | Input | Type | Notes |
 |---|---|---|

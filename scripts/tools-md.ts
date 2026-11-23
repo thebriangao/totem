@@ -17,7 +17,7 @@ const GROUPS: Array<{ title: string; intro: string; tools: string[] }> = [
   { title: "WHOOP Coach", intro: "Ask WHOOP's own Coach, read past conversations and the outlook, manage what it remembers.", tools: ["whoop_coach_ask", "whoop_coach_history", "whoop_memory", "whoop_memory_set"] },
   { title: "Body", intro: "Weight and body composition, and cycle tracking.", tools: ["whoop_weight", "whoop_weight_log", "whoop_cycle", "whoop_cycle_log"] },
   { title: "Plans and alarms", intro: "The weekly plan and Smart Alarm.", tools: ["whoop_weekly_plan", "whoop_weekly_plan_set", "whoop_smart_alarm", "whoop_smart_alarm_set"] },
-  { title: "Health features (experimental)", intro: "WHOOP's paid health features: Healthspan, blood pressure, AFib history and Advanced Labs. Built without an account that has them, so untested.", tools: ["whoop_health"] },
+  { title: "Health features", intro: "WHOOP's paid health features. Healthspan is checked on a real account. Blood pressure, AFib history and Advanced Labs are experimental: built without an account that has them, so untested.", tools: ["whoop_health"] },
   { title: "Profile, settings and community", intro: "Your profile, heart-rate zones, app settings, milestones and teams.", tools: ["whoop_profile", "whoop_profile_update", "whoop_hr_zones_set", "whoop_preferences", "whoop_preferences_set", "whoop_milestones", "whoop_community"] },
   { title: "Anything else", intro: "Any WHOOP endpoint, for what no tool covers yet.", tools: ["whoop_raw"] },
 ];

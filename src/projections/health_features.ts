@@ -13,7 +13,8 @@
 //       …/biomarkers/{id}?next_token= ({navigation_title, header{title, subtitle, pills},
 //       sections, status}; status UNAVAILABLE without results), …/tests/{id}, …/insights?testId=
 // What is certain is exact (locked, no results, not set up, the biomarker
-// list's fields). Anything else is the screen passed through with
+// list's fields, and Healthspan's unlocked screen, seen on a real account on
+// 2026-11-22: projectHealthspan). Anything else is the screen passed through with
 // its UI fields stripped and its size capped (src/lib/screen_content.ts).
 import { get, str } from "../whoop/bff.js";
 import { nodes } from "./v2/core_common.js";
@@ -24,8 +25,22 @@ export type HealthFeatureName = (typeof HEALTH_FEATURES)[number];
 
 export type FeatureStatus = "available" | "locked" | "not_set_up" | "no_data" | "unavailable";
 export interface Biomarker { id: string; name: string | null; value: string | null; unit: string | null; status: string | null }
+/** Healthspan, from its unlocked screen. Numbers as WHOOP shows them; years are signed (+ older, − younger). */
+export interface Healthspan {
+  period: string | null;
+  calibrating: boolean;
+  whoop_age: number | null;
+  years_vs_actual_age: number | null;
+  pace_of_aging: number | null;
+  previous: { whoop_age: number | null; years_vs_actual_age: number | null; pace_of_aging: number | null } | null;
+  /** [area, contributor, long-term average, recent average, years it adds (+) or takes off (−)]. */
+  contributor_cols: ["area", "name", "long_avg", "recent_avg", "impact_years"];
+  contributors: Array<[string, string, string | null, string | null, number | null]>;
+}
+
 export interface HealthFeature {
   status: FeatureStatus;
+  healthspan?: Healthspan;
   message?: string | null;
   content?: unknown;
   truncated?: true;
@@ -60,10 +75,76 @@ export function passThrough(content: unknown, maxChars = 2_500): HealthFeature {
   return { status: "available", content: c, ...(truncated ? { truncated: true as const } : {}), ...(next ? { next_cursor: next } : {}) };
 }
 
+const num = (v: unknown): number | null => {
+  const m = typeof v === "string" ? v.replace(/,/g, "").match(/[-+]?\d+(?:\.\d+)?/) : null;
+  return m ? Number(m[0]) : typeof v === "number" ? v : null;
+};
+/** "TIME IN HR ZONES 1-3 (WEEKLY)" as "Time in HR zones 1-3 (weekly)". */
+const sentence = (s: string | null): string => {
+  const low = (s ?? "").toLowerCase();
+  return (low.charAt(0).toUpperCase() + low.slice(1)).replace(/\brhr\b/gi, "RHR").replace(/\bhr\b/gi, "HR").replace(/^vo₂/i, "VO₂").replace(/\bvo₂ max\b/i, "VO₂ max");
+};
+/** "1.8 years older" as +1.8, "YOUNGER" as negative. */
+const signedYears = (value: unknown, ...hints: unknown[]): number | null => {
+  const n = num(value);
+  if (n === null) return null;
+  if (typeof value === "string" && /^\s*[-+]/.test(value)) return n;
+  return hints.some((h) => typeof h === "string" && /younger/i.test(h)) ? -Math.abs(n) : Math.abs(n);
+};
+const amoeba = (a: unknown) => a && typeof a === "object" ? {
+  whoop_age: num(get(a, "age_value_display")),
+  years_vs_actual_age: signedYears(get(a, "years_difference_value_display"), get(a, "years_difference_subtitle_display"), get(a, "years_difference_value_style"), get(a, "age_subtitle_display")),
+  pace_of_aging: num(get(a, "pace_of_aging_display")),
+} : null;
+const reading = (r: unknown): string | null => {
+  const v = str(get(r, "value_display"));
+  // No data yet: WHOOP shows "--" (with a placeholder unit).
+  if (!v || /^[-–—\s]+$/.test(v)) return null;
+  const unit = str(get(r, "value_unit_display"));
+  return unit ? `${v} ${unit}` : v;
+};
+
+/**
+ * Healthspan's unlocked screen (seen live, 2026-11-22): whoop_age_amoeba
+ * {age_value_display, years_difference_value_display + its OLDER/YOUNGER
+ * subtitle, pace_of_aging_display "1.1x", is_calibrating}, the same for the
+ * previous period, the period in date_picker.current_date_range_display, and
+ * items[TILE_SECTION Sleep|Strain|Fitness].content.items[CONTRIBUTORS_CONTAINER]
+ * .content.contributors[{title_display, content: {top_range_value (long-term
+ * average), expanded_bottom_range_value (recent), impact_value_display "+0.4"
+ * years, impact_value_style OLDER|YOUNGER}}]. Anything else passes through.
+ */
+export function projectHealthspan(unlocked: unknown): HealthFeature {
+  const now = amoeba(get(unlocked, "whoop_age_amoeba"));
+  if (!now || now.whoop_age === null) return passThrough(unlocked);
+  const contributors: Healthspan["contributors"] = [];
+  for (const section of nodes(get(unlocked, "items")).filter((i) => str(i.type) === "TILE_SECTION")) {
+    const area = str(get(section, "content", "title_display")) ?? "";
+    for (const box of nodes(get(section, "content", "items")).filter((i) => str(i.type) === "CONTRIBUTORS_CONTAINER")) {
+      for (const c of nodes(get(box, "content", "contributors"))) {
+        const body = get(c, "content");
+        contributors.push([area, sentence(str(c.title_display)), reading(get(body, "top_range_value")), reading(get(body, "expanded_bottom_range_value")),
+          signedYears(get(body, "impact_value_display"), get(body, "impact_value_style"))]);
+      }
+    }
+  }
+  return {
+    status: "available",
+    healthspan: {
+      period: str(get(unlocked, "date_picker", "current_date_range_display")),
+      calibrating: get(unlocked, "is_calibrating") === true || get(unlocked, "whoop_age_amoeba", "is_calibrating") === true,
+      ...now,
+      previous: amoeba(get(unlocked, "previous_whoop_age_amoeba")),
+      contributor_cols: ["area", "name", "long_avg", "recent_avg", "impact_years"],
+      contributors,
+    },
+  };
+}
+
 /** Healthspan and blood pressure: one locked/unlocked screen. */
-export function projectLockable(raw: unknown): HealthFeature {
+export function projectLockable(raw: unknown, unlockedProjection: (u: unknown) => HealthFeature = passThrough): HealthFeature {
   const unlocked = get(raw, "unlocked_content");
-  if (unlocked !== null && unlocked !== undefined) return passThrough(unlocked);
+  if (unlocked !== null && unlocked !== undefined) return unlockedProjection(unlocked);
   if (get(raw, "locked_content")) return { status: "locked", message: lockedMessage(raw) };
   return { status: "unavailable", message: "WHOOP returned neither content nor a lock." };
 }

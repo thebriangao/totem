@@ -453,7 +453,7 @@ Seen working in the captures (the probe skipped these):
 |---|---|---|---|---|
 | GET | `/advanced-labs-service/v1/advanced-labs` | verified | – | upsell-only BFF without results; no whoop_labs in v2.0 |
 | GET | `/metrics-service/v1/metrics/user/{user_id}` | verified | whoop_day, whoop_now | continuous heart rate {values:[{time ms, data bpm}]}, sparse (holes, no padding); step must be 6, 60 or 600 (else 400); any window; another user's id → 403 |
-| GET | `/healthspan-service/v1/healthspan/bff` | verified | whoop_health | Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). The unlocked shape is unseen, so whoop_health passes it through (experimental). |
+| GET | `/healthspan-service/v1/healthspan/bff` | verified | whoop_health | Android route (@Acetone1). ?date=. {unlocked_content, locked_content}; locked on the test account ('21 SLEEPS TO UNLOCK'). Unlocked shape seen on a second real account (2026-11-22): whoop_age_amoeba / previous_whoop_age_amoeba (age, years vs actual age, pace of aging), date_picker range, and TILE_SECTION > CONTRIBUTORS_CONTAINER contributors (6 month avg, 30 day avg, impact in years). whoop_health projects those. |
 | GET | `/healthspan-service/v1/widget` | verified | – | Android route (@Acetone1). {amoeba, locked_content}; locked on the test account. |
 | GET | `/sage-service/v1/sage/bff` | verified | whoop_health | Android route (@Acetone1). ?date=. Blood Pressure Insights, same locked/unlocked shape; locked ('UPGRADE FOR ACCESS', WHOOP Life). |
 | GET | `/sage-service/v1/sage/manual/input` | verified | – | Android route (@Acetone1). Manual blood pressure screens (guidelines, reading input). |

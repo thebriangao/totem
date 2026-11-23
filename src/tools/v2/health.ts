@@ -10,7 +10,7 @@ import { defineTool, respond } from "../define.js";
 import { READ_ONLY } from "../annotations.js";
 import { HealthOut } from "../../schemas/health.js";
 import {
-  HEALTH_FEATURES, passThrough, projectBiomarker, projectLabs, projectLabTests, projectLockable, type HealthFeature,
+  HEALTH_FEATURES, passThrough, projectBiomarker, projectHealthspan, projectLabs, projectLabTests, projectLockable, type HealthFeature,
 } from "../../projections/health_features.js";
 import { WhoopApiError, WhoopAuthExpiredError } from "../../whoop/errors.js";
 import { todayIso } from "../../lib/dates.js";
@@ -59,8 +59,8 @@ export function registerHealth(server: McpServer, client: WhoopClient): void {
   defineTool(server, {
     name: NAME,
     description:
-      "EXPERIMENTAL, untested: fields may be missing or misnamed. healthspan or blood_pressure for a date; afib history (date: " +
-      "a day; cursor: next page); labs: biomarkers and tests (id: one of them).",
+      "healthspan for a date: WHOOP Age, pace of aging, contributors. EXPERIMENTAL, untested (fields may be missing or misnamed): " +
+      "blood_pressure for a date; afib history (date: a day; cursor: next page); labs: biomarkers and tests (id: one of them).",
     input: {
       feature: z.enum(HEALTH_FEATURES),
       date: z.iso.date().optional(),
@@ -75,11 +75,11 @@ export function registerHealth(server: McpServer, client: WhoopClient): void {
     let shown: { date?: string; id?: string } = {};
     switch (name) {
       case "healthspan":
-        out = await feature(client.get("/healthspan-service/v1/healthspan/bff", { date: day }), projectLockable, "Healthspan isn't available on this account.");
+        out = await feature(client.get("/healthspan-service/v1/healthspan/bff", { date: day }), (raw) => projectLockable(raw, projectHealthspan), "Healthspan isn't available on this account.");
         shown = { date: day };
         break;
       case "blood_pressure":
-        out = await feature(client.get("/sage-service/v1/sage/bff", { date: day }), projectLockable, "Blood pressure insights aren't available on this account.");
+        out = await feature(client.get("/sage-service/v1/sage/bff", { date: day }), (raw) => projectLockable(raw), "Blood pressure insights aren't available on this account.");
         shown = { date: day };
         break;
       case "afib": {
@@ -107,6 +107,8 @@ export function registerHealth(server: McpServer, client: WhoopClient): void {
         }
         break;
     }
-    return respond(NAME, HealthOut, { feature: name, experimental: true, ...shown, ...out, warnings });
+    // Healthspan's unlocked screen was checked on a real account; everything else is still unverified.
+    const experimental = !out.healthspan;
+    return respond(NAME, HealthOut, { feature: name, experimental, ...shown, ...out, warnings });
   });
 }
