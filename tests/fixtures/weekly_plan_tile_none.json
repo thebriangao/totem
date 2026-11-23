@@ -1,0 +1,25 @@
+{
+ "tile": {
+  "content": {
+   "cta_text": "EXPLORE PLANS",
+   "cta": "WEEKLY_PLAN_OVERVIEW",
+   "navigation": {
+    "screen": "WEEKLY_PLAN_OVERVIEW",
+    "parameters": {}
+   },
+   "id": "ad744086-e785-4d25-be9d-84f3695223db",
+   "title": "Build Your Best Self",
+   "body": "Set goals, track progress, and turn small actions into long-term wins.",
+   "app_notification_type": "WEEKLY_PLAN_ENGAGEMENT",
+   "template_name": null,
+   "show_highlight": false,
+   "card_type": "REPORT",
+   "ios_feature_flag_name": null,
+   "android_feature_flag_name": null,
+   "title_icon_url": null,
+   "personalized": false,
+   "view_analytic_event": null
+  },
+  "type": "TEXT_WITH_ILLUSTRATION"
+ }
+}

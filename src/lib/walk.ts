@@ -14,9 +14,11 @@ export function asString(x: unknown): string | null {
 }
 
 export function asNumber(x: unknown): number | null {
-  if (typeof x === "number") return x;
+  if (typeof x === "number") return Number.isFinite(x) ? x : null;
   if (typeof x === "string") {
     const cleaned = x.replace(/,/g, "");
+    // Number("") and Number(" ") are 0: a blank cell is a missing value, not a zero.
+    if (cleaned.trim() === "") return null;
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : null;
   }
@@ -157,6 +159,7 @@ export function labelToNumber(label: string | null): number | null {
   // Time format like "7:24" or "1:41" — not a number
   if (/^\d+:\d+$/.test(label)) return null;
   const cleaned = label.replace(/,/g, "").replace(/%$/, "");
+  if (cleaned.trim() === "") return null; // "" and "%" are not 0 (Number("") is)
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }

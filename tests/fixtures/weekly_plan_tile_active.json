@@ -1,0 +1,47 @@
+{
+ "tile": {
+  "content": {
+   "title": "CUSTOM PLAN",
+   "days_left_display": "2 days left",
+   "progress_bar": {
+    "percent_string": "14%",
+    "percent_subtitle": "ACCOMPLISHED",
+    "percent_value": 14,
+    "percent_symbol": "%"
+   },
+   "items": [
+    {
+     "id": "STRENGTH_TRAINING_TIME",
+     "title": "2:00+ Strength Activity Time",
+     "circular_progress_indicator": {
+      "id": null,
+      "current_progress_steps": null,
+      "current_progress_percentage": {
+       "text_display": "0:32",
+       "percentage": 27.38888888888889,
+       "style": "WEEKLY_PLAN_IN_PROGRESS"
+      }
+     },
+     "goal_type": null
+    },
+    {
+     "id": "STEPS",
+     "title": "8,000+ Steps",
+     "circular_progress_indicator": {
+      "id": null,
+      "current_progress_steps": {
+       "text_display": "0/7",
+       "current_step": 0,
+       "total_steps": 7,
+       "style": "WEEKLY_PLAN_IN_PROGRESS",
+       "text_display_options": []
+      },
+      "current_progress_percentage": null
+     },
+     "goal_type": null
+    }
+   ]
+  },
+  "type": "WEEKLY_PLAN_HOME_TILE"
+ }
+}

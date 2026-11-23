@@ -1,0 +1,467 @@
+{
+ "sections": [
+  {
+   "id": "one_rep_max_section",
+   "title": null,
+   "subtitle": null,
+   "items": [
+    {
+     "type": "ITEMS_CARD",
+     "content": {
+      "footer": null,
+      "header": {
+       "title": "ONE REP MAX (1RM)",
+       "title_icon": null,
+       "cta_icon": "EDUCATION",
+       "cta_destination": null,
+       "cta_interaction": {
+        "modal": {
+         "content": {
+          "navigation_bar": {
+           "title": "",
+           "subtitle": null,
+           "left_button": null,
+           "right_button": null,
+           "style": null,
+           "tag": null,
+           "icon": null,
+           "fixed_header": [],
+           "header": null
+          },
+          "items": [
+           {
+            "type": "MARKDOWN_TEXT",
+            "content": {
+             "text": "What is One Rep Max?",
+             "style": "T3",
+             "color": "BRAND_WHITE",
+             "alignment": "LEADING",
+             "icon": null,
+             "icon_position": null,
+             "max_lines": null,
+             "min_lines": null,
+             "fill_width": true,
+             "accessibility_label": null,
+             "bindings": null,
+             "aggregate_bindings": null
+            }
+           },
+           {
+            "type": "MARKDOWN_TEXT",
+            "content": {
+             "text": "One Rep Max measures the maximum weight you can lift for a single repetition of an exercise and is a widely used indicator of strength. It also unlocks intensity—the weight you lift relative to your One Rep Max.",
+             "style": "B1",
+             "color": "WHITE_70",
+             "alignment": "LEADING",
+             "icon": null,
+             "icon_position": null,
+             "max_lines": null,
+             "min_lines": null,
+             "fill_width": true,
+             "accessibility_label": null,
+             "bindings": null,
+             "aggregate_bindings": null
+            }
+           },
+           {
+            "type": "MARKDOWN_TEXT",
+            "content": {
+             "text": "WHOOP estimates your One Rep Max for eligible weight-based exercises using weight lifted, reps completed, manual entries, and training history. Estimates are most accurate when training close to failure. To unlock your One Rep Max, log an exercise for 12 reps or fewer.",
+             "style": "B1",
+             "color": "WHITE_70",
+             "alignment": "LEADING",
+             "icon": null,
+             "icon_position": null,
+             "max_lines": null,
+             "min_lines": null,
+             "fill_width": true,
+             "accessibility_label": null,
+             "bindings": null,
+             "aggregate_bindings": null
+            }
+           },
+           {
+            "type": "MARKDOWN_TEXT",
+            "content": {
+             "text": "One Rep Max updates gradually with consistent training. To account for any changes in strength, log exercises again if it’s been over four weeks since your last estimate.",
+             "style": "B1",
+             "color": "WHITE_70",
+             "alignment": "LEADING",
+             "icon": null,
+             "icon_position": null,
+             "max_lines": null,
+             "min_lines": null,
+             "fill_width": true,
+             "accessibility_label": null,
+             "bindings": null,
+             "aggregate_bindings": null
+            }
+           }
+          ],
+          "height": "PARTIAL",
+          "fixed_header": null,
+          "fixed_footer": null,
+          "id": "one_rep_max_info"
+         },
+         "type": "BOTTOM_SHEET",
+         "modal_lifecycle_interactions": null,
+         "analytic_events": null
+        },
+        "action": null,
+        "navigation": null,
+        "dismiss_event": null,
+        "analytic_event": null
+       },
+       "android_cta_feature_flags": [],
+       "ios_cta_feature_flags": []
+      },
+      "items": [
+       {
+        "type": "FLOW_ROW",
+        "content": {
+         "id": "one_rep_max_value_row",
+         "items": [
+          {
+           "type": "MARKDOWN_TEXT",
+           "content": {
+            "text": "111",
+            "style": "N5",
+            "color": "BRAND_WHITE",
+            "alignment": "LEADING",
+            "icon": null,
+            "icon_position": null,
+            "max_lines": null,
+            "min_lines": null,
+            "fill_width": false,
+            "accessibility_label": null,
+            "bindings": null,
+            "aggregate_bindings": null
+           }
+          },
+          {
+           "type": "MARKDOWN_TEXT",
+           "content": {
+            "text": "lbs",
+            "style": "B1",
+            "color": "BRAND_WHITE",
+            "alignment": "LEADING",
+            "icon": null,
+            "icon_position": null,
+            "max_lines": null,
+            "min_lines": null,
+            "fill_width": false,
+            "accessibility_label": null,
+            "bindings": null,
+            "aggregate_bindings": null
+           }
+          }
+         ],
+         "vertical_alignment": "CENTER",
+         "horizontal_spacing": null
+        }
+       },
+       {
+        "type": "FLOW_ROW",
+        "content": {
+         "id": "one_rep_max_date_row",
+         "items": [
+          {
+           "type": "MARKDOWN_TEXT",
+           "content": {
+            "text": "Estimated",
+            "style": "B4",
+            "color": "RECOVERY",
+            "alignment": "LEADING",
+            "icon": null,
+            "icon_position": null,
+            "max_lines": null,
+            "min_lines": null,
+            "fill_width": false,
+            "accessibility_label": null,
+            "bindings": null,
+            "aggregate_bindings": null
+           }
+          },
+          {
+           "type": "MARKDOWN_TEXT",
+           "content": {
+            "text": "·",
+            "style": "B4",
+            "color": "WHITE_70",
+            "alignment": "LEADING",
+            "icon": null,
+            "icon_position": null,
+            "max_lines": null,
+            "min_lines": null,
+            "fill_width": false,
+            "accessibility_label": null,
+            "bindings": null,
+            "aggregate_bindings": null
+           }
+          },
+          {
+           "type": "MARKDOWN_TEXT",
+           "content": {
+            "text": "November 21, 2026",
+            "style": "B4",
+            "color": "WHITE_70",
+            "alignment": "LEADING",
+            "icon": null,
+            "icon_position": null,
+            "max_lines": null,
+            "min_lines": null,
+            "fill_width": false,
+            "accessibility_label": null,
+            "bindings": null,
+            "aggregate_bindings": null
+           }
+          }
+         ],
+         "vertical_alignment": "CENTER",
+         "horizontal_spacing": null
+        }
+       },
+       {
+        "type": "SPLIT_CONTAINER",
+        "content": {
+         "id": null,
+         "start_item": {
+          "content": {
+           "id": "one_rep_max_add_entry_button",
+           "title": "ADD ENTRY",
+           "icon": "ADD",
+           "icon_tint": null,
+           "icon_configuration": null,
+           "style": "DEFAULT",
+           "background_style": null,
+           "destination": null,
+           "dismiss_event": null,
+           "action": null,
+           "modal": {
+            "content": {
+             "navigation_bar": {
+              "title": "ADD MANUAL ENTRY",
+              "subtitle": null,
+              "left_button": {
+               "icon": "CROSS",
+               "icon_url": null,
+               "text": null,
+               "accessibility_label": null,
+               "destination": null,
+               "analytic_event": null,
+               "action": null,
+               "dismiss_event": {
+                "type": "AUTO",
+                "pop_up_to": null,
+                "pop_back_count": null
+               },
+               "dismiss_modal": null,
+               "generic_interaction": null,
+               "bindings": null,
+               "aggregate_bindings": null,
+               "deselect_action": null,
+               "glow_style": null,
+               "glow_pulse": false,
+               "glow": null,
+               "menu": null
+              },
+              "right_button": null,
+              "style": null,
+              "tag": null,
+              "icon": null,
+              "fixed_header": [],
+              "header": null
+             },
+             "items": [
+              {
+               "type": "ONE_REP_MAX_MEASUREMENT",
+               "content": {
+                "id": "one_rep_max_measurement",
+                "exercise_summary": {
+                 "name": "Bench Press - Barbell",
+                 "title_display": "EXERCISE"
+                },
+                "date_section": {
+                 "title": "WHEN",
+                 "date_prompt": "When was your One Rep Max?",
+                 "date": null,
+                 "minimum_date": "2026-05-21"
+                },
+                "value_section": {
+                 "title": "VALUE",
+                 "value_title": "ONE REP MAX",
+                 "unit": "lbs",
+                 "min_value": 1,
+                 "max_value": 999,
+                 "error_message": "Enter a value between 1 and 999 lbs.",
+                 "value": null
+                },
+                "footer": {
+                 "save_button_title": "SAVE",
+                 "save_confirm_dialog": {
+                  "id": "confirmation_dialog",
+                  "title": "Confirm One Rep Max",
+                  "value_prompt": "You entered %1$d %2$s. Is that correct?",
+                  "description": "This value will guide your One Rep Max estimates and insights from the date of your assessment.",
+                  "primary_button": "CONFIRM ENTRY",
+                  "secondary_button": "GO BACK",
+                  "primary_action": {
+                   "parameters": {
+                    "request": {
+                     "path": "weightlifting-service/v3/one-rep-max/BENCHPRESS_BARBELL",
+                     "method": "PUT",
+                     "content_type": null,
+                     "body": {
+                      "date": "",
+                      "value": 0
+                     },
+                     "timeout_millis": null
+                    },
+                    "completion_destination": null,
+                    "metric_events": null,
+                    "dismiss_event": null,
+                    "loading_treatment": null,
+                    "refresh_scopes": "<redacted>",
+                    "bindings": null,
+                    "aggregate_bindings": null
+                   },
+                   "type": "UPDATE"
+                  },
+                  "analytic_event": {
+                   "name": "Workout Builder",
+                   "category": "one_rep_max",
+                   "action": "save",
+                   "label": "BENCHPRESS_BARBELL",
+                   "value": "",
+                   "source": null,
+                   "properties": {
+                    "entry_date": ""
+                   }
+                  }
+                 },
+                 "caption": "Please enter the weight for the combined weight lifted. If you lifted with a dumbbell in each hand, enter the total weight of both dumbbells.\n\nOnly perform One Rep Max tests if you’re an experienced weightlifter or being supervised by a qualified professional.",
+                 "delete_button_title": null,
+                 "delete_confirm_dialog": null
+                },
+                "bindings": {
+                 "footer.save_confirm_dialog.analytic_event.properties.entry_date": "$selected_date",
+                 "footer.save_confirm_dialog.primary_action.parameters.request.body.value": "$one_rep_max_value",
+                 "footer.save_confirm_dialog.analytic_event.value": "$one_rep_max_value",
+                 "footer.save_confirm_dialog.primary_action.parameters.request.body.date": "$selected_date"
+                }
+               }
+              }
+             ],
+             "height": "FULL",
+             "fixed_header": null,
+             "fixed_footer": null,
+             "id": "one-rep-max-entry-add"
+            },
+            "type": "BOTTOM_SHEET",
+            "modal_lifecycle_interactions": null,
+            "analytic_events": null
+           },
+           "card_name": null,
+           "size": "COMPACT",
+           "corner_radius": null,
+           "text_style": null,
+           "analytic_event": {
+            "name": "Workout Builder",
+            "category": "one_rep_max",
+            "action": "add",
+            "label": "BENCHPRESS_BARBELL",
+            "value": null,
+            "source": "exercise_details",
+            "properties": {}
+           },
+           "analytic_events": {},
+           "bindings": null,
+           "aggregate_bindings": null,
+           "is_enabled": null,
+           "generic_interaction": null
+          },
+          "type": "CARD_BUTTON"
+         },
+         "leading_width": null,
+         "enable_divider": false,
+         "end_item": {
+          "content": {
+           "id": "one_rep_max_see_history_button",
+           "title": "SEE ALL",
+           "icon": "LIST",
+           "icon_tint": null,
+           "icon_configuration": null,
+           "style": "DEFAULT",
+           "background_style": null,
+           "destination": {
+            "screen": "GENERIC_SCREEN",
+            "parameters": {
+             "request": {
+              "path": "weightlifting-service/v3/one-rep-max/BENCHPRESS_BARBELL/history",
+              "method": "GET",
+              "content_type": null,
+              "body": null,
+              "timeout_millis": null
+             },
+             "cache_policy": null,
+             "navigation_style": "PUSH",
+             "analytic_events": {
+              "screen_entered": {
+               "name": "Workout Builder",
+               "category": "one_rep_max_history",
+               "action": "open",
+               "label": "BENCHPRESS_BARBELL",
+               "value": null,
+               "source": null,
+               "properties": {}
+              },
+              "screen_dismissed": null,
+              "screen_failed": null
+             },
+             "metric_events": null,
+             "on_start_interaction": null,
+             "loading_top_items": [],
+             "error_top_items": [],
+             "transparent_backdrop": null
+            }
+           },
+           "dismiss_event": null,
+           "action": null,
+           "modal": null,
+           "card_name": null,
+           "size": "COMPACT",
+           "corner_radius": null,
+           "text_style": null,
+           "analytic_event": null,
+           "analytic_events": {},
+           "bindings": null,
+           "aggregate_bindings": null,
+           "is_enabled": null,
+           "generic_interaction": null
+          },
+          "type": "CARD_BUTTON"
+         }
+        }
+       }
+      ],
+      "footer_items": null,
+      "background_style": null,
+      "view_analytic_event": null,
+      "id": "one_rep_max_card_populated"
+     }
+    }
+   ],
+   "section_top_padding": 0,
+   "section_bottom_padding": 0,
+   "section_leading_padding": 0,
+   "section_trailing_padding": 0,
+   "inter_item_padding": 8,
+   "alignment": null,
+   "is_visible": null,
+   "bindings": null,
+   "aggregate_bindings": null
+  }
+ ],
+ "poll_interval_ms": null,
+ "poll_max_failures": null
+}

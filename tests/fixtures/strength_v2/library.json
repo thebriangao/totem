@@ -1,0 +1,64 @@
+{
+ "my_workouts_list": [
+  {
+   "workout_template_key": 18083648,
+   "created_at": "2026-11-22T00:40:25.510Z",
+   "updated_at": "2026-11-22T00:40:25.510Z",
+   "user_id": 44797041,
+   "name": "Nov 21, 2026",
+   "parent_template_key": null,
+   "source": "USER",
+   "is_draft": false
+  },
+  {
+   "workout_template_key": 18083683,
+   "created_at": "2026-11-22T00:43:22.122Z",
+   "updated_at": "2026-11-22T00:43:22.122Z",
+   "user_id": 44797041,
+   "name": "Nov 21, 2026",
+   "parent_template_key": null,
+   "source": "USER",
+   "is_draft": false
+  },
+  {
+   "workout_template_key": 18083998,
+   "created_at": "2026-11-22T01:06:07.368Z",
+   "updated_at": "2026-11-22T01:06:07.368Z",
+   "user_id": 44797041,
+   "name": "Nov 21, 2026",
+   "parent_template_key": null,
+   "source": "USER",
+   "is_draft": false
+  },
+  {
+   "workout_template_key": 99,
+   "created_at": "2026-11-22T00:40:25.510Z",
+   "updated_at": "2026-11-22T00:40:25.510Z",
+   "user_id": 44797041,
+   "name": "AI draft",
+   "parent_template_key": null,
+   "source": "AI",
+   "is_draft": true
+  }
+ ],
+ "whoop_workouts_list": [
+  {
+   "id": "430069",
+   "title": "Virgil van Dijk's Pitch Power",
+   "paragraph": "60 min",
+   "tag": "ADVANCED"
+  },
+  {
+   "id": "430068",
+   "title": "Mike Thurston's Body Blueprint",
+   "paragraph": "65 min",
+   "tag": "INTERMEDIATE"
+  },
+  {
+   "id": "702427",
+   "title": "Jesse James West's Leg Workout",
+   "paragraph": "45 min",
+   "tag": "INTERMEDIATE"
+  }
+ ]
+}

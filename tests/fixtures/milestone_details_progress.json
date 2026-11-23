@@ -1,0 +1,109 @@
+{
+ "navigation_title": "Achievement",
+ "navigation_icon": "SHARE",
+ "secondary_navigation_icon": null,
+ "background_image_url": null,
+ "sections": [
+  {
+   "items": [
+    {
+     "type": "SECTION",
+     "content": {
+      "id": "ad2b0bba-9359-48ef-a330-da55a2b49037",
+      "title": null,
+      "subtitle": null,
+      "items": [
+       {
+        "type": "CELEBRATION_MEDIA",
+        "content": {
+         "content_type": "DYNAMIC_LOTTIE",
+         "text_overlay": "0",
+         "text_overlay_suffix": null,
+         "text_overlay_style": null,
+         "size": "LARGE"
+        }
+       },
+       {
+        "type": "TITLE_SUBTITLE",
+        "content": {
+         "id": "4ffa6c77-974a-4946-9e56-f726317e1d81",
+         "title": "Strain Seeker",
+         "subtitle": "Total days hitting 15+ Strain",
+         "title_color": null,
+         "subtitle_color": null,
+         "alignment": "CENTER",
+         "bindings": null,
+         "title_style": null,
+         "subtitle_style": null,
+         "trailing_button": null
+        }
+       }
+      ],
+      "section_top_padding": 0,
+      "section_bottom_padding": 0,
+      "section_leading_padding": 0,
+      "section_trailing_padding": 0,
+      "inter_item_padding": 16,
+      "alignment": "CENTER",
+      "is_visible": null,
+      "bindings": null,
+      "aggregate_bindings": null
+     }
+    }
+   ],
+   "id": "e03000a4-c045-4730-9589-27b80584f5af",
+   "section_type": "COMPACT"
+  },
+  {
+   "items": [
+    {
+     "type": "MILESTONE_PROGRESS_CARD_V2",
+     "content": {
+      "title": "4 more",
+      "description": "until your next milestone.",
+      "current_milestone": null,
+      "next_milestone": null,
+      "progress_percent": 0.2,
+      "style": "STRAIN"
+     }
+    }
+   ],
+   "id": "ca0ec087-c9c7-4db9-aa3b-7b13518a48c9",
+   "section_type": "NORMAL"
+  },
+  {
+   "items": [
+    {
+     "type": "CARD_BUTTON",
+     "content": {
+      "id": null,
+      "title": "SHARE ACHIEVEMENT",
+      "icon": "SHARE",
+      "icon_tint": null,
+      "icon_configuration": null,
+      "style": "DEFAULT",
+      "destination": {
+       "screen": "SHARE",
+       "parameters": {
+        "path": "milestones-service/v1/bff/milestones/HIGH_STRAIN/details/share/progress",
+        "source": "achievement_details"
+       }
+      },
+      "dismiss_event": null,
+      "action": null,
+      "modal": null,
+      "card_name": null,
+      "size": "COMPACT",
+      "corner_radius": "MEDIUM_LARGE",
+      "bindings": null,
+      "aggregate_bindings": null,
+      "is_enabled": null,
+      "generic_interaction": null
+     }
+    }
+   ],
+   "id": "4f73346e-c156-438e-90f7-f6f7166e5d4f",
+   "section_type": "NORMAL"
+  }
+ ]
+}

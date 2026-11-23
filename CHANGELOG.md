@@ -2,7 +2,60 @@
 
 All notable changes to this project. Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.0.0] — 2026-11-23
+
+v2 is a rebuild against WHOOP's current app API (re-mapped in November 2026), with a new login, a smaller and cheaper tool surface, new hosts and a setup that takes one command.
+
+### Upgrading from 1.x
+
+- Install with `npm install -g @thebriangao/totem` (a git checkout still works), then run `totem local` or `totem cloud` again.
+- **A git checkout keeps its login:** the old `.env` login is picked up once and moved to `~/.config/totem/tokens.json`. That holds when 1.x's auto-update brings the checkout to 2.0 by itself too, and the apps it set up keep working.
+- **An npm install loses its login:** 1.x kept it in `.env` inside its own package folder, and `npm install -g` replaces that folder, `.env` and deploy record included. If totem says there's no WHOOP login after updating, run `totem auth` once.
+- Tool names changed: 55 tools became 41. An app reads the new list on its own; saved prompts that name old tools need the new names ([TOOLS.md](TOOLS.md)).
+- A server deployed by 1.x on Google Cloud Run keeps working with `totem deploy` and `totem logs`, but `totem cloud` no longer creates new ones.
+
+### Added
+
+- **Browser login.** `totem auth` opens a fresh browser window on WHOOP's own site; you log in there (two-factor included) and totem reads only WHOOP's session cookies. No password is ever stored or typed into totem. `--paste` takes a refresh-token cookie instead.
+- **One durable login.** The login lives in one 0600 token file (or a server's volume, or Cloudflare Durable Object storage). WHOOP replaces the refresh token on every use, so exactly one process owns a login (a lock decides), refreshes it every 12 hours and before it expires, and saves the new token before using it. `totem auth` pushes a login to a deployment over HTTPS.
+- **Cloudflare Workers** as a host, on the free plan: the same server inside one Durable Object, with an alarm that keeps the login fresh. A Deploy to Cloudflare button, and `totem cloud` deploys it with Wrangler.
+- **totem's own logo and colours** (ice `#B7D3F2`, ink `#141414`), the logo always without a background: on the Connect and consent pages (with a favicon), at the top of the README, as the MCP server's icon in apps that show one, as the Claude Desktop extension's icon, and as the CLI's brand colour.
+- **A Connect page** on every server (`/connect`): Add to Claude, Add to Cursor and Add to VS Code buttons filled in with the server's address, and copy-ready steps for every other app.
+- **`totem connect`** finds the AI apps on this computer and sets each up its own way: its config file, its own command, or a link that opens it filled in. Apps: Claude (claude.ai, Desktop, mobile), Claude Code, ChatGPT desktop and Codex, chatgpt.com, Cursor, VS Code, OpenCode 1 and 2, Antigravity.
+- **A Claude Desktop extension** (`totem.mcpb`, attached to every release) that runs on Claude Desktop's own Node.
+- **A container image** on every release, `ghcr.io/thebriangao/totem`, for the Railway template and any Docker host.
+- **Continuous heart rate and a day table.** `whoop_day` returns heart rate every 10 minutes for a day, or a window down to 6-second steps, and a table of up to 180 days of recovery, HRV, RHR, sleep, strain and more in one call.
+- New tools on the current API: `whoop_now`, `whoop_weight` / `whoop_weight_log` (from #35), `whoop_cycle` / `whoop_cycle_log`, `whoop_weekly_plan` / `whoop_weekly_plan_set`, `whoop_milestones`, `whoop_smart_alarm` / `whoop_smart_alarm_set` (from #39), `whoop_memory` / `whoop_memory_set`, `whoop_community`, and Strength Trainer logging with units, templates and 1RM (from #40 and #49).
+- **Routes from WHOOP's Android app**, shared by @Acetone1 in #5 and checked on a test account first: `whoop_activity_edit` can merge activities (`merge`; WHOOP keeps the earliest and deletes the rest), `whoop_calendar` shows which days have a journal entry (`pillar: "journal"`), and `whoop_smart_alarm` gives the wake window and, for goal modes, the earliest time the strap may buzz.
+- **`whoop_health`** for WHOOP's paid health features. Healthspan was checked on a real account that has it: WHOOP Age, years older or younger than your age, pace of aging, the previous week's numbers, and each contributor (sleep, strain, fitness) with its 6 month and 30 day averages and its impact in years. Still **experimental**, because no account we can test with has them: blood pressure insights, AFib history (by day, with paging), and Advanced Labs (biomarkers with results, tests, one biomarker's history or one test's results and insights). Their locked, empty and not-set-up answers are exact; anything filled in comes back with its UI fields stripped and says `experimental: true`. Read-only on purpose; the consent page now lists it.
+- `whoop_raw` can send PATCH.
+- **The consent page names who is asking and where access goes.** A site is named only by the real address access is sent to, so a link that would send your data elsewhere can't call itself Claude. Deny sends the app a refusal.
+
+### Changed
+
+- **41 tools instead of 55, at a fraction of the tokens.** The tool list an app sends on every turn is 35,907 characters (v1: 45,283 for 55 tools), and a default call answers in about 1.5 KB. Lists come as columnar rows; heavy parts are behind `include`.
+- **Every write previews first** and does nothing until `confirm: true`; `whoop_raw` writes also need `allow_write`, with a denylist that can't be bypassed by an odd path.
+- **The `totem` CLI is redesigned**: plain, in the style of gh and fly (numbered steps, ✓ and ✗ results, aligned facts, a Next list, a spinner with elapsed time), with totem's logo at the top of the big flows and one icy palette used only as decoration, ASCII where Unicode can't be trusted, and every failure ends with the command that fixes it. `totem local` and `totem cloud` ask only what a person must decide.
+- **Hosts:** Fly.io (one 512 MB machine in iad, about $4 a month), Cloudflare (free), Railway (named service, volume through Railway's API when its CLI fails, builds watched to the end) and your own Docker host, which now asks the server's address first, writes it into `deploy.env` as `PUBLIC_URL`, takes addresses like `totem.home` or `localhost:3000` (warning when plain http won't reach web apps), and builds with the version so `/health` reports it.
+- `whoop_preferences` lists the dashboard metric keys you can choose from, so `whoop_preferences_set` no longer spells all 30 out in its schema (it still checks them against what WHOOP offers your account).
+- **totem asks before opening a page in your browser.** The Connect page, claude.ai's connector dialog and the Cloudflare and Fly sign-ins show their link in full first: Enter opens it, `n` leaves it to copy into the browser profile you want. A browser with several profiles opens links in the one used last, which may not be signed in to that account. Railway's sign-in already asks. The WHOOP login keeps its own temporary window.
+- Times in answers are in your WHOOP time zone; times you give may omit seconds or the offset (read on your clock).
+- Every dependency upgraded; `npm audit` clean. Node 24 or newer.
+
+### Fixed
+
+- WHOOP's 401 now refreshes the login and retries once; a stalled response body no longer hangs a request; two different queries can't share a cache entry; reads right after a write are never served from before it.
+- The HTTP server answers 404 for an unknown MCP session so apps start a new one, bounds its sessions, never shows a stack trace to an unauthenticated caller, and shuts down cleanly with clients connected.
+- OAuth: an empty password is never accepted, a refresh can't widen a token's scope, a dead grant answers `invalid_grant`, and a non-URL resource can't mint broken tokens.
+- `totem local` never overwrites an app's config it can't read exactly; it keeps a backup whenever it writes. OpenCode configs with comments are handed to OpenCode's own command.
+- Auto-update carries a PATH that finds npm and the host's CLI, goes back to the starting version when an update doesn't finish, and leaves a checkout on another branch alone.
+- End of input is never taken as an answer (`totem cloud < /dev/null` used to say yes to every deploy); secrets go to hosts over stdin or a private temporary file, never a command line, and are blanked in any host output totem shows.
+- `npm pack` from a clean checkout shipped no `dist/`.
+- Many fixes from live runs on a test account across journal, Strength Trainer, coach, cycle, Smart Alarm, sleep, stress and trends; see the commit history for each.
+
+### Thanks
+
+To everyone whose pull requests and reports shaped v2, including Vladimir Berestnev, Charles White, Ben Tesser, Selçuk Öztürk, k-vasily, chaotix345 and salmonumbrella; to @Acetone1 for the map of WHOOP's Android routes; and to @TotallyKyle for the 1.5.1 report.
 
 ## [1.5.1] — 2026-09-08
 

@@ -4,7 +4,7 @@ import {
   asArray,
   asNumber,
   asString,
-  findByType,
+  findFirst,
   findDetailsCardByTitle,
   labelToNumber,
   timeLabelToMs,
@@ -94,7 +94,7 @@ interface StagePoint {
 }
 
 // "1:24 AM" / "11:52 PM" → minutes since midnight (0..1439), or null.
-function parseClockMinutes(s: string | null): number | null {
+export function parseClockMinutes(s: string | null): number | null {
   if (!s) return null;
   const m = /^(\d{1,2}):(\d{2})\s*([AP]M)$/i.exec(s.trim());
   if (!m) return null;
@@ -222,25 +222,11 @@ export function projectSleep(raw: unknown, date: string): SleepOutT {
   const sws = stageTime(raw, "SWS_SLEEP");
   const wake = stageTime(raw, "AWAKE");
 
-  // Wake events tile
-  const wakeTile = findByType(raw, "DETAILS_METRIC_TILES");
-  let disturbances: number | null = null;
-  if (wakeTile) {
-    const content = isObject(wakeTile.content) ? (wakeTile.content as Record<string, unknown>) : {};
-    if (asString(content.title) === "WAKE EVENTS") {
-      // Find the numeric stat inside the tile
-      const tiles = asArray(content.metric_tiles ?? content.tiles ?? content.items);
-      for (const t of tiles) {
-        if (isObject(t)) {
-          const v = asNumber(t.value ?? t.metric_value);
-          if (v !== null) {
-            disturbances = v;
-            break;
-          }
-        }
-      }
-    }
-  }
+  const wakeTile = findFirst(
+    raw,
+    (n) => n.type === "DETAILS_METRIC_TILES" && isObject(n.content) && asString(n.content.title) === "WAKE EVENTS",
+  );
+  const disturbances = labelToNumber(arrowStat(wakeTile) || null);
 
   const startedAt = params ? asString(params.start_time) : null;
   const endedAt = params ? asString(params.end_time) : null;

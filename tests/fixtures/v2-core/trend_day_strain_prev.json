@@ -1,0 +1,227 @@
+{
+ "week_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "NOV 8 - NOV 14, 26",
+   "next_date_time": "2026-11-21T00:00:00.000-08:00",
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "DAY_STRAIN",
+    "metric_name_display": "AVERAGE",
+    "metric_value_display": "---",
+    "metric_units_display": null,
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": null,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "title": null,
+      "subtitle": null,
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null,
+      "id": "empty"
+     },
+     "type": "EMPTY_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": {
+   "title_display": "STRAIN BREAKDOWN",
+   "sub_title_display": "(DAYS)",
+   "bars": [
+    {
+     "top_label_display": "All Out \u2066(>18.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 1
+    },
+    {
+     "top_label_display": "Strenuous \u2066(14.1-18.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.85
+    },
+    {
+     "top_label_display": "Moderate \u2066(10.1-14.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.7
+    },
+    {
+     "top_label_display": "Light \u2066(<10.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.55
+    }
+   ],
+   "configurable_bars": [],
+   "number_of_grid_columns": null,
+   "trend_key": null
+  },
+  "breakdown_bars": [],
+  "whoop_coach_vow": null,
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ },
+ "month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "OCT 16 - NOV 14, 26",
+   "next_date_time": "2026-11-21T00:00:00.000-08:00",
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "DAY_STRAIN",
+    "metric_name_display": "AVERAGE",
+    "metric_value_display": "---",
+    "metric_units_display": null,
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": null,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "title": null,
+      "subtitle": null,
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null,
+      "id": "empty"
+     },
+     "type": "EMPTY_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": {
+   "title_display": "STRAIN BREAKDOWN",
+   "sub_title_display": "(DAYS)",
+   "bars": [
+    {
+     "top_label_display": "All Out \u2066(>18.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 1
+    },
+    {
+     "top_label_display": "Strenuous \u2066(14.1-18.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.85
+    },
+    {
+     "top_label_display": "Moderate \u2066(10.1-14.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.7
+    },
+    {
+     "top_label_display": "Light \u2066(<10.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.55
+    }
+   ],
+   "configurable_bars": [],
+   "number_of_grid_columns": null,
+   "trend_key": null
+  },
+  "breakdown_bars": [],
+  "whoop_coach_vow": null,
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ },
+ "six_month_time_segment": {
+  "date_picker": {
+   "current_date_range_display": "MAY 19 - NOV 14, 26",
+   "next_date_time": "2026-11-21T00:00:00.000-08:00",
+   "previous_date_time": null
+  },
+  "metrics": [
+   {
+    "trend_key": "DAY_STRAIN",
+    "metric_name_display": "AVERAGE",
+    "metric_value_display": "---",
+    "metric_units_display": null,
+    "trend_direction": "NONE",
+    "trend_style": "NONE",
+    "metric_value_color": null,
+    "trend_text_display": null,
+    "current_metric_value": null,
+    "previous_metric_value": null,
+    "metric_change": null
+   }
+  ],
+  "graph": {
+   "id": null,
+   "plots": [
+    {
+     "plot": {
+      "title": null,
+      "subtitle": null,
+      "hide_while_scrubbing": false,
+      "skip_scrubbing": null,
+      "id": "empty"
+     },
+     "type": "EMPTY_PLOT"
+    }
+   ],
+   "graph_title_display": null,
+   "graph_buttons": null,
+   "layout_direction": "LEFT_TO_RIGHT",
+   "spotlight_target_id": null
+  },
+  "breakdown_bar": {
+   "title_display": "STRAIN BREAKDOWN",
+   "sub_title_display": "(DAYS)",
+   "bars": [
+    {
+     "top_label_display": "All Out \u2066(>18.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 1
+    },
+    {
+     "top_label_display": "Strenuous \u2066(14.1-18.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.85
+    },
+    {
+     "top_label_display": "Moderate \u2066(10.1-14.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.7
+    },
+    {
+     "top_label_display": "Light \u2066(<10.0)\u2069",
+     "bottom_label_display": 0,
+     "opacity_percentage": 0.55
+    }
+   ],
+   "configurable_bars": [],
+   "number_of_grid_columns": null,
+   "trend_key": null
+  },
+  "breakdown_bars": [],
+  "whoop_coach_vow": null,
+  "segmental_body_comp_trends": null,
+  "last_updated": null,
+  "is_hidden": false
+ }
+}

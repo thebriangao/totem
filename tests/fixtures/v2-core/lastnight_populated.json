@@ -1,0 +1,16 @@
+{
+ "_comment": "Synthetic, shaped like GET /home-service/v1/deep-dive/sleep/last-night?date=2026-11-18 on a scored night (values invented).",
+ "header_section": {
+  "title": "Last Night's Sleep",
+  "destination": { "screen": "ACTIVITY_EDIT", "parameters": { "activity_id": "aaaaaaaa-0000-4000-8000-000000000001", "start_time": "2026-11-18T07:10:00.000Z", "end_time": "2026-11-18T15:05:00.000Z", "activity_score_type": "SLEEP", "internal_name": "sleep", "flow": "sleep_deep_dive", "is_deletable": true } }
+ },
+ "sections": [
+  { "id": "hours_of_sleep", "items": [ { "type": "DETAILS_GRAPHING_CARD", "content": { "id": "hours_of_sleep", "card_title": "HOURS OF SLEEP", "arrow_stat": [ { "current_stat_text": "7:17", "historic_stat_text": "7:02", "trend_state": "HIGHER_POSITIVE" } ] } } ] },
+  { "id": "hours_vs_needed", "items": [ { "type": "DETAILS_GRAPHING_CARD", "content": { "id": "hours_vs_needed", "card_title": "HOURS VS. NEEDED", "arrow_stat": [ { "current_stat_text": "91%", "historic_stat_text": "84%", "trend_state": "HIGHER_POSITIVE" } ] } } ] },
+  { "id": "sleep_consistency", "items": [ { "type": "DETAILS_GRAPHING_CARD", "content": { "id": "sleep_consistency", "card_title": "SLEEP CONSISTENCY", "arrow_stat": [ { "current_stat_text": "78%", "historic_stat_text": "70%", "trend_state": "HIGHER_POSITIVE" } ] } } ] },
+  { "id": "sleep_efficiency", "items": [ { "type": "DETAILS_GRAPHING_CARD", "content": { "id": "sleep_efficiency", "card_title": "SLEEP EFFICIENCY", "arrow_stat": [ { "current_stat_text": "92%", "historic_stat_text": "93%", "trend_state": "LOWER_NEGATIVE" } ], "card_content": [
+   { "type": "DETAILS_METRIC_TILES", "content": { "title": "WAKE EVENTS", "style": "AWAKE", "arrow_stat": [ { "current_stat_text": "11", "historic_stat_text": "", "trend_state": "NO_DATA" } ] } }
+  ] } } ] },
+  { "id": "sleep_stress", "items": [ { "type": "DETAILS_GRAPHING_CARD", "content": { "id": "sleep_stress", "card_title": "SLEEP STRESS", "arrow_stat": [ { "current_stat_text": "2%", "historic_stat_text": "3%", "trend_state": "LOWER_POSITIVE" } ] } } ] }
+ ]
+}

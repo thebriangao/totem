@@ -1,0 +1,14 @@
+{
+ "analytic_event": null,
+ "data_period": "Today",
+ "total_followers": 3,
+ "title": "",
+ "header": {"type": "HEADER", "content": {"icon": "FILTER", "style": "LARGE", "subtitle": "Today", "title": ""}},
+ "filter_button": null,
+ "filter_bottom_sheet": {"type": "FLOW_ROW", "content": {"items": [{"type": "TAG", "content": {"title": "Today", "value": "TODAY", "tag_style": "SELECTED"}}]}},
+ "items": [
+  {"type": "COMMUNITY_FOLLOWER", "content": {"avatar_ring_color": "WHITE_20", "avatar_url": "https://example.com/me.png", "background_style": "HIGHLIGHTED", "day_strain": "0.5", "icon_urls": [], "id": "200001", "interaction": null, "navigation": {"screen": "GENERIC_SCREEN", "parameters": {"request": {"path": "followers-service/v1/snapshots/daily/200001?period=TODAY&sortBy=NAME", "method": "GET"}}}, "no_data_label": null, "recovery_color": "RECOVERY_MEDIUM", "recovery_label": "RECOVERY", "recovery_score": "63%", "sleep_color": "SLEEP", "sleep_label": "SLEEP", "sleep_score": "80%", "strain_color": "STRAIN", "strain_label": "STRAIN", "streak": "502", "streak_image_url": "https://example.com/streak.png", "title": "Test User"}},
+  {"type": "COMMUNITY_FOLLOWER", "content": {"avatar_ring_color": "WHITE_20", "avatar_url": "https://example.com/a.png", "background_style": null, "day_strain": "5.0", "icon_urls": [], "id": "700001", "interaction": null, "navigation": {"screen": "GENERIC_SCREEN", "parameters": {"request": {"path": "followers-service/v1/snapshots/daily/700001?period=TODAY&sortBy=NAME", "method": "GET"}}}, "no_data_label": null, "recovery_color": "RECOVERY_MEDIUM", "recovery_label": "RECOVERY", "recovery_score": "38%", "sleep_color": "SLEEP", "sleep_label": "SLEEP", "sleep_score": "68%", "strain_color": "STRAIN", "strain_label": "STRAIN", "streak": "2381", "streak_image_url": "https://example.com/streak.png", "title": "Avery Example"}},
+  {"type": "COMMUNITY_FOLLOWER", "content": {"avatar_ring_color": "WHITE_20", "avatar_url": "https://example.com/b.png", "background_style": null, "day_strain": "---", "icon_urls": [], "id": "700002", "interaction": null, "navigation": null, "no_data_label": "Not sharing", "recovery_color": null, "recovery_label": "RECOVERY", "recovery_score": "---", "sleep_color": null, "sleep_label": "SLEEP", "sleep_score": "---", "strain_color": null, "strain_label": "STRAIN", "streak": null, "streak_image_url": null, "title": "Blake Sample"}}
+ ]
+}

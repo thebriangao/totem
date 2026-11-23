@@ -29,7 +29,12 @@ import type {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { InvalidGrantError, InvalidScopeError, InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { redirectUriMatches } from "@modelcontextprotocol/sdk/server/auth/handlers/authorize.js";
+import { cleanClientName, redirectDestination, renderConsentForm, setConsentSecurityHeaders } from "./consent_page.js";
+
+// The consent page moved to consent_page.ts; these stay importable from here.
+export { CONSENT_CSP, redirectDestination, renderConsentForm, setConsentSecurityHeaders } from "./consent_page.js";
 
 const ACCESS_TTL_S = 3600;            // 1 hour
 const REFRESH_TTL_S = 30 * 24 * 3600; // 30 days
@@ -113,8 +118,10 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     if (!clientId.startsWith("c.")) return undefined;
     const payload = verifyToken(clientId.slice(2), this.signingSecret);
     if (!payload || payload.t !== "client") return undefined;
+    const name = cleanClientName(payload.n);
     return {
       client_id: clientId,
+      ...(name ? { client_name: name } : {}),
       redirect_uris: (payload.ru as string[]) ?? [],
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],
@@ -132,12 +139,17 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
         client: Omit<OAuthClientInformationFull, "client_id" | "client_id_issued_at">,
       ): OAuthClientInformationFull => {
         // Encode the client's redirect_uris into a signed client_id so the
-        // registration survives server restarts with no storage.
+        // registration survives server restarts with no storage. The name it
+        // gave rides along (cleaned and capped): the consent page shows it for
+        // a client on the owner's own device, and never for one on the internet.
+        const name = cleanClientName(client.client_name);
         const signed = signToken(
-          { t: "client", ru: client.redirect_uris ?? [], sc: client.scope ?? "", jti: randomUUID() },
+          { t: "client", ru: client.redirect_uris ?? [], sc: client.scope ?? "", ...(name ? { n: name } : {}), jti: randomUUID() },
           this.signingSecret,
         );
         const clientId = `c.${signed}`;
+        // Registration is open to anyone, so say who came by. Names and addresses only.
+        console.error(`[totem] client registered: ${JSON.stringify(name ?? "(no name)")} -> ${(client.redirect_uris ?? []).map(redirectDestination).join(", ") || "(no redirect)"}`);
         return {
           ...client,
           client_id: clientId,
@@ -167,7 +179,29 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       scopes: (params.scopes ?? []).join(" "),
       resource: params.resource?.toString() ?? "",
       error: false,
+      clientName: client.client_name,
     }));
+  }
+
+  /** The name a client registered with, for re-rendering the page after a wrong password. */
+  registeredName(clientId: string): string | undefined {
+    return this.decodeClient(clientId)?.client_name;
+  }
+
+  // ─── consent POST, Deny ──────────────────────────────────────────────────
+  // The owner said no: send the client back with `access_denied` (RFC 6749
+  // §4.1.2.1) so it can say so instead of waiting. Only ever to a redirect URI
+  // this client registered; null means there is nowhere safe to send it.
+  deny(input: { clientId: string; redirectUri: string; state: string }): string | null {
+    const client = this.decodeClient(input.clientId);
+    if (!client || !URL.canParse(input.redirectUri)) return null;
+    if (!client.redirect_uris.some((registered) => redirectUriMatches(input.redirectUri, registered))) return null;
+    const url = new URL(input.redirectUri);
+    url.searchParams.set("error", "access_denied");
+    url.searchParams.set("error_description", "The owner denied the request.");
+    if (input.state) url.searchParams.set("state", input.state);
+    console.error(`[totem] consent denied by the owner: ${redirectDestination(input.redirectUri)}`);
+    return url.toString();
   }
 
   // ─── consent POST: validate password, issue an auth code ─────────────────
@@ -182,7 +216,7 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     resource: string;
     password: string;
   }): string | null {
-    if (!constantTimeEqual(input.password, this.password)) {
+    if (!this.checkPassword(input.password)) {
       console.error("[totem] consent REJECTED: password mismatch");
       return null;
     }
@@ -192,10 +226,16 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       console.error("[totem] consent REJECTED: client_id failed to decode (stale registration / signing-key mismatch) — password was correct");
       return null;
     }
-    if (!client.redirect_uris.includes(input.redirectUri)) {
+    // Same rule as the SDK's /authorize (RFC 8252: any port on a loopback host),
+    // so a redirect /authorize accepted isn't rejected here.
+    if (!client.redirect_uris.some((registered) => redirectUriMatches(input.redirectUri, registered))) {
       console.error(`[totem] consent REJECTED: redirect_uri not registered: ${input.redirectUri} — password was correct`);
       return null;
     }
+
+    // Codes are otherwise only removed when redeemed; drop the ones nobody came back for.
+    const now = Date.now();
+    for (const [stale, entry] of this.codes) if (entry.expiresAt < now) this.codes.delete(stale);
 
     const code = b64url(randomBytes(32));
     this.codes.set(code, {
@@ -203,8 +243,10 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
       redirectUri: input.redirectUri,
       clientId: input.clientId,
       scopes: input.scopes ? input.scopes.split(" ").filter(Boolean) : [],
-      resource: input.resource || undefined,
-      expiresAt: Date.now() + CODE_TTL_MS,
+      // The form posts this field back unchecked. A value that isn't a URL
+      // would be signed into the tokens and then throw in verifyAccessToken.
+      resource: URL.canParse(input.resource) ? input.resource : undefined,
+      expiresAt: now + CODE_TTL_MS,
     });
 
     const url = new URL(input.redirectUri);
@@ -213,25 +255,38 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
     return url.toString();
   }
 
+  checkPassword(password: string): boolean {
+    // No password configured means the OAuth path is off, not that the empty
+    // password is correct ("" equals "" under the comparison below). The HTTP
+    // route also refuses, but the gate shouldn't rest on one caller's `if`.
+    return this.password.length > 0 && constantTimeEqual(password, this.password);
+  }
+
+  // A bad grant must be the SDK's InvalidGrantError: the token endpoint maps it
+  // to 400 `invalid_grant`, the client's cue to send the user back through
+  // /authorize. A plain Error became 500 `server_error`, which reads as an
+  // outage, so an expired 30-day refresh token (or a rotated MCP_AUTH_TOKEN)
+  // left the connector failing instead of asking to reconnect.
+  private liveCode(client: OAuthClientInformationFull, authorizationCode: string): AuthCodeEntry {
+    const entry = this.codes.get(authorizationCode);
+    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
+      throw new InvalidGrantError("invalid or expired authorization code");
+    }
+    return entry;
+  }
+
   async challengeForAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<string> {
-    const entry = this.codes.get(authorizationCode);
-    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
-      throw new Error("invalid or expired authorization code");
-    }
-    return entry.challenge;
+    return this.liveCode(client, authorizationCode).challenge;
   }
 
   async exchangeAuthorizationCode(
     client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<OAuthTokens> {
-    const entry = this.codes.get(authorizationCode);
-    if (!entry || entry.expiresAt < Date.now() || entry.clientId !== client.client_id) {
-      throw new Error("invalid or expired authorization code");
-    }
+    const entry = this.liveCode(client, authorizationCode);
     this.codes.delete(authorizationCode); // one-time use
     return this.issueTokens(client.client_id, entry.scopes, entry.resource);
   }
@@ -243,10 +298,17 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
   ): Promise<OAuthTokens> {
     const payload = verifyToken(refreshToken, this.signingSecret);
     if (!payload || payload.typ !== "refresh" || payload.cid !== client.client_id) {
-      throw new Error("invalid refresh token");
+      throw new InvalidGrantError("invalid or expired refresh token");
     }
-    const grantScopes = scopes ?? ((payload.scopes as string[]) ?? []);
-    return this.issueTokens(client.client_id, grantScopes, payload.resource as string | undefined);
+    // RFC 6749 §6: a refresh may narrow the scope, never widen it. Taking the
+    // requested list as given let any refresh mint a token claiming scopes the
+    // user never approved.
+    const granted = Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [];
+    const requested = scopes?.filter(Boolean);
+    if (requested?.some((scope) => !granted.includes(scope))) {
+      throw new InvalidScopeError("requested scope exceeds the scope originally granted");
+    }
+    return this.issueTokens(client.client_id, requested ?? granted, payload.resource as string | undefined);
   }
 
   private issueTokens(clientId: string, scopes: string[], resource: string | undefined): OAuthTokens {
@@ -296,82 +358,13 @@ export class WhoopOAuthProvider implements OAuthServerProvider {
         scopes: (payload.scopes as string[]) ?? [],
         expiresAt: payload.exp as number,
       };
-      if (typeof payload.resource === "string") info.resource = new URL(payload.resource);
+      // canParse: a token must never fail verification with a TypeError (the
+      // bearer middleware answers anything but InvalidTokenError with a 500).
+      if (typeof payload.resource === "string" && URL.canParse(payload.resource)) info.resource = new URL(payload.resource);
       return info;
     }
     // Throw the SDK's typed error so the bearer middleware returns 401 (a
     // generic Error would be mapped to 500).
     throw new InvalidTokenError("invalid or expired access token");
   }
-}
-
-// Anti-clickjacking header for the HTML consent page (a password form) ONLY.
-// Deliberately NO Content-Security-Policy: a `form-action` directive blocks the
-// OAuth 302 redirect back to the client (the browser refuses the cross-origin
-// navigation to claude.ai), silently bricking the password submit; and a
-// document CSP on the JSON metadata/API responses made Claude's connector flag
-// a "server configuration issue". X-Frame-Options: DENY is the clickjacking
-// control this page actually needs, and the page has no scripts/external
-// resources to lock down.
-export function setConsentSecurityHeaders(res: Response): void {
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "no-referrer");
-}
-
-// ─── consent form HTML ──────────────────────────────────────────────────────
-export function renderConsentForm(d: {
-  clientId: string;
-  redirectUri: string;
-  codeChallenge: string;
-  state: string;
-  scopes: string;
-  resource: string;
-  error: boolean;
-}): string {
-  const esc = (s: string): string =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const errorBanner = d.error
-    ? `<p style="color:#dc2626;margin:0 0 16px">Incorrect password. Try again.</p>`
-    : "";
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>totem — authorize</title>
-<style>
-  body { font-family: ui-monospace, "SF Mono", Menlo, monospace; background: #0d1117; color: #e6e6e6;
-         display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; }
-  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px;
-          width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  p.sub { color: #969696; font-size: 13px; margin: 0 0 24px; }
-  label { display: block; font-size: 13px; margin: 0 0 8px; color: #b0b0b0; }
-  input[type=password] { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
-         border: 1px solid #30363d; background: #0d1117; color: #e6e6e6; font-size: 14px; margin: 0 0 20px; }
-  button { width: 100%; padding: 11px; border: none; border-radius: 8px; background: #e6e6e6; color: #0d1117;
-           font-weight: 700; font-size: 14px; cursor: pointer; }
-  button:hover { background: #fff; }
-</style>
-</head>
-<body>
-  <div class="card">
-    <h1>totem</h1>
-    <p class="sub">Enter your access password to connect this server to Claude.</p>
-    ${errorBanner}
-    <form method="POST" action="/oauth/consent">
-      <input type="hidden" name="client_id" value="${esc(d.clientId)}">
-      <input type="hidden" name="redirect_uri" value="${esc(d.redirectUri)}">
-      <input type="hidden" name="code_challenge" value="${esc(d.codeChallenge)}">
-      <input type="hidden" name="state" value="${esc(d.state)}">
-      <input type="hidden" name="scope" value="${esc(d.scopes)}">
-      <input type="hidden" name="resource" value="${esc(d.resource)}">
-      <label for="pw">Password</label>
-      <input type="password" id="pw" name="password" autofocus autocomplete="current-password">
-      <button type="submit">Authorize</button>
-    </form>
-  </div>
-</body>
-</html>`;
 }

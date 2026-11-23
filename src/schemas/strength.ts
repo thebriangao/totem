@@ -12,6 +12,12 @@ export const OfficialExerciseSchema = z.object({
   laterality: z.string(),
   raw_equipment: z.string(),
   raw_movement_pattern: z.string(),
+  push_core_name: z.string(),
+  exercise_type: z.string(),
+  volume_input_format: z.enum(["WEIGHT", "REPS", "TIME"]),
+  trackable: z.boolean(),
+  e1rm_eligible: z.boolean(),
+  training_types: z.array(z.string()).nullable(),
 });
 export type OfficialExercise = z.infer<typeof OfficialExerciseSchema>;
 
@@ -93,6 +99,7 @@ export type LiftProgressionOutT = z.infer<typeof LiftProgressionOut>;
 
 export const LiftHistoryOut = z.array(z.object({
   activity_id: z.string(),
+  sport_name: z.string().nullable(),
   date: z.string(),
   name: z.string().nullable(),
   duration_ms: z.number().int(),
@@ -126,6 +133,8 @@ export const LiftLibraryOut = z.union([
       name: z.string(),
       exercise_count: z.number().int(),
       last_used: z.string().nullable(),
+      created_at: z.string().nullable(),
+      source: z.string().nullable(),
     })),
     whoop_workouts: z.array(z.object({
       template_id: z.number().int(),
@@ -151,7 +160,7 @@ export const LiftLibraryOut = z.union([
 export type LiftLibraryOutT = z.infer<typeof LiftLibraryOut>;
 
 export const LiftCatalogOut = z.object({
-  total_in_catalog: z.literal(372),
+  total_in_catalog: z.literal(371),
   matched: z.number().int(),
   truncated: z.boolean(),
   exercises: z.array(z.object({

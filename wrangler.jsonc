@@ -1,0 +1,17 @@
+// totem on Cloudflare Workers (free plan). `totem cloud` deploys this for you;
+// so does the Deploy to Cloudflare button in the README. The two secrets are
+// asked for on deploy: MCP_AUTH_TOKEN (64 random characters) and AUTH_PASSWORD
+// (the password for the sign-in page). See src/cloudflare/worker.ts.
+{
+  "name": "totem",
+  "main": "src/cloudflare/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "enable_nodejs_http_server_modules"],
+  "durable_objects": {
+    "bindings": [{ "name": "TOTEM", "class_name": "Totem" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Totem"] }],
+  "secrets": { "required": ["MCP_AUTH_TOKEN", "AUTH_PASSWORD"] },
+  "observability": { "enabled": true },
+  "workers_dev": true
+}

@@ -3,8 +3,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../src/whoop/client.js";
-import { registerDailyBrief } from "../../src/tools/v2/daily_brief.js";
-import { registerActivityNow } from "../../src/tools/v2/activity_now.js";
 import { registerWeeklyPlan } from "../../src/tools/v2/weekly_plan.js";
 import { registerPreferences } from "../../src/tools/v2/preferences.js";
 
@@ -23,39 +21,19 @@ async function connect(register: (server: McpServer) => void): Promise<Client> {
 }
 
 describe("compact helper tools", () => {
-  it("daily brief fetches only requested sections", async () => {
-    const get = vi.fn().mockResolvedValue({});
-    const client = await connect((server) => registerDailyBrief(server, { get } as unknown as WhoopClient));
-    const result = await client.callTool({ name: "whoop_daily_brief", arguments: { sections: ["strain"] } });
-    expect(result.isError).not.toBe(true);
-    expect(get).toHaveBeenCalledTimes(1);
-    expect(get).toHaveBeenCalledWith("/home-service/v1/deep-dive/strain", expect.anything());
-  });
-
-  it("activity-now leaves unrequested live endpoints untouched", async () => {
-    const get = vi.fn().mockResolvedValue({ state: "idle" });
-    const client = await connect((server) => registerActivityNow(server, { get } as unknown as WhoopClient));
-    const result = await client.callTool({ name: "whoop_activity_now", arguments: { include: ["state"] } });
-    expect(result.isError).not.toBe(true);
-    expect(get).toHaveBeenCalledTimes(1);
-    expect(get).toHaveBeenCalledWith("/activities-service/v1/user-state");
-    const output = JSON.parse((result.content as Array<{ text: string }>)[0]!.text);
-    expect(output.state.freshness.completed_cache).toBe("bypassed");
-    expect(output.state.freshness.fetched_at).toBeTruthy();
-  });
-
   it("projects weekly-plan goals without exposing the raw tile", async () => {
-    const get = vi.fn().mockResolvedValue({ tile: { content: {
+    const get = vi.fn().mockResolvedValue({ tile: { type: "WEEKLY_PLAN_HOME_TILE", content: {
       title: "CUSTOM PLAN", days_left_display: "7 days left", progress_bar: { percent_value: 5 },
       items: [{ id: "STEPS", title: "1,600+ Steps", circular_progress_indicator: { current_progress_steps: { text_display: "1/7", current_step: 1, total_steps: 7 } } }],
     } } });
     const client = await connect((server) => registerWeeklyPlan(server, { get } as unknown as WhoopClient));
     const result = await client.callTool({ name: "whoop_weekly_plan", arguments: { date: "2026-08-24" } });
-    const output = JSON.stringify(result.content);
+    const output = JSON.parse((result.content as Array<{ text: string }>)[0]!.text);
     expect(result.isError).not.toBe(true);
-    expect(output).toContain("CUSTOM PLAN");
-    expect(output).toContain("1/7");
-    expect(get).toHaveBeenCalledWith("/progression-service/v2/weekly-plan/home-tile/2026-08-24");
+    // v2 shape (whoop_weekly_plan): parsed target and days met, no display strings.
+    expect(output).toMatchObject({ has_plan: true, plan: "CUSTOM PLAN", pct: 5, days_left: 7 });
+    expect(output.goals).toEqual([expect.objectContaining({ type: "STEPS", target: 1600, days_met: [1, 7] })]);
+    expect(get).toHaveBeenCalledWith("/progression-service/v2/weekly-plan/home-tile/2026-08-24", {}, { fresh: false });
   });
 
   it("preferences fetches only the explicitly selected preference category", async () => {

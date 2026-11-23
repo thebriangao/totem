@@ -1,0 +1,162 @@
+{
+ "header_section": {
+  "id": null,
+  "title": "Last Night's Sleep",
+  "subtitle": "EDIT",
+  "subtitle_end": null,
+  "cta": null,
+  "cta_state": null,
+  "icon": "PENCIL",
+  "style": "LARGE",
+  "destination": {
+   "screen": "ACTIVITY_EDIT",
+   "parameters": {
+    "activity_id": "addd5396-b934-4ae8-ba4e-a511762a0d53",
+    "start_time": "2026-11-21T10:30:00.000Z",
+    "end_time": "2026-11-21T13:30:00.000Z",
+    "activity_score_type": "SLEEP",
+    "internal_name": "sleep",
+    "flow": "sleep_deep_dive",
+    "is_deletable": true
+   }
+  },
+  "leading_button": null,
+  "interaction": null
+ },
+ "sub_header_section": {
+  "sub_header": "Today",
+  "sub_header_end": " vs. prior 30 days"
+ },
+ "sections": [
+  {
+   "id": "hours_of_sleep",
+   "items": [
+    {
+     "content": {
+      "id": "hours_of_sleep",
+      "card_title": "HOURS OF SLEEP",
+      "arrow_stat": [
+       {
+        "current_stat_text": "-:--",
+        "historic_stat_text": "",
+        "historic_stat_alignment": "LEFT",
+        "trend_state": "NO_DATA"
+       }
+      ],
+      "graph_legends": [],
+      "card_content": []
+     },
+     "type": "DETAILS_GRAPHING_CARD"
+    }
+   ],
+   "section_type": "COMPACT"
+  },
+  {
+   "id": "hours_vs_needed",
+   "items": [
+    {
+     "content": {
+      "id": "hours_vs_needed",
+      "card_title": "HOURS VS. NEEDED",
+      "arrow_stat": [
+       {
+        "current_stat_text": "-:--",
+        "historic_stat_text": "",
+        "historic_stat_alignment": "LEFT",
+        "trend_state": "NO_DATA"
+       }
+      ],
+      "graph_legends": [],
+      "card_content": []
+     },
+     "type": "DETAILS_GRAPHING_CARD"
+    }
+   ],
+   "section_type": "COMPACT"
+  },
+  {
+   "id": "sleep_consistency",
+   "items": [
+    {
+     "content": {
+      "id": "sleep_consistency",
+      "card_title": "SLEEP CONSISTENCY",
+      "arrow_stat": [
+       {
+        "current_stat_text": "--%",
+        "historic_stat_text": "",
+        "historic_stat_alignment": "LEFT",
+        "trend_state": "NO_DATA"
+       }
+      ],
+      "graph_legends": [],
+      "card_content": [
+       {
+        "content": {
+         "title": "Wear WHOOP to sleep for 4 nights to unlock",
+         "close_icon": null,
+         "style": "DEFAULT",
+         "progress_bar": {
+          "type": "DISCRETE",
+          "discrete_step_total": 4,
+          "discrete_filled_total": 0,
+          "continuous_progress": null
+         }
+        },
+        "type": "STEPPER"
+       }
+      ]
+     },
+     "type": "DETAILS_GRAPHING_CARD"
+    }
+   ],
+   "section_type": "COMPACT"
+  },
+  {
+   "id": "sleep_efficiency",
+   "items": [
+    {
+     "content": {
+      "id": "sleep_efficiency",
+      "card_title": "SLEEP EFFICIENCY",
+      "arrow_stat": [
+       {
+        "current_stat_text": "-:--",
+        "historic_stat_text": "",
+        "historic_stat_alignment": "LEFT",
+        "trend_state": "NO_DATA"
+       }
+      ],
+      "graph_legends": [],
+      "card_content": []
+     },
+     "type": "DETAILS_GRAPHING_CARD"
+    }
+   ],
+   "section_type": "COMPACT"
+  },
+  {
+   "id": "sleep_stress",
+   "items": [
+    {
+     "content": {
+      "id": "sleep_stress",
+      "card_title": "SLEEP STRESS",
+      "arrow_stat": [
+       {
+        "current_stat_text": "-:--",
+        "historic_stat_text": "",
+        "historic_stat_alignment": "LEFT",
+        "trend_state": "NO_DATA"
+       }
+      ],
+      "graph_legends": [],
+      "card_content": []
+     },
+     "type": "DETAILS_GRAPHING_CARD"
+    }
+   ],
+   "section_type": "COMPACT"
+  }
+ ]
+}

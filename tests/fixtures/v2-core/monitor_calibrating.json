@@ -1,0 +1,122 @@
+{
+ "metadata": {},
+ "title": "HEALTH MONITOR",
+ "footer": "Printable report for sharing with your doctor, physician, trainer, or anyone of your choosing.",
+ "items": [
+  {
+   "type": "INFO_CALLOUT_TILE",
+   "content": {
+    "style": "NEUTRAL",
+    "title": null,
+    "description": "Log 7 more sleeps to fully calibrate your ranges.",
+    "description_typography": null,
+    "icon": "EXPIRES",
+    "use_fallback_icon": null,
+    "icon_gradient": null,
+    "icon_size": null,
+    "component_dismissal_id": null,
+    "dismiss_action": null,
+    "items": [],
+    "items_alignment": null,
+    "analytics_properties": {}
+   }
+  },
+  {
+   "type": "KEY_METRIC_TILE",
+   "content": {
+    "id": "RESPIRATORY_RATE",
+    "key_metric_tile_icon": "RESPIRATORY_RATE",
+    "key_metric_tile_title_display": "Respiratory Rate",
+    "key_metric_tile_stat_value_display": "--",
+    "key_metric_tile_suffix_display": "",
+    "key_metric_tile_trend_display": "Calibrating Range",
+    "key_metric_tile_trend_type": "NONE",
+    "key_metric_tile_trend_bar": null
+   }
+  },
+  {
+   "type": "KEY_METRIC_TILE",
+   "content": {
+    "id": "BLOOD_OXYGEN",
+    "key_metric_tile_icon": "BLOOD_OXYGEN",
+    "key_metric_tile_title_display": "Blood Oxygen (SpO\u2082)",
+    "key_metric_tile_stat_value_display": "--",
+    "key_metric_tile_suffix_display": "",
+    "key_metric_tile_trend_display": "Calibrating Range",
+    "key_metric_tile_trend_type": "NONE",
+    "key_metric_tile_trend_bar": null
+   }
+  },
+  {
+   "type": "KEY_METRIC_TILE",
+   "content": {
+    "id": "RHR",
+    "key_metric_tile_icon": "RHR",
+    "key_metric_tile_title_display": "RHR",
+    "key_metric_tile_stat_value_display": "--",
+    "key_metric_tile_suffix_display": "",
+    "key_metric_tile_trend_display": "Calibrating Range",
+    "key_metric_tile_trend_type": "NONE",
+    "key_metric_tile_trend_bar": null
+   }
+  },
+  {
+   "type": "KEY_METRIC_TILE",
+   "content": {
+    "id": "HRV",
+    "key_metric_tile_icon": "HRV",
+    "key_metric_tile_title_display": "HRV",
+    "key_metric_tile_stat_value_display": "--",
+    "key_metric_tile_suffix_display": "",
+    "key_metric_tile_trend_display": "Calibrating Range",
+    "key_metric_tile_trend_type": "NONE",
+    "key_metric_tile_trend_bar": null
+   }
+  },
+  {
+   "type": "KEY_METRIC_TILE",
+   "content": {
+    "id": "SKIN_TEMPERATURE_FAHRENHEIT",
+    "key_metric_tile_icon": "SKIN_TEMPERATURE",
+    "key_metric_tile_title_display": "Skin Temp (From Baseline)",
+    "key_metric_tile_stat_value_display": "--",
+    "key_metric_tile_suffix_display": "",
+    "key_metric_tile_trend_display": "Calibrating Range",
+    "key_metric_tile_trend_type": "NONE",
+    "key_metric_tile_trend_bar": null
+   }
+  },
+  {
+   "type": "MENU_ITEM",
+   "content": {
+    "title": "Share Your Health Report",
+    "subtitle": null,
+    "suffix_title": null,
+    "suffix_subtitle": null,
+    "suffix_type": null,
+    "left_icon": "SHARE",
+    "right_icon": null,
+    "right_image_url": null,
+    "menu_item_state": "ENABLED",
+    "style": null,
+    "destination": {
+     "screen": "SHARE_HEALTH_REPORT",
+     "parameters": {}
+    },
+    "type": null
+   }
+  }
+ ],
+ "analytics": {
+  "highest_severity_status": "NONE",
+  "metrics_with_values": 0,
+  "metrics_in_range": 0,
+  "ranges": {
+   "RESPIRATORY_RATE": "NONE",
+   "BLOOD_OXYGEN": "NONE",
+   "RHR": "NONE",
+   "HRV": "NONE",
+   "SKIN_TEMPERATURE_FAHRENHEIT": "NONE"
+  }
+ }
+}

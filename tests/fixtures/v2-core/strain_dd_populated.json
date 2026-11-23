@@ -1,0 +1,17 @@
+{
+ "_comment": "Synthetic, shaped like a calibrated account's GET /home-service/v1/deep-dive/strain (values invented).",
+ "sections": [
+  { "items": [ { "type": "SCORE_GAUGE", "content": { "id": "STRAIN_SCORE_GAUGE", "score_display": "11.2", "score_target": 0.6, "lower_optimal_percentage": 0.53, "higher_optimal_percentage": 0.71, "progress_fill_style": "STRAIN" } } ] },
+  { "items": [ { "type": "CONTRIBUTORS_TILE", "content": { "id": "STRAIN_CONTRIBUTORS_TILE", "metrics": [
+   { "id": "CONTRIBUTORS_TILE_HR_ZONES_1_3", "status": "1:05", "status_subtitle": "0:48", "metric_style": "DATA", "status_type": "HIGHER_POSITIVE" },
+   { "id": "CONTRIBUTORS_TILE_HR_ZONES_4_5", "status": "0:12", "status_subtitle": "0:07", "metric_style": "DATA", "status_type": "HIGHER_POSITIVE" },
+   { "id": "CONTRIBUTORS_TILE_STRENGTH_TRAINING_TIME", "status": "0:00", "status_subtitle": "0:15", "metric_style": "DATA", "status_type": "LOWER_NEGATIVE" },
+   { "id": "CONTRIBUTORS_TILE_STEPS", "status": "9,412", "status_subtitle": "8,105", "metric_style": "DATA", "status_type": "HIGHER_POSITIVE" }
+  ] } } ] },
+  { "items": [ { "type": "HEADER", "content": { "title": "ACTIVITIES" } } ] },
+  { "items": [
+   { "type": "ACTIVITY", "content": { "title": "RUNNING", "score_display": "8.4", "status": "COMPLETE", "type": "CARDIO", "activity_v2_id": "aaaaaaaa-0000-4000-8000-000000000002", "sport_id": -1, "internal_name": "running", "during": { "lower_endpoint": "2026-11-18T16:00:00.000+0000", "upper_endpoint": "2026-11-18T16:42:00.000+0000" } } },
+   { "type": "ACTIVITY", "content": { "title": "WALKING", "score_display": "0.0", "status": "PENDING", "type": "CARDIO", "activity_v2_id": "aaaaaaaa-0000-4000-8000-000000000005", "sport_id": -1, "internal_name": "walking", "during": { "lower_endpoint": "2026-11-18T23:00:00.000+0000", "upper_endpoint": "2026-11-18T23:30:00.000+0000" }, "destination": null } }
+  ] }
+ ]
+}

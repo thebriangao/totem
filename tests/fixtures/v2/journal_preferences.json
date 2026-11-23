@@ -1,0 +1,13 @@
+{
+ "user_id": 1,
+ "created_at": 1795306368.974,
+ "updated_at": 1795307547.151,
+ "completion_cutoff_date": [
+  2026,
+  11,
+  21
+ ],
+ "journal_enabled": true,
+ "journal_autopop_enabled": true,
+ "ai_autopop_enabled": true
+}

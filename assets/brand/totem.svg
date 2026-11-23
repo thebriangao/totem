@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 800 800">
+  <title>totem</title>
+  <!-- no background: the mark sits on whatever is behind it. The box is square, a little wider than the mark. -->
+  <!-- each half: full shape in the main colour, fold face on top -->
+  <g id="top">
+    <polygon fill="#B7D3F2" points="125.00,393.35 500.00,176.84 684.73,283.49 376.23,461.60 509.24,538.40 258.00,683.44 125.00,606.65"/>
+    <polygon fill="#7A9CC6" points="125.00,606.65 376.23,461.60 509.24,538.40 258.00,683.44"/>
+  </g>
+  <g id="bottom">
+    <polygon fill="#B7D3F2" points="875.00,606.65 500.00,823.16 315.27,716.51 623.77,538.40 490.76,461.60 742.00,316.56 875.00,393.35"/>
+    <polygon fill="#7A9CC6" points="875.00,393.35 623.77,538.40 490.76,461.60 742.00,316.56"/>
+  </g>
+</svg>

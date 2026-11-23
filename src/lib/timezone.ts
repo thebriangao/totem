@@ -241,13 +241,20 @@ export function localizeTimestamps<T>(value: T, tz: string = getTimezone()): T {
   if (Array.isArray(value)) {
     return value.map((item) => localizeTimestamps(item, tz)) as T;
   }
+  // JSON.stringify writes a Date as its ISO string. Rebuilding it key by key
+  // (it has none) turned it into {} before stringify ever saw it.
+  if (value instanceof Date) {
+    return (Number.isNaN(value.getTime()) ? null : toLocalIso(value.toISOString(), tz)) as T;
+  }
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
       // Fields explicitly named *_utc are wire-level / audit values. Their
       // literal UTC form matters (for example write previews show precisely
       // what will be sent to Whoop), so do not turn them back into local time.
-      out[k] = k.endsWith("_utc") ? v : localizeTimestamps(v, tz);
+      // A write preview's `will_execute` is the exact request (compact() leaves
+      // it alone for the same reason): its timestamps stay as they will be sent.
+      out[k] = k.endsWith("_utc") || k === "will_execute" ? v : localizeTimestamps(v, tz);
     }
     return out as T;
   }

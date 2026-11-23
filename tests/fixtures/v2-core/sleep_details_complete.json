@@ -1,0 +1,45 @@
+{
+ "_comment": "Synthetic, shaped like GET /core-details-bff/v2/sleep-details/{id} for a scored main sleep (values invented; structure from a real COMPLETE_NAP).",
+ "activity_display_type": "COMPLETE_SLEEP",
+ "sleep_details_labels": { "screen_title_display": "SLEEP", "sleep_duration_time_display": "Nov 17 11:10 PM to Nov 18 7:05 AM", "sleep_metrics_label_display": "SLEEP METRICS" },
+ "sleep_details_edit_components": { "sleep_start_time": "2026-11-18T07:10:00.000Z", "sleep_end_time": "2026-11-18T15:05:00.000Z", "nap_to_sleep_available": false },
+ "sleep_metric_breakdowns": [
+  { "sleep_metric_type": "WAKE_EVENTS", "sleep_metric_value_display": "1.6", "metric_unit_display": "per hour" },
+  { "sleep_metric_type": "EFFICIENCY", "sleep_metric_value_display": "92", "metric_unit_display": "%" },
+  { "sleep_metric_type": "REM_SLEEP", "sleep_metric_value_display": "1:54" },
+  { "sleep_metric_type": "LIGHT_SLEEP", "sleep_metric_value_display": "3:39" },
+  { "sleep_metric_type": "DEEP_SLEEP", "sleep_metric_value_display": "1:45" },
+  { "sleep_metric_type": "AWAKE", "sleep_metric_value_display": "0:38" },
+  { "sleep_metric_type": "RESTORATIVE_SLEEP", "sleep_metric_value_display": "3:39" },
+  { "sleep_metric_type": "TIME_IN_BED", "sleep_metric_value_display": "7:55" },
+  { "sleep_metric_type": "HOURS_OF_SLEEP", "sleep_metric_value_display": "7:17" },
+  { "sleep_metric_type": "TOTAL_WAKE_EVENTS", "sleep_metric_value_display": "12" },
+  { "sleep_metric_type": "LATENCY", "sleep_metric_value_display": "6", "metric_unit_display": "min" },
+  { "sleep_metric_type": "RESPIRATORY_RATE", "sleep_metric_value_display": "15.1", "metric_unit_display": "rpm" }
+ ],
+ "bar_graph_container": {
+  "duration_display": "7:55",
+  "heart_rate_zones": [
+   { "id": "AWAKE", "bar_graph_tile_time_display": "0:38", "bar_graph_tile_percentage_display": "8%", "bar_graph": { "time_bound_ranges": [ { "lower_endpoint": 0.55, "upper_endpoint": 0.6 }, { "lower_endpoint": 0.97, "upper_endpoint": 1.0 } ] } },
+   { "id": "LIGHT_SLEEP", "bar_graph_tile_time_display": "3:39", "bar_graph_tile_percentage_display": "46%", "bar_graph": { "time_bound_ranges": [ { "lower_endpoint": 0.0, "upper_endpoint": 0.1 }, { "lower_endpoint": 0.25, "upper_endpoint": 0.45 }, { "lower_endpoint": 0.67, "upper_endpoint": 0.83 } ] } },
+   { "id": "SWS_SLEEP", "bar_graph_tile_time_display": "1:45", "bar_graph_tile_percentage_display": "22%", "bar_graph": { "time_bound_ranges": [ { "lower_endpoint": 0.1, "upper_endpoint": 0.25 }, { "lower_endpoint": 0.6, "upper_endpoint": 0.67 } ] } },
+   { "id": "REM_SLEEP", "bar_graph_tile_time_display": "1:54", "bar_graph_tile_percentage_display": "24%", "bar_graph": { "time_bound_ranges": [ { "lower_endpoint": 0.45, "upper_endpoint": 0.55 }, { "lower_endpoint": 0.83, "upper_endpoint": 0.97 } ] } }
+  ]
+ },
+ "graph": {
+  "graph_title_display": "HEART RATE",
+  "plots": [
+   { "type": "LINE_PLOT", "plot": { "id": "SLEEP_HEART_RATE", "segments": [ { "points": [
+    { "position_x": 0.0, "data_scrubber_details": { "secondary_contextual_display": "11:00 PM", "unit_display": "bpm", "value_display": "88" } },
+    { "position_x": 0.075, "data_scrubber_details": { "secondary_contextual_display": "11:10 PM", "unit_display": "bpm", "value_display": "58" } },
+    { "position_x": 0.3, "data_scrubber_details": { "secondary_contextual_display": "1:30 AM", "unit_display": "bpm", "value_display": "52" } },
+    { "position_x": 0.6, "data_scrubber_details": { "secondary_contextual_display": "4:00 AM", "unit_display": "bpm", "value_display": "49" } },
+    { "position_x": 0.925, "data_scrubber_details": { "secondary_contextual_display": "7:05 AM", "unit_display": "bpm", "value_display": "55" } },
+    { "position_x": 1.0, "data_scrubber_details": { "secondary_contextual_display": "7:15 AM", "unit_display": "bpm", "value_display": "96" } }
+   ] } ] } },
+   { "type": "LINE_PLOT", "plot": { "id": "LIGHT_SLEEP", "segments": [ { "points": [ { "position_x": 0.075, "data_scrubber_details": null }, { "position_x": 0.3, "data_scrubber_details": null } ] } ] } },
+   { "type": "LINE_PLOT", "plot": { "id": "REM_SLEEP", "segments": [ { "points": [ { "position_x": 0.6, "data_scrubber_details": null }, { "position_x": 0.925, "data_scrubber_details": null } ] } ] } }
+  ]
+ },
+ "whoop_coach_vow": { "vow": "You got 92% of the sleep you needed." }
+}

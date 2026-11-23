@@ -1,0 +1,985 @@
+{
+ "metadata": {
+  "cycle_metadata": {
+   "cycle_id": 1974268448,
+   "cycle_day": "2026-11-21",
+   "cycle_days": {
+    "lower_endpoint": "2026-11-21",
+    "lower_bound_type": "CLOSED",
+    "upper_endpoint": "2026-11-22",
+    "upper_bound_type": "OPEN"
+   },
+   "during": {
+    "lower_endpoint": "2026-11-21T10:15:00.000+0000",
+    "lower_bound_type": "CLOSED",
+    "upper_endpoint": "2026-11-22T01:36:00.000+0000",
+    "upper_bound_type": "OPEN"
+   },
+   "cycle_date_display": "TODAY",
+   "previous_cycle_day": "2026-11-20",
+   "next_cycle_day": "2026-11-22",
+   "multi_day_cycle": false,
+   "has_multi_day_cycle_cta_tile": false,
+   "sleep_state": null,
+   "day_zero": true
+  },
+  "journal_metadata": {
+   "journal_completed": true,
+   "has_recovery": false,
+   "has_cycle": true,
+   "journal_enabled": true,
+   "display_cycle_state": "ADD_SLEEP",
+   "should_auto_pop": false,
+   "previous_cycle_during": {
+    "lower_endpoint": "2026-11-21T10:15:00.000+0000",
+    "lower_bound_type": "CLOSED",
+    "upper_endpoint": "2026-11-22T01:36:00.000+0000",
+    "upper_bound_type": "OPEN"
+   },
+   "has_enough_recoveries": false
+  },
+  "whoop_live_metadata": {
+   "day_strain": 20.9,
+   "recovery_score": 0,
+   "ms_of_sleep": 0,
+   "calories": 0
+  }
+ },
+ "header": {
+  "content": {
+   "id": "SCORE_GAUGE_STICKY",
+   "gauges": [
+    {
+     "title": "SLEEP",
+     "destination": {
+      "screen": "PILLAR_DEEP_DIVE",
+      "parameters": {
+       "pillar": "sleep",
+       "date": "2026-11-21",
+       "source": null
+      }
+     },
+     "id": "SLEEP_GAUGE_STICKY",
+     "score_display": "--",
+     "score_display_style": "DISABLED",
+     "score_display_suffix": "%",
+     "gauge_fill_percentage": 0,
+     "score_target": null,
+     "lower_optimal_percentage": null,
+     "higher_optimal_percentage": null,
+     "progress_fill_style": "SLEEP"
+    },
+    {
+     "title": "RECOVERY",
+     "destination": {
+      "screen": "PILLAR_DEEP_DIVE",
+      "parameters": {
+       "pillar": "recovery",
+       "date": "2026-11-21",
+       "source": null
+      }
+     },
+     "id": "RECOVERY_GAUGE_STICKY",
+     "score_display": "--",
+     "score_display_style": "DISABLED",
+     "score_display_suffix": "%",
+     "gauge_fill_percentage": 0,
+     "score_target": null,
+     "lower_optimal_percentage": null,
+     "higher_optimal_percentage": null,
+     "progress_fill_style": "CALIBRATING"
+    },
+    {
+     "title": "STRAIN",
+     "destination": {
+      "screen": "PILLAR_DEEP_DIVE",
+      "parameters": {
+       "pillar": "strain",
+       "date": "2026-11-21",
+       "source": null
+      }
+     },
+     "id": "STRAIN_GAUGE_STICKY",
+     "score_display": "20.9",
+     "score_display_style": "DEFAULT",
+     "score_display_suffix": null,
+     "gauge_fill_percentage": 0.9975067487853986,
+     "score_target": null,
+     "lower_optimal_percentage": null,
+     "higher_optimal_percentage": null,
+     "progress_fill_style": "STRAIN"
+    }
+   ],
+   "header_item": null
+  },
+  "type": "SCORE_GAUGE_STICKY"
+ },
+ "pillars": [
+  {
+   "display_name": "OVERVIEW",
+   "type": "OVERVIEW",
+   "sections": [
+    {
+     "id": null,
+     "items": [],
+     "section_type": "COMPACT"
+    },
+    {
+     "id": null,
+     "items": [
+      {
+       "content": {
+        "id": null,
+        "title": "Get Started",
+        "subtitle": null,
+        "subtitle_end": null,
+        "cta": null,
+        "cta_state": null,
+        "icon": null,
+        "style": "LARGE",
+        "destination": null,
+        "leading_button": true,
+        "interaction": null
+       },
+       "type": "HEADER"
+      },
+      {
+       "content": {
+        "list": [
+         {
+          "content": {
+           "id": "e7af35c6-f0c4-4edf-b9e2-2a532cc34539",
+           "key": "START_ACTIVITY",
+           "final_index": 1,
+           "initial": {
+            "content": {
+             "background_style": "NONE",
+             "cta_text": "START ACTIVITY",
+             "cta": "SLEEP_DETAILS",
+             "navigation": {
+              "screen": "STRAIN_COACH",
+              "parameters": {}
+             },
+             "id": "e7af35c6-f0c4-4edf-b9e2-2a532cc34539",
+             "title": "Ready to get moving?",
+             "body": "Start your first activity and come back to explore your heart rate zones and more on WHOOP.",
+             "app_notification_type": "START_ACTIVITY",
+             "template_name": null,
+             "show_highlight": false,
+             "card_type": "ONBOARDING",
+             "ios_feature_flag_name": null,
+             "android_feature_flag_name": null,
+             "title_icon_url": null,
+             "personalized": false
+            },
+            "type": "TEXT_WITH_ILLUSTRATION"
+           },
+           "completed": {
+            "content": {
+             "footer": null,
+             "header": {
+              "title": "TODAY'S ACTIVITIES",
+              "title_icon": null,
+              "cta_icon": "TINY_EXPAND",
+              "cta_destination": {
+               "screen": "TILT_MODE",
+               "parameters": {
+                "date": "2026-11-21",
+                "source": "HOME_SCREEN"
+               }
+              }
+             },
+             "items": [
+              {
+               "content": {
+                "is_gps_enabled": null,
+                "title": "NAP",
+                "score_display": "0:00",
+                "start_time_text": "3:00 AM",
+                "end_time_text": "3:20 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "SLEEP",
+                "activity_v2_id": "00b9ca29-9dce-4c94-85e6-dd4d88167e00",
+                "sport_id": -1,
+                "internal_name": "nap",
+                "during": {
+                 "lower_endpoint": "2026-11-21T11:00:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T11:20:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "SLEEP_DETAILS",
+                 "parameters": {
+                  "activity_id": "00b9ca29-9dce-4c94-85e6-dd4d88167e00"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": null,
+                "title": "NAP",
+                "score_display": "0:00",
+                "start_time_text": "3:40 AM",
+                "end_time_text": "3:50 AM",
+                "secondary_icon_url": null,
+                "status": "PENDING",
+                "type": "SLEEP",
+                "activity_v2_id": "e31ee90d-0f0f-4351-ae61-1328ada4ec8b",
+                "sport_id": -1,
+                "internal_name": "nap",
+                "during": {
+                 "lower_endpoint": "2026-11-21T11:40:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T11:50:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": null
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": null,
+                "title": "MEDITATION",
+                "score_display": "0:20",
+                "start_time_text": "6:01 AM",
+                "end_time_text": "6:21 AM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "RECOVERY",
+                "activity_v2_id": "29792beb-daf3-4422-b2ee-ad1d4d318d94",
+                "sport_id": -1,
+                "internal_name": "meditation",
+                "during": {
+                 "lower_endpoint": "2026-11-21T14:01:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T14:21:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "RECOVERY_DETAILS",
+                 "parameters": {
+                  "activity_id": "29792beb-daf3-4422-b2ee-ad1d4d318d94",
+                  "entry_point": "Home Screen",
+                  "type": "RECOVERY"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "RUNNING",
+                "score_display": "0.0",
+                "start_time_text": "6:31 AM",
+                "end_time_text": "6:51 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "1857dbb1-c508-4159-af45-356c9408b8c8",
+                "sport_id": -1,
+                "internal_name": "running",
+                "during": {
+                 "lower_endpoint": "2026-11-21T14:31:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T14:51:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "1857dbb1-c508-4159-af45-356c9408b8c8",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": null,
+                "title": "DRY SAUNA",
+                "score_display": "0:10",
+                "start_time_text": "7:00 AM",
+                "end_time_text": "7:10 AM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "RECOVERY",
+                "activity_v2_id": "6db1e439-a2d5-43c3-bc0b-0a0eaa451b48",
+                "sport_id": -1,
+                "internal_name": "sauna",
+                "during": {
+                 "lower_endpoint": "2026-11-21T15:00:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T15:10:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "RECOVERY_DETAILS",
+                 "parameters": {
+                  "activity_id": "6db1e439-a2d5-43c3-bc0b-0a0eaa451b48",
+                  "entry_point": "Home Screen",
+                  "type": "RECOVERY"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": null,
+                "title": "STRETCHING",
+                "score_display": "0:10",
+                "start_time_text": "7:15 AM",
+                "end_time_text": "7:25 AM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "RECOVERY",
+                "activity_v2_id": "6fb48200-0e75-4ff0-b72d-963113b288f7",
+                "sport_id": -1,
+                "internal_name": "stretching",
+                "during": {
+                 "lower_endpoint": "2026-11-21T15:15:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T15:25:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "RECOVERY_DETAILS",
+                 "parameters": {
+                  "activity_id": "6fb48200-0e75-4ff0-b72d-963113b288f7",
+                  "entry_point": "Home Screen",
+                  "type": "RECOVERY"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "ROWING",
+                "score_display": "0.0",
+                "start_time_text": "7:45 AM",
+                "end_time_text": "7:55 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "303f933a-e2c5-40f0-a394-7518b40e45ca",
+                "sport_id": -1,
+                "internal_name": "rowing",
+                "during": {
+                 "lower_endpoint": "2026-11-21T15:45:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T15:55:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "303f933a-e2c5-40f0-a394-7518b40e45ca",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "WALKING",
+                "score_display": "0.0",
+                "start_time_text": "7:56 AM",
+                "end_time_text": "8:01 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "3b7b6239-a944-48f8-b09d-3f329814f7ba",
+                "sport_id": -1,
+                "internal_name": "walking",
+                "during": {
+                 "lower_endpoint": "2026-11-21T15:56:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T16:01:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "3b7b6239-a944-48f8-b09d-3f329814f7ba",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "WALKING",
+                "score_display": "0.0",
+                "start_time_text": "8:10 AM",
+                "end_time_text": "8:15 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "2a18f799-14a4-47d7-b12e-29bb60e06bd3",
+                "sport_id": -1,
+                "internal_name": "walking",
+                "during": {
+                 "lower_endpoint": "2026-11-21T16:10:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T16:15:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "2a18f799-14a4-47d7-b12e-29bb60e06bd3",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "YOGA",
+                "score_display": "0.0",
+                "start_time_text": "8:25 AM",
+                "end_time_text": "8:35 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "7c9f73c3-cbe4-4e7f-a714-78fc376b4ccf",
+                "sport_id": -1,
+                "internal_name": "yoga",
+                "during": {
+                 "lower_endpoint": "2026-11-21T16:25:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T16:35:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "7c9f73c3-cbe4-4e7f-a714-78fc376b4ccf",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "TENNIS",
+                "score_display": "0.0",
+                "start_time_text": "8:40 AM",
+                "end_time_text": "8:45 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "ddd569e7-152d-4e57-9385-aaaf46f7d352",
+                "sport_id": -1,
+                "internal_name": "tennis",
+                "during": {
+                 "lower_endpoint": "2026-11-21T16:40:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T16:45:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "ddd569e7-152d-4e57-9385-aaaf46f7d352",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "WEIGHTLIFTING",
+                "score_display": "0.0",
+                "start_time_text": "8:50 AM",
+                "end_time_text": "8:55 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "e2f58410-42ee-4e8a-a35a-5a85126afeeb",
+                "sport_id": -1,
+                "internal_name": "weightlifting",
+                "during": {
+                 "lower_endpoint": "2026-11-21T16:50:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T16:55:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "e2f58410-42ee-4e8a-a35a-5a85126afeeb",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "WALKING",
+                "score_display": "0.0",
+                "start_time_text": "10:00 AM",
+                "end_time_text": "10:40 AM",
+                "secondary_icon_url": "MISSING_DATA",
+                "status": "INCOMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "5ae6fc5f-0741-4316-a8c1-a16b18086aa0",
+                "sport_id": -1,
+                "internal_name": "walking",
+                "during": {
+                 "lower_endpoint": "2026-11-21T18:00:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T18:40:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "5ae6fc5f-0741-4316-a8c1-a16b18086aa0",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": false,
+                "title": "WALKING",
+                "score_display": "0.0",
+                "start_time_text": "12:30 PM",
+                "end_time_text": "1:00 PM",
+                "secondary_icon_url": null,
+                "status": "PENDING",
+                "type": "CARDIO",
+                "activity_v2_id": "19c0b808-a639-4db0-9a01-2a9d84f5a0b5",
+                "sport_id": -1,
+                "internal_name": "walking",
+                "during": {
+                 "lower_endpoint": "2026-11-21T20:30:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-21T21:00:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": null
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "COMMUTING",
+                "score_display": "0.0",
+                "start_time_text": "4:18 PM",
+                "end_time_text": "4:20 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "f3680536-d7c6-4bb8-ad73-73c714a38717",
+                "sport_id": -1,
+                "internal_name": "commuting",
+                "during": {
+                 "lower_endpoint": "2026-11-22T00:18:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T00:20:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "f3680536-d7c6-4bb8-ad73-73c714a38717",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "CYCLING",
+                "score_display": "0.0",
+                "start_time_text": "4:22 PM",
+                "end_time_text": "4:23 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "5b1ccc47-dd76-46f3-9d3f-d29581482c00",
+                "sport_id": -1,
+                "internal_name": "cycling",
+                "during": {
+                 "lower_endpoint": "2026-11-22T00:22:34.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T00:23:43.012+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "5b1ccc47-dd76-46f3-9d3f-d29581482c00",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "BOXING",
+                "score_display": "4.6",
+                "start_time_text": "4:24 PM",
+                "end_time_text": "4:27 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "70ad76a1-1e3c-4c8e-a026-903ff3175783",
+                "sport_id": -1,
+                "internal_name": "boxing",
+                "during": {
+                 "lower_endpoint": "2026-11-22T00:24:37.527+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T00:27:03.453+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "70ad76a1-1e3c-4c8e-a026-903ff3175783",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "STRENGTH TRAINER",
+                "score_display": "10.8",
+                "start_time_text": "4:38 PM",
+                "end_time_text": "4:39 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "750396ee-8201-4862-9f1d-5e86c28d2ea9",
+                "sport_id": -1,
+                "internal_name": "weightlifting_msk",
+                "during": {
+                 "lower_endpoint": "2026-11-22T00:38:57.696+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T00:39:15.415+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "750396ee-8201-4862-9f1d-5e86c28d2ea9",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "STRENGTH TRAINER",
+                "score_display": "10.6",
+                "start_time_text": "4:39 PM",
+                "end_time_text": "4:39 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "02f01028-17b2-4e74-ad32-9ca37a753eba",
+                "sport_id": -1,
+                "internal_name": "weightlifting_msk",
+                "during": {
+                 "lower_endpoint": "2026-11-22T00:39:30.584+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T00:39:44.104+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "02f01028-17b2-4e74-ad32-9ca37a753eba",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "STRENGTH TRAINER",
+                "score_display": "0.2",
+                "start_time_text": "4:40 PM",
+                "end_time_text": "4:40 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "d31a7f6e-960b-4f59-8cce-79f8574f7b63",
+                "sport_id": -1,
+                "internal_name": "weightlifting_msk",
+                "during": {
+                 "lower_endpoint": "2026-11-22T00:40:02.593+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T00:40:25.392+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "d31a7f6e-960b-4f59-8cce-79f8574f7b63",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "STRENGTH TRAINER",
+                "score_display": "20.9",
+                "start_time_text": "5:07 PM",
+                "end_time_text": "5:08 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "e6220ee1-f0fa-4139-b3e0-98adcb1bd636",
+                "sport_id": -1,
+                "internal_name": "weightlifting_msk",
+                "during": {
+                 "lower_endpoint": "2026-11-22T01:07:41.406+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T01:08:41.406+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "e6220ee1-f0fa-4139-b3e0-98adcb1bd636",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              },
+              {
+               "content": {
+                "is_gps_enabled": true,
+                "title": "STRENGTH TRAINER",
+                "score_display": "0.0",
+                "start_time_text": "5:17 PM",
+                "end_time_text": "5:18 PM",
+                "secondary_icon_url": null,
+                "status": "COMPLETE",
+                "type": "CARDIO",
+                "activity_v2_id": "f48ccc49-c269-48a2-968d-38a78bbf7176",
+                "sport_id": -1,
+                "internal_name": "weightlifting_msk",
+                "during": {
+                 "lower_endpoint": "2026-11-22T01:17:00.000+0000",
+                 "lower_bound_type": "CLOSED",
+                 "upper_endpoint": "2026-11-22T01:18:00.000+0000",
+                 "upper_bound_type": "OPEN"
+                },
+                "destination": {
+                 "screen": "CARDIO_DETAILS",
+                 "parameters": {
+                  "activity_id": "f48ccc49-c269-48a2-968d-38a78bbf7176",
+                  "entry_point": "Home Screen",
+                  "type": "CARDIO"
+                 }
+                }
+               },
+               "type": "ACTIVITY"
+              }
+             ],
+             "id": "activity_items_card"
+            },
+            "type": "ITEMS_CARD"
+           },
+           "style": "ONBOARDING"
+          },
+          "type": "CUSTOM_ANIMATION_CONTAINER"
+         }
+        ]
+       },
+       "type": "DAY_ZERO_CARDS"
+      }
+     ],
+     "section_type": "COMPACT"
+    },
+    {
+     "id": null,
+     "items": [
+      {
+       "content": {
+        "id": null,
+        "title": "Looking Ahead",
+        "subtitle": null,
+        "subtitle_end": null,
+        "cta": null,
+        "cta_state": null,
+        "icon": null,
+        "style": "LARGE",
+        "destination": null,
+        "leading_button": null,
+        "interaction": null
+       },
+       "type": "HEADER"
+      },
+      {
+       "content": {
+        "icon": "TUTORIALS",
+        "title": "CALIBRATION TIMELINE",
+        "body": "Wear your WHOOP to bed nightly and check back in here to track your sleeps and discover new insights.",
+        "circular_progress_indicator": {
+         "id": null,
+         "current_progress_steps": {
+          "text_display": "0/7",
+          "current_step": 0,
+          "total_steps": 7,
+          "style": "WHAT_TO_EXPECT_SMALL",
+          "text_display_options": []
+         },
+         "current_progress_percentage": null
+        },
+        "navigation": {
+         "screen": "WHAT_TO_EXPECT",
+         "parameters": {}
+        }
+       },
+       "type": "CALIBRATION_TIMELINE"
+      }
+     ],
+     "section_type": "COMPACT"
+    },
+    {
+     "id": null,
+     "items": [
+      {
+       "content": {
+        "id": null,
+        "title": "My Dashboard",
+        "subtitle": null,
+        "subtitle_end": null,
+        "cta": null,
+        "cta_state": null,
+        "icon": null,
+        "style": "LARGE",
+        "destination": null,
+        "leading_button": null,
+        "interaction": null
+       },
+       "type": "HEADER"
+      },
+      {
+       "content": {
+        "trend_key": "HRV",
+        "title": "HRV",
+        "current_value_display": "--",
+        "thirty_day_value_display": null,
+        "state": "NO_DATA",
+        "icon": "HRV_OUTLINE",
+        "style": "DEFAULT",
+        "opacity": null
+       },
+       "type": "KEY_STATISTIC"
+      },
+      {
+       "content": {
+        "trend_key": "SLEEP_PERFORMANCE",
+        "title": "SLEEP PERFORMANCE",
+        "current_value_display": "--",
+        "thirty_day_value_display": null,
+        "state": "NO_DATA",
+        "icon": "SLEEP",
+        "style": "DEFAULT",
+        "opacity": null
+       },
+       "type": "KEY_STATISTIC"
+      },
+      {
+       "content": {
+        "trend_key": "STEPS",
+        "title": "STEPS",
+        "current_value_display": "--",
+        "thirty_day_value_display": null,
+        "state": "NO_DATA",
+        "icon": "STEPS",
+        "style": "DEFAULT",
+        "opacity": null
+       },
+       "type": "KEY_STATISTIC"
+      },
+      {
+       "content": {
+        "trend_key": "CALORIES",
+        "title": "CALORIES",
+        "current_value_display": "--",
+        "thirty_day_value_display": null,
+        "state": "NO_DATA",
+        "icon": "CALORIES",
+        "style": "DEFAULT",
+        "opacity": null
+       },
+       "type": "KEY_STATISTIC"
+      }
+     ],
+     "section_type": "COMPACT"
+    },
+    {
+     "id": "discover-more",
+     "items": [],
+     "section_type": "COMPACT"
+    },
+    {
+     "id": null,
+     "items": [],
+     "section_type": "COMPACT"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,90 @@
+
+totem cloud
+Deploy your own totem server and connect your AI apps to it.
+
+[1/6] Host
+? Where should the server run? (↑↓, Enter)
+  › Cloudflare      Workers free plan; no card, no machine (recommended)
+    Fly.io          one always-on machine, about $4 a month
+    Railway         managed, with a dashboard; needs Railway's paid plan
+    My own server   any Docker host; totem prints the commands
+? Where should the server run? Cloudflare
+✓ Node.js 24.3.0
+✓ Dependencies installed
+• Checking who is signed in to Cloudflare…
+• Starting the Cloudflare sign-in…
+• Cloudflare sign-in
+  https://dash.cloudflare.com/oauth2/auth?response_type=code&client_id=54d11594-84e4-41aa-b438-e81b8fa78ee7&redirect_uri=http%3A%2F%2Flocalhost%3A8976%2Foauth%2Fcallback&scope=account%3Aread%20user%3Aread%20workers%3Awrite%20workers_scripts%3Awrite%20offline_access&state=Qm9vdHN0cmFw&code_challenge=c2lnbi1pbg&code_challenge_method=S256
+? Open it in your browser? (Y/n)
+✓ Opened it in your browser
+• Checking who is signed in to Cloudflare…
+✓ Signed in to Cloudflare (you@example.com)
+
+[2/6] Secrets
+✓ MCP_AUTH_TOKEN generated (64 random characters; the server's own key)
+✓ Connector password generated (you get it at the end, once)
+  Both are set on the server. The token is also kept in
+  ~/.config/totem/deploy.json (readable only by you), so totem auth can reach
+  the server.
+
+[3/6] Deploy
+  Host:     Cloudflare, as you@example.com
+  Worker:   totem-c0ffee
+  Address:  https://totem-c0ffee.<your subdomain>.workers.dev
+  Storage:  a Durable Object keeps the WHOOP login across restarts
+  Cost:     free plan: up to 100,000 requests a day
+? Deploy this? (↑↓, Enter)
+  › Deploy
+    Change something   the name, the password, or the account
+    Cancel             nothing has been created
+? Deploy this? Deploy
+• Building and deploying on Cloudflare…
+✓ Deployed [21s]
+✓ Public address (https://totem-c0ffee.you.workers.dev)
+
+[4/6] Check
+• Waiting for https://totem-c0ffee.you.workers.dev to answer…
+✓ The server is up (/health answered in under a second)
+✓ Sign-in is advertised (clients can find where to log in)
+✓ /mcp is locked (401 without a token)
+
+[5/6] WHOOP login
+A Google Chrome window opens on WHOOP's site with a temporary profile. Log in
+there. totem never sees what you type: it waits for WHOOP's session cookies,
+then closes the window and deletes the profile.
+• Waiting for you to log in in the browser…
+✓ Logged in to WHOOP (user 1234567)
+✓ Login sent to the server (https://totem-c0ffee.you.workers.dev)
+  The server keeps it fresh from now on. No copy stays on this computer.
+
+[6/6] Connect your apps
+  URL:       https://totem-c0ffee.you.workers.dev/mcp
+  Password:  Kq7m-Rt2x-Vb9n-Lp4w-Hd6s (copied to the clipboard)
+  totem shows the password this once. Save it in your password manager.
+
+• Your server's Connect page
+  https://totem-c0ffee.you.workers.dev/connect
+? Open it in your browser? (Y/n)
+✓ Opened it in your browser
+  It has a button for claude.ai, Cursor and VS Code, and the steps for every
+  other app.
+
+Found on this computer: Claude Code, ChatGPT, OpenCode and Antigravity.
+? Add totem to all 4? (Y/n)
+✓ Added the whoop server to Claude Code (claude mcp add)
+  Codex opens the sign-in page in your browser and waits for you there.
+✓ Added the whoop server to ChatGPT (codex mcp add)
+✓ Added the whoop server to OpenCode (~/.config/opencode/opencode.json)
+✓ Added the whoop server to Antigravity (~/.gemini/config/mcp_config.json)
+
+Next
+  1. In Claude Code, run /mcp and authenticate whoop.
+  2. If ChatGPT or Codex asks you to sign in again, run: codex mcp login whoop
+  3. In OpenCode, run /mcps and sign in to whoop (or run: opencode mcp auth
+     whoop).
+  4. In Antigravity, type /mcp and check whoop is connected (sign in when it
+     asks).
+  5. Ask it: "How did I sleep last night?"
+
+  Every app: https://totem-c0ffee.you.workers.dev/connect
+  Check the server: totem status

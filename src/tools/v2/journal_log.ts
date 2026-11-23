@@ -1,225 +1,336 @@
+// whoop_journal_log (W!): write journal answers (SPEC.md §4.6, D3, §7 S10).
+//
+// Default path: PUT /journal-service/v2/journal/entry/partial. It merges across
+// rows, never touches notes, and takes several dates at once. The full PUT
+// (/journals/entries/user/date/{date}) replaces the whole day and nulls notes
+// it isn't sent, so it's used only for replace_day or notes, and then always
+// carries the current notes and answers from a fresh draft read (PR #44's
+// guard: no draft, no full PUT; a 404 counts as no draft). Every write is read
+// back: one 204 was seen not to land while cycles were being reshuffled.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../../whoop/client.js";
-import { JournalLogOut } from "../../schemas/journal.js";
+import { defineTool, respond, type ToolResult } from "../define.js";
+import { WRITE_DESTRUCTIVE } from "../annotations.js";
+import { JournalLogV2Out } from "../../schemas/journal_v2.js";
 import { preview } from "../../whoop/write_safety.js";
 import { jsonOut } from "../../whoop/json_out.js";
 import { todayIso } from "../../lib/dates.js";
-import { BEHAVIORS, BEHAVIORS_BY_ID, BEHAVIORS_BY_NAME } from "../../data/behaviors.js";
-import { isObject, asArray, asNumber, asString, asBool } from "../../lib/walk.js";
+import { runPaced } from "../../lib/concurrency.js";
+import { projectBehaviorToggles } from "../../projections/settings_v2.js";
+import {
+  answeredById,
+  buildRow,
+  carryRow,
+  isAnswered,
+  isDraftBody,
+  loadBehaviorCatalog,
+  parseDraft,
+  resolveBehavior,
+  splitMenstruationOvulation,
+  type BehaviorSpec,
+  type DraftDay,
+  type TrackerRow,
+} from "../../lib/journal_behaviors.js";
 
-// A journal row only renders in the Whoop app when `answered_yes` is true. A
-// tracker_input written without it lands server-side with `answered_yes: null`
-// — invisible in the app, yet the write returns 200. The bundled catalog marks
-// every behavior `magnitude: "bare"`, so gating the request on that field
-// rejected `answered_yes`, the magnitude and the time input for behaviors that
-// genuinely accept them (Sauna takes 1-300 minutes, Alcohol 1-20 drinks), and
-// the resulting entry was silently unreadable to the user.
-//
-// The live draft is the authority: each tracked behavior carries its real
-// `question_type` and `magnitude` spec. Validate against that when it is
-// available, default YES_NO behaviors to `true`, and confirm the write by
-// reading the day back instead of trusting the status code.
+const NAME = "whoop_journal_log";
+const DRAFT = (d: string) => `/journal-service/v3/journals/drafts/mobile/${d}`;
+const PARTIAL = "/journal-service/v2/journal/entry/partial";
+const FULL = (d: string) => `/journal-service/v2/journals/entries/user/date/${d}`;
+const CUSTOMIZE = "/journal-service/v3/journals/behaviors";
 
-export type LiveSpec = {
-  question_type: string | null;
-  magnitude: { type: string | null; units: string | null; minimum: number | null; maximum: number | null } | null;
-};
-
-export function specsFromDraft(raw: unknown): Map<number, LiveSpec> {
-  const specs = new Map<number, LiveSpec>();
-  const journal = isObject(raw) && isObject(raw.journal) ? (raw.journal as Record<string, unknown>) : null;
-  for (const entry of asArray(journal?.tracked_behaviors)) {
-    if (!isObject(entry)) continue;
-    const tracker = isObject(entry.behavior_tracker) ? (entry.behavior_tracker as Record<string, unknown>) : null;
-    const id = asNumber(tracker?.id);
-    if (id === null) continue;
-    const magnitude = isObject(tracker?.magnitude) ? (tracker!.magnitude as Record<string, unknown>) : null;
-    specs.set(id, {
-      question_type: asString(tracker?.question_type),
-      magnitude: magnitude
-        ? {
-            type: asString(magnitude.type),
-            units: asString(magnitude.units),
-            minimum: asNumber(magnitude.minimum_inclusive),
-            maximum: asNumber(magnitude.maximum_inclusive),
-          }
-        : null,
-    });
-  }
-  return specs;
+function fail(error: string, extra: Record<string, unknown> = {}): ToolResult {
+  return { content: [{ type: "text", text: jsonOut({ error, ...extra }) }], isError: true };
 }
 
-export type ExistingInput = { behavior_tracker_id: number; input: Record<string, unknown> };
+const BehaviorInput = z.object({
+  id: z.number().int().optional().describe("From whoop_journal include catalog"),
+  name: z.string().optional().describe("Exact title, e.g. Caffeine"),
+  answered_yes: z.boolean().optional().describe("Default true"),
+  magnitude: z.number().nullable().optional().describe("A number in range, or the step choice value; null clears"),
+  magnitude_label: z.string().optional().describe("Step choice label (e.g. Moderate) instead of magnitude"),
+  time: z.union([z.string(), z.number()]).nullable().optional().describe("ISO datetime with offset or epoch seconds; null clears"),
+});
 
-export function answeredInputsFromDraft(raw: unknown): ExistingInput[] {
-  const kept: ExistingInput[] = [];
-  const journal = isObject(raw) && isObject(raw.journal) ? (raw.journal as Record<string, unknown>) : null;
-  for (const entry of asArray(journal?.tracked_behaviors)) {
-    if (!isObject(entry)) continue;
-    const input = isObject(entry.tracker_input) ? (entry.tracker_input as Record<string, unknown>) : null;
-    const id = asNumber(input?.behavior_tracker_id);
-    if (id === null || input === null) continue;
-    if (asBool(input.answered_yes) === null && asNumber(input.magnitude_input_value) === null) continue;
-    const carried: Record<string, unknown> = { behavior_tracker_id: id };
-    if (asBool(input.answered_yes) !== null) carried.answered_yes = asBool(input.answered_yes);
-    if (asNumber(input.magnitude_input_value) !== null) {
-      carried.magnitude_input_value = asNumber(input.magnitude_input_value);
-      carried.magnitude_input_label = asString(input.magnitude_input_label) ?? String(asNumber(input.magnitude_input_value));
-    }
-    if (asNumber(input.time_input_value) !== null) carried.time_input_value = asNumber(input.time_input_value);
-    kept.push({ behavior_tracker_id: id, input: carried });
-  }
-  return kept;
+interface PlannedRow {
+  date: string;
+  spec: BehaviorSpec;
+  row: TrackerRow;
+  action: "set" | "unset";
+  carried: string[];
 }
 
-export function verifyWritten(raw: unknown, sent: Array<Record<string, unknown>>): { verified: boolean; missing: number[] } {
-  const written = new Map<number, Record<string, unknown>>();
-  for (const existing of answeredInputsFromDraft(raw)) written.set(existing.behavior_tracker_id, existing.input);
-  const missing = sent
-    .map((input) => Number(input.behavior_tracker_id))
-    .filter((id) => {
-      const back = written.get(id);
-      if (!back) return true;
-      const intended = sent.find((s) => Number(s.behavior_tracker_id) === id)!;
-      if (intended.answered_yes !== undefined && back.answered_yes !== intended.answered_yes) return true;
-      if (intended.magnitude_input_value !== undefined && back.magnitude_input_value !== intended.magnitude_input_value) return true;
-      return false;
-    });
-  return { verified: missing.length === 0, missing };
-}
+const iso = (secs: number | undefined) => (secs === undefined ? null : new Date(secs * 1000).toISOString());
 
-function toEpochSeconds(value: string | number): number | null {
-  if (typeof value === "number") return Number.isFinite(value) ? Math.round(value) : null;
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? null : Math.round(parsed / 1000);
+/** Drop null/empty fields (previews go out as-is). */
+function compact<T extends Record<string, unknown>>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && !(Array.isArray(v) && v.length === 0))) as Partial<T>;
 }
 
 export function registerJournalLog(server: McpServer, client: WhoopClient): void {
-  server.tool(
-    "whoop_journal_log",
-    "WRITE: log journal behaviors for a date. A behavior is only visible in the app when it is answered, so YES_NO behaviors default to answered_yes:true. Behaviors that accept a magnitude take magnitude_value (e.g. sauna minutes, alcoholic drinks) and an optional time (ISO datetime or epoch seconds) for 'when did you stop'. Entries already answered on that date are preserved unless replace_day:true. The write is confirmed by reading the day back, not by the status code.",
-    {
-      date: z.iso.date().optional(),
-      behaviors: z.array(z.object({
-        behavior_tracker_id: z.number().int().optional(),
-        behavior: z.string().optional().describe("Exact behavior title or internal name."),
-        answered_yes: z.boolean().optional().describe("Defaults to true — an unanswered row is invisible in the app."),
-        magnitude_value: z.number().optional(),
-        magnitude_label: z.string().optional(),
-        time: z.union([z.string(), z.number()]).optional().describe("ISO datetime or epoch seconds for the behavior's time input."),
-      })),
-      notes: z.string().optional(),
-      replace_day: z.boolean().default(false).describe("Drop every existing answer for the date instead of preserving the ones you did not mention."),
-      allow_empty_replace: z.boolean().default(false),
+  defineTool(server, {
+    name: NAME,
+    description:
+      "Log journal answers. Default is a merge: only the listed behaviours change, and a yes row keeps its stored magnitude and time " +
+      "unless you pass new ones (null clears). notes or replace_day:true rewrite the whole day (one date only), keeping current notes " +
+      "and answers unless replaced. Behaviours go by id or name, custom ones included. Previews unless confirm:true.",
+    input: {
+      date: z.iso.date().optional().describe("Default today"),
+      dates: z.array(z.iso.date()).min(1).max(7).optional().describe("Several dates; merge writes only"),
+      behaviors: z.array(BehaviorInput).default([]),
+      unset: z.array(z.union([z.number().int(), z.string()])).optional().describe("Ids or names whose answer to clear"),
+      notes: z.string().optional().describe("Replaces the day's notes; \"\" clears them"),
+      replace_day: z.boolean().optional().describe("Drops every answer not listed here"),
       confirm: z.boolean().default(false),
     },
-    async ({ date, behaviors, notes, replace_day, allow_empty_replace, confirm }) => {
-      const d = date ?? todayIso();
-      const draftPath = `/journal-service/v3/journals/drafts/mobile/${d}`;
-      if (behaviors.length === 0 && !allow_empty_replace) {
-        return {
-          content: [{ type: "text", text: jsonOut({ error: "Refusing to replace a journal with zero behaviors. Set allow_empty_replace:true only when intentional." }) }],
-          isError: true,
-        };
-      }
-      const resolved = behaviors.map((behavior) => {
-        if (behavior.behavior_tracker_id !== undefined) return { ...behavior, definition: BEHAVIORS_BY_ID.get(behavior.behavior_tracker_id) };
-        const name = behavior.behavior?.trim().toLowerCase();
-        const definition = name
-          ? BEHAVIORS_BY_NAME.get(name) ?? BEHAVIORS.find((b) => b.title.toLowerCase() === name)
-          : undefined;
-        return { ...behavior, behavior_tracker_id: definition?.behavior_tracker_id, definition };
-      });
-      const unknown = resolved.filter((b) => !b.definition).map((b) => b.behavior ?? b.behavior_tracker_id);
-      if (unknown.length > 0) {
-        return {
-          content: [{ type: "text", text: jsonOut({ error: "Unknown behavior", unknown, hint: "Use whoop_journal_catalog" }) }],
-          isError: true,
-        };
-      }
+    annotations: WRITE_DESTRUCTIVE,
+  }, async ({ date, dates, behaviors, unset, notes, replace_day, confirm }) => {
+    // 1. Validate the request shape before touching WHOOP.
+    if (date !== undefined && dates !== undefined) return fail("Pass date or dates, not both.");
+    const today = todayIso();
+    const dateList = [...new Set(dates ?? [date ?? today])].sort();
+    const future = dateList.filter((d) => d > today);
+    if (future.length > 0) return fail(`Journal dates can't be in the future (today is ${today}): ${future.join(", ")}.`);
+    const full = replace_day === true || notes !== undefined;
+    if (full && dateList.length > 1) return fail("notes and replace_day rewrite one day at a time; pass a single date.");
+    const unsetRefs = unset ?? [];
+    if (behaviors.length === 0 && unsetRefs.length === 0 && notes === undefined && replace_day !== true) {
+      return fail("Nothing to write: pass behaviors, unset, notes or replace_day.");
+    }
 
-      const draft = await client.get(draftPath).catch(() => null);
-      const specs = specsFromDraft(draft);
+    // 2. Resolve every behaviour against the live catalog (171 and customs included).
+    const catalog = await loadBehaviorCatalog(client, dateList[0]!, { fresh: true });
+    const warnings: string[] = catalog.warning ? [catalog.warning] : [];
+    const errors: Array<{ error: string; suggestions?: Array<{ id: number; title: string }> }> = [];
+    const resolved: Array<{ spec: BehaviorSpec; input: z.infer<typeof BehaviorInput> }> = [];
+    for (const b of behaviors) {
+      const r = resolveBehavior({ id: b.id, name: b.name }, catalog);
+      if (r.ok) resolved.push({ spec: r.spec, input: b });
+      else errors.push({ error: r.error, suggestions: r.suggestions });
+    }
+    const unsetSpecs: BehaviorSpec[] = [];
+    for (const ref of unsetRefs) {
+      const asId = typeof ref === "number" ? ref : /^\d+$/.test(ref.trim()) ? Number(ref) : undefined;
+      const r = resolveBehavior(asId !== undefined ? { id: asId } : { name: String(ref) }, catalog);
+      if (r.ok) unsetSpecs.push(r.spec);
+      else errors.push({ error: r.error, suggestions: r.suggestions });
+    }
+    if (errors.length > 0) return fail("Some behaviours couldn't be resolved; nothing was written.", { problems: errors });
+    const ids = resolved.map((r) => r.spec.id);
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    if (dupes.length > 0) return fail(`Behaviour listed twice: ${[...new Set(dupes)].join(", ")}.`);
+    const clash = unsetSpecs.filter((s) => ids.includes(s.id));
+    if (clash.length > 0) return fail(`Can't both set and unset: ${clash.map((s) => s.title).join(", ")}.`);
+    for (const { spec } of resolved) {
+      if (spec.tracked === false) {
+        warnings.push(`${spec.title} isn't in your tracked behaviours, so the app won't show it until you track it (whoop_preferences_set setting:tracked_behaviors).`);
+      }
+    }
 
-      for (const b of resolved) {
-        const spec = specs.get(b.behavior_tracker_id!);
-        const range = spec?.magnitude;
-        if (b.magnitude_value !== undefined && spec && !range) {
-          return { content: [{ type: "text", text: jsonOut({ error: `${b.definition!.title} does not take a magnitude.` }) }], isError: true };
+    // 3. Fresh draft pre-read: "before" values for the preview, stored magnitude/time
+    //    to carry, and (full PUT) the notes and answers that must be re-sent.
+    //    WHOOP answers 200 for every date (an empty day is `tracked_behaviors: []`),
+    //    so a 404 or a body without the journal is a failed read, never "empty day".
+    const drafts = new Map<string, DraftDay | null>();
+    const readErrors: string[] = [];
+    await runPaced(dateList.map((d) => async () => {
+      try {
+        const raw = await client.get(DRAFT(d), {}, { fresh: true });
+        if (!isDraftBody(raw)) throw new Error("unexpected journal response");
+        drafts.set(d, parseDraft(raw, d));
+      } catch (e) {
+        drafts.set(d, null);
+        readErrors.push(`${d}: ${(e as Error).message}`);
+      }
+    }), { concurrency: 3 });
+    if (full && drafts.get(dateList[0]!) === null) {
+      return fail(
+        `Couldn't read the current journal for ${dateList[0]}, so a full-day write could erase its notes or other answers. Nothing was written. Retry, or drop notes/replace_day to merge instead.`,
+        { detail: readErrors.join("; ") },
+      );
+    }
+    if (readErrors.length > 0) {
+      // A merge replaces each listed row whole. Without the draft, a stored
+      // magnitude or time the caller didn't spell out would be erased.
+      const atRisk = resolved.filter(({ spec, input }) =>
+        (input.answered_yes ?? true) && (
+          (spec.magnitude !== null && input.magnitude === undefined && input.magnitude_label === undefined) ||
+          (spec.time_label !== null && input.time === undefined)
+        ));
+      if (atRisk.length > 0) {
+        return fail(
+          `Couldn't read the current journal, and WHOOP replaces a row whole: a stored magnitude or time for ${atRisk.map((r) => r.spec.title).join(", ")} would be erased. Nothing was written. Retry, or pass magnitude and time explicitly (null clears them).`,
+          { detail: readErrors.join("; ") },
+        );
+      }
+      warnings.push(`Couldn't read the current journal first (${readErrors.join("; ")}), so there are no before-values.`);
+    }
+
+    // 4. Build rows per date.
+    const planned: PlannedRow[] = [];
+    const rowErrors = new Set<string>();
+    for (const d of dateList) {
+      const stored = drafts.get(d) ? answeredById(drafts.get(d)!) : new Map();
+      for (const { spec, input } of resolved) {
+        const built = buildRow(spec, input, stored.get(spec.id)?.input ?? null);
+        if ("error" in built) rowErrors.add(built.error);
+        else planned.push({ date: d, spec, row: built.row, action: "set", carried: built.carried });
+      }
+      for (const spec of unsetSpecs) {
+        planned.push({ date: d, spec, row: { behavior_tracker_id: spec.id }, action: "unset", carried: [] });
+      }
+    }
+    if (rowErrors.size > 0) return fail("Some answers don't fit their behaviour; nothing was written.", { problems: [...rowErrors] });
+
+    // 5. Compose the request(s).
+    type Req = { path: string; body: unknown };
+    const requests: Req[] = [];
+    let notesPlan: { before: string | null; send: string | null } | null = null;
+    const removed: Array<{ date: string; id: number; title: string }> = [];
+    let keptCount = 0;
+    if (!full) {
+      const byDate = new Map<string, TrackerRow[]>();
+      for (const p of planned) byDate.set(p.date, [...(byDate.get(p.date) ?? []), p.row]);
+      const split = splitMenstruationOvulation(byDate);
+      for (const part of split) {
+        const tracker_inputs: Record<string, { tracker_input_eggs: TrackerRow[] }> = {};
+        for (const [d, rows] of part) if (rows.length > 0) tracker_inputs[d] = { tracker_input_eggs: rows };
+        if (Object.keys(tracker_inputs).length > 0) requests.push({ path: PARTIAL, body: { tracker_inputs } });
+      }
+      if (requests.length > 1) warnings.push("Menstruation and ovulation went in separate requests: WHOOP refuses both as yes in one request.");
+    } else {
+      const d = dateList[0]!;
+      const day = drafts.get(d) ?? parseDraft({}, d);
+      const touched = new Set(planned.map((p) => p.spec.id));
+      const stored = answeredById(day);
+      const kept: TrackerRow[] = [];
+      for (const [id, row] of stored) {
+        if (touched.has(id)) continue;
+        if (replace_day) removed.push({ date: d, id, title: row.spec.title });
+        else kept.push(carryRow(row));
+      }
+      keptCount = kept.length;
+      // Unset rows are simply left out: the full PUT deletes what it isn't sent.
+      const tracker_inputs = [...kept, ...planned.filter((p) => p.action === "set").map((p) => p.row)];
+      const send = notes !== undefined ? notes : day.notes;
+      notesPlan = { before: day.notes, send };
+      requests.push({ path: FULL(d), body: send === null ? { tracker_inputs } : { tracker_inputs, notes: send } });
+      // WHOOP leaves an untracked custom behaviour's answers out of the draft, so
+      // they can't be re-sent, and the full PUT deletes what it isn't sent
+      // (verified live: gone after re-tracking; kept when no full PUT ran).
+      const hidden = await client.get(CUSTOMIZE, {}, { fresh: true })
+        .then((raw) => projectBehaviorToggles(raw).toggles.filter((t) => t.custom && !t.selected).map((t) => t.title ?? `#${t.id}`))
+        .catch(() => [] as string[]);
+      if (hidden.length > 0) {
+        warnings.push(`You have untracked custom behaviours (${hidden.join(", ")}). WHOOP hides their answers from the day, so a full-day write can't keep them: any answer they have on ${d} will be deleted. Track them first to keep those answers.`);
+      }
+    }
+
+    const multi = dateList.length > 1;
+    const rowsOut = planned.map((p) => ({
+      date: multi ? p.date : null,
+      id: p.spec.id,
+      name: p.spec.title,
+      yes: p.action === "unset" ? null : p.row.answered_yes ?? null,
+      value: p.row.magnitude_input_value ?? null,
+      label: p.spec.magnitude?.type === "step" ? p.row.magnitude_input_label ?? null : null,
+      time: iso(p.row.time_input_value),
+      unset: p.action === "unset" ? true as const : null,
+      carried: p.carried,
+    }));
+
+    // 6. Preview: what changes, against what is stored now.
+    if (!confirm) {
+      const before = (p: PlannedRow) => {
+        const s = drafts.get(p.date) ? answeredById(drafts.get(p.date)!).get(p.spec.id)?.input : undefined;
+        if (!s) return null;
+        return [s.answered_yes, s.magnitude_input_value, iso(s.time_input_value ?? undefined)].filter((v) => v !== null);
+      };
+      return respond(NAME, JournalLogV2Out, preview("PUT", requests[0]!.path, {
+        method: full ? "full: replaces the whole day" : "partial: merge",
+        ...(requests.length > 1 ? { requests: requests.length } : {}),
+        dates: dateList,
+        changes: planned.map((p, i) => ({ ...compact(rowsOut[i]!), before: before(p) })),
+        ...(full
+          ? { notes: { before: notesPlan!.before, after: notesPlan!.send === "" ? null : notesPlan!.send }, other_answers_kept: keptCount, removes: removed.map((r) => r.title) }
+          : {}),
+        ...(warnings.length > 0 ? { warnings } : {}),
+      }));
+    }
+
+    // 7. Send. A failure after the first request leaves a partial write: say so.
+    let sent = 0;
+    for (const req of requests) {
+      try {
+        await client.put(req.path, req.body);
+        sent++;
+      } catch (e) {
+        if (sent === 0) throw e;
+        return fail(`Request ${sent + 1} of ${requests.length} failed after the first was applied; re-read the journal before retrying.`, {
+          detail: (e as Error).message,
+          rows: rowsOut,
+        });
+      }
+    }
+
+    // 8. Fresh read-back: report what actually stuck, not the 204.
+    const mismatches: Array<{ date: string; id: number | null; field: string; expected: string | number | boolean | null; actual: string | number | boolean | null }> = [];
+    const after = new Map<string, DraftDay | null>();
+    await runPaced(dateList.map((d) => async () => {
+      after.set(d, await client.get(DRAFT(d), {}, { fresh: true }).then((raw) => parseDraft(raw, d)).catch(() => null));
+    }), { concurrency: 3 });
+    let verified = true;
+    for (const d of dateList) {
+      const day = after.get(d);
+      if (!day) {
+        verified = false;
+        warnings.push(`Couldn't read ${d} back to verify the write.`);
+        continue;
+      }
+      const back = answeredById(day);
+      for (const p of planned.filter((x) => x.date === d)) {
+        const got = back.get(p.spec.id)?.input;
+        if (p.action === "unset") {
+          if (isAnswered(got ?? null)) mismatches.push({ date: d, id: p.spec.id, field: "answered_yes", expected: null, actual: got!.answered_yes });
+          continue;
         }
-        if (b.magnitude_value !== undefined && range && range.minimum !== null && range.maximum !== null
-            && (b.magnitude_value < range.minimum || b.magnitude_value > range.maximum)) {
-          return {
-            content: [{ type: "text", text: jsonOut({ error: `${b.definition!.title} takes ${range.minimum}-${range.maximum} ${range.units ?? "units"}.`, given: b.magnitude_value }) }],
-            isError: true,
-          };
-        }
-        if (b.time !== undefined && toEpochSeconds(b.time) === null) {
-          return { content: [{ type: "text", text: jsonOut({ error: `Unparseable time for ${b.definition!.title}.`, given: b.time }) }], isError: true };
-        }
-      }
-
-      const requested = resolved.map((b) => {
-        const spec = specs.get(b.behavior_tracker_id!);
-        const input: Record<string, unknown> = { behavior_tracker_id: b.behavior_tracker_id };
-        // Unanswered rows are invisible in the app, so an explicit log means yes
-        // unless the caller says otherwise. Only skipped when the live spec says
-        // the behavior asks no yes/no question.
-        const answers = spec?.question_type ? spec.question_type === "YES_NO" : true;
-        if (b.answered_yes !== undefined) input.answered_yes = b.answered_yes;
-        else if (answers) input.answered_yes = true;
-        if (b.magnitude_value !== undefined) {
-          input.magnitude_input_value = b.magnitude_value;
-          input.magnitude_input_label = b.magnitude_label ?? String(b.magnitude_value);
-        }
-        if (b.time !== undefined) input.time_input_value = toEpochSeconds(b.time);
-        return input;
-      });
-
-      const requestedIds = new Set(requested.map((i) => Number(i.behavior_tracker_id)));
-      const preserved = replace_day
-        ? []
-        : answeredInputsFromDraft(draft).filter((e) => !requestedIds.has(e.behavior_tracker_id)).map((e) => e.input);
-      const tracker_inputs = [...preserved, ...requested];
-
-      const body: Record<string, unknown> = { tracker_inputs };
-      if (notes !== undefined) body.notes = notes;
-      const path = `/journal-service/v2/journals/entries/user/date/${d}`;
-      if (!confirm) {
-        return {
-          content: [{
-            type: "text",
-            text: jsonOut(preview("PUT", path, {
-              date: d,
-              behaviors_count: behaviors.length,
-              preserved_count: preserved.length,
-              sample_titles: resolved.slice(0, 5).map((b) => b.definition?.title ?? `#${b.behavior_tracker_id}`),
-            })),
-          }],
+        const check = (field: string, expected: number | boolean | null, actual: number | boolean | null) => {
+          const same = typeof expected === "number" && typeof actual === "number" ? Math.abs(expected - actual) < 1e-6 : expected === actual;
+          if (!same) mismatches.push({ date: d, id: p.spec.id, field, expected, actual });
         };
+        check("answered_yes", p.row.answered_yes ?? null, got?.answered_yes ?? null);
+        // WHOOP replaces a row whole, so a field that wasn't sent (cleared with
+        // null, or dropped by answered_yes:false) must read back empty too.
+        check("magnitude", p.row.magnitude_input_value ?? null, got?.magnitude_input_value ?? null);
+        check("time", p.row.time_input_value ?? null, got?.time_input_value ?? null);
       }
-      await client.put(path, body);
+      if (full) {
+        const expectNotes = notesPlan!.send === "" ? null : notesPlan!.send;
+        if (day.notes !== expectNotes) mismatches.push({ date: d, id: null, field: "notes", expected: expectNotes, actual: day.notes });
+        for (const r of removed) {
+          if (back.has(r.id)) mismatches.push({ date: d, id: r.id, field: "answered_yes", expected: null, actual: back.get(r.id)!.input.answered_yes });
+        }
+        const missingKept = [...answeredById(drafts.get(d) ?? parseDraft({}, d)).keys()]
+          .filter((id) => !replace_day && !planned.some((p) => p.spec.id === id) && !back.has(id));
+        for (const id of missingKept) mismatches.push({ date: d, id, field: "kept_answer", expected: true, actual: false });
+      }
+    }
+    if (mismatches.length > 0) {
+      verified = false;
+      warnings.push("WHOOP accepted the write, but the read-back doesn't match everywhere (see mismatches). A write can be dropped while WHOOP reshuffles the day's cycle; retry in a minute.");
+    }
 
-      // Proof by effect: a 200 does not mean the row is answered. Read the day
-      // back and report what actually landed.
-      const after = await client.get(draftPath).catch(() => null);
-      const { verified, missing } = verifyWritten(after, requested);
-      if (!verified) {
-        return {
-          content: [{
-            type: "text",
-            text: jsonOut({
-              error: "Whoop accepted the write but the journal does not show it. These behaviors are still unanswered server-side.",
-              date: d,
-              unconfirmed_behavior_tracker_ids: missing,
-            }),
-          }],
-          isError: true,
-        };
-      }
-      const out = JournalLogOut.parse({ logged: true as const, date: d, behaviors_count: behaviors.length, preserved_count: preserved.length, verified: true as const });
-      return { content: [{ type: "text", text: jsonOut(out) }] };
-    },
-  );
+    return respond(NAME, JournalLogV2Out, {
+      written: true,
+      method: full ? "full" : "partial",
+      requests: requests.length > 1 ? requests.length : null,
+      dates: dateList,
+      rows: rowsOut,
+      notes: full ? { before: notesPlan!.before, after: after.get(dateList[0]!)?.notes ?? null } : null,
+      removed: removed.map((r) => r.title),
+      verified,
+      mismatches,
+      warnings,
+    });
+  });
 }

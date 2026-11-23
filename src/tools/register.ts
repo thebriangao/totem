@@ -1,134 +1,90 @@
+// The v2 tool surface: 41 tools (24 read, 17 write) and 5 catalog resources.
+// Reads are consolidated (one tool per question a person asks); writes stay
+// split by risk so each tool's MCP annotation means something.
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { WhoopClient } from "../whoop/client.js";
 
-// Snapshots
-import { registerToday } from "./v2/today.js";
+// Daily picture
 import { registerDay } from "./v2/day.js";
-import { registerDailyBrief } from "./v2/daily_brief.js";
-import { registerProfile } from "./v2/profile.js";
-import { registerCalendar } from "./v2/calendar.js";
-// Deep dives
 import { registerRecovery } from "./v2/recovery.js";
 import { registerSleep } from "./v2/sleep.js";
-import { registerSleepEdit } from "./v2/sleep_edit.js";
 import { registerStrain } from "./v2/strain.js";
-// Trends + compare
-import { registerTrend } from "./v2/trend.js";
-import { registerTrendPack } from "./v2/trend_pack.js";
-import { registerWeeklyPlan } from "./v2/weekly_plan.js";
-import { registerCompare } from "./v2/compare.js";
-// Stress + sleep_need
 import { registerStress } from "./v2/stress.js";
-import { registerSleepNeed } from "./v2/sleep_need.js";
-// Live
-import { registerLiveHr } from "./v2/live_hr.js";
-import { registerLiveState } from "./v2/live_state.js";
-import { registerLiveStress } from "./v2/live_stress.js";
-import { registerActivityNow } from "./v2/activity_now.js";
+import { registerNow } from "./v2/now.js";
+import { registerTrend } from "./v2/trend.js";
+import { registerCalendar } from "./v2/calendar.js";
 // Activities
 import { registerWorkouts } from "./v2/workouts.js";
-import { registerWorkout } from "./v2/workout.js";
-import { registerActivityCreate } from "./v2/activity_create.js";
+import { registerActivityLog } from "./v2/activity_log.js";
+import { registerActivityEdit } from "./v2/activity_edit.js";
 import { registerActivityDelete } from "./v2/activity_delete.js";
-import { registerSportsCatalog } from "./v2/sports_catalog.js";
-// Strength reads
-import { registerLiftPrs } from "./v2/lift_prs.js";
+// Strength
+import { registerLiftSessions } from "./v2/lift_sessions.js";
 import { registerLiftExercise } from "./v2/lift_exercise.js";
-import { registerLiftProgression } from "./v2/lift_progression.js";
-import { registerLiftHistory } from "./v2/lift_history.js";
-import { registerLiftOverview } from "./v2/lift_overview.js";
 import { registerLiftLibrary } from "./v2/lift_library.js";
-import { registerLiftCatalog } from "./v2/lift_catalog.js";
-// Strength writes
 import { registerLiftLog } from "./v2/lift_log.js";
-import { registerLiftTemplateSave } from "./v2/lift_template_save.js";
-import { registerLiftCustomExercise } from "./v2/lift_custom_exercise.js";
+import { registerLiftTemplate } from "./v2/lift_template.js";
+import { registerLiftExerciseSet } from "./v2/lift_exercise_set.js";
 // Journal
 import { registerJournal } from "./v2/journal.js";
-import { registerJournalCatalog } from "./v2/journal_catalog.js";
-import { registerBehaviorImpact } from "./v2/behavior_impact.js";
 import { registerJournalLog } from "./v2/journal_log.js";
-import { registerJournalAutopop } from "./v2/journal_autopop.js";
-// Women's health
+// Coach and memory
+import { registerCoachAsk } from "./v2/coach_ask.js";
+import { registerCoachHistory } from "./v2/coach_history.js";
+import { registerMemory } from "./v2/memory.js";
+import { registerMemorySet } from "./v2/memory_set.js";
+// Body, cycle, plans
+import { registerWeight } from "./v2/weight.js";
+import { registerWeightLog } from "./v2/weight_log.js";
 import { registerCycle } from "./v2/cycle.js";
 import { registerCycleLog } from "./v2/cycle_log.js";
-import { registerSymptomLog } from "./v2/symptom_log.js";
-// Coach + performance
-import { registerCoachAsk } from "./v2/coach_ask.js";
-import { registerPerformanceAssessment } from "./v2/performance_assessment.js";
-// Smart alarm
+import { registerWeeklyPlan } from "./v2/weekly_plan.js";
+import { registerWeeklyPlanSet } from "./v2/weekly_plan_set.js";
+import { registerMilestones } from "./v2/milestones.js";
+// Settings
 import { registerSmartAlarm } from "./v2/smart_alarm.js";
 import { registerSmartAlarmSet } from "./v2/smart_alarm_set.js";
-// Social
-import { registerLeaderboard } from "./v2/leaderboard.js";
-import { registerCommunities } from "./v2/communities.js";
-// Settings
-import { registerHrZones } from "./v2/hr_zones.js";
-import { registerHrZonesSet } from "./v2/hr_zones_set.js";
+import { registerProfile } from "./v2/profile.js";
+import { registerHealth } from "./v2/health.js";
 import { registerProfileUpdate } from "./v2/profile_update.js";
-import { registerHiddenMetric } from "./v2/hidden_metric.js";
+import { registerHrZonesSet } from "./v2/hr_zones_set.js";
 import { registerPreferences } from "./v2/preferences.js";
-// Escape
+import { registerPreferencesSet } from "./v2/preferences_set.js";
+// Community
+import { registerCommunity } from "./v2/community.js";
+// Escape hatch
 import { registerRaw } from "./v2/raw.js";
-import { registerEndpoints } from "./v2/endpoints.js";
+import { registerResources } from "./resources.js";
+import { installSlimToolList } from "./slim_schema.js";
+
+type Register = (server: McpServer, client: WhoopClient) => void;
+
+/** Read-only tools (24). */
+export const READ_TOOLS: readonly Register[] = [
+  registerDay, registerRecovery, registerSleep, registerStrain, registerStress, registerNow, registerTrend, registerCalendar,
+  registerWorkouts,
+  registerLiftSessions, registerLiftExercise, registerLiftLibrary,
+  registerJournal,
+  registerCoachHistory, registerMemory,
+  registerWeight, registerCycle, registerWeeklyPlan, registerMilestones,
+  registerSmartAlarm, registerProfile, registerPreferences, registerHealth,
+  registerCommunity,
+];
+
+/** Write tools (17), whoop_raw included. Each previews unless confirm:true. */
+export const WRITE_TOOLS: readonly Register[] = [
+  registerActivityLog, registerActivityEdit, registerActivityDelete,
+  registerLiftLog, registerLiftTemplate, registerLiftExerciseSet,
+  registerJournalLog,
+  registerCoachAsk, registerMemorySet,
+  registerWeightLog, registerCycleLog, registerWeeklyPlanSet,
+  registerSmartAlarmSet, registerProfileUpdate, registerHrZonesSet, registerPreferencesSet,
+  registerRaw,
+];
 
 export function registerTools(server: McpServer, client: WhoopClient): void {
-  // Reads (32)
-  registerToday(server, client);
-  registerDay(server, client);
-  registerDailyBrief(server, client);
-  registerProfile(server, client);
-  registerCalendar(server, client);
-  registerRecovery(server, client);
-  registerSleep(server, client);
-  registerStrain(server, client);
-  registerTrend(server, client);
-  registerTrendPack(server, client);
-  registerWeeklyPlan(server, client);
-  registerCompare(server, client);
-  registerStress(server, client);
-  registerSleepNeed(server, client);
-  registerLiveHr(server, client);
-  registerLiveState(server, client);
-  registerLiveStress(server, client);
-  registerActivityNow(server, client);
-  registerWorkouts(server, client);
-  registerWorkout(server, client);
-  registerSportsCatalog(server, client);
-  registerLiftPrs(server, client);
-  registerLiftExercise(server, client);
-  registerLiftProgression(server, client);
-  registerLiftHistory(server, client);
-  registerLiftOverview(server, client);
-  registerLiftLibrary(server, client);
-  registerLiftCatalog(server, client);
-  registerJournal(server, client);
-  registerJournalCatalog(server, client);
-  registerBehaviorImpact(server, client);
-  registerCycle(server, client);
-  registerPerformanceAssessment(server, client);
-  registerSmartAlarm(server, client);
-  registerLeaderboard(server, client);
-  registerCommunities(server, client);
-  registerHrZones(server, client);
-  registerPreferences(server, client);
-  // Writes (15: 14 + coach_ask)
-  registerActivityCreate(server, client);
-  registerActivityDelete(server, client);
-  registerSleepEdit(server, client);
-  registerLiftLog(server, client);
-  registerLiftTemplateSave(server, client);
-  registerLiftCustomExercise(server, client);
-  registerJournalLog(server, client);
-  registerJournalAutopop(server, client);
-  registerCycleLog(server, client);
-  registerSymptomLog(server, client);
-  registerSmartAlarmSet(server, client);
-  registerHrZonesSet(server, client);
-  registerProfileUpdate(server, client);
-  registerHiddenMetric(server, client);
-  registerCoachAsk(server, client);
-  // Escape (2)
-  registerRaw(server, client);
-  registerEndpoints(server, client);
+  for (const register of READ_TOOLS) register(server, client);
+  for (const register of WRITE_TOOLS) register(server, client);
+  registerResources(server);
+  installSlimToolList(server);
 }

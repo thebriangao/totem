@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WhoopClient } from "../../src/whoop/client.js";
 import {
   WhoopApiError,
-  WhoopAuthExpiredError,
+  WhoopEndpointUnauthorizedError,
   WhoopServerError,
 } from "../../src/whoop/errors.js";
 
@@ -21,7 +21,7 @@ describe("WhoopClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("includes bearer header and apiVersion query param on GET", async () => {
+  it("includes bearer header and no apiVersion query param on GET", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
@@ -29,7 +29,7 @@ describe("WhoopClient", () => {
     await client.get("/home-service/v1/home", { date: "2026-05-23" });
 
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toContain("apiVersion=7");
+    expect(url).not.toContain("apiVersion");
     expect(url).toContain("date=2026-05-23");
     expect(url).toContain("/home-service/v1/home");
     expect((init as RequestInit).method).toBe("GET");
@@ -41,14 +41,14 @@ describe("WhoopClient", () => {
       accept: "*/*",
       "user-agent": "iOS",
       "x-whoop-device-platform": "iOS",
-      "x-whoop-ios-version": "5.52.0",
+      "x-whoop-ios-version": "5.78.0",
       "x-whoop-bundle-name": "com.whoop.iphone",
     });
   });
 
-  it("throws WhoopAuthExpiredError on 401", async () => {
+  it("throws WhoopEndpointUnauthorizedError on a 401 it can't retry", async () => {
     fetchMock.mockResolvedValueOnce(new Response("unauthorized", { status: 401 }));
-    await expect(makeClient().get("/x")).rejects.toBeInstanceOf(WhoopAuthExpiredError);
+    await expect(makeClient().get("/x")).rejects.toBeInstanceOf(WhoopEndpointUnauthorizedError);
   });
 
   it("throws WhoopServerError on 5xx", async () => {
@@ -107,6 +107,25 @@ describe("WhoopClient", () => {
     now += 30_001;
     await client.get("/home-service/v1/home", { date: today });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("write() reports the status WHOOP answered with, across a 412 retry", async () => {
+    const client = new WhoopClient({ getToken: async () => "test-bearer", sleep: async () => {} });
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    expect(await client.write("DELETE", "/x/1", undefined)).toEqual({ status: 204, body: undefined });
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).body).toBeUndefined();
+
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: 7 }), { status: 201 }));
+    expect(await client.write("POST", "/x", { a: 1 })).toEqual({ status: 201, body: { id: 7 } });
+
+    // "cycle concurrently being updated" is retried; the status is the final answer's.
+    fetchMock
+      .mockResolvedValueOnce(new Response("busy", { status: 412 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(true), { status: 200 }));
+    expect(await client.write("PUT", "/x/1", { a: 2 })).toEqual({ status: 200, body: true });
+
+    fetchMock.mockResolvedValueOnce(new Response("nope", { status: 400 }));
+    await expect(client.write("PUT", "/x/1", {})).rejects.toBeInstanceOf(WhoopApiError);
   });
 
   it("keeps date-bearing historical paths longer than current-day paths", async () => {
@@ -189,5 +208,281 @@ describe("WhoopClient", () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ score: 2 }), { status: 200 }));
     await client.get("/home-service/v1/home", { date: "2026-05-23" });
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not retain developer-API records still in PENDING_SCORE", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ records: [{ score_state: "PENDING_SCORE" }] }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/developer/v2/activity/sleep", { limit: 5 });
+    await client.get("/developer/v2/activity/sleep", { limit: 5 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidates dependent GETs even when the write fails", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ score: 1 }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/home-service/v1/home", { date: "2026-05-23" });
+    fetchMock.mockResolvedValueOnce(new Response("oops", { status: 502 }));
+    await expect(client.post("/core-details-bff/v0/create-activity", {})).rejects.toBeInstanceOf(WhoopServerError);
+    await client.get("/home-service/v1/home", { date: "2026-05-23" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not store a read that was in flight when a write landed", async () => {
+    let resolveRead!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveRead = resolve; }));
+    const client = makeClient();
+    const stale = client.get("/journal-service/v3/journals/drafts/mobile/2026-05-23");
+    await Promise.resolve();
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await client.put("/journal-service/v3/journals/mobile/2026-05-23", {});
+    resolveRead(new Response(JSON.stringify({ v: "before" }), { status: 200 }));
+    await stale;
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ v: "after" }), { status: 200 }));
+    await expect(client.get("/journal-service/v3/journals/drafts/mobile/2026-05-23")).resolves.toEqual({ v: "after" });
+  });
+
+  it("bypasses the cache for fresh reads", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/users-service/v2/bootstrap");
+    await client.get("/users-service/v2/bootstrap", {}, { fresh: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await client.get("/users-service/v2/bootstrap");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps different queries apart when a value contains & or =", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ which: "one param" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ which: "two params" }), { status: 200 }));
+    const client = makeClient();
+    const path = "/home-service/v1/home";
+    // Sent as ?a=1%26b%3D2 and ?a=1&b=2: two requests that used to share the key "…?a=1&b=2".
+    expect(await client.get(path, { a: "1&b=2" })).toEqual({ which: "one param" });
+    expect(await client.get(path, { a: "1", b: "2" })).toEqual({ which: "two params" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops serving the older cached value after a fresh read that can't itself be cached", async () => {
+    const workouts = (records: unknown[]) => new Response(JSON.stringify({ records }), { status: 200 });
+    fetchMock
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }]))
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }, { id: 2, score_state: "PENDING" }]))
+      .mockResolvedValueOnce(workouts([{ id: 1, score_state: "SCORED" }, { id: 2, score_state: "SCORED" }]));
+    const client = makeClient();
+    const path = "/developer/v2/activity/workout";
+
+    await client.get(path);                                                    // cached
+    const fresh = await client.get<{ records: unknown[] }>(path, {}, { fresh: true }); // pending → not cacheable
+    expect(fresh.records).toHaveLength(2);
+    // This used to return the first response again: one workout, older than
+    // the two the caller had just been shown.
+    const next = await client.get<{ records: unknown[] }>(path);
+    expect(next.records).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("never lets an older read overwrite a newer fresh read's cached value", async () => {
+    let resolveOld!: (response: Response) => void;
+    fetchMock
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveOld = resolve; }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ v: "new" }), { status: 200 }));
+    const client = makeClient();
+    const old = client.get("/users-service/v2/bootstrap");
+    await Promise.resolve();
+    await client.get("/users-service/v2/bootstrap", {}, { fresh: true });
+    resolveOld(new Response(JSON.stringify({ v: "old" }), { status: 200 }));
+    await old;
+    await expect(client.get("/users-service/v2/bootstrap")).resolves.toEqual({ v: "new" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats the current month's calendar and current week's plan as current, not historical", async () => {
+    let now = Date.parse("2026-08-24T12:00:00.000Z");
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = new WhoopClient({ getToken: async () => "test-bearer", now: () => now });
+    await client.get("/home-service/v1/calendar/recovery", { date: "2026-08-01" });
+    await client.get("/progression-service/v2/weekly-plan/home-tile/2026-08-20");
+    now += 16 * 60_000;
+    await client.get("/home-service/v1/calendar/recovery", { date: "2026-08-01" });
+    await client.get("/progression-service/v2/weekly-plan/home-tile/2026-08-20");
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("invalidates trends after an activity write", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    await client.get("/progression-service/v3/trends/hrv", { endDate: "2026-05-23" });
+    await client.post("/core-details-bff/v0/create-activity", {});
+    await client.get("/progression-service/v3/trends/hrv", { endDate: "2026-05-23" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("sends PATCH and treats an activity merge as an activity write", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    const home = () => client.get("/home-service/v1/home", { date: "2026-05-23" });
+    await home();
+    await client.patch("/core-details-bff/v1/activities/merge", ["a", "b"], { startTime: "s", endTime: "e" });
+    const init = fetchMock.mock.calls[1]![1] as RequestInit;
+    expect(init.method).toBe("PATCH");
+    expect(init.body).toBe(JSON.stringify(["a", "b"]));
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("drops cached reads on a coach turn, but not on a conversation open, an image file or AI settings", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    const client = makeClient();
+    const home = () => client.get("/home-service/v1/home", { date: "2026-05-23" });
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // whoop_coach_history opens a conversation only to read it; that, an upload
+    // and its cleanup, and the memory switch change nothing that is cached.
+    await client.post("/ai-conversation-bff/v1/conversation", { fingerprint: "totem-HOME-2026-05-23", source_type: "UNKNOWN" });
+    await client.post("/ai-conversation-bff/v1/files", {});
+    await client.delete("/ai-conversation-bff/v1/files/f.png");
+    await client.put("/ai-conversation-service/v1/settings", { setting_key: "WHOOP_COACH_MEMORY", active: true });
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // A chat turn is where the coach creates, edits and deletes activities.
+    await client.post("/ai-conversation-bff/v1/conversation/totem-HOME-2026-05-23/turn", { role: "user", content: "Yes, log the walk" });
+    await home();
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+  });
+
+  it("drops the 24 h exercise catalog after a custom-exercise write, but not after a lift", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ exercises: [] }), { status: 200 })));
+    const client = makeClient();
+    const CATALOG = "/weightlifting-service/v2/exercise";
+    await client.get(CATALOG);
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // create/edit: the catalog gains or changes a row that lifts send verbatim
+    await client.post("/weightlifting-service/v2/custom-exercise", {});
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // delete: the row must stop resolving
+    await client.delete("/weightlifting-service/v2/custom-exercise/2F6E0C1B-0000-4000-8000-000000000000");
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // other lift writes leave the catalog alone
+    await client.post("/weightlifting-service/v2/weightlifting-workout/activity", {});
+    await client.get(CATALOG);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it("does not retain lift reads taken while WHOOP is still catching up with a lift write", async () => {
+    let now = Date.parse("2026-11-21T20:00:00.000Z");
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 })));
+    const client = new WhoopClient({ getToken: async () => "test-bearer", now: () => now });
+    const HISTORY = "/weightlifting-service/v3/exercise/BENCHPRESS_BARBELL/exercise_history";
+    await client.post("/weightlifting-service/v2/weightlifting-workout/activity", {});
+    await client.get(HISTORY); // the page WHOOP serves before the new workout shows up
+    now += 20_000;
+    await client.get(HISTORY); // must ask WHOOP again, not replay that page for 5 minutes
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // once settled, lift reads are cached as usual
+    now += 120_000;
+    await client.get(HISTORY);
+    await client.get(HISTORY);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // deleting an activity changes lift history too
+    await client.delete("/core-details-bff/v1/cardio-details", { activityId: "a" });
+    await client.get(HISTORY);
+    await client.get(HISTORY);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+  });
+
+  it("refreshes the token once and retries after a 401", async () => {
+    let token = "old";
+    const onUnauthorized = vi.fn(() => { token = "new"; });
+    fetchMock
+      .mockResolvedValueOnce(new Response("unauthorized", { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const client = new WhoopClient({ getToken: async () => token, onUnauthorized });
+    await expect(client.get("/x")).resolves.toEqual({ ok: true });
+    expect(onUnauthorized).toHaveBeenCalledWith("old");
+    expect((fetchMock.mock.calls[1]![1] as RequestInit).headers).toMatchObject({ authorization: "Bearer new" });
+  });
+
+  it("refuses a path the URL parser would rewrite, before any request or token use", async () => {
+    const getToken = vi.fn(async () => "t");
+    const client = new WhoopClient({ getToken });
+    for (const path of [
+      "/activities-service/v2/activities/x/../../../users-service/v1/users", // → /users-service/v1/users
+      "/a/%2E%2e/b",
+      "/a/./b",
+      "/a\\b",
+      "/a\tb",
+      "/a#b",
+      "@evil.example/x",       // without the leading "/" this is a different HOST
+      ".evil.example/x",
+    ]) {
+      await expect(client.delete(path), JSON.stringify(path)).rejects.toThrow(/Refusing to call WHOOP path/);
+      await expect(client.get(path), JSON.stringify(path)).rejects.toThrow(/Refusing to call WHOOP path/);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it("still sends ordinary paths, including dots inside a segment and an inline query", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("{}", { status: 200 })));
+    const client = makeClient();
+    await client.get("/weightlifting-service/v2/exercise/a.b..c");
+    await client.get("/x/v1.2/y?z=1");
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      "https://api.prod.whoop.com/weightlifting-service/v2/exercise/a.b..c",
+      "https://api.prod.whoop.com/x/v1.2/y?z=1",
+    ]);
+  });
+
+  describe("a response that sends headers and then stalls", () => {
+    // Headers arrive at once; the body only ever ends when the request's abort
+    // signal fires (which is what undici does to a real stalled body).
+    const stalledBody = (status: number) => (_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"partial":'));
+          init.signal!.addEventListener("abort", () => controller.error(new DOMException("This operation was aborted", "AbortError")));
+        },
+      });
+      return Promise.resolve(new Response(body, { status }));
+    };
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it("times out instead of hanging, and does not poison later identical GETs", async () => {
+      fetchMock.mockImplementationOnce(stalledBody(200));
+      const client = makeClient();
+      const first = client.get("/home-service/v1/home", { date: "2026-05-23" });
+      const settled = vi.fn();
+      first.then(settled, settled);
+      await vi.advanceTimersByTimeAsync(29_000);
+      expect(settled).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2_000); // past REQUEST_TIMEOUT_MS (30s)
+      expect(settled).toHaveBeenCalledTimes(1);
+      await expect(first).rejects.toMatchObject({ name: "AbortError" });
+
+      // The hung load used to stay in-flight forever, so this joined it and hung too.
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      await expect(client.get("/home-service/v1/home", { date: "2026-05-23" })).resolves.toEqual({ ok: true });
+    });
+
+    it("still reports an error status whose body never arrives", async () => {
+      fetchMock.mockImplementationOnce(stalledBody(503));
+      const failed = makeClient().get("/x");
+      const assertion = expect(failed).rejects.toBeInstanceOf(WhoopServerError);
+      await vi.advanceTimersByTimeAsync(31_000);
+      await assertion;
+    });
+  });
+
+  it("treats a 401 that survives a refresh as endpoint-specific, not an expired login", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response("unauthorized", { status: 401 })));
+    const client = new WhoopClient({ getToken: async () => "t", onUnauthorized: () => {} });
+    await expect(client.get("/x")).rejects.toBeInstanceOf(WhoopEndpointUnauthorizedError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

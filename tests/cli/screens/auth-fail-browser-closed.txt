@@ -1,0 +1,11 @@
+
+totem auth
+Log in to WHOOP. The login goes to https://totem-a1b2c3.fly.dev.
+
+A Google Chrome window opens on WHOOP's site with a temporary profile. Log in
+there. totem never sees what you type: it waits for WHOOP's session cookies,
+then closes the window and deletes the profile.
+• Waiting for you to log in in the browser…
+✗ The browser window was closed before the login finished.
+  Try again                    totem auth
+  No browser on this machine   totem auth --paste

@@ -1,0 +1,187 @@
+{
+ "header": {
+  "last_refresh_text_display": "",
+  "impact_title_display": "Log your behaviors to reveal personalized insights",
+  "impact_subtitle_display": "Experiment with day-to-day changes related to lifestyle, nutrition, career, and more to learn how your behaviors impact your Recovery over time."
+ },
+ "journal_enabled": true,
+ "cycle_id": 1974049188,
+ "tiles": [
+  {
+   "type": "TEXT_AND_IMAGE",
+   "content": {
+    "image_url": "https://d12uy58gcdl333.cloudfront.net/notifications/set_up_journal_card.png",
+    "id": "3faa9cc0-8224-46fa-a40e-d3ac31768d59",
+    "title": "Excited to get started?",
+    "body": "Come back tomorrow after logging your first sleep to start tracking your behaviors.",
+    "app_notification_type": "ONBOARDING",
+    "show_highlight": true,
+    "card_type": "LOCKED"
+   }
+  },
+  {
+   "type": "DIVIDER",
+   "content": {
+    "id": null,
+    "title": "RECOMMENDED BEHAVIORS",
+    "header_position": null,
+    "style": null,
+    "divider_type": null
+   }
+  },
+  {
+   "type": "HEADER_ITEMS_CARD",
+   "content": {
+    "id": "activity_items_card",
+    "style": "NORMAL",
+    "title": "WHOOP members discovered",
+    "title_icon": "MEMBERS_LIKE_YOU",
+    "items": [
+     {
+      "type": "IMPACT_TILE",
+      "content": {
+       "impact_header": {
+        "impact_label_left": {
+         "impact_header_title_text_display": "HURTS",
+         "impact_style": "NEGATIVE"
+        },
+        "impact_label_center": "% IMPACT",
+        "impact_label_right": {
+         "impact_header_title_text_display": "HELPS",
+         "impact_style": "POSITIVE"
+        }
+       },
+       "impact_cards": [
+        {
+         "impact_uuid": "599fdf12-9565-4fca-9b3a-bb5c46d3dc78",
+         "impact_card_title_display": "Caffeine",
+         "impact_card_subtitle_display": "Avoid caffeine 8 hours before bedtime",
+         "impact_percentage_display": "+4%",
+         "yes_answer_count": null,
+         "no_answer_count": null,
+         "impact_style": "POSITIVE",
+         "tile_tag": null,
+         "tile_tags": [],
+         "impact_bar_segment": {
+          "horizontal_position": 0.67,
+          "marker_text_display": null,
+          "segment_marker": null,
+          "impact_style": "POSITIVE"
+         },
+         "card_background_style": "BACKGROUND_FILL"
+        },
+        {
+         "impact_uuid": "e6a60de8-21b7-4d44-9678-c7104355ca66",
+         "impact_card_title_display": "Read In Bed",
+         "impact_card_subtitle_display": "Read (non-screened device) while in bed",
+         "impact_percentage_display": "+3%",
+         "yes_answer_count": null,
+         "no_answer_count": null,
+         "impact_style": "POSITIVE",
+         "tile_tag": null,
+         "tile_tags": [],
+         "impact_bar_segment": {
+          "horizontal_position": 0.63,
+          "marker_text_display": null,
+          "segment_marker": null,
+          "impact_style": "POSITIVE"
+         },
+         "card_background_style": "BACKGROUND_FILL"
+        },
+        {
+         "impact_uuid": "aa58fc14-d2d9-4e3c-86de-322a4d605479",
+         "impact_card_title_display": "Late Meal",
+         "impact_card_subtitle_display": "Avoid meals 2 hours before bedtime",
+         "impact_percentage_display": "-2%",
+         "yes_answer_count": null,
+         "no_answer_count": null,
+         "impact_style": "NEGLIGIBLE_POSITIVE",
+         "tile_tag": null,
+         "tile_tags": [],
+         "impact_bar_segment": {
+          "horizontal_position": 0.42,
+          "marker_text_display": null,
+          "segment_marker": null,
+          "impact_style": "NEGLIGIBLE_POSITIVE"
+         },
+         "card_background_style": "BACKGROUND_FILL"
+        },
+        {
+         "impact_uuid": "6414e18c-7585-446f-9b3f-a629fbc78204",
+         "impact_card_title_display": "Alcohol",
+         "impact_card_subtitle_display": "Limit alcohol to an avg of <1 drink/day",
+         "impact_percentage_display": "-12%",
+         "yes_answer_count": null,
+         "no_answer_count": null,
+         "impact_style": "NEGATIVE",
+         "tile_tag": null,
+         "tile_tags": [],
+         "impact_bar_segment": {
+          "horizontal_position": 0,
+          "marker_text_display": null,
+          "segment_marker": null,
+          "impact_style": "NEGATIVE"
+         },
+         "card_background_style": "BACKGROUND_FILL"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "metadata": {
+  "ai_context_metadata": {
+   "is_wce_prefetch": true,
+   "is_wce_enabled": true,
+   "destination": {
+    "screen": "AI_CHAT",
+    "parameters": {
+     "fingerprint": "<redacted>",
+     "source": "WCE_BEHAVIOR_DETAILS",
+     "screen_id": "WCE_BEHAVIOR_DETAILS",
+     "source_type": "CHAT_WITH_AGENT",
+     "source_id": "wce-journal-trends",
+     "agent_id": "wce-journal-trends",
+     "preset_question_key": null,
+     "static_initial_message": null,
+     "user_message": null,
+     "education_type": null,
+     "should_open_full_size": false,
+     "args": {
+      "context": "behavior_impact"
+     },
+     "bindings": null,
+     "aggregate_bindings": null
+    }
+   },
+   "coach_entry": null,
+   "ai_action": {
+    "source": "WCE_BEHAVIOR_DETAILS",
+    "screen_id": "BEHAVIOR_DETAILS",
+    "source_type": "CHAT_WITH_AGENT",
+    "source_id": "wce-journal-trends",
+    "args": {
+     "context": "behavior_impact"
+    },
+    "should_open_full_size": false,
+    "drawer_presentation": null,
+    "education_type": null,
+    "fingerprint": "<redacted>",
+    "agent_id": "wce-journal-trends",
+    "static_initial_message": null,
+    "user_message": null,
+    "entry_text": null,
+    "include_initial_message": null,
+    "conversation_seed_id": null,
+    "preset_question": null,
+    "onboarding_analytic_source": null,
+    "entrypoint_experience": "STANDARD",
+    "bindings": null,
+    "aggregate_bindings": null
+   },
+   "screen_identifier": "BEHAVIOR_DETAILS"
+  }
+ }
+}

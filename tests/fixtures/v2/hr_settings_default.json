@@ -1,0 +1,110 @@
+{
+ "screen_title": "HEART RATE SETTINGS",
+ "introduction": {
+  "title": "Heart Rate Zones",
+  "body": "Calculated using the scientifically validated heart rate reserve formula, your heart rate (HR) zones are personalized using your baseline resting HR and maximum HR."
+ },
+ "heart_rate_entry_row": [
+  {
+   "label": "RESTING HR",
+   "id": "RESTING_HR",
+   "value": 57,
+   "units": "bpm",
+   "editable": false,
+   "min_value": 57,
+   "max_value": 57
+  },
+  {
+   "label": "MAX HR",
+   "id": "MAX_HR",
+   "value": 172,
+   "units": "bpm",
+   "editable": true,
+   "min_value": 163,
+   "max_value": 220
+  }
+ ],
+ "default_hr_zones": [
+  {
+   "style": "STRAIN_ZONE_5",
+   "label": "Zone 5",
+   "id": "ZONE_5",
+   "min": 161,
+   "max": 172
+  },
+  {
+   "style": "STRAIN_ZONE_4",
+   "label": "Zone 4",
+   "id": "ZONE_4",
+   "min": 150,
+   "max": 160
+  },
+  {
+   "style": "STRAIN_ZONE_3",
+   "label": "Zone 3",
+   "id": "ZONE_3",
+   "min": 138,
+   "max": 149
+  },
+  {
+   "style": "STRAIN_ZONE_2",
+   "label": "Zone 2",
+   "id": "ZONE_2",
+   "min": 127,
+   "max": 137
+  },
+  {
+   "style": "STRAIN_ZONE_1",
+   "label": "Zone 1",
+   "id": "ZONE_1",
+   "min": 103,
+   "max": 126
+  }
+ ],
+ "manual_heart_rate_zones_form": {
+  "toggle_value": false,
+  "title": "Manual Heart Rate Zones",
+  "subtitle": "As your fitness and RHR change, your HR zone ranges are adjusted automatically. You can manually update them if they don't feel normal to you.",
+  "zone_column_title": "ZONE",
+  "zone_min_column_title": "ZONE MIN",
+  "zone_max_column_title": "ZONE MAX",
+  "units": "bpm",
+  "zone_rows": [
+   {
+    "style": "STRAIN_ZONE_5",
+    "label": "Zone 5",
+    "id": "ZONE_5",
+    "min": 161,
+    "max": 172
+   },
+   {
+    "style": "STRAIN_ZONE_4",
+    "label": "Zone 4",
+    "id": "ZONE_4",
+    "min": 150,
+    "max": 160
+   },
+   {
+    "style": "STRAIN_ZONE_3",
+    "label": "Zone 3",
+    "id": "ZONE_3",
+    "min": 138,
+    "max": 149
+   },
+   {
+    "style": "STRAIN_ZONE_2",
+    "label": "Zone 2",
+    "id": "ZONE_2",
+    "min": 127,
+    "max": 137
+   },
+   {
+    "style": "STRAIN_ZONE_1",
+    "label": "Zone 1",
+    "id": "ZONE_1",
+    "min": 103,
+    "max": 126
+   }
+  ]
+ }
+}

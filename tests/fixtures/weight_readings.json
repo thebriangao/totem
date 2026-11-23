@@ -1,0 +1,199 @@
+{
+ "navigation_bar_title": "All recorded data",
+ "title": "All recorded data",
+ "subtitle": "View all of your past recorded Weight and Lean Body Mass data below.",
+ "add_manual_measurement": {
+  "title": "ADD MANUAL MEASUREMENT",
+  "subtitle": null,
+  "suffix_title": null,
+  "suffix_subtitle": null,
+  "suffix_type": null,
+  "left_icon": "ADD",
+  "right_icon": null,
+  "right_image_url": null,
+  "menu_item_state": null,
+  "style": null,
+  "destination": null,
+  "type": null,
+  "generic_interaction": null
+ },
+ "sections": {
+  "records": [
+   {
+    "title": "Nov 2026",
+    "measurements": [
+     {
+      "type": "MEASUREMENT_BOX",
+      "content": {
+       "id": "7233ce75-8a25-42bb-9fa6-15ab7f3b6265",
+       "icon": "NOTES_EDIT",
+       "weight": 171.96035999999998,
+       "metric_unit": "lbs",
+       "subtitle": "Manual\u30fb11/21/26, 2:55 PM",
+       "weight_details_screen": {
+        "timestamp": "2026-11-21T22:55:00.000Z",
+        "start_date_timestamp": "2026-11-21T23:38:23.390Z",
+        "weight_kg": 78,
+        "body_fat_percent": null,
+        "lean_body_mass_kg": 90,
+        "body_fat_suffix": "%",
+        "metric_type": "LBS",
+        "delete_title": "DELETE MEASUREMENT",
+        "save_title": "SAVE MEASUREMENT",
+        "replace_dialog": {
+         "title": "REPLACE EXISTING MEASUREMENT?",
+         "description": "You've already entered 172 lbs as your measurement for this date.\n\nContinue to replace your existing measurement with the new one, or keep  what you've got.",
+         "primary_button_title": "REPLACE",
+         "secondary_button_title": "KEEP EXISTING",
+         "starting_weight": "172 lbs"
+        },
+        "source": "manual"
+       },
+       "source": "manual"
+      }
+     },
+     {
+      "type": "MEASUREMENT_BOX",
+      "content": {
+       "id": "4374657c-6dc9-4fbc-84e5-43cae730c729",
+       "icon": "NOTES_EDIT",
+       "weight": 173.06267,
+       "metric_unit": "lbs",
+       "subtitle": "Manual\u30fb11/21/26, 2:50 PM",
+       "weight_details_screen": {
+        "timestamp": "2026-11-21T22:50:00.000Z",
+        "start_date_timestamp": "2026-11-21T23:38:23.390Z",
+        "weight_kg": 78.5,
+        "body_fat_percent": null,
+        "lean_body_mass_kg": null,
+        "body_fat_suffix": "%",
+        "metric_type": "LBS",
+        "delete_title": "DELETE MEASUREMENT",
+        "save_title": "SAVE MEASUREMENT",
+        "replace_dialog": {
+         "title": "REPLACE EXISTING MEASUREMENT?",
+         "description": "You've already entered 173 lbs as your measurement for this date.\n\nContinue to replace your existing measurement with the new one, or keep  what you've got.",
+         "primary_button_title": "REPLACE",
+         "secondary_button_title": "KEEP EXISTING",
+         "starting_weight": "173 lbs"
+        },
+        "source": "manual"
+       },
+       "source": "manual"
+      }
+     },
+     {
+      "type": "MEASUREMENT_BOX",
+      "content": {
+       "id": "798977e5-fc5b-4dab-b44e-8824a159b4e7",
+       "icon": "NOTES_EDIT",
+       "weight": 174.16497999999999,
+       "metric_unit": "lbs",
+       "subtitle": "Manual\u30fb11/21/26, 2:40 PM",
+       "weight_details_screen": {
+        "timestamp": "2026-11-21T22:40:00.000Z",
+        "start_date_timestamp": "2026-11-21T23:38:23.390Z",
+        "weight_kg": 79,
+        "body_fat_percent": null,
+        "lean_body_mass_kg": 62,
+        "body_fat_suffix": "%",
+        "metric_type": "LBS",
+        "delete_title": "DELETE MEASUREMENT",
+        "save_title": "SAVE MEASUREMENT",
+        "replace_dialog": {
+         "title": "REPLACE EXISTING MEASUREMENT?",
+         "description": "You've already entered 174 lbs as your measurement for this date.\n\nContinue to replace your existing measurement with the new one, or keep  what you've got.",
+         "primary_button_title": "REPLACE",
+         "secondary_button_title": "KEEP EXISTING",
+         "starting_weight": "174 lbs"
+        },
+        "source": "manual"
+       },
+       "source": "manual"
+      }
+     },
+     {
+      "type": "MEASUREMENT_BOX",
+      "content": {
+       "id": "3896c91e-f61d-45d0-8f6e-74cf9417a832",
+       "icon": "NOTES_EDIT",
+       "weight": 182.98345999999998,
+       "metric_unit": "lbs",
+       "subtitle": "Manual\u30fb11/21/26, 2:30 PM",
+       "weight_details_screen": {
+        "timestamp": "2026-11-21T22:30:00.000Z",
+        "start_date_timestamp": "2026-11-21T23:38:23.390Z",
+        "weight_kg": 83,
+        "body_fat_percent": 0.22000000275761247,
+        "lean_body_mass_kg": null,
+        "body_fat_suffix": "%",
+        "metric_type": "LBS",
+        "delete_title": "DELETE MEASUREMENT",
+        "save_title": "SAVE MEASUREMENT",
+        "replace_dialog": {
+         "title": "REPLACE EXISTING MEASUREMENT?",
+         "description": "You've already entered 183 lbs as your measurement for this date.\n\nContinue to replace your existing measurement with the new one, or keep  what you've got.",
+         "primary_button_title": "REPLACE",
+         "secondary_button_title": "KEEP EXISTING",
+         "starting_weight": "183 lbs"
+        },
+        "source": "manual"
+       },
+       "source": "manual"
+      }
+     },
+     {
+      "type": "MEASUREMENT_BOX",
+      "content": {
+       "id": "53654f89-1709-4972-bde1-40eef8ecba2e",
+       "icon": "NOTES_EDIT",
+       "weight": 176.3696,
+       "metric_unit": "lbs",
+       "subtitle": "Manual\u30fb11/21/26, 2:05 PM",
+       "weight_details_screen": {
+        "timestamp": "2026-11-21T22:05:00.000Z",
+        "start_date_timestamp": "2026-11-21T23:38:23.390Z",
+        "weight_kg": 80,
+        "body_fat_percent": null,
+        "lean_body_mass_kg": null,
+        "body_fat_suffix": "%",
+        "metric_type": "LBS",
+        "delete_title": "DELETE MEASUREMENT",
+        "save_title": "SAVE MEASUREMENT",
+        "replace_dialog": {
+         "title": "REPLACE EXISTING MEASUREMENT?",
+         "description": "You've already entered 176 lbs as your measurement for this date.\n\nContinue to replace your existing measurement with the new one, or keep  what you've got.",
+         "primary_button_title": "REPLACE",
+         "secondary_button_title": "KEEP EXISTING",
+         "starting_weight": "176 lbs"
+        },
+        "source": "manual"
+       },
+       "source": "manual"
+      }
+     }
+    ]
+   }
+  ],
+  "next_token": null
+ },
+ "manual_measurement_updates": {
+  "timestamp": "2026-11-21T18:39:14.464-08:00",
+  "start_date_timestamp": "2026-11-21T23:38:23.390Z",
+  "weight_kg": 78,
+  "body_fat_percent": null,
+  "lean_body_mass_kg": 90,
+  "body_fat_suffix": "%",
+  "metric_type": "LBS",
+  "delete_title": null,
+  "save_title": "ADD MEASUREMENT",
+  "replace_dialog": {
+   "title": "REPLACE EXISTING MEASUREMENT?",
+   "description": "You've already entered 172 lbs as your measurement for this date.\n\nContinue to replace your existing measurement with the new one, or keep  what you've got.",
+   "primary_button_title": "REPLACE",
+   "secondary_button_title": "KEEP EXISTING",
+   "starting_weight": "172 lbs"
+  },
+  "source": "manual"
+ }
+}

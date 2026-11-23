@@ -1,0 +1,19 @@
+{
+ "strain_percentage_around": 0.9975067488,
+ "recovery_percentage_around": 0,
+ "sleep_percentage_around": 0,
+ "strain_string": "20.9",
+ "strain_available": true,
+ "recovery_string": "--%",
+ "recovery_title": "RECOVERY",
+ "sleep_string": "--%",
+ "sleep_title": "SLEEP",
+ "sleep_fill_style": "SLEEP",
+ "recovery_state": null,
+ "calories_string": "237",
+ "hrv_string": "--",
+ "center_title": null,
+ "center_subtitle": null,
+ "optimal_strain_recommendation": null,
+ "optimal_strain_shown": false
+}

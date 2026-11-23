@@ -1,0 +1,35 @@
+
+totem 1.5.1
+Your WHOOP data in Claude, ChatGPT and other AI apps, over MCP.
+
+Usage: totem <command> [options]
+
+Set up
+  cloud       Deploy your own server; connect claude.ai, ChatGPT and others
+  local       Run on this computer; set up the AI apps you have
+  connect     Connect your apps, or show what to paste where
+  auth        Log in to WHOOP, in a browser window
+
+Run and maintain
+  status      Show how this install, its server and its login are doing
+  ping        Check that the server answers
+  logs        Show the server's logs
+  deploy      Deploy this install's code to the server again
+  update      Update totem; --check, --auto on|off
+  tools       List the tools the server gives a client
+  token       Print the server's MCP_AUTH_TOKEN, for use in a command
+
+Develop
+  start       Start the MCP server (stdio; --http for HTTP)
+  dev         Start the server from source (--http for HTTP)
+  build       Compile the TypeScript source to dist/
+  test        Run the tests
+  typecheck   Check types without building
+
+Options
+  -h, --help      Show this; totem <command> --help for one command
+  -v, --version   Print the version
+  --no-color      Plain output (NO_COLOR=1 does the same)
+
+New here? Start with totem cloud
+

@@ -1,0 +1,36 @@
+{
+ "training_types": [],
+ "instructions": [],
+ "muscle_groups": [
+  "LEGS"
+ ],
+ "translated_muscle_groups": "Legs",
+ "created_at": "2026-11-22T02:37:01.961Z",
+ "updated_at": "2026-11-22T02:37:01.961Z",
+ "custom_exercise_info": {
+  "custom_exercise_title": null,
+  "linked_exercise": {
+   "exercise_id": "POWERCLEAN_BARBELL",
+   "name": "Power Clean - Barbell",
+   "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/POWERCLEAN_BARBELL.jpg"
+  }
+ },
+ "volume_input_value": null,
+ "volume_input_units": null,
+ "exercise_id": "A07E2F94-F330-4757-B2DF-2562AE901579",
+ "name": "probe-strength Custom Enums",
+ "push_core_name": "POWERCLEAN_BARBELL",
+ "trackable": true,
+ "equipment": "PLYO_BOX",
+ "translated_equipment": "Plyo Box",
+ "exercise_type": "STRENGTH",
+ "laterality": "BILATERAL",
+ "movement_pattern": "OLY_LIFT",
+ "translated_movement_pattern": "Olympic Lift",
+ "deleted": false,
+ "image_url": "https://dh6o7n168ts9.cloudfront.net/exercises/default-exercise-image.png",
+ "video_url": null,
+ "volume_input_format": "TIME",
+ "e1rm_eligible": true,
+ "custom_exercise": true
+}

@@ -1,789 +1,500 @@
-// Guided setup flows: `totem cloud` (server-hosted, OAuth, recommended) and
-// `totem local` (stdio on this machine). These are the headline commands.
+// The guided flows: `totem local` (run on this computer), `totem cloud`
+// (deploy a server) and `totem connect` (connect another client).
 //
-// Fly, Railway, and Cloud Run are all fully CLI-automated and tested end-to-end:
-// the flow installs the host CLI if missing, logs you in, deploys, auto-detects
-// the resulting URL, sets PUBLIC_URL, and verifies /health + OAuth are live — no
-// copy-paste. Custom is a printed Docker guide for any other host or your own
-// server. Either way it's one command to a working, Claude-connected deployment.
-import { existsSync, readFileSync, writeFileSync, rmSync, mkdirSync, chmodSync } from "node:fs";
-import { tmpdir } from "node:os";
+// Each screen says what is happening, what the person must do now, and what
+// comes next. Prompts are kept to the decisions only a person can make: which
+// client, which host, and one confirmation of the whole deploy plan before
+// anything is created or billed. Everything else takes a stated default.
+//
+// What a flow does (which commands run, in which order) is unchanged from the
+// original; only how it is shown and asked is new. All effects go through
+// io.sys, all output and questions through io.ui, so a test can drive a whole
+// flow with a fake host and render the screen.
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { resolve, dirname } from "node:path";
-import { readEnvFile, upsertEnvFile } from "../lib/env_file.js";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
+import { pkgBin } from "./spawn.js";
+import { realAuthDeps, runAuth } from "./auth.js";
+import { checkPushUrl } from "./auth_flow.js";
+import { configFile, deployRecordPath, dockerBuildArgs, readDeployRecord, writeDeployRecord } from "./deploy_record.js";
+import { migrateFromEnv, resolveTokenFilePath, writeFileAtomic } from "../whoop/token_store.js";
 import {
-  c, run, capture, captureAsync, commandExists, genToken, genPassword, copyToClipboard, httpGet,
-  prompt, promptHidden, promptYesNo, select, confirmStep, step, closePrompts,
-  withSpinner, spin, pause, maskArgs,
-  runScript, ensureCli, openUrl,
-} from "./ui.js";
+  CLIENTS, FIRST_QUESTION, SERVER_NAME, applyRecipe, connectCard, findClient, lastLine, recipeLines, tildify,
+  type Client, type Target,
+} from "./clients.js";
+import { offerLink } from "./links.js";
+import { realIo, type ExecResult, type Io } from "./sys.js";
+import { type Choice, duration, type Fix, listOf, maskSecrets, shellLines, shellPath, when } from "./ui.js";
 
-// ── .env helpers ────────────────────────────────────────────────────────────
-function envPath(root: string): string {
-  return resolve(root, ".env");
-}
-// Both go through src/lib/env_file.ts so a value containing `#` (an auto-
-// generated connector password can) round-trips instead of being read back
-// truncated — see issue #27.
-function readEnv(root: string): Record<string, string> {
-  return readEnvFile(envPath(root));
-}
-function upsertEnv(root: string, updates: Record<string, string>): void {
-  upsertEnvFile(envPath(root), updates);
+const NODE_MIN = 24;
+export const FLY_VOLUME = "totem_data";
+/** Fly's cheapest region (Ashburn, Virginia), and the smallest machine totem is comfortable in. */
+export const FLY_REGION = "iad";
+export const FLY_VM = { size: "shared-cpu-1x", memory: "512mb" } as const;
+/** Wrangler through npx: nothing to install, and the major version totem was tested with. */
+export const WRANGLER = ["--yes", "wrangler@4"] as const;
+const wrangler = (args: string[]): string[] => [...WRANGLER, ...args];
+
+/** The last few lines a command printed: enough to see why it failed. */
+function tail(r: ExecResult, lines = 6): string[] {
+  const all = `${r.stdout}\n${r.stderr}`.split("\n").map((l) => l.trimEnd()).filter((l) => l.trim() !== "");
+  return all.slice(-lines);
 }
 
-// A user-chosen connector password gates public web/mobile access to the
-// account. Require length + ≥2 character classes and reject obvious choices.
-// (Pressing Enter for the auto-generated 18-char option is always strong.)
-function weakPassword(pw: string): string | null {
-  if (pw.length < 16) return "Use at least 16 characters (or press Enter to auto-generate).";
+// A connector password the user chooses gates public access to their health
+// data. Require length and two character classes, and refuse the obvious.
+export function weakPassword(pw: string): string | null {
+  if (pw.length < 16) return "Use at least 16 characters.";
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) => re.test(pw)).length;
-  if (classes < 2) return "Mix at least two of: lower, upper, digits, symbols (or press Enter to auto-generate).";
-  if (/^(.)\1+$/.test(pw)) return "That's a single repeated character — pick something stronger.";
-  if (/^(password|whoop|123456|qwerty|letmein)/i.test(pw)) return "That's too guessable — pick something stronger.";
+  if (classes < 2) return "Mix at least two of: lower case, upper case, digits, symbols.";
+  if (/^(.)\1+$/.test(pw)) return "That is one character repeated.";
+  if (/^(password|whoop|123456|qwerty|letmein)/i.test(pw)) return "That is too easy to guess.";
   return null;
 }
 
-// Record of where we deployed, so `auth` can push rotated tokens to the right
-// place later (or know it's a local install with nothing remote to update).
-interface DeployRecord {
-  platform: string;          // fly | railway | cloudrun | custom | local
-  app?: string;              // app/project/service name (none for local)
-  url?: string;
-  region?: string;           // Cloud Run needs this to target the service
-  project?: string;          // Cloud Run GCP project (for logs/status/refresh)
-}
-function writeDeployRecord(root: string, rec: DeployRecord): void {
-  writeFileSync(resolve(root, ".totem-deploy.json"), JSON.stringify(rec, null, 2));
-}
+// ── prerequisites ───────────────────────────────────────────────────────────
 
-// ── shared: ensure dependencies are installed (offer to run npm install) ─────
-// A published `npm install -g` already has node_modules; a fresh git checkout
-// that never ran `npm install` does not — without it the build + auth steps
-// would just error out. This keeps the flow zero-setup.
-async function ensureDeps(root: string): Promise<boolean> {
-  if (existsSync(resolve(root, "node_modules"))) return true;
-  console.log(c.yellow("  Dependencies aren't installed yet."));
-  if (!(await promptYesNo("Run `npm install` now?", true))) {
-    console.log(c.red("  Can't continue without dependencies."));
-    return false;
-  }
-  return (await run("npm", ["install"], { cwd: root })) === 0;
-}
-
-// ── shared: ensure we have Whoop tokens (run auth if not) ────────────────────
-async function ensureAuth(root: string): Promise<boolean> {
-  const env = readEnv(root);
-  if (env.WHOOP_IOS_BEARER_TOKEN && env.WHOOP_COGNITO_REFRESH_TOKEN) {
-    const reuse = await promptYesNo("Found existing Whoop tokens in .env. Reuse them?", true);
-    if (reuse) return true;
-  }
-  // Need email + password in .env for the auth (cognito_bootstrap) script.
-  if (!env.WHOOP_EMAIL) {
-    const email = await promptRequired("Your Whoop account email", {
-      validate: (v) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) ? null : "That doesn't look like an email address — try again."),
+/** Node, dependencies and (for a local install) the build. Fixes what it can. */
+async function prerequisites(root: string, io: Io, build: boolean): Promise<boolean> {
+  const { ui, sys } = io;
+  if (Number(sys.nodeVersion.split(".")[0] ?? "0") < NODE_MIN) {
+    ui.problem(`totem needs Node.js ${NODE_MIN} or newer. This is ${sys.nodeVersion}.`, {
+      detail: "Install a newer one from https://nodejs.org, then run this command again.",
     });
-    upsertEnv(root, { WHOOP_EMAIL: email });
-  }
-  if (!readEnv(root).WHOOP_PASSWORD) {
-    const pw = await promptRequired("Your Whoop account password (stored only in local .env, used once)", { hidden: true });
-    upsertEnv(root, { WHOOP_PASSWORD: pw });
-  }
-  console.log(c.gray("Authenticating with Whoop (you'll get an SMS code if your account has MFA)…"));
-  // closePrompts so the auth script owns stdin for its own SMS prompt.
-  closePrompts();
-  // runScript prefers the compiled dist/ (works in a published install with no
-  // tsx), falling back to tsx on source for a dev checkout. TOKENS_ONLY: the
-  // guided flow handles the deploy itself, so the auth script must NOT push.
-  const code = await runScript(root, "scripts/cognito_bootstrap", [], {
-    env: { ...process.env, WHOOP_AUTH_TOKENS_ONLY: "1" },
-  });
-  if (code !== 0) { console.log(c.red("Auth failed.")); return false; }
-  return true;
-}
-
-// ── prerequisites (guided preflight, consistent across every path) ────────────
-// Each prerequisite is shown: already-satisfied ones are ✓'d and skipped; the
-// rest are guided to completion. The whole list always runs, so you see exactly
-// what was already set up vs. what we just did, then it returns to the flow.
-interface Prereq {
-  label: string;
-  check: () => boolean | Promise<boolean>;
-  ensure: () => Promise<boolean>;
-}
-
-async function preflight(prereqs: Prereq[]): Promise<boolean> {
-  for (const p of prereqs) {
-    if (await p.check()) { console.log(c.green(`  ✓ ${p.label}`)); continue; }
-    console.log(c.yellow(`  • ${p.label} — setting it up`));
-    if (!(await p.ensure())) { console.log(c.red(`  ✗ ${p.label} — couldn't complete; fix the above + re-run.`)); return false; }
-    console.log(c.green(`  ✓ ${p.label}`));
-  }
-  return true;
-}
-
-// shared prerequisites ────────────────────────────────────────────────────────
-const nodePrereq: Prereq = {
-  label: `Node.js ≥ 24 (have ${process.version})`,
-  check: () => Number(process.versions.node.split(".")[0] || "0") >= 24,
-  ensure: async () => {
-    console.log(c.gray("  Needs Node 24+. Upgrade (https://nodejs.org or `brew upgrade node`) and re-run."));
     return false;
-  },
-};
-function depsPrereq(root: string): Prereq {
-  return { label: "npm dependencies", check: () => existsSync(resolve(root, "node_modules")), ensure: () => ensureDeps(root) };
-}
-function buildPrereq(root: string): Prereq {
-  return {
-    label: "server built (dist/)",
-    check: () => existsSync(resolve(root, "dist", "server.js")),
-    ensure: async () => {
-      const tsc = resolve(root, "node_modules", ".bin", "tsc");
-      if (!existsSync(tsc)) { console.log(c.gray("  No TypeScript compiler — run `npm install`, then re-run.")); return false; }
-      return (await run(process.execPath, [tsc], { cwd: root })) === 0;
-    },
-  };
-}
-
-// host-CLI prerequisite (install on demand via ensureCli) ──────────────────────
-function cliPrereq(label: string, name: string, install: { brewPkg?: string; npmPkg?: string; scriptUrl?: string; manualHint: string }): Prereq {
-  return { label, check: () => commandExists(name), ensure: () => ensureCli(name, install) };
-}
-
-const flyPrereqs: Prereq[] = [
-  {
-    label: "Fly CLI (flyctl)",
-    check: () => commandExists("fly") || commandExists("flyctl"),
-    ensure: () => ensureCli("flyctl", { brewPkg: "flyctl", scriptUrl: "https://fly.io/install.sh", manualHint: "brew install flyctl (or: curl -L https://fly.io/install.sh | sh)" }),
-  },
-  {
-    label: "logged into Fly",
-    check: () => capture(commandExists("fly") ? "fly" : "flyctl", ["auth", "whoami"]).code === 0,
-    ensure: async () => (await run(commandExists("fly") ? "fly" : "flyctl", ["auth", "login"])) === 0,
-  },
-];
-
-const railwayPrereqs: Prereq[] = [
-  cliPrereq("Railway CLI", "railway", { npmPkg: "@railway/cli", brewPkg: "railway", manualHint: "npm i -g @railway/cli (or: brew install railway)" }),
-  {
-    label: "logged into Railway",
-    check: () => capture("railway", ["whoami"]).code === 0,
-    ensure: async () => (await run("railway", ["login"])) === 0,
-  },
-];
-
-// gcloud needs more than a CLI: install → auth → account → project → billing.
-// The CLI install + "at least one account" are pure prerequisites (below). The
-// *which account / which project* decisions are choices the user must own, so
-// they live in chooseGcloudTarget() and are offered on every run — never silently
-// inheriting whatever happens to be active.
-const gcloudPrereqs: Prereq[] = [
-  {
-    label: "gcloud SDK installed",
-    check: () => commandExists("gcloud"),
-    ensure: async () => {
-      if (commandExists("brew") && await confirmStep("Install the gcloud SDK via Homebrew?", { cmd: "brew install --cask google-cloud-sdk", detail: "downloads + installs Google's CLI (~hundreds of MB)", defaultYes: true })) {
-        await run("brew", ["install", "--cask", "google-cloud-sdk"]);
-      }
-      if (!commandExists("gcloud")) {
-        if (await confirmStep("Install gcloud with Google's official script instead?", { cmd: "curl https://sdk.cloud.google.com | bash", detail: "runs a remote install script (follow its prompts)", defaultYes: true })) {
-          await run("sh", ["-c", "curl https://sdk.cloud.google.com | bash"]);
-        }
-      }
-      if (!commandExists("gcloud")) {
-        console.log(c.yellow("  gcloud still isn't on PATH — open a new terminal and re-run `totem cloud`."));
-        return false;
-      }
-      return true;
-    },
-  },
-  {
-    label: "authenticated with Google",
-    check: () => capture("gcloud", ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"]).stdout.trim().length > 0,
-    ensure: async () => {
-      if (!(await confirmStep("Sign into Google in your browser?", { cmd: "gcloud auth login", defaultYes: true }))) return false;
-      return (await run("gcloud", ["auth", "login"])) === 0;
-    },
-  },
-];
-
-// Pick the Google account to deploy under (every run). gcloud can hold several
-// authenticated accounts at once, so switching between EXISTING ones needs no
-// logout — just `gcloud config set account`. Adding a new one runs `gcloud auth
-// login` (the browser opens right here in the flow). Loops so a decline returns
-// to the menu; verifies the active account before returning.
-async function chooseGcloudAccount(): Promise<boolean> {
-  for (;;) {
-    const all = (await withSpinner("listing Google accounts", () => captureAsync("gcloud", ["auth", "list", "--format=value(account)"]))).stdout.trim().split("\n").filter(Boolean);
-    const active = (await captureAsync("gcloud", ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"])).stdout.trim();
-    const choices = all.map((a) => ({ label: a, hint: a === active ? "active" : undefined }));
-    choices.push({ label: "Sign into a different Google account…", hint: undefined });
-    const idx = await select("Which Google account should own this deployment?", choices, { defaultIndex: Math.max(0, all.indexOf(active)) });
-    if (idx === all.length) {
-      // Add an account — the browser sign-in happens right here, in-process.
-      if (!(await confirmStep("Open a browser to sign into another Google account?", { cmd: "gcloud auth login", detail: "the browser sign-in happens right here in this flow", defaultYes: true }))) continue;
-      if ((await run("gcloud", ["auth", "login"])) !== 0) {
-        console.log(c.red("  ✗ Google sign-in didn't complete."));
-        if (!(await promptYesNo("  Try again?", true))) return false;
-      }
-      continue; // re-list — the new account is now active; confirm it on the next pass
-    }
-    const picked = all[idx]!;
-    if (picked !== active) {
-      const set = await withSpinner(`switching to ${picked}`, () => captureAsync("gcloud", ["config", "set", "account", picked]));
-      if (set.code !== 0) { console.log(c.red(`  ✗ couldn't switch to ${picked}: ${lastLine(set)}`)); continue; }
-    }
-    console.log(c.green(`  ✓ deploying as ${picked}`));
-    return true;
   }
-}
+  ui.ok(`Node.js ${sys.nodeVersion}`);
 
-// Pick (or create) the GCP project. Marks the current one; creating a brand-new
-// project is gated behind an explicit confirm (it's a real, billable resource).
-async function chooseGcloudProject(): Promise<boolean> {
-  const current = (await captureAsync("gcloud", ["config", "get-value", "project"])).stdout.trim().replace(/^\(unset\)$/, "");
-  const projects = (await withSpinner("listing GCP projects", () => captureAsync("gcloud", ["projects", "list", "--format=value(projectId)"]))).stdout.trim().split("\n").filter(Boolean);
-  const choices = projects.map((p) => ({ label: p, hint: p === current ? "current" : undefined }));
-  choices.push({ label: "Create a new project…", hint: undefined });
-  const idx = await select("Which GCP project should host the deployment?", choices, { defaultIndex: Math.max(0, projects.indexOf(current)) });
-  let project: string;
-  if (idx === projects.length) {
-    let fresh = `totem-${genToken().slice(0, 6)}`;
-    project = (await prompt("New project ID (lowercase, 6-30 chars, globally unique)", fresh)).trim() || fresh;
-    // Retry with a new ID if creation fails (taken/invalid ID), surfacing the error.
-    for (;;) {
-      if (!(await confirmStep(`Create a new Google Cloud project '${project}'?`, { cmd: `gcloud projects create ${project}`, detail: "creates a real GCP project on your account", defaultYes: true }))) return false;
-      if ((await run("gcloud", ["projects", "create", project])) === 0) break;
-      console.log(c.red("  ✗ project creation failed — the error is shown above (usually the ID is taken or malformed)."));
-      if (!(await promptYesNo("  Try a different project ID?", true))) return false;
-      fresh = `totem-${genToken().slice(0, 6)}`;
-      project = (await prompt("New project ID (lowercase, 6-30 chars, globally unique)", fresh)).trim() || fresh;
-    }
+  if (existsSync(resolve(root, "node_modules"))) {
+    ui.ok("Dependencies installed");
   } else {
-    project = projects[idx]!;
-  }
-  return (await withSpinner(`selecting ${project}`, () => captureAsync("gcloud", ["config", "set", "project", project]))).code === 0;
-}
-
-// Cloud Run requires billing on the chosen project. If you already have a billing
-// account, we LINK it from the CLI right here, in-process. Only *creating* a
-// billing account (adding a payment method) needs the web console — gcloud has no
-// CLI for that anywhere — so that single step is handed off, with the page auto-opened.
-async function ensureGcloudBilling(): Promise<boolean> {
-  const p = (await captureAsync("gcloud", ["config", "get-value", "project"])).stdout.trim();
-  const b = await withSpinner("checking billing", () => captureAsync("gcloud", ["billing", "projects", "describe", p, "--format=value(billingEnabled)"]));
-  if (b.code === 0 && /true/i.test(b.stdout)) { console.log(c.green("  ✓ billing enabled")); return true; }
-
-  // Link an existing OPEN billing account directly via the CLI (in-process).
-  const accts = (await withSpinner("listing your billing accounts", () => captureAsync("gcloud", ["billing", "accounts", "list", "--filter=open=true", "--format=value(name)"]))).stdout.trim().split("\n").filter(Boolean);
-  if (accts.length > 0) {
-    const choices = accts.map((a) => ({ label: a }));
-    choices.push({ label: "None of these — set one up in the console" });
-    const idx = await select("Link which billing account to this project?", choices);
-    if (idx < accts.length) {
-      const acct = accts[idx]!;
-      if (await confirmStep(`Link billing account ${acct} to ${p}?`, { cmd: `gcloud billing projects link ${p} --billing-account=${acct}`, detail: "enables billing on the project — done right here, no console", defaultYes: true })) {
-        const link = await withSpinner("linking billing", () => captureAsync("gcloud", ["billing", "projects", "link", p, "--billing-account", acct]));
-        if (link.code === 0) { console.log(c.green("  ✓ billing linked")); return true; }
-        console.log(c.red(`  ✗ couldn't link billing: ${lastLine(link)}`));
-      }
-    }
-  }
-
-  // No usable billing account → the console is the only place to add a payment method.
-  const url = `https://console.cloud.google.com/billing/linkedaccount?project=${p}`;
-  console.log(c.yellow("  Add a payment method in the console (creating a billing account has no CLI)."));
-  console.log(c.gray(`  Opening: ${url}`));
-  openUrl(url);
-  await promptYesNo("  Press Enter once billing is enabled", true);
-  return true;
-}
-
-// The full Cloud Run target picker: account → project → billing. Always offered.
-async function chooseGcloudTarget(): Promise<boolean> {
-  console.log(c.gray("  Choose the account + project to deploy into:"));
-  if (!(await chooseGcloudAccount())) return false;
-  if (!(await chooseGcloudProject())) return false;
-  return ensureGcloudBilling();
-}
-
-// Fly target picker: confirm the logged-in account or switch to another. The
-// switch (logout + login) runs entirely in-process — `fly auth login` opens the
-// browser right here. Loops on decline; verifies + shows the account afterward.
-async function chooseFlyAccount(): Promise<boolean> {
-  const fly = commandExists("fly") ? "fly" : "flyctl";
-  for (;;) {
-    const who = (await withSpinner("checking Fly account", () => captureAsync(fly, ["auth", "whoami"]))).stdout.trim();
-    const idx = await select("Deploy under which Fly account?", [
-      { label: who || "(current account)", hint: "current" },
-      { label: "Switch to a different account…" },
-    ]);
-    if (idx === 0) { console.log(c.green(`  ✓ deploying as ${who || "(current account)"}`)); return true; }
-    if (!(await confirmStep("Log out of Fly and sign in as a different account?", { cmd: `${fly} auth logout && ${fly} auth login`, detail: "the browser login happens right here in this flow", defaultYes: true }))) continue;
-    await run(fly, ["auth", "logout"]);
-    if ((await run(fly, ["auth", "login"])) !== 0) {
-      console.log(c.red("  ✗ Fly login didn't complete."));
-      if (!(await promptYesNo("  Try again?", true))) return false;
-      continue;
-    }
-    const now = (await withSpinner("confirming Fly account", () => captureAsync(fly, ["auth", "whoami"]))).stdout.trim();
-    console.log(c.green(`  ✓ now signed in to Fly as ${now || "(unknown)"}`));
-    return true;
-  }
-}
-
-// Railway target picker: confirm the logged-in account or switch to another.
-// `railway login` runs in-process (browser / pairing happens right here). Loops
-// on decline; verifies + shows the account afterward.
-async function chooseRailwayAccount(): Promise<boolean> {
-  for (;;) {
-    const who = (await withSpinner("checking Railway account", () => captureAsync("railway", ["whoami"]))).stdout.trim().replace(/\s+/g, " ");
-    const idx = await select("Deploy under which Railway account?", [
-      { label: who || "(current account)", hint: "current" },
-      { label: "Switch to a different account…" },
-    ]);
-    if (idx === 0) { console.log(c.green(`  ✓ deploying as ${who || "(current account)"}`)); return true; }
-    if (!(await confirmStep("Log out of Railway and log in as a different account?", { cmd: "railway logout && railway login", detail: "the login happens right here in this flow", defaultYes: true }))) continue;
-    await run("railway", ["logout"]);
-    if ((await run("railway", ["login"])) !== 0) {
-      console.log(c.red("  ✗ Railway login didn't complete."));
-      if (!(await promptYesNo("  Try again?", true))) return false;
-      continue;
-    }
-    const now = (await withSpinner("confirming Railway account", () => captureAsync("railway", ["whoami"]))).stdout.trim().replace(/\s+/g, " ");
-    console.log(c.green(`  ✓ now signed in to Railway as ${now || "(unknown)"}`));
-    return true;
-  }
-}
-
-// ── LOCAL flow ───────────────────────────────────────────────────────────────
-// ── local AI-client wiring (registry-driven) ────────────────────────────────
-// Every stdio client takes the SAME launch entry — `{ command: <node>, args:
-// [dist/server.js] }` — because the server self-loads the repo's .env. So adding
-// a client is just a config path + a JSON key (or its own CLI); the entry never
-// changes, only WHERE it's written.
-interface LocalClient {
-  label: string;
-  hint: string;
-  /** Wire this client; true if we wrote/ran it, false if the user must finish it. */
-  wire: (node: string, serverJs: string) => Promise<boolean>;
-}
-
-// Merge { [key]: { [name]: entry } } into a JSON config without clobbering the
-// user's other servers/settings. Idempotent.
-function mergeJsonConfig(cfgPath: string, key: string, name: string, entry: Record<string, unknown>): void {
-  let merged: Record<string, unknown> = {};
-  if (existsSync(cfgPath)) {
-    try { merged = JSON.parse(readFileSync(cfgPath, "utf8")) as Record<string, unknown>; } catch { merged = {}; }
-  }
-  const bucket = (merged[key] as Record<string, unknown> | undefined) ?? {};
-  merged[key] = { ...bucket, [name]: entry };
-  mkdirSync(dirname(cfgPath), { recursive: true });
-  writeFileSync(cfgPath, JSON.stringify(merged, null, 2));
-}
-
-// A client wired by merging a JSON config file (most of them). `key` is the
-// top-level object: "mcpServers" for Claude Desktop/Cursor/Gemini/Windsurf,
-// "servers" (with a "type":"stdio" field) for VS Code.
-function jsonClient(label: string, hint: string, relPath: string, key: "mcpServers" | "servers", restart: string): LocalClient {
-  return {
-    label, hint,
-    wire: async (node, serverJs) => {
-      const home = process.env.HOME ?? "~";
-      const cfgPath = resolve(home, relPath);
-      const entry: Record<string, unknown> = key === "servers"
-        ? { type: "stdio", command: node, args: [serverJs] }
-        : { command: node, args: [serverJs] };
-      if (!(await promptYesNo(`Write the 'whoop' server into ${cfgPath}?`, true))) {
-        console.log(c.gray("  Skipped — paste this into that file yourself:"));
-        console.log(JSON.stringify({ [key]: { whoop: entry } }, null, 2));
-        return false;
-      }
-      mergeJsonConfig(cfgPath, key, "whoop", entry);
-      console.log(c.green(`  ✓ ${label} updated`) + c.gray(`  ${cfgPath}`));
-      console.log(c.yellow(`  → ${restart}`));
-      return true;
-    },
-  };
-}
-
-// Claude Code: wired by its own CLI.
-const claudeCodeClient: LocalClient = {
-  label: "Claude Code", hint: "run the one-line `claude mcp add`",
-  wire: async (node, serverJs) => {
-    const manual = `claude mcp add whoop ${node} ${serverJs}`;
-    if (commandExists("claude")) {
-      if (await promptYesNo("Run `claude mcp add whoop …` now?", true)) {
-        if ((await run("claude", ["mcp", "add", "whoop", node, serverJs])) === 0) {
-          console.log(c.green("  ✓ added to Claude Code"));
-          return true;
-        }
-        console.log(c.yellow("  That didn't work — run it yourself:"));
-        console.log(`  ${manual}`);
-        return false;
-      }
-      console.log(c.gray("  Run it when ready:"));
-      console.log(`  ${manual}`);
+    const started = sys.now();
+    const r = await ui.task("Installing dependencies", (set) => sys.exec("npm", ["install"], { cwd: root, onLine: set }), { slow: true });
+    if (r.code !== 0) {
+      ui.problem("Installing dependencies failed.", { detail: tail(r), fix: [["Run it yourself", "npm install"]] });
       return false;
     }
-    console.log(c.gray("  The `claude` CLI isn't on PATH. Install Claude Code, then run:"));
-    console.log(`  ${manual}`);
-    return false;
-  },
-};
-
-// Codex uses TOML — print the exact block (no fragile TOML merge/parse).
-const codexClient: LocalClient = {
-  label: "Codex CLI", hint: "show the config.toml block to add",
-  wire: async (node, serverJs) => {
-    const home = process.env.HOME ?? "~";
-    console.log("");
-    console.log(c.gray(`  Add this to ${resolve(home, ".codex/config.toml")} and restart Codex:`));
-    console.log("");
-    console.log(`  [mcp_servers.whoop]`);
-    console.log(`  command = ${JSON.stringify(node)}`);
-    console.log(`  args = ${JSON.stringify([serverJs])}`);
-    console.log("");
-    return false;
-  },
-};
-
-// Catch-all: print the universal stdio block for any other MCP client.
-const showConfigClient: LocalClient = {
-  label: "Other / show the config", hint: "any MCP client — print the block",
-  wire: async (node, serverJs) => {
-    console.log("");
-    console.log(c.gray('  Most MCP clients accept this (key is usually "mcpServers"; VS Code uses "servers" + "type":"stdio"):'));
-    console.log(JSON.stringify({ mcpServers: { whoop: { command: node, args: [serverJs] } } }, null, 2));
-    return false;
-  },
-};
-
-const LOCAL_CLIENTS: LocalClient[] = [
-  jsonClient("Claude Desktop", "write the config automatically", "Library/Application Support/Claude/claude_desktop_config.json", "mcpServers", "Quit and reopen Claude Desktop."),
-  claudeCodeClient,
-  jsonClient("Cursor", "write ~/.cursor/mcp.json", ".cursor/mcp.json", "mcpServers", "Reload Cursor (Settings → Tools & MCP)."),
-  jsonClient("VS Code (Copilot)", "write the user mcp.json", "Library/Application Support/Code/User/mcp.json", "servers", "Reload VS Code; start the server in the MCP view."),
-  jsonClient("Gemini CLI", "write ~/.gemini/settings.json", ".gemini/settings.json", "mcpServers", "Restart the gemini CLI."),
-  codexClient,
-  jsonClient("Windsurf", "write ~/.codeium/windsurf/mcp_config.json", ".codeium/windsurf/mcp_config.json", "mcpServers", "Reload Windsurf (Cascade → refresh MCP)."),
-  showConfigClient,
-];
-
-export async function runLocalSetup(root: string): Promise<number> {
-  console.log(c.bold("\ntotem · local setup") + c.gray(" — run the MCP on this machine over stdio\n"));
-  const TOTAL = 3;
-  const serverJs = resolve(root, "dist", "server.js");
-
-  step(1, TOTAL, "Prerequisites");
-  if (!(await preflight([nodePrereq, depsPrereq(root), buildPrereq(root)]))) return 1;
-
-  step(2, TOTAL, "Whoop authentication");
-  if (!(await ensureAuth(root))) return 1;
-  console.log(c.green("  ✓ tokens in .env"));
-  // Record this as a local install (overriding any stale cloud record) so
-  // `auth` knows the tokens just go to .env — no remote to push to.
-  writeDeployRecord(root, { platform: "local" });
-
-  step(3, TOTAL, "Wire into your AI client");
-  const idx = await select("Which client?", LOCAL_CLIENTS.map((cl) => ({ label: cl.label, hint: cl.hint })));
-  const wired = await LOCAL_CLIENTS[idx]!.wire(process.execPath, serverJs);
-
-  if (wired) {
-    console.log(c.green("\n✓ Local setup complete.") + c.gray(" Restart the client, then ask: \"how am I doing today on whoop?\"\n"));
-  } else {
-    console.log(c.yellow("\n→ Almost done.") + c.gray(" Finish the step above + restart your client, then ask: \"how am I doing today on whoop?\"\n"));
+    ui.ok("Dependencies installed", duration(sys.now() - started));
   }
-  closePrompts();
-  return 0;
+  if (!build) return true;
+
+  if (existsSync(resolve(root, "dist", "server.js"))) {
+    ui.ok("Server built");
+    return true;
+  }
+  const tsc = pkgBin(root, "typescript", "tsc");
+  if (!tsc) {
+    ui.problem("The server isn't built, and the TypeScript compiler isn't installed.", { fix: [["Install it", "npm install"], ["Then", "totem local"]] });
+    return false;
+  }
+  const started = sys.now();
+  const r = await ui.task("Building the server", (set) => sys.exec(sys.node, [tsc], { cwd: root, onLine: set }), { slow: true });
+  if (r.code !== 0) {
+    ui.problem("Building the server failed.", { detail: tail(r), fix: [["See the full output", "totem build"]] });
+    return false;
+  }
+  ui.ok("Server built", duration(sys.now() - started));
+  return true;
 }
 
-// ── CLOUD flow ─────────────────────────────────────────────────────────────
-interface DeployCtx {
-  root: string;
-  env: Record<string, string>; // everything except PUBLIC_URL
-  appName: string;
-  password: string;
+interface Installer { brew?: string; npm?: string; script?: string; manual: string; windows?: string }
+
+/** Make sure a host's CLI is installed, offering each way this machine has. */
+async function ensureCli(io: Io, names: string[], title: string, install: Installer): Promise<string | null> {
+  const { ui, sys } = io;
+  const found = (): string | null => names.find((n) => sys.has(n)) ?? null;
+  const already = found();
+  if (already) {
+    ui.ok(`${title} installed`);
+    return already;
+  }
+  ui.warn(`The ${title} isn't installed.`);
+  const ways: Array<{ via: string; cmd: string; args: string[] }> = [];
+  if (install.brew && sys.has("brew")) ways.push({ via: "Homebrew", cmd: "brew", args: ["install", ...install.brew.split(" ")] });
+  if (install.npm && sys.has("npm")) ways.push({ via: "npm", cmd: "npm", args: ["install", "-g", install.npm] });
+  if (install.script && sys.platform !== "win32") ways.push({ via: "its install script", cmd: "sh", args: ["-c", install.script] });
+  for (const way of ways) {
+    const shown = way.cmd === "sh" ? way.args[1]! : `${way.cmd} ${way.args.join(" ")}`;
+    ui.code([shown]);
+    if (!(await ui.confirm(`Install it with ${way.via}?`, true))) continue;
+    await sys.run(way.cmd, way.args);
+    const now = found();
+    if (now) {
+      ui.ok(`${title} installed`);
+      return now;
+    }
+    ui.warn(`That didn't put ${names[0]} on this shell's PATH.`);
+  }
+  ui.problem(`totem can't go on without the ${title}.`, { fix: [["Install it", sys.platform === "win32" && install.windows ? install.windows : install.manual], ["Then, in a new terminal", "totem cloud"]] });
+  return null;
 }
 
-export async function runCloudSetup(root: string): Promise<number> {
-  console.log(c.bold("\ntotem · cloud setup") + c.gray(" — deploy a server + connect it to Claude (web, desktop, mobile)\n"));
-  const TOTAL = 6;
-  if (!(await preflight([nodePrereq, depsPrereq(root)]))) return 1;
+// ── connecting a client ─────────────────────────────────────────────────────
 
-  step(1, TOTAL, "Whoop authentication");
-  if (!(await ensureAuth(root))) return 1;
-  const env = readEnv(root);
-  console.log(c.green("  ✓ tokens ready"));
+function localTarget(root: string, io: Io): Extract<Target, { kind: "local" }> {
+  return { kind: "local", node: io.sys.node, serverJs: resolve(root, "dist", "server.js") };
+}
 
-  step(2, TOTAL, "Choose a host");
-  const platformIdx = await select("Where should the server run?", [
-    { label: "Fly.io", hint: "fast-booting micro-VMs on a global edge network" },
-    { label: "Railway", hint: "polished PaaS, instant deploys + a clean dashboard" },
-    { label: "Google Cloud Run", hint: "Google Cloud's serverless containers, one instance kept warm" },
-    { label: "Custom / own server", hint: "bring your own Docker host — a VPS, Render, a home server" },
-  ]);
-  const platforms = ["fly", "railway", "cloudrun", "custom"] as const;
-  const platform = platforms[platformIdx]!;
+/** Where this install runs, from the deploy record: a server with a URL, or this computer. */
+export function installTarget(root: string, io: Io): Target {
+  const record = readDeployRecord(root, io.sys);
+  if (record && record.platform !== "local" && record.url) return { kind: "remote", mcpUrl: `${record.url.replace(/\/+$/, "")}/mcp` };
+  return localTarget(root, io);
+}
 
-  // Per-host prerequisites (install the CLI, log in) — guided, auto-skipping
-  // whatever you already have, BEFORE we generate secrets or deploy.
-  const hostPrereqs = platform === "fly" ? flyPrereqs
-    : platform === "railway" ? railwayPrereqs
-    : platform === "cloudrun" ? gcloudPrereqs
-    : [];
-  if (hostPrereqs.length && !(await preflight(hostPrereqs))) return 1;
+/** The universal stdio block, for a client totem doesn't know. */
+function printOtherClient(io: Io, target: Target): void {
+  const { ui, sys } = io;
+  if (target.kind === "remote") {
+    ui.para("Give the client this URL. It signs in through a totem page in your browser, with the connector password:");
+    ui.code([target.mcpUrl]);
+    ui.para("If it can't sign in through a browser, send the server's token as a bearer header instead:");
+    ui.code(["Authorization: Bearer $(totem token)"]);
+    return;
+  }
+  ui.para(`Most clients take this in their MCP config (the key is usually "mcpServers"):`);
+  ui.code(JSON.stringify({ mcpServers: { [SERVER_NAME]: { command: target.node, args: [target.serverJs] } } }, null, 2).split("\n"));
+  ui.para("Or, as a command the client runs:");
+  ui.code(shellLines([target.node, target.serverJs], ui.style.width - 4, sys.platform));
+}
 
-  // Account / project selection — always offered, never silently inheriting
-  // whatever account or GCP project happens to be active. (Custom self-host has
-  // no account concept.)
-  const targetOk = platform === "fly" ? await chooseFlyAccount()
-    : platform === "railway" ? await chooseRailwayAccount()
-    : platform === "cloudrun" ? await chooseGcloudTarget()
-    : true;
-  if (!targetOk) { console.log(c.red("  Couldn't set the deploy target.")); closePrompts(); return 1; }
+/** Ask which client, then set it up. Returns what the person still does. */
+async function chooseAndConnect(io: Io, target: Target): Promise<{ client: Client | null; done: boolean; steps: string[] }> {
+  const { ui, sys } = io;
+  const offered = CLIENTS.filter((cl) => cl.recipe(target, sys).kind !== "unavailable");
+  const found = offered.map((cl) => cl.detect(sys));
+  const choices: Choice[] = [
+    ...offered.map((cl, i) => ({ label: cl.name, hint: found[i] ? "installed" : undefined })),
+    { label: "Another client", hint: "show what to paste" },
+  ];
+  const idx = await ui.select("Which client?", choices, Math.max(0, found.indexOf(true)));
+  const client = offered[idx] ?? null;
+  if (!client) {
+    printOtherClient(io, target);
+    return { client: null, done: false, steps: ["Add the config above to your client."] };
+  }
+  const applied = await applyRecipe(io, client, client.recipe(target, sys));
+  return { client, ...applied };
+}
 
-  step(3, TOTAL, "Generate secrets");
-  const mcpToken = genToken();
-  console.log(`  MCP_AUTH_TOKEN: ${c.gray(mcpToken.slice(0, 12) + "… (generated)")}`);
-  console.log(c.gray("  Connector password — you'll paste this into Claude once when adding the server."));
-  console.log(c.gray("  Press Enter to auto-generate a secure 18-char one, or type your own (min 16)."));
-  const useGenerated = (pw: string): string => {
-    const copied = copyToClipboard(pw);
-    console.log(`  ${c.green("✓")} generated: ${c.bold(pw)}${copied ? c.green("   ✓ copied to clipboard") : c.gray("   (copy it now)")}`);
-    if (copied) console.log(c.gray("    (clear your clipboard after pasting — clipboard-history apps retain it)"));
-    return pw;
-  };
-  let password = await prompt("Password (Enter = auto-generate)");
-  if (password === "") {
-    password = useGenerated(genPassword(18));
-  } else {
-    let why = weakPassword(password);
-    while (why) {
-      console.log(c.red(`  ${why}`));
-      password = await prompt("Password (Enter = auto-generate)");
-      if (password === "") { password = useGenerated(genPassword(18)); break; }
-      why = weakPassword(password);
+/**
+ * Set totem up in every app found on this computer, after one question. Each
+ * app gets its own best way in: its config file, its own command, or a link
+ * that opens it filled in. Apps that share one connection (claude.ai and
+ * Claude Desktop, for a server) are set up once. With nothing found, or a no,
+ * the person picks one app instead.
+ */
+export async function connectInstalled(io: Io, target: Target): Promise<{ done: string[]; steps: string[] }> {
+  const { ui, sys } = io;
+  const found = CLIENTS.filter((cl) => cl.detect(sys) && cl.recipe(target, sys).kind !== "unavailable");
+  if (found.length === 0 || !ui.canAsk) {
+    if (found.length === 0) ui.hint("No AI app found on this computer that totem knows how to set up.");
+    const picked = await chooseAndConnect(io, target);
+    return { done: picked.done && picked.client ? [picked.client.name] : [], steps: picked.steps };
+  }
+  ui.line();
+  ui.para(`Found on this computer: ${listOf(found.map((cl) => cl.name))}.`);
+  const all = await ui.confirm(found.length === 1 ? `Add totem to ${found[0]!.name}?` : `Add totem to all ${found.length}?`, true);
+  if (!all) {
+    const picked = await chooseAndConnect(io, target);
+    return { done: picked.done && picked.client ? [picked.client.name] : [], steps: picked.steps };
+  }
+  const done: string[] = [];
+  const steps: string[] = [];
+  const opened = new Set<string>();
+  for (const client of found) {
+    const recipe = client.recipe(target, sys);
+    if (recipe.kind === "link" && opened.has(recipe.url)) { done.push(client.name); continue; }
+    if (recipe.kind === "link") opened.add(recipe.url);
+    // One app failing in a way totem didn't foresee (a permission error, say)
+    // doesn't stop the others.
+    try {
+      const applied = await applyRecipe(io, client, recipe);
+      if (applied.done) done.push(client.name);
+      for (const step of applied.steps) if (!steps.includes(step)) steps.push(step);
+    } catch (error) {
+      ui.problem(`Couldn't set up ${client.name}.`, { detail: error instanceof Error ? error.message : String(error), fix: [["Try it alone", `totem connect ${client.id}`]] });
     }
   }
+  return { done, steps };
+}
 
-  const baseEnv: Record<string, string> = {
-    WHOOP_EMAIL: env.WHOOP_EMAIL ?? "",
-    WHOOP_IOS_BEARER_TOKEN: env.WHOOP_IOS_BEARER_TOKEN ?? "",
-    WHOOP_COGNITO_REFRESH_TOKEN: env.WHOOP_COGNITO_REFRESH_TOKEN ?? "",
-    MCP_TRANSPORT: "http",
-    MCP_AUTH_TOKEN: mcpToken,
-    AUTH_PASSWORD: password,
-    WHOOP_TOKEN_STORE: "memory",
-  };
-  if (env.WHOOP_USER_ID) baseEnv.WHOOP_USER_ID = env.WHOOP_USER_ID;
+function nextAfterConnect(io: Io, steps: string[]): void {
+  const all = [...steps, `Ask it: ${FIRST_QUESTION}`];
+  io.ui.next([...all.map((s, i) => `${i + 1}. ${s}`), "", "Connect another app: totem connect"]);
+}
 
-  step(4, TOTAL, `Deploy to ${platform}`);
-  const defaultName = `totem-${genToken().slice(0, 6)}`;
-  let appName = "totem";
-  if (platform !== "custom") {
-    console.log(c.gray("  App name is optional — press Enter to use the suggested one in [brackets],"));
-    console.log(c.gray("  or type your own (must be globally unique on the host)."));
-    appName = await prompt("App name (Enter = use suggested)", defaultName);
-  }
-  const ctx: DeployCtx = { root, env: baseEnv, appName, password };
+/** The server's Connect page (a button or a step for every app), offered to open in the browser. */
+async function showConnectPage(io: Io, mcpUrl: string): Promise<string> {
+  const page = `${mcpUrl.replace(/\/mcp$/, "")}/connect`;
+  await offerLink(io, "Your server's Connect page", page);
+  io.ui.hint("It has a button for claude.ai, Cursor and VS Code, and the steps for every other app.", 2);
+  return page;
+}
 
-  let url: string | null = null;
-  if (platform === "fly") url = await deployFly(ctx);
-  else if (platform === "railway") url = await deployRailway(ctx);
-  else if (platform === "cloudrun") url = await deployCloudRun(ctx);
-  else url = await deployCustom(ctx);
-
-  if (!url) {
-    console.log(c.yellow("\nDeploy didn't complete automatically. Follow the steps above, then re-run `totem cloud` or set PUBLIC_URL + redeploy manually."));
-    closePrompts();
+/**
+ * `totem connect [client] [--print]`: connect a client to the install that is
+ * already set up, or show what to paste where for every client.
+ */
+export async function runConnect(root: string, args: string[], io: Io = realIo()): Promise<number> {
+  const { ui, sys } = io;
+  const print = args.includes("--print");
+  const wanted = args.find((a) => !a.startsWith("-"));
+  const target = installTarget(root, io);
+  if (target.kind === "local" && !existsSync(target.serverJs)) {
+    ui.error("totem isn't set up on this computer yet.", { fix: [["Run on this computer", "totem local"], ["Or deploy a server", "totem cloud"]] });
     return 1;
   }
+  const where = target.kind === "remote" ? `your server at ${target.mcpUrl.replace(/\/mcp$/, "")}` : "the totem on this computer";
 
-  step(5, TOTAL, "Verify the server + OAuth are live");
-  const ok = await verifyDeployment(url);
-  if (!ok) {
-    console.log(c.yellow("  Couldn't confirm the OAuth endpoints yet (the host may still be starting). Give it a minute, then run `totem ping`."));
+  // "stdio" and "http" are what `totem config` took before it became connect.
+  if (wanted === "other" || wanted === "stdio" || wanted === "http") {
+    ui.header("totem connect", `Connect an app to ${where}.`);
+    printOtherClient(io, target);
+    return 0;
   }
-  // Use ctx.appName, not the local appName: a Fly name conflict may have changed
-  // it during deploy, and `auth` must push to the app that was actually used.
-  const extra: Partial<DeployRecord> = {};
-  if (platform === "cloudrun") {
-    extra.region = "us-west1";
-    const proj = capture("gcloud", ["config", "get-value", "project"]).stdout.trim();
-    if (proj) extra.project = proj;
+  if (wanted) {
+    const client = findClient(wanted);
+    if (!client) {
+      ui.error(`totem doesn't know a client called "${wanted}".`, {
+        detail: `It knows: ${CLIENTS.map((cl) => cl.id).join(", ")}, other.`,
+        fix: [["See them all", "totem connect"]],
+      });
+      return 1;
+    }
+    ui.header("totem connect", `Connect ${client.name} to ${where}.`);
+    const recipe = client.recipe(target, sys);
+    // A remote install is finished by signing in from the client, on the server's
+    // own page, so the address and which password it wants come first.
+    if (target.kind === "remote" && recipe.kind !== "unavailable") {
+      ui.rows([["URL", ui.kit.c.link(target.mcpUrl)], ["Password", "the connector password from totem cloud"]]);
+      ui.line();
+    }
+    // totem sets the client up itself when that is a file or the client's own
+    // command (for a server, both hold only its address). Steps in a client's
+    // settings, and --print, are shown instead.
+    if (print || recipe.kind === "steps" || recipe.kind === "unavailable") {
+      ui.line(ui.kit.c.bold(client.name));
+      ui.lines(recipeLines(recipe, ui.kit, sys));
+      return recipe.kind === "unavailable" ? 1 : 0;
+    }
+    const applied = await applyRecipe(io, client, recipe);
+    nextAfterConnect(io, applied.steps);
+    return 0;
   }
-  writeDeployRecord(root, { platform, app: ctx.appName, url, ...extra });
 
-  step(6, TOTAL, "Connect your AI");
-  printConnectInstructions(url, password, mcpToken);
-  closePrompts();
+  ui.header("totem connect", `Connect your apps to ${where}.`);
+  if (ui.canAsk && !print) {
+    if (target.kind === "remote") await showConnectPage(io, target.mcpUrl);
+    const { steps } = await connectInstalled(io, target);
+    nextAfterConnect(io, steps);
+    return 0;
+  }
+  ui.lines(connectCard(ui.kit, sys, { target, password: null }));
   return 0;
 }
 
-// ── verification ─────────────────────────────────────────────────────────────
-async function verifyDeployment(baseUrl: string): Promise<boolean> {
-  const root = baseUrl.replace(/\/(mcp)?$/, "");
-  // Poll fast: a short per-attempt timeout means a not-yet-propagated DNS / cold
-  // start fails in ~3s instead of hanging the full 12s default, and a tight 1.5s
-  // interval detects readiness within ~1.5s of the host coming up. (Previously a
-  // 12s timeout × 3s sleep × 10 made this feel like ~3 minutes.)
-  const start = Date.now();
-  const deadline = start + 90_000;
-  let healthy = false;
-  // Live elapsed counter so a slow DNS-propagation / cold-start wait visibly ticks.
-  const s = spin(() => `waiting for ${root} (DNS + first boot) — ${Math.floor((Date.now() - start) / 1000)}s`);
-  while (Date.now() < deadline) {
-    const health = await httpGet(`${root}/health`, 3000);
-    if (health.status === 200) { healthy = true; break; }
-    await new Promise((r) => setTimeout(r, 1500));
+// ── LOCAL ───────────────────────────────────────────────────────────────────
+
+/** A WHOOP login on this computer: the saved one, v1's from .env, or a new browser login. */
+async function ensureLocalLogin(root: string, io: Io): Promise<boolean> {
+  const { ui } = io;
+  const auth = io.auth ?? realAuthDeps;
+  const env = auth.cliEnv(resolve(root, ".env"));
+  const local = auth.readLocalStatus(resolveTokenFilePath(env));
+  if (local.state === "tokens") {
+    ui.ok("Already logged in to WHOOP", `saved ${when(local.savedAt)}`);
+    ui.hint("To log in again: totem auth --local");
+    return true;
   }
-  s.stop();
-  console.log(`  /health: ${healthy ? c.green("200 ✓") : c.red("timeout")}`);
-  const prm = await withSpinner("checking OAuth metadata", () => httpGet(`${root}/.well-known/oauth-protected-resource/mcp`, 5000));
-  const prmOk = prm.status === 200 && prm.body.includes("/mcp");
-  console.log(`  OAuth metadata: ${prmOk ? c.green("✓") : c.red("not found")}`);
-  // Prove the auth gate is live: an unauthenticated /mcp must be REJECTED (401),
-  // not served. Catches a regression that left the endpoint open to the public.
-  const gate = await withSpinner("checking /mcp is auth-gated", () => httpGet(`${root}/mcp`, 5000));
-  const gated = gate.status === 401;
-  console.log(`  /mcp auth gate: ${gated ? c.green("401 ✓ (rejects unauthenticated)") : c.red(`${gate.status || "no response"} — expected 401`)}`);
-  return healthy && prmOk && gated;
-}
-
-function printConnectInstructions(url: string, password: string, mcpToken: string): void {
-  const mcpUrl = url.replace(/\/$/, "") + "/mcp";
-  // Header-auth clients (CLIs / editors) hit the server directly with the static
-  // bearer token; OAuth clients (claude.ai, ChatGPT) use the password gate.
-  const headerBlock = JSON.stringify(
-    { mcpServers: { whoop: { url: mcpUrl, headers: { Authorization: `Bearer ${mcpToken}` } } } },
-    null, 2,
-  ).split("\n").map((l) => "    " + l).join("\n");
-  console.log("");
-  console.log(c.bold("  ── Connect your AI ──────────────────────────────────────────"));
-  console.log("");
-  console.log(c.bold("  claude.ai") + c.gray("  (web · desktop · mobile — syncs across your devices)"));
-  console.log(`    Settings → Connectors → ${c.bold("Add custom connector")}`);
-  console.log(`    URL: ${c.brand(mcpUrl)}    Password: ${c.brand(password)}`);
-  console.log("");
-  console.log(c.bold("  ChatGPT") + c.gray("  (desktop)"));
-  console.log(`    Settings → Connectors → ${c.bold("Add")}  ·  URL: ${c.brand(mcpUrl)}    Password: ${c.brand(password)}`);
-  console.log("");
-  console.log(c.bold("  Claude Code") + c.gray("  (remote)"));
-  console.log(`    ${c.gray("$")} claude mcp add --transport http whoop ${mcpUrl} --header "Authorization: Bearer ${mcpToken}"`);
-  console.log("");
-  console.log(c.bold("  Cursor · Windsurf · any HTTP MCP client") + c.gray("  — config block:"));
-  console.log(headerBlock);
-  console.log("");
-  // Best-effort: open the connectors page in the browser (cross-platform).
-  openUrl("https://claude.ai/settings/connectors");
-  console.log(c.gray("  (opened the claude.ai connectors page in your browser)"));
-  console.log(c.green("\n✓ Cloud setup complete.\n"));
-}
-
-// ── platform adapters ────────────────────────────────────────────────────────
-
-function setSummary(env: Record<string, string>): void {
-  console.log(c.gray("  env to set: " + Object.keys(env).join(", ")));
-}
-
-// ── shared failure handling ──────────────────────────────────────────────────
-// The last meaningful line of a captured (spinner-wrapped) command's output —
-// so when a step that DIDN'T stream live fails, we can still show WHY.
-function lastLine(r: { stdout: string; stderr: string }): string {
-  const lines = (r.stderr + "\n" + r.stdout).split("\n").map((l) => l.trim()).filter(Boolean);
-  return lines.length ? lines[lines.length - 1]! : "unknown error";
-}
-
-// Run an inherited-stdio action (its error is already printed on screen by the
-// tool) and, on failure, let the user retry it or give up. Loops until success
-// or the user declines. Returns true once it succeeds.
-async function runWithRetry(desc: string, action: () => Promise<number>): Promise<boolean> {
-  for (;;) {
-    console.log(c.gray(`  ${desc}…`));
-    if ((await action()) === 0) return true;
-    console.log(c.red("  ✗ that failed — the error is shown above."));
-    if (!(await promptYesNo("  Retry it?", true))) return false;
+  if (local.state !== "handed-off" && migrateFromEnv(env)) {
+    ui.ok("Using the WHOOP login from totem 1.x", "the server moves it out of .env on first start");
+    return true;
   }
+  return (await runAuth(root, ["--local"], { embedded: true }, io)) === 0;
 }
 
-// Ask for a public URL, re-asking (with a clear reason) on empty or malformed
-// input instead of bailing the whole flow. Accepts a bare domain (prepends
-// https://) and strips trailing slashes. Ctrl-C is the only way out.
-async function promptUrl(message: string): Promise<string> {
-  const tty = Boolean(process.stdin.isTTY);
-  for (;;) {
-    let url = (await prompt(message)).trim();
-    if (url) {
-      if (!/^https?:\/\//i.test(url)) url = "https://" + url; // accept a bare domain
-      if (/^https?:\/\/[^/.\s]+\.[^/\s]+/.test(url)) return url.replace(/\/+$/, "");
-      console.log(c.red(`  '${url}' isn't a valid URL (e.g. https://whoop.example.com) — try again.`));
-    } else {
-      console.log(c.red("  A URL is required — paste it, or press Ctrl-C to cancel."));
+export async function runLocalSetup(root: string, io: Io = realIo()): Promise<number> {
+  const { ui } = io;
+  const TOTAL = 3;
+  ui.banner("totem local", "Run totem on this computer and connect your AI apps to it.");
+
+  // `totem local` records this install as local. If it is recorded as deployed,
+  // that record (and the server's token in it) is what `totem auth`, `status`
+  // and `logs` use: don't drop it without asking.
+  const record = readDeployRecord(root, io.sys);
+  if (record && record.platform !== "local" && record.url) {
+    ui.warn(`This install is set up for the server at ${record.url}.`);
+    ui.hint("Setting it up locally makes this computer forget that server (the server itself keeps running). A local server and a deployment must not share one WHOOP login.");
+    if (!(await ui.confirm("Switch this install to local?", false))) {
+      ui.hint("Nothing changed. To connect a client to the server: totem connect");
+      return 1;
     }
-    // No interactive terminal (piped/EOF) → "" forever; don't spin, just stop.
-    if (!tty) { console.log(c.red("  (no terminal to re-ask on — stopping.)")); process.exit(1); }
   }
+
+  ui.step(1, TOTAL, "Prerequisites");
+  if (!(await prerequisites(root, io, true))) return 1;
+
+  ui.step(2, TOTAL, "WHOOP login");
+  if (!(await ensureLocalLogin(root, io))) return 1;
+  writeDeployRecord(root, { platform: "local" }, io.sys);
+
+  ui.step(3, TOTAL, "Connect your apps");
+  const { steps } = await connectInstalled(io, localTarget(root, io));
+  nextAfterConnect(io, steps);
+  return 0;
 }
 
-// Ask for a required free-text value, re-asking (with a reason) on empty or
-// invalid input instead of bailing the flow. Optional validator returns an error
-// string to show + re-ask, or null when the value is good. Ctrl-C is the way out.
-async function promptRequired(message: string, opts: { validate?: (v: string) => string | null; hidden?: boolean } = {}): Promise<string> {
-  const tty = Boolean(process.stdin.isTTY);
+// ── CLOUD ───────────────────────────────────────────────────────────────────
+
+type Platform = "fly" | "railway" | "cloudflare" | "custom";
+const HOSTS: Array<{ id: Platform; name: string; hint: string }> = [
+  { id: "cloudflare", name: "Cloudflare", hint: "Workers free plan; no card, no machine (recommended)" },
+  { id: "fly", name: "Fly.io", hint: "one always-on machine, about $4 a month" },
+  { id: "railway", name: "Railway", hint: "managed, with a dashboard; needs Railway's paid plan" },
+  { id: "custom", name: "My own server", hint: "any Docker host; totem prints the commands" },
+];
+
+interface Deploy {
+  root: string;
+  io: Io;
+  platform: Platform;
+  /** Everything the server needs except PUBLIC_URL. */
+  env: Record<string, string>;
+  appName: string;
+  /** Show the host CLI's own output instead of a spinner. */
+  verbose: boolean;
+  /** The host CLI binary (fly or flyctl). */
+  cli: string;
+  account: string;
+  /** How to remove what a failed deploy left behind. */
+  cleanup?: Fix;
+}
+
+interface HostStep {
+  /** While it runs: "Deploying to Fly". */
+  label: string;
+  /** When it worked: "Deployed". */
+  done: string;
+  run: (set: (detail: string) => void) => Promise<ExecResult | boolean>;
+  /** Silent re-tries first, for hosts whose APIs time out. */
+  retries?: number;
+  /** May be skipped; the text says what skipping costs. */
+  optional?: string;
+  /** Runs with the terminal attached (it may ask or open a browser): no spinner. */
+  attached?: boolean;
+  slow?: boolean;
+}
+
+const worked = (r: ExecResult | boolean): boolean => (typeof r === "boolean" ? r : r.code === 0);
+
+/**
+ * A host CLI's output with this deploy's secrets blanked. totem shows the
+ * latest line a command printed and, when it fails, the end of its output; a
+ * CLI that echoes what it was given must not put the token or the password on
+ * screen that way.
+ */
+function redact(d: Deploy, text: string): string {
+  let out = text;
+  for (const secret of [d.env.MCP_AUTH_TOKEN, d.env.AUTH_PASSWORD]) {
+    if (!secret) continue;
+    for (const form of secretForms(secret)) out = out.split(form).join("***");
+  }
+  return out;
+}
+
+/**
+ * A secret as given, and the ways a CLI writes it back: inside JSON, in a URL
+ * or a form body. The generated token and password read the same in all of
+ * them; a password the person chose (spaces, quotes, &, \) does not, and the
+ * plain text alone would let the escaped one through.
+ */
+export function secretForms(secret: string): string[] {
+  const forms = [secret, JSON.stringify(secret).slice(1, -1)];
+  try {
+    const percent = encodeURIComponent(secret);
+    forms.push(percent, percent.replace(/%20/g, "+"));
+  } catch { /* a lone surrogate has no percent form */ }
+  return [...new Set(forms)].filter(Boolean);
+}
+
+/** A host command: captured under a spinner showing its latest line, or attached with --verbose. */
+function hostCommand(d: Deploy, cmd: string, args: string[], input?: string): HostStep["run"] {
+  const { ui, sys } = d.io;
+  return async (set) => {
+    if (d.verbose && input === undefined) {
+      ui.hint(`$ ${cmd} ${maskSecrets(args)}`);
+      return (await sys.run(cmd, args, { cwd: d.root })) === 0;
+    }
+    return sys.exec(cmd, args, input === undefined ? { cwd: d.root, onLine: set } : { cwd: d.root, input, onLine: set });
+  };
+}
+
+/** Run one step. On failure show why and let the person retry, skip (if it can be) or stop. */
+async function runStep(d: Deploy, step: HostStep): Promise<"ok" | "skipped" | "cancelled"> {
+  const { ui, sys } = d.io;
   for (;;) {
-    const v = (await (opts.hidden ? promptHidden(message) : prompt(message))).trim();
-    if (v) {
-      const err = opts.validate ? opts.validate(v) : null;
-      if (!err) return v;
-      console.log(c.red(`  ${err}`));
-    } else {
-      console.log(c.red("  Required — enter a value, or press Ctrl-C to cancel."));
+    const started = sys.now();
+    let result: ExecResult | boolean = false;
+    // An attached command prints for itself: say what it is first.
+    if (step.attached || d.verbose) ui.info(`${step.label}${ui.kit.g.ellipsis}`);
+    for (let attempt = 0; attempt <= (step.retries ?? 0); attempt++) {
+      if (attempt > 0) await ui.task(`The host didn't answer; trying again (${attempt}/${step.retries})`, () => sys.sleep(2500));
+      result = step.attached || d.verbose
+        ? await step.run(() => {})
+        : await ui.task(step.label, (set) => step.run((line) => set(redact(d, line))), { slow: Boolean(step.slow) });
+      if (worked(result)) break;
     }
-    if (!tty) { console.log(c.red("  (no terminal to re-ask on — stopping.)")); process.exit(1); }
+    if (worked(result)) {
+      ui.ok(step.done, duration(sys.now() - started));
+      return "ok";
+    }
+    ui.problem(`${step.label} failed.`, { detail: typeof result === "boolean" ? undefined : tail(result).map((line) => redact(d, line)) });
+    const choices: Choice[] = [
+      { label: "Try again" },
+      ...(step.optional ? [{ label: "Skip this step", hint: step.optional }] : []),
+      { label: "Stop here" },
+    ];
+    const pick = await ui.select("What now?", choices);
+    if (pick === 0) continue;
+    if (step.optional && pick === 1) {
+      ui.warn(`Skipped. ${step.optional}`);
+      return "skipped";
+    }
+    return "cancelled";
   }
 }
 
-// FLY — deploys as fast-booting micro-VMs via flyctl.
+// FLY ─────────────────────────────────────────────────────────────────────────
 
-// Create the Fly app, retrying with a new name when the chosen one is taken by
-// ANOTHER account (Fly app names are globally unique). If you already own an app
-// by that name, reuse it. Mutates ctx.appName to whatever name actually worked.
-async function createFlyApp(fly: string, ctx: DeployCtx): Promise<boolean> {
-  if (!(await confirmStep(`Create Fly app '${ctx.appName}'?`, { cmd: `fly apps create ${ctx.appName}`, detail: "reserves the name + URL on your Fly account", defaultYes: true }))) return false;
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const create = await withSpinner(`creating ${ctx.appName}`, () => captureAsync(fly, ["apps", "create", ctx.appName, "--json"]));
-    if (create.code === 0) { console.log(c.green(`  ✓ created ${ctx.appName}`)); return true; }
-    // Already on YOUR account? (re-running cloud, or a half-finished prior attempt) → reuse it.
-    const mine = await withSpinner("checking your Fly apps", () => captureAsync(fly, ["apps", "list"]));
-    if (new RegExp(`(^|\\s)${ctx.appName}(\\s|$)`, "m").test(mine.stdout)) {
-      console.log(c.gray(`  '${ctx.appName}' already exists on your account — reusing it.`));
-      return true;
-    }
-    // Taken by someone else (or another error): SHOW it, then retry with a new name.
-    console.log(c.red(`  ✗ couldn't create '${ctx.appName}': ${lastLine(create)}`));
-    console.log(c.yellow("  Fly app names are globally unique, so that one's unavailable — pick another."));
-    const fresh = `totem-${genToken().slice(0, 6)}`;
-    ctx.appName = (await prompt("New app name (Enter = unique suggestion)", fresh)).trim() || fresh;
-  }
-  console.log(c.red("  Too many name attempts — aborting the Fly deploy."));
-  return false;
-}
-
-async function deployFly(ctx: DeployCtx): Promise<string | null> {
-  const fly = commandExists("fly") ? "fly" : "flyctl";
-
-  if (!(await createFlyApp(fly, ctx))) return null;
-  const url = `https://${ctx.appName}.fly.dev`;
-  const env = { ...ctx.env, PUBLIC_URL: url };
-
-  // Minimal fly.toml so `fly deploy` is non-interactive (builds the Dockerfile).
-  writeFileSync(resolve(ctx.root, "fly.toml"), [
-    `app = "${ctx.appName}"`,
-    `primary_region = "sjc"`,
+/**
+ * The fly.toml `totem cloud` writes. With a volume, [mounts] puts it at /data,
+ * where the image keeps the WHOOP token file (TOTEM_TOKEN_FILE=/data/tokens.json),
+ * so the login survives restarts and deploys.
+ */
+export function flyToml(appName: string, withVolume: boolean): string {
+  return [
+    `app = "${appName}"`,
+    `primary_region = "${FLY_REGION}"`,
     ``,
     `[build]`,
+    ``,
+    ...(withVolume
+      ? [
+          `# The WHOOP login lives here (/data/tokens.json). WHOOP rotates the refresh`,
+          `# token on every refresh, so it must survive restarts.`,
+          `[mounts]`,
+          `  source = "${FLY_VOLUME}"`,
+          `  destination = "/data"`,
+          ``,
+        ]
+      : []),
+    `# One small machine: 512 MB is enough, and with the volume it stays under`,
+    `# Fly's $5 a month at current prices.`,
+    `[[vm]]`,
+    `  size = "${FLY_VM.size}"`,
+    `  memory = "${FLY_VM.memory}"`,
     ``,
     `[http_service]`,
     `  internal_port = 3000`,
@@ -794,301 +505,770 @@ async function deployFly(ctx: DeployCtx): Promise<string | null> {
     `  auto_start_machines = true`,
     `  min_machines_running = 1`,
     ``,
-  ].join("\n"));
-  // Set secrets (staged; applied on deploy) — surface the error if it fails.
-  // `secrets import` reads KEY=val from stdin, keeping the token + password
-  // values off the argv (which any local user could read via `ps`/`/proc`).
-  const secretLines = Object.entries(env).map(([k, v]) => `${k}=${v}`).join("\n") + "\n";
-  const stage = await withSpinner("staging secrets", () => captureAsync(fly, ["secrets", "import", "--stage", "--app", ctx.appName], { cwd: ctx.root, input: secretLines }));
-  if (stage.code !== 0) {
-    console.log(c.yellow(`  staging secrets failed (${lastLine(stage)}) — applying directly`));
-    const direct = await withSpinner("setting secrets", () => captureAsync(fly, ["secrets", "import", "--app", ctx.appName], { cwd: ctx.root, input: secretLines }));
-    if (direct.code !== 0) console.log(c.red(`  ✗ couldn't set secrets: ${lastLine(direct)}`));
-  }
-  // Build + deploy — error visible (inherited stdio) + retry-on-failure.
-  if (!(await confirmStep("Build + deploy to Fly now?", { cmd: `fly deploy --app ${ctx.appName}`, detail: "builds the Dockerfile and starts a billable machine (~1-2 min)", defaultYes: true }))) return null;
-  if (!(await runWithRetry(`deploying ${ctx.appName} (builds the Dockerfile, ~1-2 min)`, () => run(fly, ["deploy", "--app", ctx.appName, "--ha=false"], { cwd: ctx.root })))) return null;
-  return url;
+  ].join("\n");
 }
 
-// Shared "assisted" deploy used by Railway + Cloud Run: install/login the host
-// CLI, run its deploy commands (each retryable), auto-detect the deployed URL
-// (falling back to a paste only if detection fails), then set PUBLIC_URL for OAuth.
-async function assistedDeploy(opts: {
-  cliName: string;
-  install: { brewPkg?: string; npmPkg?: string; scriptUrl?: string; manualHint: string };
-  loginCheck: () => boolean;
-  loginCmd: () => Promise<number>;
-  steps: Array<{
-    desc: string;
-    cmd?: [string, string[]];
-    run?: () => Promise<boolean>;
-    retries?: number;
-    // Sensitive steps (IAM, API enablement, billable deploys) gate behind a
-    // confirm. `skippable` steps continue when declined (e.g. an IAM grant that
-    // may already be in place); non-skippable ones abort the whole deploy.
-    confirm?: { summary: string; detail?: string; cmd?: string; defaultYes?: boolean; skippable?: boolean };
-  }>;
-  getUrl?: () => Promise<string | null>;
-  setPublicUrlCmds: (url: string) => Array<[string, string[]]>;
-  ctx: DeployCtx;
-}): Promise<string | null> {
-  if (!commandExists(opts.cliName)) {
-    if (!(await ensureCli(opts.cliName, opts.install))) return null;
-  }
-  if (!opts.loginCheck()) {
-    console.log(c.gray(`  Logging into ${opts.cliName}…`));
-    if (await opts.loginCmd() !== 0) return null;
-  }
-  setSummary(opts.ctx.env);
-  for (const s of opts.steps) {
-    if (s.confirm) {
-      const proceed = await confirmStep(s.confirm.summary, s.confirm);
-      if (!proceed) {
-        if (s.confirm.skippable) { console.log(c.gray(`  ↷ skipped: ${s.desc}`)); continue; }
-        console.log(c.yellow("  Cancelled — this step is required, stopping here.")); return null;
-      }
-    }
-    console.log(c.gray(`  → ${s.desc}`));
-    const tries = (s.retries ?? 0) + 1;
-    let ok = false;
-    for (let i = 0; i < tries && !ok; i++) {
-      if (i > 0) { console.log(c.yellow(`    API hiccup — retry ${i}/${s.retries}`)); await pause(2500, "backing off before retry"); }
-      if (s.run) ok = await s.run();
-      else { console.log(c.gray(`    $ ${s.cmd![0]} ${maskArgs(s.cmd![1])}`)); ok = (await run(s.cmd![0], s.cmd![1], { cwd: opts.ctx.root })) === 0; }
-    }
-    // Auto-retries (above) exhausted and still failing: surface it + let the user
-    // retry as many times as they like, skip it, or abort. The error is already
-    // on screen (inherited stdio).
-    while (!ok) {
-      console.log(c.red(`  ✗ step failed: ${s.desc} — the error is shown above.`));
-      const choice = await select("How do you want to handle it?", [
-        { label: "Retry this step" },
-        { label: "Skip it and continue", hint: "you'll fix it manually" },
-        { label: "Abort the deploy" },
-      ]);
-      if (choice === 0) {
-        if (s.run) ok = await s.run();
-        else { console.log(c.gray(`    $ ${s.cmd![0]} ${maskArgs(s.cmd![1])}`)); ok = (await run(s.cmd![0], s.cmd![1], { cwd: opts.ctx.root })) === 0; }
-      } else if (choice === 1) { console.log(c.gray(`  ↷ skipped: ${s.desc}`)); break; }
-      else { return null; }
-    }
-  }
-  // Auto-detect the deployed URL (the deploy just printed it); only fall back to
-  // asking the user to paste if detection failed.
-  const detected = opts.getUrl ? await opts.getUrl() : null;
-  let url: string;
-  if (detected) {
-    url = detected.replace(/\/+$/, "");
-    console.log(c.green(`  ✓ detected URL: ${url}`));
-  } else {
-    url = await promptUrl("Paste your deployment's public URL (e.g. https://your-app.up.railway.app)");
-  }
-  // OAuth's issuer must equal the real URL, which we only know now — so set
-  // PUBLIC_URL and redeploy automatically (run() inherits stdio → the user sees
-  // progress) rather than asking them to run a command in a second terminal.
-  if (!(await confirmStep("Set PUBLIC_URL and redeploy so OAuth works?", { detail: `points the server's OAuth issuer at ${url} (required for web/mobile connectors)`, defaultYes: true }))) {
-    console.log(c.yellow(`  Skipped. OAuth won't work until you set PUBLIC_URL=${url} and redeploy yourself.`));
-    return url;
-  }
-  console.log(c.gray("  Setting PUBLIC_URL + redeploying so OAuth works…"));
-  for (const [cmd, args] of opts.setPublicUrlCmds(url)) {
-    console.log(c.gray(`    $ ${cmd} ${args.join(" ")}`));
-    let ok = false;
-    for (let i = 0; i < 4 && !ok; i++) {
-      if (i > 0) { console.log(c.yellow(`    API hiccup — retry ${i}/3`)); await pause(2500, "backing off before retry"); }
-      ok = (await run(cmd, args, { cwd: opts.ctx.root })) === 0;
-    }
-    while (!ok) {
-      console.log(c.red("  ✗ that command failed — the error is shown above."));
-      const choice = await select("How do you want to handle it?", [
-        { label: "Retry it" },
-        { label: "Skip and continue", hint: "OAuth won't work until you set PUBLIC_URL yourself" },
-        { label: "Abort" },
-      ]);
-      if (choice === 0) ok = (await run(cmd, args, { cwd: opts.ctx.root })) === 0;
-      else if (choice === 1) break;
-      else return null;
-    }
-  }
-  return url;
-}
+async function deployFly(d: Deploy): Promise<string | null> {
+  const { ui, sys } = d.io;
+  const fly = d.cli;
 
-// Railway's GraphQL API (backboard.railway.com) intermittently times out, and a
-// timed-out `init` can still create the project server-side. So: try init, and if
-// it fails, check whether the project got created and LINK to it instead of
-// re-running init (which would pile up duplicate projects). Retries the flaky API.
-async function railwayHasProject(appName: string): Promise<boolean> {
-  for (let i = 0; i < 3; i++) {
-    const r = await withSpinner("checking Railway for the project", () => captureAsync("railway", ["list"]));
-    if (r.code === 0) return r.stdout.includes(appName);
-  }
-  return false;
-}
-
-async function railwayInitOrLink(appName: string, root: string): Promise<boolean> {
-  for (let attempt = 1; attempt <= 4; attempt++) {
-    if (attempt > 1) { console.log(c.yellow(`    Railway API hiccup — retry ${attempt - 1}/3`)); await pause(2500, "backing off (Railway's API is flaky)"); }
-    console.log(c.gray(`    $ railway init --name ${appName}`));
-    if ((await run("railway", ["init", "--name", appName], { cwd: root })) === 0) return true;
-    // init's response may have timed out AFTER creating the project — link to it.
-    if (await railwayHasProject(appName)) {
-      console.log(c.gray("  (init's response timed out, but the project exists — linking to it)"));
-      console.log(c.gray(`    $ railway link --project ${appName}`));
-      if ((await run("railway", ["link", "--project", appName], { cwd: root })) === 0) return true;
-    }
-  }
-  console.log(c.red("  Railway's API (backboard.railway.com) kept timing out. Give it a minute and re-run."));
-  return false;
-}
-
-// RAILWAY — CLI-automatable; resilient to Railway's flaky GraphQL API.
-async function deployRailway(ctx: DeployCtx): Promise<string | null> {
-  // Railway rejects `--set KEY=` (empty value), and PUBLIC_URL isn't known until
-  // `domain` runs — so set the non-empty vars now, PUBLIC_URL in the 2nd pass.
-  const varArgs: string[] = ["variables"];
-  for (const [k, v] of Object.entries(ctx.env)) {
-    if (v === "") continue;
-    varArgs.push("--set", `${k}=${v}`);
-  }
-  return assistedDeploy({
-    cliName: "railway",
-    install: { npmPkg: "@railway/cli", brewPkg: "railway", manualHint: "npm i -g @railway/cli  (or: brew install railway)" },
-    loginCheck: () => capture("railway", ["whoami"]).code === 0,
-    loginCmd: () => run("railway", ["login"]),
-    steps: [
-      // init creates a PROJECT (not a service); `up` creates the service, so it
-      // runs first (deploys env-less + crashes once, then variables redeploys it
-      // healthy). init is special — a timeout may have still created it, so we
-      // link rather than re-init; the rest retry the flaky API.
-      {
-        desc: "create the project",
-        run: () => railwayInitOrLink(ctx.appName, ctx.root),
-        confirm: { summary: `Create a new Railway project '${ctx.appName}'?`, detail: "a new project on your Railway account", defaultYes: true },
-      },
-      {
-        desc: "deploy (creates the service + builds the Dockerfile)",
-        cmd: ["railway", ["up", "--detach"]],
-        retries: 3,
-        confirm: { summary: "Deploy to Railway now?", detail: "creates a service + starts a build on your Railway account", defaultYes: true },
-      },
-      { desc: "set environment variables (redeploys with them)", cmd: ["railway", varArgs], retries: 3 },
-    ],
-    getUrl: async () => {
-      // `railway domain` prints "🚀 https://…up.railway.app" — capture + parse it
-      // instead of asking the user to paste what we just printed.
-      for (let i = 0; i < 4; i++) {
-        if (i > 0) { console.log(c.yellow(`    API hiccup — retry ${i}/3`)); await pause(2500, "backing off before retry"); }
-        const r = await withSpinner("fetching the public domain (railway domain)", () => captureAsync("railway", ["domain"], { cwd: ctx.root }));
-        const m = `${r.stdout}\n${r.stderr}`.match(/https?:\/\/[a-z0-9.-]+\.up\.railway\.app/i);
-        if (m) return m[0];
-      }
+  // The app. Names are unique across all of Fly: one you already own is reused
+  // (a re-run, or a half-finished earlier attempt); one someone else has needs
+  // another name.
+  for (let attempt = 0; ; attempt++) {
+    const name = d.appName;
+    const create = await ui.task(`Creating the app ${name}`, () => sys.exec(fly, ["apps", "create", name, "--json"], { cwd: d.root }));
+    if (create.code === 0) { ui.ok("App created", name); break; }
+    const mine = await ui.task("Checking your Fly apps", () => sys.exec(fly, ["apps", "list"], { cwd: d.root }));
+    if (new RegExp(`(^|\\s)${name}(\\s|$)`, "m").test(mine.stdout)) { ui.ok("App already exists on your account; using it", name); break; }
+    if (attempt >= 9) {
+      ui.problem("Couldn't create a Fly app after ten names.", { detail: lastLine(create) });
       return null;
+    }
+    ui.warn(`Fly wouldn't create "${name}": ${lastLine(create)}`);
+    ui.hint("App names are unique across all of Fly, so someone else may have this one.");
+    const fresh = `totem-${sys.token().slice(0, 6)}`;
+    d.appName = (await ui.text("Another app name", fresh)).trim() || fresh;
+  }
+  d.cleanup = ["Remove the unfinished app", `${fly} apps destroy ${d.appName}`];
+  const url = `https://${d.appName}.fly.dev`;
+  const env = { ...d.env, PUBLIC_URL: url };
+
+  // The volume the WHOOP login lives on.
+  const list = await ui.task("Looking for the login volume", () => sys.exec(fly, ["volumes", "list", "--app", d.appName, "--json"], { cwd: d.root }));
+  let volume = list.code === 0 && new RegExp(`"name"\\s*:\\s*"${FLY_VOLUME}"`).test(list.stdout);
+  if (volume) {
+    ui.ok("Volume already exists", FLY_VOLUME);
+  } else {
+    const made = await runStep(d, {
+      label: "Creating the volume", done: `Volume created`,
+      run: hostCommand(d, fly, ["volumes", "create", FLY_VOLUME, "--app", d.appName, "--region", FLY_REGION, "--size", "1", "--yes"]),
+      optional: "Without a volume the server loses its WHOOP login on every restart.",
+    });
+    if (made === "cancelled") return null;
+    volume = made === "ok";
+  }
+  // Minimal fly.toml so `fly deploy` asks nothing (it builds the Dockerfile in
+  // the install). It lives in totem's config folder, not the install, which an
+  // npm update replaces: without it the next deploy would drop the volume.
+  const flyConfig = configFile(sys, "fly.toml");
+  writeFileAtomic(flyConfig, flyToml(d.appName, volume), 0o644);
+
+  // Secrets: `secrets import` reads KEY=value lines from stdin, so the token and
+  // password never appear on a command line. Staged, they apply on deploy.
+  const secretLines = Object.entries(env).map(([k, v]) => `${k}=${v}`).join("\n") + "\n";
+  const secrets = await runStep(d, {
+    label: "Setting the secrets", done: "Secrets set",
+    run: async (set) => {
+      const staged = await sys.exec(fly, ["secrets", "import", "--stage", "--app", d.appName], { cwd: d.root, input: secretLines, onLine: set });
+      if (staged.code === 0) return staged;
+      return sys.exec(fly, ["secrets", "import", "--app", d.appName], { cwd: d.root, input: secretLines, onLine: set });
     },
-    setPublicUrlCmds: (url) => [
-      ["railway", ["variables", "--set", `PUBLIC_URL=${url}`]],
-      ["railway", ["up", "--detach"]],
-    ],
-    ctx,
   });
+  if (secrets !== "ok") return null;
+
+  const deployed = await runStep(d, {
+    label: "Building and deploying on Fly", done: "Deployed", slow: true,
+    run: hostCommand(d, fly, ["deploy", "--config", flyConfig, "--app", d.appName, "--ha=false"]),
+  });
+  return deployed === "ok" ? url : null;
 }
 
-// GOOGLE CLOUD RUN — gcloud, builds from source. Best-effort.
-async function deployCloudRun(ctx: DeployCtx): Promise<string | null> {
-  // Env vars go in a temp YAML file (--env-vars-file), NOT --set-env-vars: values
-  // include an email (with `@`) and a random password, so any inline delimiter can
-  // collide (the `^@^` form broke on the email's `@`). The file lives in the OS
-  // temp dir — never the `--source` upload dir — and is deleted after. PUBLIC_URL
-  // is set in the 2nd pass once the deployed URL is known.
-  const envYaml = Object.entries(ctx.env)
-    .filter(([, v]) => v !== "")
-    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
-    .join("\n") + "\n";
-  const envFile = resolve(tmpdir(), `totem-env-${randomUUID()}.yaml`);
-  writeFileSync(envFile, envYaml, { mode: 0o600 });
+// RAILWAY ─────────────────────────────────────────────────────────────────────
+
+const SECRET_KEY = /(TOKEN|PASSWORD|SECRET)/i;
+/**
+ * The one service totem creates in its Railway project. Every Railway command
+ * names it: \`railway up\` makes a service without linking it, so a later
+ * command that relies on the link fails with "No service found".
+ */
+export const RAILWAY_SERVICE = "totem";
+
+/**
+ * The `railway` invocations that set `env` on the linked service, with every
+ * secret value on stdin (`railway variable set KEY --stdin`) instead of the
+ * command line, where any local user could read it from `ps` while the command
+ * runs. Secrets go first with --skip-deploys; the plain values go last in one
+ * call, which triggers the single redeploy. Empty values are skipped (Railway
+ * rejects them).
+ */
+export function railwayVariableCommands(env: Record<string, string>, opts: { service?: string; deploy?: boolean } = {}): Array<{ args: string[]; input?: string }> {
+  const entries = Object.entries(env).filter(([, v]) => v !== "");
+  const secrets = entries.filter(([k]) => SECRET_KEY.test(k));
+  const plain = entries.filter(([k]) => !SECRET_KEY.test(k));
+  const service = opts.service ? ["--service", opts.service] : [];
+  // With deploy: false every call skips deploying (the caller deploys once, later).
+  const skip = (last: boolean): string[] => (opts.deploy === false || !last ? ["--skip-deploys"] : []);
+  const commands: Array<{ args: string[]; input?: string }> = secrets.map(([k, v], i) => ({
+    args: ["variable", "set", k, "--stdin", ...service, ...skip(!plain.length && i === secrets.length - 1)],
+    input: v,
+  }));
+  if (plain.length) commands.push({ args: ["variable", "set", ...plain.map(([k, v]) => `${k}=${v}`), ...service, ...skip(true)] });
+  return commands;
+}
+
+type Exec = (cmd: string, args: string[], opts: { cwd: string; input?: string }) => Promise<ExecResult>;
+
+/**
+ * Set `env` on the linked Railway service. A Railway CLI too old to know
+ * `variable set --stdin` gets the values the old way (`variables --set`), and
+ * `onOldCli` is told: that is the only case a secret reaches a command line.
+ */
+export async function setRailwayVariables(
+  env: Record<string, string>, root: string, exec: Exec, onOldCli: () => void = () => {}, opts: { service?: string; deploy?: boolean } = {},
+): Promise<ExecResult> {
+  let last: ExecResult = { code: 0, stdout: "", stderr: "" };
+  for (const { args, input } of railwayVariableCommands(env, opts)) {
+    last = await exec("railway", args, input === undefined ? { cwd: root } : { cwd: root, input });
+    if (last.code === 0) continue;
+    if (/unexpected argument|unrecognized subcommand|wasn't expected|found argument/i.test(last.stderr + last.stdout)) {
+      onOldCli();
+      const legacy = [
+        "variables", ...Object.entries(env).filter(([, v]) => v !== "").flatMap(([k, v]) => ["--set", `${k}=${v}`]),
+        ...(opts.service ? ["--service", opts.service] : []), ...(opts.deploy === false ? ["--skip-deploys"] : []),
+      ];
+      return exec("railway", legacy, { cwd: root });
+    }
+    return last;
+  }
+  return last;
+}
+
+// Railway's API (backboard.railway.com) intermittently times out, and a
+// timed-out `init` can still have created the project. So: try init, and if it
+// fails, look for the project and LINK to it instead of running init again
+// (which would pile up duplicate projects).
+async function railwayInitOrLink(d: Deploy): Promise<boolean> {
+  const { ui, sys } = d.io;
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    if (attempt > 1) await ui.task(`Railway didn't answer; trying again (${attempt - 1}/3)`, () => sys.sleep(2500));
+    if ((await sys.run("railway", ["init", "--name", d.appName], { cwd: d.root })) === 0) return true;
+    let exists = false;
+    for (let i = 0; i < 3 && !exists; i++) {
+      const r = await ui.task("Checking whether Railway made the project", () => sys.exec("railway", ["list"], { cwd: d.root }));
+      if (r.code === 0) { exists = r.stdout.includes(d.appName); break; }
+    }
+    if (exists) {
+      ui.hint("Railway timed out but did create the project; linking to it.");
+      if ((await sys.run("railway", ["link", "--project", d.appName], { cwd: d.root })) === 0) return true;
+    }
+  }
+  return false;
+}
+
+async function deployRailway(d: Deploy): Promise<string | null> {
+  const { ui, sys } = d.io;
+  const svc = ["--service", RAILWAY_SERVICE];
+  d.cleanup = ["Remove the unfinished project", `railway delete --project ${d.appName}`];
+  // The secrets and the address are in place before the first build, so it
+  // starts ready to sign in. The volume comes after it: Railway's CLI can only
+  // add one to a service that has been deployed (4.x crashes otherwise).
+  const steps: HostStep[] = [
+    { label: "Creating the Railway project", done: "Project created", attached: true, run: () => railwayInitOrLink(d) },
+    {
+      label: "Creating the service", done: `Service ${RAILWAY_SERVICE} created`, retries: 3,
+      run: async (set) => {
+        const made = await sys.exec("railway", ["add", "--service", RAILWAY_SERVICE], { cwd: d.root, onLine: set });
+        // A re-run finds it already there; either way, link it for later commands.
+        if (made.code !== 0 && !/already exists/i.test(`${made.stdout}${made.stderr}`)) return made;
+        return sys.exec("railway", ["service", RAILWAY_SERVICE], { cwd: d.root, onLine: set });
+      },
+    },
+    {
+      label: "Setting the secrets", done: "Secrets set", retries: 3,
+      run: () => setRailwayVariables(d.env, d.root, (cmd, args, opts) => sys.exec(cmd, args, opts), () => {
+        ui.warn("This Railway CLI can't read a value from stdin, so the secrets are passed on its command line.");
+        ui.hint("Update it to keep them off it: npm i -g @railway/cli");
+      }, { service: RAILWAY_SERVICE, deploy: false }),
+    },
+  ];
+  for (const step of steps) if ((await runStep(d, step)) === "cancelled") return null;
+
+  // `railway domain` gives the service a public address and prints it.
+  let url: string | null = null;
+  for (let i = 0; i < 4 && !url; i++) {
+    if (i > 0) await ui.task(`Railway didn't answer; trying again (${i}/3)`, () => sys.sleep(2500));
+    const r = await ui.task("Getting a public address", () => sys.exec("railway", ["domain", ...svc], { cwd: d.root }));
+    url = `${r.stdout}\n${r.stderr}`.match(/https?:\/\/[a-z0-9.-]+\.up\.railway\.app/i)?.[0] ?? null;
+  }
+  if (url) ui.ok("Public address", url);
+  else url = await askUrl(d.io, "Railway didn't report the address. Public URL of the service");
+
+  const build = (label: string, done: string): HostStep => ({ label, done, slow: true, retries: 2, run: (set) => railwayBuild(d, set) });
+  const rest: HostStep[] = [
+    {
+      label: "Telling the server its address", done: "PUBLIC_URL set", retries: 3,
+      run: hostCommand(d, "railway", ["variable", "set", `PUBLIC_URL=${url}`, ...svc, "--skip-deploys"]),
+      optional: `Sign-in from claude.ai and other clients won't work until PUBLIC_URL=${url} is set on the server.`,
+    },
+    build("Building and deploying on Railway", "Deployed"),
+  ];
+  for (const step of rest) {
+    const r = await runStep(d, step);
+    if (r === "cancelled") return null;
+  }
+  // Railway volumes mount root-owned; the image's entrypoint hands /data to the
+  // unprivileged user before starting the server.
+  const volume = await runStep(d, {
+    label: "Adding the volume for the login", done: "Volume added at /data", retries: 1,
+    run: () => addRailwayVolume(d),
+    optional: "Without a volume every restart or redeploy needs totem auth again.",
+  });
+  if (volume === "cancelled") return null;
+  // Adding a volume restarts the service on Railway's own schedule. Deploy
+  // once more and wait for it, so the login goes to the server that has it.
+  if (volume === "ok" && (await runStep(d, build("Restarting with the volume", "Running with the volume"))) === "cancelled") return null;
+  return url;
+}
+
+/** The deployment id in the build-logs link \`railway up --detach\` prints. */
+export function railwayDeploymentId(output: string): string | null {
+  return output.match(/[?&]id=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1] ?? null;
+}
+
+const RAILWAY_DONE = new Set(["SUCCESS", "FAILED", "CRASHED", "REMOVED", "SKIPPED"]);
+
+/**
+ * Upload and build, then wait for Railway to report how the deployment ended.
+ * \`railway up --ci\` can keep streaming long after Railway calls the
+ * deployment a success (seen for 10 minutes on CLI 4.65), so the build starts
+ * detached and its status is read from \`railway deployment list\`.
+ */
+async function railwayBuild(d: Deploy, set: (line: string) => void): Promise<ExecResult> {
+  const { sys } = d.io;
+  const svc = ["--service", RAILWAY_SERVICE];
+  const up = await sys.exec("railway", ["up", "--detach", ...svc], { cwd: d.root, onLine: set });
+  if (up.code !== 0) return up;
+  const id = railwayDeploymentId(`${up.stdout}\n${up.stderr}`);
+  const started = sys.now();
+  let status = "QUEUED";
+  while (sys.now() - started < 15 * 60_000) {
+    await sys.sleep(5000);
+    const list = await sys.exec("railway", ["deployment", "list", ...svc, "--json"], { cwd: d.root });
+    try {
+      const parsed = JSON.parse(list.stdout) as unknown;
+      const all = (Array.isArray(parsed) ? parsed : (parsed as { deployments?: unknown[] }).deployments ?? []) as Array<{ id: string; status: string }>;
+      // This deployment only: until it shows up, the newest one listed may be
+      // the previous deploy, already a success.
+      const mine = id ? all.find((x) => x.id === id) : all[0];
+      if (mine) status = mine.status;
+    } catch { continue; }
+    set(`Railway: ${status.toLowerCase().replace(/_/g, " ")}`);
+    if (RAILWAY_DONE.has(status)) break;
+  }
+  const ok = status === "SUCCESS";
+  return { code: ok ? 0 : 1, stdout: up.stdout, stderr: ok ? up.stderr : `${up.stderr}\nThe deployment ended as ${status}. Its build log: railway logs --build ${id ?? ""}`.trim() };
+}
+
+/** The project, environment and service ids `railway status --json` reports for the linked project. */
+export function railwayIds(statusJson: string, service: string): { projectId: string; environmentId: string; serviceId: string } | null {
   try {
-    return await assistedDeploy({
-      cliName: "gcloud",
-      install: { manualHint: "install the gcloud SDK: https://cloud.google.com/sdk/docs/install" },
-      loginCheck: () => capture("gcloud", ["config", "get-value", "project"]).stdout.trim().length > 0,
-      loginCmd: async () => {
-        const a = await run("gcloud", ["auth", "login"]);
-        if (a !== 0) return a;
-        console.log(c.gray("  Set your project: gcloud config set project <PROJECT_ID>"));
-        await promptYesNo("Project set?", true);
-        return 0;
+    const d = JSON.parse(statusJson) as {
+      id?: string;
+      environments?: { edges?: Array<{ node: { id: string; name: string; serviceInstances?: { edges?: Array<{ node: { serviceId: string; serviceName: string } }> } } }> };
+    };
+    for (const { node: env } of d.environments?.edges ?? []) {
+      const inst = (env.serviceInstances?.edges ?? []).find((e) => e.node.serviceName === service);
+      if (d.id && inst) return { projectId: d.id, environmentId: env.id, serviceId: inst.node.serviceId };
+    }
+  } catch { /* not JSON */ }
+  return null;
+}
+
+/**
+ * A volume at /data on the totem service. \`railway volume add\` crashes on a
+ * fresh service in Railway CLI 4.x and 5.x alike (it reads the service's region,
+ * which Railway doesn't report yet), so on failure the same thing goes through
+ * Railway's API: \`railway api\` from CLI 5, through npx when the installed one
+ * is older.
+ */
+async function addRailwayVolume(d: Deploy): Promise<ExecResult | boolean> {
+  const { sys } = d.io;
+  const direct = await sys.exec("railway", ["volume", "--service", RAILWAY_SERVICE, "add", "--mount-path", "/data"], { cwd: d.root });
+  if (direct.code === 0 && !/panicked/.test(`${direct.stdout}${direct.stderr}`)) return direct;
+  const status = await sys.exec("railway", ["status", "--json"], { cwd: d.root });
+  const ids = railwayIds(status.stdout, RAILWAY_SERVICE);
+  if (!ids) return direct;
+  const mutation = "mutation($input: VolumeCreateInput!) { volumeCreate(input: $input) { id } }";
+  const variables = JSON.stringify({ input: { ...ids, mountPath: "/data" } });
+  const viaApi = await sys.exec("npx", ["--yes", "@railway/cli@5", "api", mutation, "--variables", variables], { cwd: d.root });
+  return { ...viaApi, code: viaApi.code === 0 && /"volumeCreate"\s*:\s*\{\s*"id"/.test(viaApi.stdout) ? 0 : viaApi.code || 1 };
+}
+
+/**
+ * Sign-in (OAuth) only works when the server knows its own public address,
+ * which exists only after the first deploy: set PUBLIC_URL and redeploy.
+ */
+async function setPublicUrl(d: Deploy, url: string, steps: HostStep[]): Promise<string | null> {
+  for (const step of steps) {
+    const r = await runStep(d, { ...step, optional: `Sign-in from claude.ai and other clients won't work until PUBLIC_URL=${url} is set on the server.` });
+    if (r === "cancelled") return null;
+    if (r === "skipped") break;
+  }
+  return url;
+}
+
+// CLOUDFLARE ──────────────────────────────────────────────────────────────────
+
+/** The address Wrangler prints after a deploy: https://<name>.<account subdomain>.workers.dev */
+export function workersDevUrl(output: string, name: string): string | null {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return output.match(new RegExp(`https://${escaped}\\.[a-z0-9-]+\\.workers\\.dev`, "i"))?.[0] ?? null;
+}
+
+// One Wrangler deploy: it bundles src/cloudflare/worker.ts with wrangler.jsonc,
+// creates the Durable Object that keeps the login, and uploads the two secrets
+// from a temporary file (never a command line). The server works out its own
+// address from the requests it gets, so there is no second pass for PUBLIC_URL.
+async function deployCloudflare(d: Deploy): Promise<string | null> {
+  const { ui, sys } = d.io;
+  d.cleanup = ["Remove the unfinished Worker", `npx wrangler delete --name ${d.appName}`];
+  const secretsFile = resolve(tmpdir(), `totem-secrets-${randomUUID()}.json`);
+  writeFileSync(secretsFile, JSON.stringify({ MCP_AUTH_TOKEN: d.env.MCP_AUTH_TOKEN, AUTH_PASSWORD: d.env.AUTH_PASSWORD }), { mode: 0o600 });
+  let url: string | null = null;
+  try {
+    const deployed = await runStep(d, {
+      label: "Building and deploying on Cloudflare", done: "Deployed", slow: true,
+      run: async (set) => {
+        const r = await sys.exec("npx", wrangler(["deploy", "--name", d.appName, "--secrets-file", secretsFile]), {
+          cwd: d.root,
+          onLine: (line) => (d.verbose ? ui.hint(redact(d, line), 2) : set(line)),
+        });
+        url = workersDevUrl(`${r.stdout}\n${r.stderr}`, d.appName) ?? url;
+        return r;
       },
-      steps: [
-        {
-          desc: "enable required APIs (run, cloudbuild, artifactregistry)",
-          cmd: ["gcloud", ["services", "enable", "run.googleapis.com", "cloudbuild.googleapis.com", "artifactregistry.googleapis.com"]],
-          confirm: { summary: "Enable the Cloud Run / Cloud Build / Artifact Registry APIs?", detail: "turns these APIs on for the selected project (one-time, idempotent)", cmd: "gcloud services enable run / cloudbuild / artifactregistry", defaultYes: true, skippable: true },
-        },
-        {
-          // gcloud run deploy --source builds via the project's COMPUTE default
-          // service account, which on new projects lacks build permissions
-          // (PERMISSION_DENIED resolving the source). Grant the builder role.
-          desc: "grant Cloud Build access to the default service account",
-          cmd: ["sh", ["-c", 'P="$(gcloud config get-value project 2>/dev/null)"; N="$(gcloud projects describe "$P" --format=\'value(projectNumber)\' 2>/dev/null)"; gcloud projects add-iam-policy-binding "$P" --member="serviceAccount:${N}-compute@developer.gserviceaccount.com" --role=roles/cloudbuild.builds.builder --condition=None']],
-          confirm: { summary: "Grant the Cloud Build builder role to the compute service account?", detail: "modifies project IAM — needed for `--source` builds. Skip if you've already granted it.", cmd: "gcloud projects add-iam-policy-binding … --role=roles/cloudbuild.builds.builder", defaultYes: true, skippable: true },
-        },
-        {
-          desc: "deploy from source (Cloud Build builds the Dockerfile)",
-          cmd: ["gcloud", [
-            "run", "deploy", ctx.appName,
-            "--source", ".",
-            "--region", "us-west1",
-            "--allow-unauthenticated",
-            "--port", "3000",
-            "--min-instances", "1",
-            "--env-vars-file", envFile,
-            "--quiet",
-          ]],
-          confirm: { summary: `Build + deploy '${ctx.appName}' to Cloud Run (us-west1)?`, detail: "uploads source, runs Cloud Build, and creates a public service (may incur charges)", cmd: `gcloud run deploy ${ctx.appName} --source . --region us-west1`, defaultYes: true },
-        },
-      ],
-      getUrl: async () => {
-        // gcloud knows the service URL — fetch it instead of asking the user.
-        const r = await withSpinner("fetching the Cloud Run service URL", () => captureAsync("gcloud", ["run", "services", "describe", ctx.appName, "--region", "us-west1", "--format=value(status.url)"]));
-        const url = r.stdout.trim();
-        return /^https?:\/\//.test(url) ? url : null;
-      },
-      setPublicUrlCmds: (url) => [
-        ["gcloud", ["run", "services", "update", ctx.appName, "--region", "us-west1", "--update-env-vars", `PUBLIC_URL=${url}`, "--quiet"]],
-      ],
-      ctx,
     });
+    if (deployed !== "ok") return null;
   } finally {
-    try { rmSync(envFile); } catch { /* best-effort */ }
+    try { rmSync(secretsFile); } catch { /* best-effort */ }
+  }
+  if (url) ui.ok("Public address", url);
+  else url = await askUrl(d.io, "Wrangler didn't print the address. The Worker's https address (in the Cloudflare dashboard)");
+  return url;
+}
+
+// CUSTOM ──────────────────────────────────────────────────────────────────────
+
+/**
+ * A server address as typed, made into one: a bare host gets https://, and a
+ * trailing /mcp or / is dropped (the server adds /mcp itself). Any http(s)
+ * address with a host counts, including localhost and a name on your own
+ * network; null when it isn't one.
+ */
+export function serverAddress(input: string): string | null {
+  let url = input.trim();
+  if (!url || /\s/.test(url)) return null;
+  // No scheme: https, except this computer itself, where a container answers
+  // plain http (localhost:3000 would otherwise never pass the running check).
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = (/^(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?(\/|$)/i.test(url) ? "http://" : "https://") + url;
+  url = url.replace(/\/+$/, "").replace(/\/mcp$/i, "").replace(/\/+$/, "");
+  if (!URL.canParse(url)) return null;
+  const u = new URL(url);
+  if ((u.protocol !== "https:" && u.protocol !== "http:") || !u.hostname || u.username || u.password || u.search || u.hash) return null;
+  return url;
+}
+
+/** Ask for a server address until it is one. */
+async function askUrl(io: Io, question: string): Promise<string> {
+  const { ui } = io;
+  for (;;) {
+    const typed = await ui.text(question);
+    if (!typed.trim()) { ui.hint("An address is needed to go on. Ctrl-C stops.", 2); continue; }
+    const url = serverAddress(typed);
+    if (url) return url;
+    ui.hint(`"${typed.trim()}" isn't a web address like https://totem.example.com.`, 2);
   }
 }
 
-// CUSTOM — run the container yourself on any Docker host. Writes a complete,
-// ready-to-run env file (so the real secret values are usable, not truncated on
-// screen) + prints the exact docker commands.
-async function deployCustom(ctx: DeployCtx): Promise<string | null> {
-  // All settings — including the full tokens + generated password — go into an
-  // env file (chmod 600) instead of being printed (truncated + leaked) on screen.
-  const envFile = resolve(ctx.root, ".env.deploy");
-  const body =
-    Object.entries(ctx.env).map(([k, v]) => `${k}=${v}`).join("\n") +
-    "\nPUBLIC_URL=https://CHANGE-ME-to-your-public-https-address\n";
-  writeFileSync(envFile, body, { mode: 0o600 });
+// Run the container yourself on any Docker host. The settings (with the real
+// secrets) go into an env file rather than onto the screen.
+async function deployCustom(d: Deploy): Promise<string | null> {
+  const { ui, sys } = d.io;
+  // In totem's config folder, beside the deploy record: the install may be an
+  // npm folder that the next update replaces.
+  const envFile = configFile(sys, "deploy.env");
+  // Replaced, not written in place: a mode given to writeFileSync only applies
+  // to a file it creates, so a file that was already there (from an earlier
+  // run, or copied in) kept whatever permissions it had while the next line
+  // called it "readable only by you".
+  // The address first: it goes into the file with the secrets, so there is
+  // nothing to edit by hand.
+  const url = await askUrl(d.io, "The server's address (its public https URL)");
+  if (!checkPushUrl(url).ok) {
+    ui.warn(
+      "That's plain http. Apps on the web (claude.ai, chatgpt.com, the phone apps) need an https address, and totem sends " +
+      `the WHOOP login over http only to this computer. On a private network you trust: totem auth --url ${url} --allow-http`,
+    );
+  }
+  writeFileAtomic(envFile, Object.entries({ ...d.env, PUBLIC_URL: url }).map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
+  const width = ui.style.width - 7;
+  const shown = tildify(envFile, sys.home);
+  ui.ok("Settings written", `${shown}, readable only by you`);
+  ui.para("That file holds the server's settings and secrets. totem doesn't run Docker for you; these are the steps:");
+  ui.line();
+  ui.para("1. Build the image from totem's folder (for another machine, copy the folder and that file there first):");
+  ui.code(shellLines([...dockerBuildArgs(d.root), shellPath(d.root)], width, sys.platform), 5);
+  ui.para("2. Start it. The totem-data volume keeps the WHOOP login across restarts:");
+  ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", shellPath(envFile), "totem"], width, sys.platform), 5);
+  ui.para(url.startsWith("https:")
+    ? `3. Put it behind HTTPS at ${url} (a reverse proxy, a tunnel, or your host's TLS).`
+    : `3. Make it answer at ${url}.`);
+  ui.line();
+  while (!(await ui.confirm(`Is it running at ${url}?`, true))) {
+    ui.hint("Start it with the steps above, then answer yes. Ctrl-C stops; the settings file stays.", 2);
+  }
+  return url;
+}
 
-  console.log("");
-  console.log(`  ${c.bold(c.white("Self-host it on any Docker host"))} ${c.gray("— a VPS, Render, your own box, whatever.")}`);
-  console.log("");
-  console.log(`  ${c.violet("1")}  ${c.white("Build the image")} ${c.gray("— the repo already has a Dockerfile:")}`);
-  console.log(`        ${c.cyan("docker build -t totem .")}`);
-  console.log("");
-  console.log(`  ${c.violet("2")}  ${c.white("Your full config")} ${c.gray("(tokens + the generated password) was written to:")}`);
-  console.log(`        ${c.brand(envFile)}  ${c.gray("(chmod 600 — keep it private)")}`);
-  console.log(`        ${c.gray("Open it and set")} ${c.bold(c.white("PUBLIC_URL"))} ${c.gray("to the")} ${c.white("https:// address your server will live at")}`);
-  console.log(`        ${c.gray("— you need a public domain/hostname with HTTPS. That same URL is what you paste below.")}`);
-  console.log("");
-  console.log(`  ${c.violet("3")}  ${c.white("Run it")} ${c.gray("(serves on port 3000):")}`);
-  console.log(`        ${c.cyan(`docker run -d --restart unless-stopped -p 3000:3000 --env-file ${envFile} totem`)}`);
-  console.log(`        ${c.gray("then put it behind HTTPS at that domain (a reverse proxy, Cloudflare Tunnel, your host's TLS, …).")}`);
-  console.log("");
-  return promptUrl("Once it's reachable, paste that public URL (the PUBLIC_URL you set)");
+// ── verification ─────────────────────────────────────────────────────────────
+
+/** Is the server up, does it advertise sign-in, and does /mcp refuse strangers? */
+async function verifyDeployment(io: Io, baseUrl: string): Promise<{ healthy: boolean; locked: boolean }> {
+  const { ui, sys } = io;
+  const root = baseUrl.replace(/\/(mcp)?$/, "");
+  // Poll with a short per-request timeout: an address that hasn't propagated
+  // yet fails fast and is asked again, instead of hanging on one request.
+  const started = sys.now();
+  let healthy = false;
+  let lastError = "";
+  await ui.task(`Waiting for ${root} to answer`, async (set) => {
+    while (sys.now() - started < 90_000) {
+      const health = await sys.httpGet(`${root}/health`, 3000);
+      if (health.status === 200) { healthy = true; return; }
+      lastError = health.status ? `HTTP ${health.status}` : health.error ?? "no answer";
+      set(lastError);
+      await sys.sleep(1500);
+    }
+  }, { slow: true });
+  if (!healthy) {
+    ui.fail("The server didn't answer", `${lastError || "no answer"} after ${duration(sys.now() - started)}`);
+    return { healthy, locked: false };
+  }
+  ui.ok("The server is up", `/health answered in ${duration(sys.now() - started) || "under a second"}`);
+  const prm = await ui.task("Checking sign-in", () => sys.httpGet(`${root}/.well-known/oauth-protected-resource/mcp`, 5000));
+  const prmOk = prm.status === 200 && prm.body.includes("/mcp");
+  if (prmOk) ui.ok("Sign-in is advertised", "clients can find where to log in");
+  else ui.warn("The server doesn't advertise sign-in yet", prm.status ? `HTTP ${prm.status}` : prm.error ?? "no answer");
+  // An unauthenticated /mcp must be refused, not served.
+  const gate = await ui.task("Checking the lock on /mcp", () => sys.httpGet(`${root}/mcp`, 5000));
+  const gated = gate.status === 401;
+  if (gated) ui.ok("/mcp is locked", "401 without a token");
+  else ui.fail(gate.status ? "/mcp answered without a token" : "/mcp didn't answer", gate.status ? `HTTP ${gate.status}, expected 401` : gate.error ?? "no answer");
+  return { healthy, locked: gated };
+}
+
+// ── the flow ─────────────────────────────────────────────────────────────────
+
+/** Where each host's sign-in link points, as its CLI prints it. */
+const CLOUDFLARE_SIGN_IN = /https:\/\/dash\.cloudflare\.com\/oauth2\/auth\?\S+/;
+const FLY_SIGN_IN = /https:\/\/fly\.io\/app\/auth\/cli\/[\w-]+/;
+
+/**
+ * A host's browser sign-in, without its CLI opening the browser by itself (it
+ * would land in whichever browser profile was used last, maybe one without the
+ * account). Run away from the terminal, Wrangler (with --browser=false) and
+ * flyctl print their link and wait for the approval instead: totem offers the
+ * link (offerLink), then waits too. If the sign-in finishes from a link pasted
+ * elsewhere before an answer, the question is taken back. Railway asks before
+ * opening anything, so it runs in the terminal as itself.
+ */
+async function browserSignIn(io: Io, host: string, cmd: string, args: string[], link: RegExp): Promise<ExecResult> {
+  const { ui, sys } = io;
+  let seen: (url: string) => void = () => {};
+  const shown = new Promise<string>((resolve) => { seen = resolve; });
+  const finished = new AbortController();
+  const result = sys.exec(cmd, args, { onLine: (line) => { const m = line.match(link); if (m) seen(m[0]); } })
+    .finally(() => finished.abort());
+  const url = await ui.task(`Starting the ${host} sign-in`, () => Promise.race([shown, result.then(() => null)]), { slow: true });
+  if (url !== null) {
+    const offered = await offerLink(io, `${host} sign-in`, url, finished.signal);
+    if (offered !== "withdrawn" && !finished.signal.aborted) await ui.task("Waiting for you to finish signing in", () => result);
+  }
+  return result;
+}
+
+/** The last thing a CLI said, for a problem's detail: its last error line, else its last line. */
+const lastWords = (r: ExecResult): string | undefined => {
+  const last = (text: string): string | undefined => text.split("\n").map((l) => l.trim()).filter(Boolean).pop();
+  return last(r.stderr) ?? last(r.stdout);
+};
+
+/** The host's CLI and a signed-in account. Returns the binary and who is signed in. */
+async function hostAccount(io: Io, platform: Platform, already: string[]): Promise<{ cli: string; account: string } | null> {
+  const { ui, sys } = io;
+  const who = async (cli: string, args: string[]): Promise<string | null> => {
+    const r = await ui.task("Checking who is signed in", () => sys.exec(cli, args));
+    return r.code === 0 ? r.stdout.trim().replace(/\s+/g, " ").replace(/^Logged in as\s+/i, "").replace(/\s*👋$/u, "") || "your account" : null;
+  };
+  if (platform === "fly") {
+    const cli = await ensureCli(io, ["fly", "flyctl"], "Fly CLI", { brew: "flyctl", script: "curl -fsSL https://fly.io/install.sh | sh", manual: "brew install flyctl", windows: 'pwsh -Command "iwr https://fly.io/install.ps1 -useb | iex"' });
+    if (!cli) return null;
+    let account = await who(cli, ["auth", "whoami"]);
+    if (!account) {
+      const r = await browserSignIn(io, "Fly", cli, ["auth", "login"], FLY_SIGN_IN);
+      if (r.code !== 0) { ui.problem("The Fly sign-in didn't finish.", { detail: lastWords(r), fix: [["Sign in", `${cli} auth login`], ["Then", "totem cloud"]] }); return null; }
+      account = (await who(cli, ["auth", "whoami"])) ?? "your account";
+    }
+    ui.ok("Signed in to Fly", account);
+    return { cli, account };
+  }
+  if (platform === "railway") {
+    const cli = await ensureCli(io, ["railway"], "Railway CLI", { npm: "@railway/cli", brew: "railway", manual: "npm i -g @railway/cli" });
+    if (!cli) return null;
+    let account = await who(cli, ["whoami"]);
+    if (!account) {
+      ui.info("Signing in to Railway. It asks before opening your browser.");
+      if ((await sys.run(cli, ["login"])) !== 0) { ui.problem("The Railway sign-in didn't finish.", { fix: [["Sign in", "railway login"], ["Then", "totem cloud"]] }); return null; }
+      account = (await who(cli, ["whoami"])) ?? "your account";
+    }
+    ui.ok("Signed in to Railway", account);
+    return { cli, account };
+  }
+  if (platform === "cloudflare") {
+    // npx comes with Node, which totem needs anyway; Wrangler downloads on first use.
+    const whoami = async (): Promise<string | null> => {
+      const r = await ui.task("Checking who is signed in to Cloudflare", () => sys.exec("npx", wrangler(["whoami"])), { slow: true });
+      return cloudflareAccount(`${r.stdout}\n${r.stderr}`, r.code);
+    };
+    let account = await whoami();
+    if (!account) {
+      const r = await browserSignIn(io, "Cloudflare", "npx", wrangler(["login", "--browser=false"]), CLOUDFLARE_SIGN_IN);
+      if (r.code !== 0) {
+        ui.problem("The Cloudflare sign-in didn't finish.", { detail: lastWords(r), fix: [["Sign in", "npx wrangler login"], ["Then", "totem cloud"]] });
+        return null;
+      }
+      account = (await whoami()) ?? "your account";
+    }
+    ui.ok("Signed in to Cloudflare", account);
+    return { cli: "npx", account };
+  }
+  return { cli: "docker", account: "" };
+}
+
+/**
+ * Who `wrangler whoami` says is signed in: the email for a browser sign-in, the
+ * account name for an API token, or null when nobody is.
+ */
+export function cloudflareAccount(output: string, code: number): string | null {
+  if (code !== 0 || /not authenticated|not logged in|wrangler login/i.test(output)) return null;
+  const email = output.match(/associated with the email\s+(\S+?@\S+?)\.?\s*$/im)?.[1];
+  if (email) return email;
+  const row = output.match(/│\s*([^│\n]+?)\s*│\s*[0-9a-f]{32}\s*│/);
+  return row?.[1]?.trim() || "your account";
+}
+
+/** Sign in to the host as someone else. Returns the new account, or null if it didn't finish. */
+async function switchAccount(io: Io, platform: Platform, cli: string, _already: string[]): Promise<string | null> {
+  const { ui, sys } = io;
+  if (platform === "cloudflare") {
+    await sys.run("npx", wrangler(["logout"]));
+    const login = await browserSignIn(io, "Cloudflare", "npx", wrangler(["login", "--browser=false"]), CLOUDFLARE_SIGN_IN);
+    if (login.code !== 0) { ui.fail("The sign-in didn't finish.", lastWords(login)); return null; }
+    const r = await sys.exec("npx", wrangler(["whoami"]));
+    return cloudflareAccount(`${r.stdout}\n${r.stderr}`, r.code) ?? "your account";
+  }
+  const [out, login, whoami] = platform === "fly" ? [["auth", "logout"], ["auth", "login"], ["auth", "whoami"]] : [["logout"], ["login"], ["whoami"]];
+  await sys.run(cli, out!);
+  const signedIn = platform === "fly"
+    ? (await browserSignIn(io, "Fly", cli, login!, FLY_SIGN_IN)).code === 0
+    : (await sys.run(cli, login!)) === 0;
+  if (!signedIn) { ui.fail("The sign-in didn't finish."); return null; }
+  const r = await sys.exec(cli, whoami!);
+  return r.stdout.trim().replace(/\s+/g, " ").replace(/^Logged in as\s+/i, "") || "your account";
+}
+
+/** What will be created and who pays, shown once before anything happens. */
+function planRows(d: Deploy): Array<[string, string]> {
+  const host = HOSTS.find((h) => h.id === d.platform)!.name;
+  if (d.platform === "fly") {
+    return [
+      ["Host", `${host}, as ${d.account}`],
+      ["App", d.appName],
+      ["Address", `https://${d.appName}.fly.dev`],
+      ["Machine", `${FLY_VM.size}, 512 MB, in ${FLY_REGION} (Virginia), always on`],
+      ["Volume", `${FLY_VOLUME}, 1 GB: keeps the WHOOP login across restarts`],
+      ["Cost", "about $4 a month at Fly's prices, billed to your Fly account"],
+    ];
+  }
+  if (d.platform === "cloudflare") {
+    return [
+      ["Host", `${host}, as ${d.account}`],
+      ["Worker", d.appName],
+      ["Address", `https://${d.appName}.<your subdomain>.workers.dev`],
+      ["Storage", "a Durable Object keeps the WHOOP login across restarts"],
+      ["Cost", "free plan: up to 100,000 requests a day"],
+    ];
+  }
+  if (d.platform === "railway") {
+    return [
+      ["Host", `${host}, as ${d.account}`],
+      ["Project", d.appName],
+      ["Address", "assigned by Railway, under up.railway.app"],
+      ["Volume", "mounted at /data: keeps the WHOOP login across restarts"],
+      ["Cost", "Railway bills your account for the service and the volume"],
+    ];
+  }
+  return [["Host", host]];
+}
+
+export interface CloudOptions {
+  /** Show the host CLI's full output instead of a one-line progress. */
+  verbose?: boolean;
+}
+
+export async function runCloudSetup(root: string, io: Io = realIo(), opts: CloudOptions = {}): Promise<number> {
+  const { ui, sys } = io;
+  const TOTAL = 6;
+  ui.banner("totem cloud", "Deploy your own totem server and connect your AI apps to it.");
+
+  // This flow ends by writing the new server into the deploy record, over what
+  // is there. For a server that is already deployed, that record is the only
+  // copy of its MCP_AUTH_TOKEN on this computer (what `totem auth`, `status`
+  // and `token` reach it with), and the server itself keeps running and
+  // billing: don't replace it without asking.
+  const existing = readDeployRecord(root, io.sys);
+  if (existing && existing.platform !== "local" && existing.url) {
+    ui.warn(`This install already has a server at ${existing.url}.`);
+    ui.hint(`Deploying another makes this computer forget that one: its token leaves ${tildify(deployRecordPath(io.sys), io.sys.home)}, and the server keeps running until you remove it on its host. To deploy this install's code to it again: totem deploy`);
+    if (!(await ui.confirm("Deploy a new server anyway?", false))) {
+      ui.hint("Nothing changed. To connect a client to the server: totem connect");
+      return 1;
+    }
+  }
+
+  ui.step(1, TOTAL, "Host");
+  const platform = HOSTS[await ui.select("Where should the server run?", HOSTS.map((h) => ({ label: h.name, hint: h.hint })))]!.id;
+  if (!(await prerequisites(root, io, false))) return 1;
+  // What choosing the host's account has created before the plan is confirmed,
+  // in words for the person. No host creates anything at that point today.
+  const already: string[] = [];
+  const host = await hostAccount(io, platform, already);
+  if (!host) return 1;
+
+  ui.step(2, TOTAL, "Secrets");
+  const mcpToken = sys.token();
+  let password = sys.password();
+  let ownPassword = false;
+  ui.ok("MCP_AUTH_TOKEN generated", "64 random characters; the server's own key");
+  ui.ok("Connector password generated", "you get it at the end, once");
+  ui.hint(`Both are set on the server. The token is also kept in ${tildify(deployRecordPath(io.sys), io.sys.home)} (readable only by you), so totem auth can reach the server.`);
+
+  // No WHOOP tokens in the host's environment: the server starts without a
+  // login, and step 5 sends one to its token file over POST /admin/tokens.
+  const d: Deploy = {
+    root, io, platform, verbose: Boolean(opts.verbose), cli: host.cli, account: host.account,
+    env: { MCP_TRANSPORT: "http", MCP_AUTH_TOKEN: mcpToken, AUTH_PASSWORD: password },
+    appName: platform === "custom" ? "totem" : `totem-${sys.token().slice(0, 6)}`,
+  };
+
+  ui.step(3, TOTAL, "Deploy");
+  if (platform !== "custom") {
+    for (;;) {
+      ui.rows(planRows(d));
+      const pick = await ui.select("Deploy this?", [
+        { label: "Deploy" },
+        { label: "Change something", hint: "the name, the password, or the account" },
+        { label: "Cancel", hint: already.length ? "no server is created" : "nothing has been created" },
+      ]);
+      if (pick === 0) break;
+      if (pick === 2) {
+        ui.hint(already.length ? `Cancelled. No server was created. Already done above, and left as it is: ${listOf(already)}.` : "Cancelled. Nothing was created.", 2);
+        return 1;
+      }
+      d.appName = (await ui.text("Name", d.appName)).trim() || d.appName;
+      for (;;) {
+        const typed = await ui.hidden(`Connector password (Enter keeps ${ownPassword ? "yours" : "the generated one"})`);
+        if (typed === "") break;
+        const why = weakPassword(typed);
+        if (why) { ui.hint(why, 2); continue; }
+        // It is typed blind and totem never shows it afterwards: a slip of the
+        // finger would set a password on the server that nobody knows.
+        if ((await ui.hidden("The same password again")) !== typed) { ui.hint("Those two are not the same. Nothing changed.", 2); continue; }
+        password = typed; ownPassword = true; d.env.AUTH_PASSWORD = typed;
+        break;
+      }
+      if (await ui.confirm(`Sign in to ${HOSTS.find((h) => h.id === platform)!.name} as someone else?`, false)) {
+        const account = await switchAccount(io, platform, d.cli, already);
+        if (account) d.account = account;
+      }
+    }
+  }
+
+  const url = platform === "fly" ? await deployFly(d)
+    : platform === "railway" ? await deployRailway(d)
+    : platform === "cloudflare" ? await deployCloudflare(d)
+    : await deployCustom(d);
+  if (!url) {
+    ui.problem("The server was not deployed.", { fix: [["Start over", "totem cloud"], ...(d.cleanup ? [d.cleanup] : [])] });
+    return 1;
+  }
+
+  ui.step(4, TOTAL, "Check");
+  const check = await verifyDeployment(io, url);
+  // Record the deployment before anything else can stop the flow, so auth,
+  // status and logs know where it is. d.appName, not the first suggestion: a
+  // name conflict may have changed it.
+  writeDeployRecord(root, {
+    platform, app: d.appName, url,
+    ...(platform === "fly" ? { region: FLY_REGION } : platform === "railway" ? { service: RAILWAY_SERVICE } : {}),
+    mcp_auth_token: mcpToken,
+  }, io.sys);
+  const mcpUrl = `${url.replace(/\/+$/, "")}/mcp`;
+  // The server has had the connector password since the deploy finished, and
+  // this run is the only time totem can show it. A flow that stops before the
+  // connect card must still hand it over: otherwise the person owns a server
+  // that no client can sign in to.
+  const handOverPassword = (): void => {
+    if (ownPassword) return;
+    const handedOver = sys.copy(password);
+    ui.line();
+    ui.rows([
+      ["URL", ui.kit.c.link(mcpUrl)],
+      ["Password", `${ui.kit.c.secret(password)}${handedOver ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
+    ]);
+    ui.hint("The connector password is already set on the server, and totem shows it this once. Save it in your password manager.", 2);
+  };
+  if (!check.healthy) {
+    ui.problem("The deploy finished, but the server isn't answering.", {
+      detail: "It may still be starting. Its logs say what it is doing.",
+      fix: [["Read its logs", "totem logs"], ["Check it again", "totem ping"], ["Then log in", "totem auth"]],
+    });
+    handOverPassword();
+    return 1;
+  }
+  // A totem server refuses /mcp without its token. Whatever answered some other
+  // way is not one with its lock on (a mistyped address, a proxy's or a host's
+  // own page that says 200 to everything): the WHOOP login, and the server's
+  // token that goes with it, are not sent there.
+  if (!check.locked) {
+    ui.problem("totem didn't send a WHOOP login: this address isn't refusing /mcp without a token.", {
+      detail: `A totem server answers 401 there. Check that ${url} is this server and nothing else, then log in.`,
+      fix: [["Check the server", "totem status"], ["Then log in", "totem auth"]],
+    });
+    handOverPassword();
+    return 1;
+  }
+
+  ui.step(5, TOTAL, "WHOOP login");
+  const loggedIn = (await runAuth(root, [], { target: { kind: "remote", url, adminToken: mcpToken, platform }, embedded: true }, io)) === 0;
+  if (!loggedIn) ui.warn("The server is up but has no WHOOP login yet.");
+
+  ui.step(6, TOTAL, "Connect your apps");
+  const copied = !ownPassword && sys.copy(password);
+  ui.rows([
+    ["URL", ui.kit.c.link(mcpUrl)],
+    ["Password", ownPassword ? "the one you chose" : `${ui.kit.c.secret(password)}${copied ? ui.kit.c.dim("  (copied to the clipboard)") : ""}`],
+  ]);
+  if (!ownPassword) ui.hint("totem shows the password this once. Save it in your password manager.", 2);
+  ui.line();
+  const page = await showConnectPage(io, mcpUrl);
+  const { steps } = await connectInstalled(io, { kind: "remote", mcpUrl });
+  ui.next([
+    ...(loggedIn ? [] : ["First, finish the WHOOP login: totem auth", ""]),
+    ...[...steps, `Ask it: ${FIRST_QUESTION}`].map((s, i) => `${i + 1}. ${s}`),
+    "",
+    `Every app: ${page}`,
+    "Check the server: totem status",
+  ]);
+  return loggedIn ? 0 : 1;
 }

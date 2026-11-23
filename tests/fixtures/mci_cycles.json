@@ -1,0 +1,282 @@
+{
+ "navigation_title": "YOUR CYCLES",
+ "sections": [
+  {
+   "title_display": "2026",
+   "cycles": [
+    {
+     "cycle": {
+      "header": {
+       "supertitle_display": null,
+       "title_display": null,
+       "subtitle_display": "Current Cycle: 21 Days",
+       "current_status_display": null,
+       "current_status_style": null,
+       "description_display": "Started Nov 1",
+       "right_aligned_description": null
+      },
+      "style": "NONE",
+      "tick_marks": [
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       }
+      ],
+      "tick_marks_labels": [],
+      "fill_full_space": false,
+      "tick_mark_width_style": "NORMAL",
+      "expected_annotation": null,
+      "footer": null,
+      "tick_mark_outlines": []
+     },
+     "icon": "PENCIL",
+     "hidden": false,
+     "bottom_sheet": {
+      "edit_option": {
+       "display": "EDIT CYCLE",
+       "date": "2026-11-01"
+      },
+      "hide_option": {
+       "display": "HIDE CYCLE",
+       "date_range": [
+        "2026-11-01",
+        "2026-11-21"
+       ]
+      },
+      "unhide_option": null
+     }
+    },
+    {
+     "cycle": {
+      "header": {
+       "supertitle_display": null,
+       "title_display": null,
+       "subtitle_display": "17 days",
+       "current_status_display": null,
+       "current_status_style": null,
+       "description_display": "Oct 15 - Oct 31",
+       "right_aligned_description": null
+      },
+      "style": "NONE",
+      "tick_marks": [
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "MENSTRUAL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       },
+       {
+        "style": "HORMONAL_BIRTH_CONTROL",
+        "is_today": false,
+        "date": null
+       }
+      ],
+      "tick_marks_labels": [],
+      "fill_full_space": false,
+      "tick_mark_width_style": "NORMAL",
+      "expected_annotation": null,
+      "footer": null,
+      "tick_mark_outlines": []
+     },
+     "icon": "PENCIL",
+     "hidden": false,
+     "bottom_sheet": {
+      "edit_option": {
+       "display": "EDIT CYCLE",
+       "date": "2026-10-15"
+      },
+      "hide_option": {
+       "display": "HIDE CYCLE",
+       "date_range": [
+        "2026-10-15",
+        "2026-10-31"
+       ]
+      },
+      "unhide_option": null
+     }
+    }
+   ]
+  }
+ ],
+ "hiding_cycle_modal": {
+  "title": "HIDE THIS CYCLE?",
+  "message": "Hiding this cycle will remove it from the calendar and set of cycles used for period predictions. Are you sure you want to hide this cycle?",
+  "primary_text": "HIDE THIS CYCLE",
+  "secondary_text": null
+ }
+}

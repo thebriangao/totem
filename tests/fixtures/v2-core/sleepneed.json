@@ -1,0 +1,81 @@
+{
+ "alarm_schedule_state": "NEW",
+ "chip_label_text_display": "SCHEDULE",
+ "eligible_for_smart_alarms": false,
+ "menstrual_coach_enabled": false,
+ "menstrual_coaching_details": null,
+ "need_breakdown": {
+  "baseline": 29563364,
+  "debt": 0,
+  "naps": 0,
+  "strain": 100428,
+  "total": 29663792
+ },
+ "need_breakdown_formatted": {
+  "baseline_need": "8:12",
+  "debt_need": "0:00",
+  "naps_need": "0:00",
+  "strain_need": "0:02",
+  "total_need": "8:14"
+ },
+ "next_schedule_day_label": null,
+ "recommended_time_in_bed_formatted": {
+  "100": {
+   "estimated_awake_time_string": "1:00",
+   "flex_sleep_time": false,
+   "max_possible_sri": null,
+   "optimal_endpoints_formatted": null,
+   "projected_sleep_consistency": null,
+   "recommended_time_in_bed": 33200426,
+   "recommended_time_in_bed_time_string": "9:14",
+   "sleep_adjustment_time_string": null,
+   "sleep_need_time_string": "8:14"
+  },
+  "70": {
+   "estimated_awake_time_string": "0:44",
+   "flex_sleep_time": false,
+   "max_possible_sri": null,
+   "optimal_endpoints_formatted": null,
+   "projected_sleep_consistency": null,
+   "recommended_time_in_bed": 23356247,
+   "recommended_time_in_bed_time_string": "6:30",
+   "sleep_adjustment_time_string": null,
+   "sleep_need_time_string": "5:46"
+  },
+  "85": {
+   "estimated_awake_time_string": "0:52",
+   "flex_sleep_time": false,
+   "max_possible_sri": null,
+   "optimal_endpoints_formatted": null,
+   "projected_sleep_consistency": null,
+   "recommended_time_in_bed": 28278336,
+   "recommended_time_in_bed_time_string": "7:52",
+   "sleep_adjustment_time_string": null,
+   "sleep_need_time_string": "7:00"
+  },
+  "optimize_sleep": {
+   "estimated_awake_time_string": "0:43",
+   "flex_sleep_time": false,
+   "max_possible_sri": null,
+   "optimal_endpoints_formatted": null,
+   "projected_sleep_consistency": null,
+   "recommended_time_in_bed": 32400000,
+   "recommended_time_in_bed_time_string": "9:00",
+   "sleep_adjustment_time_string": "0:02",
+   "sleep_need_time_string": "8:16"
+  }
+ },
+ "sleep_coach_onboarding_state": null,
+ "turn_off_all_modal": {
+  "button_action_display_text": "TURN OFF",
+  "dismiss_action_display_text": "CANCEL",
+  "modal_subtext_display": "All alarms, including recurring ones from your schedule, will be turned off. You can resume them anytime on the Schedule page.",
+  "modal_title_display": "TURN OFF ALARM & SCHEDULE"
+ },
+ "turn_off_schedule_modal": {
+  "button_action_display_text": "TURN OFF & SET NEW ALARM",
+  "dismiss_action_display_text": "CANCEL",
+  "modal_subtext_display": "Your schedule is currently on. Turn off your schedule to set a new alarm for tomorrow.",
+  "modal_title_display": "TURN OFF SCHEDULE"
+ }
+}
