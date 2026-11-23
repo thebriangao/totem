@@ -99,6 +99,26 @@ describe("v2 tool registry", () => {
     expect(text).toContain('"enum"');
   });
 
+  // The Anthropic API checks every input schema as JSON Schema 2020-12 and drops a
+  // tool whose schema fails. The SDK writes a z.tuple in draft-07 form ("items" as
+  // an array, plus "additionalItems"), which 2020-12 rejects: that hid
+  // whoop_hr_zones_set from Claude until its zone pairs became plain arrays.
+  it("lists input schemas that are valid JSON Schema 2020-12: no draft-07 tuples", async () => {
+    const { tools } = await (await connect()).listTools();
+    const bad: string[] = [];
+    const walk = (node: unknown, path: string): void => {
+      if (Array.isArray(node)) return node.forEach((x, i) => walk(x, `${path}/${i}`));
+      if (!node || typeof node !== "object") return;
+      for (const [key, value] of Object.entries(node)) {
+        if (key === "items" && (Array.isArray(value) || value === null || !["object", "boolean"].includes(typeof value))) bad.push(`${path}/items`);
+        if (key === "additionalItems") bad.push(`${path}/additionalItems`);
+        walk(value, `${path}/${key}`);
+      }
+    };
+    for (const t of tools) walk(t.inputSchema, t.name);
+    expect(bad).toEqual([]);
+  });
+
   it("lists nothing that only restates a default or an obvious bound", async () => {
     const { tools } = await (await connect()).listTools();
     const text = JSON.stringify(tools);
@@ -141,6 +161,8 @@ describe("v2 tool registry", () => {
     await rejected("whoop_cycle_log", { date: "2026-11-01", period: { yes: true, flow: 3 } }); // literal union
     await rejected("whoop_weight_log", { action: "add", weight: 0, unit: "kg" }); // exclusiveMinimum 0
     await rejected("whoop_raw", { path: "/x", query: { a: { nested: true } } }); // record value types
+    await rejected("whoop_hr_zones_set", { action: "custom", zones: [[100, 120, 140]] }); // a zone is exactly [min, max]
+    await rejected("whoop_hr_zones_set", { action: "custom", zones: [[100.5, 120]] }); // whole bpm
   });
 
   it("validates the dashboard keys it no longer lists as enums, and names the valid ones", async () => {

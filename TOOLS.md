@@ -490,7 +490,7 @@ Set heart-rate zones. max_hr: set max_heart_rate (WHOOP recomputes its default z
 |---|---|---|
 | `action` (required) | `max_hr`, `custom`, `reset` |  |
 | `max_heart_rate` | integer |  |
-| `zones` | list of list of any |  |
+| `zones` | list of list of integer |  |
 
 Add `confirm: true` to make the change.
 

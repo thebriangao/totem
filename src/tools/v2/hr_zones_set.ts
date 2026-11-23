@@ -50,11 +50,15 @@ export function registerHrZonesSet(server: McpServer, client: WhoopClient): void
     input: {
       action: z.enum(["max_hr", "custom", "reset"]),
       max_heart_rate: z.number().int().min(101).max(220).optional(),
-      zones: z.array(z.tuple([z.number().int().min(0), z.number().int().min(1)])).optional(),
+      // Each zone is a plain two-number array, not a z.tuple: the SDK writes a tuple
+      // in draft-07 form ("items": [...]), which the Anthropic API rejects, and
+      // Claude then drops the whole tool. validateCustomZones checks min < max.
+      zones: z.array(z.array(z.number().int().min(0)).length(2)).optional(),
       confirm: z.boolean().default(false),
     },
     annotations: WRITE_DESTRUCTIVE,
-  }, async ({ action, max_heart_rate, zones, confirm }) => {
+  }, async ({ action, max_heart_rate, zones: zonesIn, confirm }) => {
+    const zones = zonesIn?.map((pair) => [pair[0]!, pair[1]!] as [number, number]);
     if (action === "max_hr" && max_heart_rate === undefined) return fail("action max_hr needs max_heart_rate.");
     if (action === "custom" && zones === undefined) return fail("action custom needs zones.");
     if (action !== "custom" && zones !== undefined) return fail("zones only go with action custom.");
