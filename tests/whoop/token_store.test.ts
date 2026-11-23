@@ -33,8 +33,10 @@ describe("FileTokenStore", () => {
   it("round-trips a login as versioned JSON", () => {
     const store = new FileTokenStore(join(dir, "tokens.json"));
     expect(store.load()).toBeNull();
-    store.save(record({ user_id: 7, installation_id: "ABC" }));
-    expect(store.load()).toEqual(record({ user_id: 7, installation_id: "ABC" }));
+    // One record for both sides: its token's expiry is read from the clock.
+    const saved = record({ user_id: 7, installation_id: "ABC" });
+    store.save(saved);
+    expect(store.load()).toEqual(saved);
     const raw = JSON.parse(readFileSync(join(dir, "tokens.json"), "utf8")) as Record<string, unknown>;
     expect(raw.version).toBe(1);
     expect(raw).not.toHaveProperty("refreshed_at"); // undefined fields are dropped
@@ -113,9 +115,10 @@ describe("FileTokenStore", () => {
 
   posixOnly("tightens a token file that was left readable by others, as soon as it is read", () => {
     const path = join(dir, "tokens.json");
-    writeFileSync(path, serializeTokenFile(record()), { mode: 0o644 }); // restored from a backup, copied by hand
+    const saved = record();
+    writeFileSync(path, serializeTokenFile(saved), { mode: 0o644 }); // restored from a backup, copied by hand
     chmodSync(path, 0o644);
-    expect(new FileTokenStore(path).load()).toEqual(record());
+    expect(new FileTokenStore(path).load()).toEqual(saved);
     expect(statSync(path).mode & 0o777).toBe(0o600);
   });
 
