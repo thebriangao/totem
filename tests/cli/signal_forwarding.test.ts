@@ -33,10 +33,21 @@ describe.skipIf(process.platform === "win32")("the subprocess runner passes term
   let wrapper: ChildProcess | undefined;
   let childPid = 0;
 
-  /** Start the wrapper and wait for its child. `cli`: with the real entry point's SIGINT handler. */
-  async function start(cli = false): Promise<void> {
+  /**
+   * End the wrapper and its child. The child goes first and by its own pid: a
+   * SIGKILLed wrapper can't pass anything on, so killing only the wrapper
+   * leaves the child running, orphaned.
+   */
+  function stop(): void {
+    if (childPid && alive(childPid)) process.kill(childPid, "SIGKILL");
     wrapper?.kill("SIGKILL");
     if (dir) rmSync(dir, { recursive: true, force: true });
+    childPid = 0;
+  }
+
+  /** Start the wrapper and wait for its child, ending any earlier pair first. `cli`: with the real entry point's SIGINT handler. */
+  async function start(cli = false): Promise<void> {
+    stop();
     dir = mkdtempSync(join(tmpdir(), "totem-signal-"));
     wrapper = spawn(process.execPath, ["--import", "tsx", WRAPPER, CHILD, dir, ...(cli ? ["cli"] : [])], { cwd: ROOT, stdio: "ignore" });
     expect(await until(() => existsSync(join(dir, "child.pid")))).toBe(true);
@@ -47,14 +58,11 @@ describe.skipIf(process.platform === "win32")("the subprocess runner passes term
   beforeEach(async () => {
     dir = "";
     wrapper = undefined;
+    childPid = 0;
     await start();
   });
 
-  afterEach(() => {
-    if (childPid && alive(childPid)) process.kill(childPid, "SIGKILL");
-    wrapper?.kill("SIGKILL");
-    rmSync(dir, { recursive: true, force: true });
-  });
+  afterEach(stop);
 
   it.each(["SIGTERM", "SIGHUP"] as const)("%s to the wrapper reaches the child, and both exit", async (signal) => {
     const exited = new Promise<number | null>((resolve) => wrapper!.once("exit", (code) => resolve(code)));

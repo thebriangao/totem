@@ -1,5 +1,6 @@
 // Stand-in for the MCP server under `totem start`: stays alive until it is
-// signalled, and records which signal reached it.
+// signalled, and records which signal reached it. It gives up after a minute
+// on its own, so a test run that dies before its cleanup can't leave it behind.
 //
 //   node signal_child.mjs <state dir>
 import { writeFileSync } from "node:fs";
@@ -13,4 +14,4 @@ for (const signal of ["SIGTERM", "SIGHUP", "SIGINT"]) {
   });
 }
 writeFileSync(join(dir, "child.pid"), String(process.pid));
-setInterval(() => {}, 1000);
+setTimeout(() => process.exit(0), 60_000);
