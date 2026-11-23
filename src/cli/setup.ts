@@ -858,7 +858,9 @@ async function deployCloudflare(d: Deploy): Promise<string | null> {
 export function serverAddress(input: string): string | null {
   let url = input.trim();
   if (!url || /\s/.test(url)) return null;
-  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = "https://" + url;
+  // No scheme: https, except this computer itself, where a container answers
+  // plain http (localhost:3000 would otherwise never pass the running check).
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = (/^(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?(\/|$)/i.test(url) ? "http://" : "https://") + url;
   url = url.replace(/\/+$/, "").replace(/\/mcp$/i, "").replace(/\/+$/, "");
   if (!URL.canParse(url)) return null;
   const u = new URL(url);

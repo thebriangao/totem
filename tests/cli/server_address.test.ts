@@ -17,6 +17,15 @@ describe("serverAddress", () => {
     expect(serverAddress("https://example.com/totem")).toBe("https://example.com/totem");
   });
 
+  it("reads a bare address on this computer as http, and any other bare address as https", () => {
+    expect(serverAddress("localhost:3000")).toBe("http://localhost:3000");
+    expect(serverAddress("127.0.0.1:3000/mcp")).toBe("http://127.0.0.1:3000");
+    expect(serverAddress("[::1]:3000")).toBe("http://[::1]:3000");
+    expect(serverAddress("https://localhost:3000")).toBe("https://localhost:3000");
+    expect(serverAddress("localhost.example.com")).toBe("https://localhost.example.com");
+    expect(serverAddress("homeserver:3000")).toBe("https://homeserver:3000");
+  });
+
   it("drops a trailing /mcp or slash: the server adds /mcp itself", () => {
     expect(serverAddress("https://totem.example.com/mcp")).toBe("https://totem.example.com");
     expect(serverAddress("https://totem.example.com/mcp/")).toBe("https://totem.example.com");
