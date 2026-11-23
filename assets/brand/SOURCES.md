@@ -2,10 +2,10 @@
 
 ## totem's logo
 
-`totem.svg` is totem's logo, and `totem.png` is a 512 px render of it (the Claude Desktop extension's icon). The colours are ice `#B7D3F2` and ink `#141414`, with fold `#7A9CC6` as the mark's darker face. `src/lib/brand.ts` carries the same logo and colours for the pages, the MCP server's icon and the CLI; `tests/lib/brand.test.ts` keeps it in step with this file. To re-render the PNG after a change:
+`totem.svg` is totem's logo, and `totem.png` is a 512 px render of it (the Claude Desktop extension's icon). Neither has a background: the logo always sits on whatever is behind it, in every place it is used. The mark's colours are ice `#B7D3F2` and fold `#7A9CC6`, its darker face. Ink `#141414` is the dark colour of the pages and buttons, not part of the logo. `src/lib/brand.ts` carries the same logo and colours for the pages, the MCP server's icon and the CLI; `tests/lib/brand.test.ts` keeps it in step with this file. To re-render the PNG after a change:
 
 ```bash
-magick -background none -density 192 assets/brand/totem.svg -resize 512x512 -depth 8 -colors 64 PNG8:assets/brand/totem.png
+magick -background none -density 192 assets/brand/totem.svg -resize 512x512 -depth 8 +dither -colors 64 -strip -define png:compression-level=9 assets/brand/totem.png
 ```
 
 ## Client logo sources

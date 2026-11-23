@@ -20,13 +20,19 @@ describe("the logo", () => {
     for (const bad of [/\bid=/, /style/i, /<script/i, /href/i, /\son[a-z]+=/i]) expect(TOTEM_LOGO_SVG).not.toMatch(bad);
   });
 
-  it("uses the brand colours", () => {
+  it("uses the brand colours and never has a background", () => {
     expect(BRAND).toEqual({ ice: "#B7D3F2", ink: "#141414", fold: "#7A9CC6" });
-    for (const c of Object.values(BRAND)) expect(TOTEM_LOGO_SVG).toContain(`"${c}"`);
-    // The header mark has no ink square (it takes the page's colour) and is cut to the mark.
+    // Ice and fold draw the mark. Ink is the pages' colour, not a square behind the logo.
+    for (const c of [BRAND.ice, BRAND.fold]) expect(TOTEM_LOGO_SVG).toContain(`"${c}"`);
+    for (const svg of [FILE, TOTEM_LOGO_SVG, TOTEM_MARK]) {
+      expect(svg).not.toContain("<rect");
+      expect(svg).not.toContain(BRAND.ink);
+    }
+    // The PNG renders are transparent too (a palette with alpha).
+    expect(readFileSync(resolve("assets/brand/totem.png")).includes("tRNS")).toBe(true);
+    // The header mark is the same shapes, cut to the mark so it lines up with the text beside it.
     expect(TOTEM_MARK.startsWith('<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="125 176 750 648">')).toBe(true);
-    expect(TOTEM_MARK).not.toContain("<rect");
-    expect(shapes(TOTEM_MARK)).toEqual(shapes(FILE).filter((s) => s.startsWith("polygon")));
+    expect(shapes(TOTEM_MARK)).toEqual(shapes(FILE));
   });
 
   it("is the header of both pages, with the old placeholder gone", () => {
@@ -55,6 +61,7 @@ describe("the MCP server's identity", () => {
     const bytes = Buffer.from(png!.src.replace("data:image/png;base64,", ""), "base64");
     expect(bytes.subarray(1, 4).toString()).toBe("PNG");
     expect(bytes.readUInt32BE(16)).toBe(128); // IHDR width
+    expect(bytes.includes("tRNS")).toBe(true); // transparent: no square behind the mark
 
     const server = new McpServer(serverIdentity("9.9.9"));
     const [a, b] = InMemoryTransport.createLinkedPair();
