@@ -227,6 +227,25 @@ describe("whoop_smart_alarm_set master switch and single alarm", () => {
     expect(out).toMatchObject({ action: "single_alarm", verified: true, master_switch: false });
   });
 
+  it("single_alarm: window_minutes sends the short window and verifies its start", async () => {
+    const put = vi.fn().mockResolvedValue({});
+    const prefsAfter = { ...(fx("alarm_preferences.json") as object), goal: "EXACT_TIME_PERFORM", upper_time_bound: "07:00:00", lower_time_bound: "06:57:00", window_minutes: 3, alarm_bounds: "['2026-11-22T06:57:00.000-08','2026-11-22T07:00:00.000-08']", schedule_enabled: false, enabled: true };
+    const allAfter = { ...(fx("alarm_schedule_all.json") as object), schedule_enabled: false };
+    const get = routedGet({ [ROWS]: baseRows(), [ALL]: seq(fx("alarm_schedule_all.json"), allAfter), [PREFS]: seq(fx("alarm_preferences.json"), prefsAfter) });
+    const client = await connect((s) => registerSmartAlarmSet(s, mockClient({ get, put })));
+    const { out } = await call(client, "whoop_smart_alarm_set", { action: "single_alarm", wake_time: "07:00", window_minutes: 3, confirm: true });
+    expect(put.mock.calls[0]![1]).toMatchObject({ lower_time_bound: "06:57:00", upper_time_bound: "07:00:00", window_minutes: 3 });
+    expect(out).toMatchObject({ action: "single_alarm", verified: true });
+  });
+
+  it("refuses window_minutes outside single_alarm", async () => {
+    const put = vi.fn();
+    const client = await connect((s) => registerSmartAlarmSet(s, mockClient({ get: healthy(baseRows()), put })));
+    const res = await client.callTool({ name: "whoop_smart_alarm_set", arguments: { action: "create", days: ["FRI"], mode: "EXACT_TIME", wake_time: "07:00", window_minutes: 3, confirm: true } });
+    expect(res.isError).toBe(true);
+    expect(put).not.toHaveBeenCalled();
+  });
+
   it("single_alarm on the damaged account: warns, sends once, reports unverified on 500", async () => {
     const put = vi.fn().mockRejectedValue(e500(PREFS));
     const client = await connect((s) => registerSmartAlarmSet(s, mockClient({ get: damaged(baseRows()), put })));
