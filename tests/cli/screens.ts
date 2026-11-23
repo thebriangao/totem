@@ -174,7 +174,7 @@ export const SCREENS: Screen[] = [
   { name: "cloud-railway", command: "totem cloud", about: "Cloud setup on Railway.", world: { exec: railway, answers: [host("Railway")] } },
   {
     name: "cloud-custom", command: "totem cloud", about: "Cloud setup on your own Docker host.",
-    world: { answers: [host("My own server"), ["Public https URL", "totem.example.com"]] },
+    world: { answers: [host("My own server"), ["The server's address", "totem.example.com"]] },
   },
   {
     name: "cloud-fly-cli-missing", command: "totem cloud", about: "The host's CLI isn't installed and the person declines to install it.",

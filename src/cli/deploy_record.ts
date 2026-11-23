@@ -78,3 +78,23 @@ export function platformForUrl(url: string): string {
   if (host.endsWith(".fly.dev")) return "fly";
   return "custom";
 }
+
+/** The install's version from its package.json, or null when it can't be read. */
+export function installVersion(root: string): string | null {
+  try {
+    const v = (JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { version?: unknown }).version;
+    return typeof v === "string" && /^[0-9A-Za-z.+-]+$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `docker build` for a self-hosted server, up to the folder to build (the
+ * caller adds it, quoted for the shell). It sets the build id to the install's
+ * version, so /health and `totem status` say which version runs instead of "dev".
+ */
+export function dockerBuildArgs(root: string): string[] {
+  const version = installVersion(root);
+  return ["docker", "build", ...(version ? ["--build-arg", `TOTEM_BUILD_ID=${version}`] : []), "-t", "totem"];
+}

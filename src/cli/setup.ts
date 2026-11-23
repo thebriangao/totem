@@ -16,7 +16,8 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { pkgBin } from "./spawn.js";
 import { realAuthDeps, runAuth } from "./auth.js";
-import { configFile, deployRecordPath, readDeployRecord, writeDeployRecord } from "./deploy_record.js";
+import { checkPushUrl } from "./auth_flow.js";
+import { configFile, deployRecordPath, dockerBuildArgs, readDeployRecord, writeDeployRecord } from "./deploy_record.js";
 import { migrateFromEnv, resolveTokenFilePath, writeFileAtomic } from "../whoop/token_store.js";
 import {
   CLIENTS, FIRST_QUESTION, SERVER_NAME, applyRecipe, connectCard, findClient, lastLine, recipeLines, tildify,
@@ -848,15 +849,32 @@ async function deployCloudflare(d: Deploy): Promise<string | null> {
 
 // CUSTOM ──────────────────────────────────────────────────────────────────────
 
-/** Ask for a public URL until it is one. A bare domain gets https://. */
+/**
+ * A server address as typed, made into one: a bare host gets https://, and a
+ * trailing /mcp or / is dropped (the server adds /mcp itself). Any http(s)
+ * address with a host counts, including localhost and a name on your own
+ * network; null when it isn't one.
+ */
+export function serverAddress(input: string): string | null {
+  let url = input.trim();
+  if (!url || /\s/.test(url)) return null;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = "https://" + url;
+  url = url.replace(/\/+$/, "").replace(/\/mcp$/i, "").replace(/\/+$/, "");
+  if (!URL.canParse(url)) return null;
+  const u = new URL(url);
+  if ((u.protocol !== "https:" && u.protocol !== "http:") || !u.hostname || u.username || u.password || u.search || u.hash) return null;
+  return url;
+}
+
+/** Ask for a server address until it is one. */
 async function askUrl(io: Io, question: string): Promise<string> {
   const { ui } = io;
   for (;;) {
-    let url = (await ui.text(question)).trim();
-    if (!url) { ui.hint("A URL is needed to go on. Ctrl-C stops.", 2); continue; }
-    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-    if (/^https?:\/\/[^/.\s]+\.[^/\s]+/.test(url)) return url.replace(/\/+$/, "");
-    ui.hint(`"${url}" isn't a URL like https://totem.example.com.`, 2);
+    const typed = await ui.text(question);
+    if (!typed.trim()) { ui.hint("An address is needed to go on. Ctrl-C stops.", 2); continue; }
+    const url = serverAddress(typed);
+    if (url) return url;
+    ui.hint(`"${typed.trim()}" isn't a web address like https://totem.example.com.`, 2);
   }
 }
 
@@ -871,20 +889,33 @@ async function deployCustom(d: Deploy): Promise<string | null> {
   // to a file it creates, so a file that was already there (from an earlier
   // run, or copied in) kept whatever permissions it had while the next line
   // called it "readable only by you".
-  writeFileAtomic(envFile, Object.entries(d.env).map(([k, v]) => `${k}=${v}`).join("\n") + "\nPUBLIC_URL=https://CHANGE-ME-to-your-public-https-address\n");
+  // The address first: it goes into the file with the secrets, so there is
+  // nothing to edit by hand.
+  const url = await askUrl(d.io, "The server's address (its public https URL)");
+  if (!checkPushUrl(url).ok) {
+    ui.warn(
+      "That's plain http. Apps on the web (claude.ai, chatgpt.com, the phone apps) need an https address, and totem sends " +
+      `the WHOOP login over http only to this computer. On a private network you trust: totem auth --url ${url} --allow-http`,
+    );
+  }
+  writeFileAtomic(envFile, Object.entries({ ...d.env, PUBLIC_URL: url }).map(([k, v]) => `${k}=${v}`).join("\n") + "\n");
   const width = ui.style.width - 7;
   const shown = tildify(envFile, sys.home);
   ui.ok("Settings written", `${shown}, readable only by you`);
-  ui.para("That file holds the server's secrets. totem doesn't run Docker for you; these are the steps:");
+  ui.para("That file holds the server's settings and secrets. totem doesn't run Docker for you; these are the steps:");
   ui.line();
-  ui.para(`1. In ${shown}, set PUBLIC_URL to the https address the server will have.`);
-  ui.para("2. Build the image from totem's folder (for another machine, copy the folder and that file there first):");
-  ui.code(shellLines(["docker", "build", "-t", "totem", shellPath(d.root)], width, sys.platform), 5);
-  ui.para("3. Start it. The totem-data volume keeps the WHOOP login across restarts:");
+  ui.para("1. Build the image from totem's folder (for another machine, copy the folder and that file there first):");
+  ui.code(shellLines([...dockerBuildArgs(d.root), shellPath(d.root)], width, sys.platform), 5);
+  ui.para("2. Start it. The totem-data volume keeps the WHOOP login across restarts:");
   ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", shellPath(envFile), "totem"], width, sys.platform), 5);
-  ui.para("4. Put it behind HTTPS at that address (a reverse proxy, a tunnel, or your host's TLS).");
+  ui.para(url.startsWith("https:")
+    ? `3. Put it behind HTTPS at ${url} (a reverse proxy, a tunnel, or your host's TLS).`
+    : `3. Make it answer at ${url}.`);
   ui.line();
-  return askUrl(d.io, "Public https URL, once the server is up");
+  while (!(await ui.confirm(`Is it running at ${url}?`, true))) {
+    ui.hint("Start it with the steps above, then answer yes. Ctrl-C stops; the settings file stays.", 2);
+  }
+  return url;
 }
 
 // ── verification ─────────────────────────────────────────────────────────────

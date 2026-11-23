@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter as pathDelimiter, dirname, resolve } from "node:path";
 import { lastLine, tildify } from "./clients.js";
-import { configFile } from "./deploy_record.js";
+import { configFile, dockerBuildArgs } from "./deploy_record.js";
 import { pkgBin } from "./spawn.js";
 import { realIo, type ExecResult, type Io } from "./sys.js";
 import { duration, listOf, shellLines, shellPath } from "./ui.js";
@@ -295,7 +295,7 @@ function selfHostSteps(io: Io, ctx: UpdateCtx, d: DeployInfo): void {
   ui.line();
   ui.para("1. Get this version there (git pull the checkout, or copy it over).");
   ui.para("2. Rebuild the image:");
-  ui.code(shellLines(["docker", "build", "-t", "totem", shellPath(ctx.root)], ui.style.width - 7, sys.platform), 5);
+  ui.code(shellLines([...dockerBuildArgs(ctx.root), shellPath(ctx.root)], ui.style.width - 7, sys.platform), 5);
   ui.para("3. Stop the old container, then start the new image the way you did before:");
   ui.code(shellLines(["docker", "run", "-d", "--restart", "unless-stopped", "-p", "3000:3000", "-v", "totem-data:/data", "--env-file", envArg, "totem"], ui.style.width - 7, sys.platform), 5);
   if (d.url) {

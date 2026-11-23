@@ -161,7 +161,7 @@ describe("totem cloud: cancelling the plan", () => {
 // config folder (never the install, which an npm update replaces) and says the
 // file is readable only by you. That has to hold when the file already existed.
 describe.skipIf(process.platform === "win32")("totem cloud: deploy.env", () => {
-  const ownServer: WorldOptions = { answers: [[HOST, "My own server"], ["Public https URL", "totem.example.com"]] };
+  const ownServer: WorldOptions = { answers: [[HOST, "My own server"], ["The server's address", "totem.example.com"]] };
   const mode = (path: string): string => (statSync(path).mode & 0o777).toString(8);
   const envFile = (w: FakeWorld): string => configFile(w.io.sys, "deploy.env");
 
@@ -173,7 +173,29 @@ describe.skipIf(process.platform === "win32")("totem cloud: deploy.env", () => {
     // A long path continues the command on the next line ("\" at the end): read it as one.
     const oneLine = text.replace(/ \\\n\s*/g, " ");
     expect(oneLine).toContain(`--env-file ${envFile(w).split(w.home).join("/Users/you")}`);
-    expect(oneLine).toContain(`docker build -t totem ${w.root.split(w.home).join("/Users/you")}`);
+    expect(oneLine).toContain(`docker build --build-arg TOTEM_BUILD_ID=1.5.1 -t totem ${w.root.split(w.home).join("/Users/you")}`);
+  });
+
+  it("asks for the address first and writes it into the file: nothing to edit by hand", async () => {
+    const { w, text } = await cloud(ownServer);
+    const env = readFileSync(envFile(w), "utf8");
+    expect(env).toContain("PUBLIC_URL=https://totem.example.com\n");
+    expect(env).not.toMatch(/CHANGE-ME/);
+    expect(text).not.toMatch(/set PUBLIC_URL/);
+    expect(text.indexOf("The server's address")).toBeLessThan(text.indexOf("Settings written"));
+    expect(text).toContain("Is it running at https://totem.example.com?");
+    expect(text).not.toContain("plain http");
+  });
+
+  it("takes a local or home-network address, and warns about plain http beyond this computer", async () => {
+    const local = await cloud({ answers: [[HOST, "My own server"], ["The server's address", "http://localhost:3000/mcp"]] });
+    expect(readFileSync(envFile(local.w), "utf8")).toContain("PUBLIC_URL=http://localhost:3000\n");
+    expect(local.text).not.toContain("plain http");
+    expect(local.text).toContain("3. Make it answer at http://localhost:3000.");
+    const lan = await cloud({ answers: [[HOST, "My own server"], ["The server's address", "http://homeserver:3000"]] });
+    expect(readFileSync(envFile(lan.w), "utf8")).toContain("PUBLIC_URL=http://homeserver:3000\n");
+    expect(lan.text.replace(/\s+/g, " ")).toContain("That's plain http.");
+    expect(lan.text.replace(/\s+/g, " ")).toContain("totem auth --url http://homeserver:3000 --allow-http");
   });
 
   it("is 0600 when a world-readable one was already there", async () => {
